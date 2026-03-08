@@ -225,6 +225,9 @@ export default function MikroTikRouters() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => testConnection(router)} disabled={testing === router.id}>
+                        {testing === router.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(router)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleStatus(router)}>
                         {router.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
