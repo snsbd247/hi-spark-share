@@ -13,6 +13,8 @@ import Customers from "@/pages/Customers";
 import Packages from "@/pages/Packages";
 import Billing from "@/pages/Billing";
 import Payments from "@/pages/Payments";
+import OLTManagement from "@/pages/OLTManagement";
+import ONUManagement from "@/pages/ONUManagement";
 import CustomerLogin from "@/pages/portal/CustomerLogin";
 import CustomerDashboard from "@/pages/portal/CustomerDashboard";
 import CustomerBills from "@/pages/portal/CustomerBills";
@@ -40,6 +42,8 @@ function App() {
                 <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
                 <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+                <Route path="/olt" element={<ProtectedRoute><OLTManagement /></ProtectedRoute>} />
+                <Route path="/onu" element={<ProtectedRoute><ONUManagement /></ProtectedRoute>} />
 
                 {/* Customer Portal Routes */}
                 <Route path="/portal/login" element={<CustomerLogin />} />

@@ -147,36 +147,135 @@ export type Database = {
           },
         ]
       }
+      olts: {
+        Row: {
+          brand: string | null
+          created_at: string
+          id: string
+          ip_address: string
+          is_active: boolean
+          location: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          id?: string
+          ip_address: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      onus: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          mac_address: string | null
+          olt_id: string | null
+          olt_port: string | null
+          serial_number: string
+          signal_strength: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          mac_address?: string | null
+          olt_id?: string | null
+          olt_port?: string | null
+          serial_number: string
+          signal_strength?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          mac_address?: string | null
+          olt_id?: string | null
+          olt_port?: string | null
+          serial_number?: string
+          signal_strength?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onus_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onus_olt_id_fkey"
+            columns: ["olt_id"]
+            isOneToOne: false
+            referencedRelation: "olts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       packages: {
         Row: {
           bandwidth_profile: string | null
+          burst_limit: string | null
           created_at: string
+          download_speed: number
           id: string
           is_active: boolean
+          mikrotik_profile_name: string | null
           monthly_price: number
           name: string
           speed: string
           updated_at: string
+          upload_speed: number
         }
         Insert: {
           bandwidth_profile?: string | null
+          burst_limit?: string | null
           created_at?: string
+          download_speed?: number
           id?: string
           is_active?: boolean
+          mikrotik_profile_name?: string | null
           monthly_price?: number
           name: string
           speed: string
           updated_at?: string
+          upload_speed?: number
         }
         Update: {
           bandwidth_profile?: string | null
+          burst_limit?: string | null
           created_at?: string
+          download_speed?: number
           id?: string
           is_active?: boolean
+          mikrotik_profile_name?: string | null
           monthly_price?: number
           name?: string
           speed?: string
           updated_at?: string
+          upload_speed?: number
         }
         Relationships: []
       }
