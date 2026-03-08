@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface CustomerUser {
   id: string;
@@ -48,18 +49,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (pppoeUsername: string, pppoePassword: string) => {
-    // Search by PPPoE username and password
-    const { data, error } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("pppoe_username", pppoeUsername)
-      .eq("pppoe_password", pppoePassword)
-      .single();
+    // Use secure edge function — never query passwords client-side
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pppoe_username: pppoeUsername, pppoe_password: pppoePassword }),
+    });
 
-    if (error || !data) throw new Error("Invalid PPPoE username or password");
+    const result = await res.json();
 
-    if (data.status !== "active") throw new Error("Your account is not active. Please contact support.");
+    if (!res.ok) {
+      throw new Error(result.error || "Login failed");
+    }
 
+    const data = result.customer;
     const customerUser: CustomerUser = {
       id: data.id,
       customer_id: data.customer_id,
