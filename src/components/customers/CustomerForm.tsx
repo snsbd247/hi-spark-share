@@ -208,15 +208,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       {/* System */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">System</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label>Username</Label>
-            <Input value={form.username} onChange={(e) => update("username", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Password</Label>
-            <Input value={form.password} onChange={(e) => update("password", e.target.value)} />
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Status</Label>
             <Select value={form.status} onValueChange={(v) => update("status", v)}>
