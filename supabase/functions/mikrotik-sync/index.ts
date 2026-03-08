@@ -287,25 +287,27 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // 2. Find recently paid customers that are still suspended and reactivate
-      const { data: suspendedCustomers } = await supabase
+      // 2. Find customers pending reactivation (from payment trigger) or suspended with no overdue bills
+      const { data: reactivateCandidates } = await supabase
         .from("customers")
-        .select("id, pppoe_username, router_id")
-        .eq("connection_status", "suspended")
+        .select("id, pppoe_username, router_id, connection_status")
+        .in("connection_status", ["suspended", "pending_reactivation"])
         .not("pppoe_username", "is", null);
 
-      if (suspendedCustomers) {
-        for (const cust of suspendedCustomers) {
-          // Check if all bills are paid
-          const { data: unpaidBills } = await supabase
-            .from("bills")
-            .select("id")
-            .eq("customer_id", cust.id)
-            .eq("status", "unpaid")
-            .lt("due_date", today)
-            .limit(1);
+      if (reactivateCandidates) {
+        for (const cust of reactivateCandidates) {
+          // For suspended customers, verify no overdue bills remain
+          if (cust.connection_status === "suspended") {
+            const { data: unpaidBills } = await supabase
+              .from("bills")
+              .select("id")
+              .eq("customer_id", cust.id)
+              .eq("status", "unpaid")
+              .lt("due_date", today)
+              .limit(1);
 
-          if (unpaidBills && unpaidBills.length > 0) continue; // Still has overdue bills
+            if (unpaidBills && unpaidBills.length > 0) continue;
+          }
 
           try {
             const router = cust.router_id ? await getRouterById(supabase, cust.router_id) : null;
