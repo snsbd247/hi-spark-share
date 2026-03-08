@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Settings,
   Bell,
+  UserCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const navItems = [
   { to: "/sms", icon: MessageSquare, label: "SMS" },
   { to: "/sms-settings", icon: Settings, label: "SMS Settings" },
   { to: "/reminders", icon: Bell, label: "Reminders" },
+  { to: "/profile", icon: UserCircle, label: "Profile" },
 ];
 
 export default function AppSidebar() {

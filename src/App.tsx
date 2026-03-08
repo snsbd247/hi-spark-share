@@ -20,6 +20,7 @@ import SMSLogs from "@/pages/SMSLogs";
 import SMSSettings from "@/pages/SMSSettings";
 import ReminderLogs from "@/pages/ReminderLogs";
 import PayBill from "@/pages/PayBill";
+import AdminProfile from "@/pages/AdminProfile";
 import CustomerLogin from "@/pages/portal/CustomerLogin";
 import CustomerDashboard from "@/pages/portal/CustomerDashboard";
 import CustomerBills from "@/pages/portal/CustomerBills";
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/sms" element={<ProtectedRoute><SMSLogs /></ProtectedRoute>} />
                 <Route path="/sms-settings" element={<ProtectedRoute><SMSSettings /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><ReminderLogs /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />
