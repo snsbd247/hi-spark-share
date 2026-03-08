@@ -54,6 +54,7 @@ export default function CustomerPayments() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Transaction ID</TableHead>
+                  <TableHead className="text-right">Receipt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
