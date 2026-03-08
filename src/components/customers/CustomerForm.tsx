@@ -42,8 +42,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     onu_mac: customer?.onu_mac ?? "",
     router_mac: customer?.router_mac ?? "",
     installation_date: customer?.installation_date ?? "",
-    username: customer?.username ?? "",
-    password: customer?.password ?? "",
     status: customer?.status ?? "active",
   });
 
