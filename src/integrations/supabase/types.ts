@@ -153,6 +153,78 @@ export type Database = {
           },
         ]
       }
+      general_settings: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          logo_url: string | null
+          mobile: string | null
+          site_name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          mobile?: string | null
+          site_name?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          mobile?: string | null
+          site_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mikrotik_routers: {
+        Row: {
+          api_port: number
+          created_at: string
+          description: string | null
+          id: string
+          ip_address: string
+          name: string
+          password: string
+          status: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          api_port?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address: string
+          name: string
+          password: string
+          status?: string
+          updated_at?: string
+          username?: string
+        }
+        Update: {
+          api_port?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: string
+          name?: string
+          password?: string
+          status?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       olts: {
         Row: {
           brand: string | null
@@ -606,6 +678,33 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      zones: {
+        Row: {
+          address: string | null
+          area_name: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          area_name: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          area_name?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
