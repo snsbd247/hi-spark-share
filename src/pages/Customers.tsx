@@ -95,9 +95,15 @@ export default function Customers() {
           <h1 className="text-2xl font-bold text-foreground">Customers</h1>
           <p className="text-muted-foreground mt-1">Manage your customer base</p>
         </div>
-        <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Customer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={bulkSyncCustomers} disabled={bulkSyncing}>
+            {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Sync All to MikroTik
+          </Button>
+          <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Customer
+          </Button>
+        </div>
       </div>
 
       <div className="glass-card rounded-xl">
