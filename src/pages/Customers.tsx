@@ -162,7 +162,7 @@ export default function Customers() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setViewCustomer(customer); setViewOpen(true); }}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/customers/${customer.id}`)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCustomer(customer); setFormOpen(true); }}>
