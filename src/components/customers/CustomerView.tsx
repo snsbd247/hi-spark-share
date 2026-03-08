@@ -35,6 +35,8 @@ function SyncStatusBadge({ status }: { status: string }) {
 
 export default function CustomerView({ customer }: CustomerViewProps) {
   const [retrying, setRetrying] = useState(false);
+  const [suspending, setSuspending] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
 
   const statusColor =
     customer.status === "active"
