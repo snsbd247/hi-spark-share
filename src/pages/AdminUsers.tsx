@@ -1,0 +1,318 @@
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Shield } from "lucide-react";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+export default function AdminUsers() {
+  const { user, session } = useAuth();
+  const queryClient = useQueryClient();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [deleteUser, setDeleteUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [form, setForm] = useState({
+    full_name: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
+  });
+
+  const { data: users, isLoading } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-users/list", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      return data?.users || [];
+    },
+    enabled: !!session,
+  });
+
+  const filtered = users?.filter(
+    (u: any) =>
+      u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      u.staff_id?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openAdd = () => {
+    setEditUser(null);
+    setForm({ full_name: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff" });
+    setFormOpen(true);
+  };
+
+  const openEdit = (u: any) => {
+    setEditUser(u);
+    setForm({
+      full_name: u.full_name || "",
+      email: u.email || "",
+      password: "",
+      mobile: u.mobile || "",
+      address: u.address || "",
+      staff_id: u.staff_id || "",
+      role: u.roles?.[0] || "staff",
+    });
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editUser) {
+        const { data, error } = await supabase.functions.invoke("admin-users/update", {
+          body: {
+            user_id: editUser.id,
+            full_name: form.full_name,
+            email: form.email,
+            password: form.password || undefined,
+            mobile: form.mobile,
+            address: form.address,
+            staff_id: form.staff_id,
+            role: form.role,
+          },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("User updated");
+      } else {
+        if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
+        const { data, error } = await supabase.functions.invoke("admin-users/create", {
+          body: {
+            full_name: form.full_name,
+            email: form.email,
+            password: form.password,
+            mobile: form.mobile,
+            address: form.address,
+            staff_id: form.staff_id,
+            role: form.role,
+          },
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success("User created");
+      }
+      setFormOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteUser) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users/delete", {
+        body: { user_id: deleteUser.id },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("User deleted");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeleteUser(null);
+    }
+  };
+
+  const toggleDisable = async (u: any) => {
+    const newDisabled = !u.disabled && !u.banned;
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users/update", {
+        body: { user_id: u.id, disabled: newDisabled, full_name: u.full_name, mobile: u.mobile, address: u.address, staff_id: u.staff_id, role: u.roles?.[0] || "staff" },
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`User ${newDisabled ? "disabled" : "enabled"}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const roleColor = (role: string) => {
+    switch (role) {
+      case "super_admin": return "bg-primary/10 text-primary border-primary/20";
+      case "admin": return "bg-accent/50 text-accent-foreground border-accent";
+      default: return "bg-muted text-muted-foreground border-border";
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Users</h1>
+          <p className="text-muted-foreground mt-1">Manage admin & staff accounts</p>
+        </div>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add User</Button>
+      </div>
+
+      <div className="mb-4 max-w-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">SL#</TableHead>
+                <TableHead>Full Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Staff ID</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered?.map((u: any, i: number) => (
+                <TableRow key={u.id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.mobile || "—"}</TableCell>
+                  <TableCell className="font-mono text-sm">{u.staff_id || "—"}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {u.roles?.length > 0 ? u.roles.map((r: string) => (
+                        <Badge key={r} variant="outline" className={roleColor(r)}>{r}</Badge>
+                      )) : <span className="text-muted-foreground text-xs">No role</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={u.disabled || u.banned ? "secondary" : "default"}>
+                      {u.disabled || u.banned ? "Disabled" : "Active"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {u.created_at ? format(new Date(u.created_at), "dd MMM yyyy") : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleDisable(u)} disabled={u.id === user?.id}>
+                        {u.disabled || u.banned ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteUser(u)} disabled={u.id === user?.id}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {(!filtered || filtered.length === 0) && (
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editUser ? "Edit User" : "Add User"}</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Full Name *</Label>
+                <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email *</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{editUser ? "New Password (leave blank to keep)" : "Password *"}</Label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editUser} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Mobile</Label>
+                <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Staff ID</Label>
+                <Input value={form.staff_id} onChange={(e) => setForm({ ...form, staff_id: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Address</Label>
+              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role *</Label>
+              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {editUser ? "Update" : "Create"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete "{deleteUser?.full_name || deleteUser?.email}"? This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DashboardLayout>
+  );
+}
