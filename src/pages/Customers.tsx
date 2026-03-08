@@ -198,14 +198,6 @@ export default function Customers() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Customer Details</DialogTitle>
-          </DialogHeader>
-          {viewCustomer && <CustomerView customer={viewCustomer} />}
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }
