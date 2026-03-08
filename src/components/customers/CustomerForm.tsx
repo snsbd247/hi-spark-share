@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -19,6 +15,8 @@ interface CustomerFormProps {
   customer?: any;
   onSuccess: () => void;
 }
+
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 export default function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
   const isEdit = !!customer;
@@ -82,20 +80,35 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     if (pkg) update("monthly_bill", pkg.monthly_price.toString());
   };
 
-  const syncPPPoEUser = async (customerId: string, customerData: any, pkg: any, router: any) => {
+  const syncPPPoE = async (customerId: string, customerData: any, pkg: any, isUpdate: boolean) => {
+    const profileName = pkg?.mikrotik_profile_name || pkg?.name || "default";
+    const endpoint = isUpdate ? "update-pppoe" : "create-pppoe";
+
     try {
-      const { error } = await supabase.functions.invoke("mikrotik-sync/create-pppoe", {
-        body: {
-          customer_id: customerId,
-          pppoe_username: customerData.pppoe_username,
-          pppoe_password: customerData.pppoe_password,
-          profile_name: pkg?.mikrotik_profile_name || pkg?.name || "default",
-          comment: customerData.name,
-          router_id: customerData.router_id,
-        },
-      });
-      if (error) throw error;
-      toast.success("PPPoE user created on MikroTik");
+      const body: any = {
+        customer_id: customerId,
+        pppoe_username: customerData.pppoe_username,
+        pppoe_password: customerData.pppoe_password,
+        profile_name: profileName,
+        comment: `${customerData.name}`,
+        router_id: customerData.router_id,
+      };
+
+      // If editing and username changed, pass old username
+      if (isUpdate && customer?.pppoe_username && customer.pppoe_username !== customerData.pppoe_username) {
+        body.old_pppoe_username = customer.pppoe_username;
+      }
+
+      const res = await fetch(
+        `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/${endpoint}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      );
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`PPPoE user ${isUpdate ? "updated" : "created"} on MikroTik`);
+      } else {
+        toast.warning(`Customer saved but MikroTik sync failed: ${data.error || "Unknown error"}. You can retry later.`);
+      }
     } catch (e: any) {
       console.error("MikroTik PPPoE sync failed:", e);
       toast.warning("Customer saved but MikroTik PPPoE sync failed. You can retry later.");
@@ -130,6 +143,8 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     };
 
     try {
+      const pkg = packages?.find((p) => p.id === form.package_id);
+
       if (isEdit) {
         const { error } = await supabase
           .from("customers")
@@ -137,6 +152,39 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           .eq("id", customer.id);
         if (error) throw error;
         toast.success("Customer updated successfully");
+
+        // Sync to MikroTik if PPPoE credentials exist
+        const needsSync = form.router_id && form.pppoe_username && (
+          customer.pppoe_username !== form.pppoe_username ||
+          customer.pppoe_password !== form.pppoe_password ||
+          customer.package_id !== form.package_id ||
+          customer.router_id !== form.router_id
+        );
+
+        if (needsSync) {
+          // Set sync status to pending
+          await supabase.from("customers").update({ mikrotik_sync_status: "pending" }).eq("id", customer.id);
+          await syncPPPoE(customer.id, payload, pkg, true);
+        }
+
+        // Handle status change → disable/enable PPPoE
+        if (customer.status !== form.status && form.pppoe_username && form.router_id) {
+          if (form.status === "suspended" || form.status === "disconnected") {
+            try {
+              await fetch(
+                `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/disable-pppoe`,
+                { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pppoe_username: form.pppoe_username, router_id: form.router_id, customer_id: customer.id }) }
+              );
+            } catch { /* handled by edge function */ }
+          } else if (form.status === "active" && (customer.status === "suspended" || customer.status === "disconnected")) {
+            try {
+              await fetch(
+                `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/enable-pppoe`,
+                { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pppoe_username: form.pppoe_username, router_id: form.router_id, customer_id: customer.id }) }
+              );
+            } catch { /* handled by edge function */ }
+          }
+        }
       } else {
         const { data, error } = await supabase
           .from("customers")
@@ -146,11 +194,9 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         if (error) throw error;
         toast.success("Customer created successfully");
 
-        // Auto-create PPPoE user on MikroTik if router and PPPoE credentials are set
+        // Auto-create PPPoE user on MikroTik
         if (data && form.router_id && form.pppoe_username) {
-          const pkg = packages?.find((p) => p.id === form.package_id);
-          const router = routers?.find((r) => r.id === form.router_id);
-          await syncPPPoEUser(data.id, payload, pkg, router);
+          await syncPPPoE(data.id, payload, pkg, false);
         }
 
         if (data) generateCustomerPDF(data);

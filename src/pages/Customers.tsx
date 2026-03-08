@@ -1,26 +1,17 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Eye, Pencil, Printer, Search, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
@@ -57,15 +48,15 @@ export default function Customers() {
     switch (status) {
       case "active": return "bg-success/10 text-success border-success/20";
       case "suspended": return "bg-destructive/10 text-destructive border-destructive/20";
-      case "disconnected": return "bg-muted text-muted-foreground border-border";
-      default: return "bg-muted text-muted-foreground";
+      default: return "bg-muted text-muted-foreground border-border";
     }
   };
 
-  const connectionColor = (status: string) => {
+  const syncStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-success/10 text-success border-success/20";
-      case "suspended": return "bg-warning/10 text-warning border-warning/20";
+      case "synced": return "bg-success/10 text-success border-success/20";
+      case "pending": return "bg-warning/10 text-warning border-warning/20";
+      case "failed": return "bg-destructive/10 text-destructive border-destructive/20";
       default: return "bg-muted text-muted-foreground border-border";
     }
   };
@@ -86,12 +77,7 @@ export default function Customers() {
         <div className="p-4 border-b border-border">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search customers..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <Input placeholder="Search customers..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -111,7 +97,7 @@ export default function Customers() {
                   <TableHead>Package</TableHead>
                   <TableHead>Monthly Bill</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Connection</TableHead>
+                  <TableHead>MikroTik Sync</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -137,34 +123,19 @@ export default function Customers() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={connectionColor((customer as any).connection_status || "active")}>
-                          {(customer as any).connection_status || "active"}
+                        <Badge variant="outline" className={syncStatusColor((customer as any).mikrotik_sync_status || "pending")}>
+                          {(customer as any).mikrotik_sync_status || "pending"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => { setViewCustomer(customer); setViewOpen(true); }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setViewCustomer(customer); setViewOpen(true); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => { setEditCustomer(customer); setFormOpen(true); }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCustomer(customer); setFormOpen(true); }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => generateCustomerPDF(customer)}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => generateCustomerPDF(customer)}>
                             <Printer className="h-4 w-4" />
                           </Button>
                         </div>
@@ -178,7 +149,6 @@ export default function Customers() {
         )}
       </div>
 
-      {/* Add/Edit Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -195,7 +165,6 @@ export default function Customers() {
         </DialogContent>
       </Dialog>
 
-      {/* View Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>

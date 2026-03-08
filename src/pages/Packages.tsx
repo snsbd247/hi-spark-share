@@ -10,6 +10,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
@@ -31,13 +34,22 @@ export default function Packages() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", speed: "", monthly_price: "", bandwidth_profile: "",
-    download_speed: "", upload_speed: "", burst_limit: "",
+    download_speed: "", upload_speed: "", burst_limit: "", router_id: "",
   });
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["packages-all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("packages").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("packages").select("*, mikrotik_routers(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: routers } = useQuery({
+    queryKey: ["mikrotik-routers-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("mikrotik_routers").select("*").eq("status", "active");
       if (error) throw error;
       return data;
     },
@@ -51,7 +63,7 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditPkg(null);
-    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "" });
+    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "", router_id: "" });
     setFormOpen(true);
   };
 
@@ -65,6 +77,7 @@ export default function Packages() {
       download_speed: pkg.download_speed?.toString() || "",
       upload_speed: pkg.upload_speed?.toString() || "",
       burst_limit: pkg.burst_limit || "",
+      router_id: pkg.router_id || "",
     });
     setFormOpen(true);
   };
@@ -80,6 +93,7 @@ export default function Packages() {
       download_speed: parseInt(form.download_speed) || 0,
       upload_speed: parseInt(form.upload_speed) || 0,
       burst_limit: form.burst_limit || null,
+      router_id: form.router_id || null,
     };
 
     try {
@@ -96,8 +110,9 @@ export default function Packages() {
         toast.success("Package created");
       }
 
+      // Auto-sync PPP profile to MikroTik
       if (payload.download_speed > 0 || payload.upload_speed > 0) {
-        syncToMikrotik(packageId);
+        syncToMikrotik(packageId, form.router_id);
       }
 
       setFormOpen(false);
@@ -113,6 +128,19 @@ export default function Packages() {
   const handleDelete = async () => {
     if (!deletePkg) return;
     try {
+      // Remove profile from MikroTik first
+      if (deletePkg.mikrotik_profile_name) {
+        try {
+          await fetch(
+            `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/remove-profile`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ package_id: deletePkg.id, router_id: deletePkg.router_id }),
+            }
+          );
+        } catch { /* best effort */ }
+      }
       const { error } = await supabase.from("packages").delete().eq("id", deletePkg.id);
       if (error) throw error;
       toast.success("Package deleted");
@@ -128,15 +156,29 @@ export default function Packages() {
   const toggleStatus = async (pkg: any) => {
     const newStatus = !pkg.is_active;
     const { error } = await supabase.from("packages").update({ is_active: newStatus }).eq("id", pkg.id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success(`Package ${newStatus ? "enabled" : "disabled"}`);
-      queryClient.invalidateQueries({ queryKey: ["packages-all"] });
-      queryClient.invalidateQueries({ queryKey: ["packages"] });
+    if (error) { toast.error(error.message); return; }
+
+    // If disabling, remove profile from MikroTik
+    if (!newStatus && pkg.mikrotik_profile_name) {
+      try {
+        await fetch(
+          `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/remove-profile`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ package_id: pkg.id, router_id: pkg.router_id }),
+          }
+        );
+        toast.info("MikroTik profile removed");
+      } catch { /* best effort */ }
     }
+
+    toast.success(`Package ${newStatus ? "enabled" : "disabled"}`);
+    queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+    queryClient.invalidateQueries({ queryKey: ["packages"] });
   };
 
-  const syncToMikrotik = async (packageId: string) => {
+  const syncToMikrotik = async (packageId: string, routerId?: string) => {
     setSyncing(packageId);
     try {
       const res = await fetch(
@@ -144,12 +186,13 @@ export default function Packages() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ package_id: packageId }),
+          body: JSON.stringify({ package_id: packageId, router_id: routerId || undefined }),
         }
       );
       const data = await res.json();
       if (data.success) {
         toast.success(`MikroTik profile synced: ${data.profile_name}`);
+        queryClient.invalidateQueries({ queryKey: ["packages-all"] });
       } else {
         toast.error(data.error || "MikroTik sync failed");
       }
@@ -189,6 +232,8 @@ export default function Packages() {
                 <TableHead>Speed</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Bandwidth</TableHead>
+                <TableHead>Router</TableHead>
+                <TableHead>MikroTik Profile</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -205,6 +250,16 @@ export default function Packages() {
                       <span className="text-sm">↓{pkg.download_speed}M / ↑{pkg.upload_speed}M</span>
                     ) : "—"}
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {(pkg as any).mikrotik_routers?.name || "—"}
+                  </TableCell>
+                  <TableCell>
+                    {pkg.mikrotik_profile_name ? (
+                      <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">{pkg.mikrotik_profile_name}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Not synced</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={pkg.is_active ? "default" : "secondary"}>
                       {pkg.is_active ? "Active" : "Disabled"}
@@ -212,7 +267,7 @@ export default function Packages() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => syncToMikrotik(pkg.id)} disabled={syncing === pkg.id} title="Sync to MikroTik">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => syncToMikrotik(pkg.id, pkg.router_id)} disabled={syncing === pkg.id} title="Sync to MikroTik">
                         <RefreshCw className={`h-4 w-4 ${syncing === pkg.id ? "animate-spin" : ""}`} />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(pkg)}><Pencil className="h-4 w-4" /></Button>
@@ -225,7 +280,7 @@ export default function Packages() {
                 </TableRow>
               ))}
               {filtered?.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No packages found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No packages found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -252,6 +307,17 @@ export default function Packages() {
             </div>
             <div className="pt-2 border-t border-border">
               <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Bandwidth Control (MikroTik)</p>
+              <div className="space-y-1.5 mb-4">
+                <Label>Target MikroTik Router</Label>
+                <Select value={form.router_id} onValueChange={(v) => setForm({ ...form, router_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select router for profile sync" /></SelectTrigger>
+                  <SelectContent>
+                    {routers?.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name} — {r.ip_address}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Download Speed (Mbps)</Label>
@@ -285,7 +351,7 @@ export default function Packages() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Package</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete "{deletePkg?.name}"? This may affect customers using this package.</AlertDialogDescription>
+            <AlertDialogDescription>Are you sure you want to delete "{deletePkg?.name}"? This will also remove the MikroTik profile if synced.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
