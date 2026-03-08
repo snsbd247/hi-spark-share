@@ -93,6 +93,7 @@ Deno.serve(async (req: Request) => {
       if (data.user) {
         await supabase.from("profiles").update({
           full_name: full_name || "",
+          email: email || null,
           mobile: mobile || null,
           address: address || null,
           staff_id: staff_id || null,
