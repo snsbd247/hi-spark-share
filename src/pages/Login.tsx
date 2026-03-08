@@ -46,13 +46,13 @@ export default function Login() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Smart ISP</h1>
-            <p className="text-sm text-muted-foreground">Billing Management System</p>
+            <p className="text-sm text-muted-foreground">Admin Panel</p>
           </div>
         </div>
 
         <Card className="glass-card">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">{isSignUp ? "Create Account" : "Sign In"}</CardTitle>
+            <CardTitle className="text-xl">{isSignUp ? "Create Admin Account" : "Admin Sign In"}</CardTitle>
             <CardDescription>
               {isSignUp
                 ? "Register a new admin account"
@@ -67,7 +67,7 @@ export default function Login() {
                   <Input
                     id="fullName"
                     type="text"
-                    placeholder="Admin User"
+                    placeholder="System Administrator"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
@@ -102,14 +102,17 @@ export default function Login() {
                 {isSignUp ? "Create Account" : "Sign In"}
               </Button>
             </form>
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
               <button
                 type="button"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors block w-full"
                 onClick={() => setIsSignUp(!isSignUp)}
               >
                 {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
               </button>
+              <a href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors block">
+                ← Customer Login
+              </a>
             </div>
           </CardContent>
         </Card>

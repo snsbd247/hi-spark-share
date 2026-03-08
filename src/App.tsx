@@ -43,7 +43,7 @@ function App() {
             <CustomerAuthProvider>
               <Routes>
                 {/* Admin Routes */}
-                <Route path="/login" element={<Login />} />
+                <Route path="/admin/login" element={<Login />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
                 <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
@@ -60,8 +60,8 @@ function App() {
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />
 
-                {/* Customer Portal Routes */}
-                <Route path="/portal/login" element={<CustomerLogin />} />
+                {/* Customer Routes */}
+                <Route path="/login" element={<CustomerLogin />} />
                 <Route path="/portal" element={<CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>} />
                 <Route path="/portal/bills" element={<CustomerProtectedRoute><CustomerBills /></CustomerProtectedRoute>} />
                 <Route path="/portal/payments" element={<CustomerProtectedRoute><CustomerPayments /></CustomerProtectedRoute>} />
