@@ -244,6 +244,8 @@ Deno.serve(async (req: Request) => {
 
       try {
         await withRouter(routerConfig, async (mt) => {
+          // Ensure profile exists before assigning
+          if (profile_name) await ensureProfileExists(mt, profile_name);
           // Find by old username if renamed, else current
           const searchName = old_pppoe_username || pppoe_username;
           const listRes = await mt.send(["/ppp/secret/print", `?name=${searchName}`]);
