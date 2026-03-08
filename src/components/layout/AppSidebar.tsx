@@ -5,6 +5,7 @@ import {
   Users,
   Package,
   Receipt,
+  CreditCard,
   LogOut,
   Wifi,
   ChevronLeft,
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/packages", icon: Package, label: "Packages" },
   { to: "/billing", icon: Receipt, label: "Billing" },
+  { to: "/payments", icon: CreditCard, label: "Payments" },
 ];
 
 export default function AppSidebar() {
