@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server, Wifi } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MikroTikRouters() {
@@ -25,6 +25,7 @@ export default function MikroTikRouters() {
   const [editRouter, setEditRouter] = useState<any>(null);
   const [deleteRouter, setDeleteRouter] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", ip_address: "", username: "admin", password: "", api_port: "8728", description: "",
@@ -121,6 +122,58 @@ export default function MikroTikRouters() {
     }
   };
 
+  const testConnection = async (router: any) => {
+    setTesting(router.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("mikrotik-sync/test-connection", {
+        body: {
+          ip_address: router.ip_address,
+          username: router.username,
+          password: router.password,
+          api_port: router.api_port,
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
+      } else {
+        toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Test failed: ${err.message}`);
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const testFormConnection = async () => {
+    if (!form.ip_address || !form.username || !form.password) {
+      toast.error("Please fill IP, username and password first");
+      return;
+    }
+    setTesting("form");
+    try {
+      const { data, error } = await supabase.functions.invoke("mikrotik-sync/test-connection", {
+        body: {
+          ip_address: form.ip_address,
+          username: form.username,
+          password: form.password,
+          api_port: parseInt(form.api_port) || 8728,
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}`);
+      } else {
+        toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Test failed: ${err.message}`);
+    } finally {
+      setTesting(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="flex items-center justify-between mb-6">
@@ -172,6 +225,9 @@ export default function MikroTikRouters() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => testConnection(router)} disabled={testing === router.id}>
+                        {testing === router.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(router)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleStatus(router)}>
                         {router.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -223,7 +279,11 @@ export default function MikroTikRouters() {
                 <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={testFormConnection} disabled={testing === "form"}>
+                {testing === "form" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wifi className="h-4 w-4 mr-2" />}
+                Test Connection
+              </Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editRouter ? "Update" : "Add Router"}
