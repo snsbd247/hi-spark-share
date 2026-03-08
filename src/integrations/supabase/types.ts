@@ -66,6 +66,7 @@ export type Database = {
           alt_phone: string | null
           area: string
           city: string | null
+          connection_status: string
           created_at: string
           customer_id: string
           email: string | null
@@ -84,6 +85,7 @@ export type Database = {
           pppoe_password: string | null
           pppoe_username: string | null
           road: string | null
+          router_id: string | null
           router_mac: string | null
           status: string
           updated_at: string
@@ -93,6 +95,7 @@ export type Database = {
           alt_phone?: string | null
           area: string
           city?: string | null
+          connection_status?: string
           created_at?: string
           customer_id: string
           email?: string | null
@@ -111,6 +114,7 @@ export type Database = {
           pppoe_password?: string | null
           pppoe_username?: string | null
           road?: string | null
+          router_id?: string | null
           router_mac?: string | null
           status?: string
           updated_at?: string
@@ -120,6 +124,7 @@ export type Database = {
           alt_phone?: string | null
           area?: string
           city?: string | null
+          connection_status?: string
           created_at?: string
           customer_id?: string
           email?: string | null
@@ -138,6 +143,7 @@ export type Database = {
           pppoe_password?: string | null
           pppoe_username?: string | null
           road?: string | null
+          router_id?: string | null
           router_mac?: string | null
           status?: string
           updated_at?: string
@@ -149,6 +155,13 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_routers"
             referencedColumns: ["id"]
           },
         ]
