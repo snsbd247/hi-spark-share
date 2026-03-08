@@ -66,8 +66,10 @@ export default function GeneralSettings() {
       let logo_url = form.logo_url;
 
       if (logoFile) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
         const ext = logoFile.name.split(".").pop();
-        const path = `company-logo.${ext}`;
+        const path = `${user.id}/company-logo.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("avatars")
           .upload(path, logoFile, { upsert: true });
