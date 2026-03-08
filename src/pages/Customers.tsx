@@ -38,7 +38,7 @@ export default function Customers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("*, packages(name)")
+        .select("*, packages(name), mikrotik_routers(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
