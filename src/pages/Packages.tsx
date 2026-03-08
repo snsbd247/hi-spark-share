@@ -6,28 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Loader2, Wifi, RefreshCw } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 export default function Packages() {
+  const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editPkg, setEditPkg] = useState<any>(null);
+  const [deletePkg, setDeletePkg] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", speed: "", monthly_price: "", bandwidth_profile: "",
     download_speed: "", upload_speed: "", burst_limit: "",
   });
-  const queryClient = useQueryClient();
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["packages-all"],
@@ -37,6 +42,12 @@ export default function Packages() {
       return data;
     },
   });
+
+  const filtered = packages?.filter(
+    (p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.speed.toLowerCase().includes(search.toLowerCase())
+  );
 
   const openAdd = () => {
     setEditPkg(null);
@@ -85,7 +96,6 @@ export default function Packages() {
         toast.success("Package created");
       }
 
-      // Auto-sync to MikroTik if bandwidth is set
       if (payload.download_speed > 0 || payload.upload_speed > 0) {
         syncToMikrotik(packageId);
       }
@@ -97,6 +107,32 @@ export default function Packages() {
       toast.error(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletePkg) return;
+    try {
+      const { error } = await supabase.from("packages").delete().eq("id", deletePkg.id);
+      if (error) throw error;
+      toast.success("Package deleted");
+      queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeletePkg(null);
+    }
+  };
+
+  const toggleStatus = async (pkg: any) => {
+    const newStatus = !pkg.is_active;
+    const { error } = await supabase.from("packages").update({ is_active: newStatus }).eq("id", pkg.id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`Package ${newStatus ? "enabled" : "disabled"}`);
+      queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+      queryClient.invalidateQueries({ queryKey: ["packages"] });
     }
   };
 
@@ -117,7 +153,7 @@ export default function Packages() {
       } else {
         toast.error(data.error || "MikroTik sync failed");
       }
-    } catch (err: any) {
+    } catch {
       toast.error("Could not connect to MikroTik");
     } finally {
       setSyncing(null);
@@ -131,84 +167,74 @@ export default function Packages() {
           <h1 className="text-2xl font-bold text-foreground">Packages</h1>
           <p className="text-muted-foreground mt-1">Manage internet packages & bandwidth</p>
         </div>
-        <Button onClick={openAdd}>
-          <Plus className="h-4 w-4 mr-2" /> Add Package
-        </Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Package</Button>
+      </div>
+
+      <div className="mb-4 max-w-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search packages..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+        <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {packages?.map((pkg) => (
-            <Card key={pkg.id} className="glass-card animate-fade-in group">
-              <CardHeader className="flex flex-row items-start justify-between pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Wifi className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">{pkg.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{pkg.speed}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition"
-                    onClick={() => syncToMikrotik(pkg.id)}
-                    disabled={syncing === pkg.id}
-                    title="Sync to MikroTik"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${syncing === pkg.id ? "animate-spin" : ""}`} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition"
-                    onClick={() => openEdit(pkg)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-foreground">
-                  ৳{Number(pkg.monthly_price).toLocaleString()}
-                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
-                </p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {(pkg.download_speed > 0 || pkg.upload_speed > 0) && (
-                    <Badge variant="outline" className="bg-primary/5">
-                      ↓{pkg.download_speed}M / ↑{pkg.upload_speed}M
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">SL#</TableHead>
+                <TableHead>Package Name</TableHead>
+                <TableHead>Speed</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Bandwidth</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered?.map((pkg, i) => (
+                <TableRow key={pkg.id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell className="font-medium">{pkg.name}</TableCell>
+                  <TableCell>{pkg.speed}</TableCell>
+                  <TableCell>৳{Number(pkg.monthly_price).toLocaleString()}/mo</TableCell>
+                  <TableCell>
+                    {(pkg.download_speed > 0 || pkg.upload_speed > 0) ? (
+                      <span className="text-sm">↓{pkg.download_speed}M / ↑{pkg.upload_speed}M</span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={pkg.is_active ? "default" : "secondary"}>
+                      {pkg.is_active ? "Active" : "Disabled"}
                     </Badge>
-                  )}
-                  {pkg.mikrotik_profile_name && (
-                    <Badge variant="outline" className="bg-success/5 text-success border-success/20">
-                      MikroTik: {pkg.mikrotik_profile_name}
-                    </Badge>
-                  )}
-                  {pkg.bandwidth_profile && (
-                    <Badge variant="outline">{pkg.bandwidth_profile}</Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {packages?.length === 0 && (
-            <p className="text-muted-foreground col-span-full text-center py-12">No packages yet. Add your first package.</p>
-          )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => syncToMikrotik(pkg.id)} disabled={syncing === pkg.id} title="Sync to MikroTik">
+                        <RefreshCw className={`h-4 w-4 ${syncing === pkg.id ? "animate-spin" : ""}`} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(pkg)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleStatus(pkg)}>
+                        {pkg.is_active ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletePkg(pkg)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered?.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No packages found</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editPkg ? "Edit Package" : "Add Package"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editPkg ? "Edit Package" : "Add Package"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -224,7 +250,6 @@ export default function Packages() {
               <Label>Monthly Price *</Label>
               <Input type="number" value={form.monthly_price} onChange={(e) => setForm({ ...form, monthly_price: e.target.value })} required />
             </div>
-
             <div className="pt-2 border-t border-border">
               <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Bandwidth Control (MikroTik)</p>
               <div className="grid grid-cols-2 gap-4">
@@ -246,7 +271,6 @@ export default function Packages() {
                 <Input value={form.bandwidth_profile} onChange={(e) => setForm({ ...form, bandwidth_profile: e.target.value })} />
               </div>
             </div>
-
             <div className="flex justify-end">
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -256,6 +280,19 @@ export default function Packages() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletePkg} onOpenChange={() => setDeletePkg(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Package</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete "{deletePkg?.name}"? This may affect customers using this package.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

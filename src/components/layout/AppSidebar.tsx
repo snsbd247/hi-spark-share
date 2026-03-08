@@ -1,30 +1,17 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard,
-  Users,
-  Package,
-  Receipt,
-  CreditCard,
-  Server,
-  Radio,
-  LogOut,
-  Wifi,
-  ChevronLeft,
-  Ticket,
-  MessageSquare,
-  Settings,
-  Bell,
-  UserCircle,
+  LayoutDashboard, Users, Receipt, CreditCard, Server, Radio, LogOut, Wifi,
+  ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
+  Package, MapPin, Router,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const navItems = [
+const mainNav = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/customers", icon: Users, label: "Customers" },
-  { to: "/packages", icon: Package, label: "Packages" },
   { to: "/billing", icon: Receipt, label: "Billing" },
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/olt", icon: Server, label: "OLT" },
@@ -36,10 +23,22 @@ const navItems = [
   { to: "/profile", icon: UserCircle, label: "Profile" },
 ];
 
+const settingsNav = [
+  { to: "/settings/general", icon: Settings, label: "General Settings" },
+  { to: "/settings/packages", icon: Package, label: "Packages" },
+  { to: "/settings/zones", icon: MapPin, label: "Zones" },
+  { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers" },
+];
+
 export default function AppSidebar() {
   const { signOut } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(
+    location.pathname.startsWith("/settings") || location.pathname === "/packages"
+  );
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <aside
@@ -70,25 +69,67 @@ export default function AppSidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.to;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-              )}
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {mainNav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              isActive(item.to)
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            )}
+          >
+            <item.icon className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </NavLink>
+        ))}
+
+        {/* Settings Section */}
+        {!collapsed ? (
+          <div className="pt-2">
+            <button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
             >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
-          );
-        })}
+              <Settings className="h-5 w-5 shrink-0" />
+              <span className="flex-1 text-left">Settings</span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", settingsOpen && "rotate-180")} />
+            </button>
+            {settingsOpen && (
+              <div className="ml-4 space-y-0.5 mt-0.5">
+                {settingsNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                      isActive(item.to)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <NavLink
+            to="/settings/general"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              location.pathname.startsWith("/settings")
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            )}
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+          </NavLink>
+        )}
       </nav>
 
       {/* Footer */}
