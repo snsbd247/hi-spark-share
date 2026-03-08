@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Download } from "lucide-react";
 import { format } from "date-fns";
+import { generatePaymentReceiptPDF } from "@/lib/pdf";
 
 export default function Payments() {
   const [search, setSearch] = useState("");
@@ -143,12 +144,13 @@ export default function Payments() {
                   <TableHead>Transaction ID</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Receipt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                       No payments found
                     </TableCell>
                   </TableRow>
@@ -173,6 +175,18 @@ export default function Payments() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(payment.paid_at), "dd MMM yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {payment.status === "completed" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => generatePaymentReceiptPDF(payment, payment.customers)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

@@ -63,10 +63,9 @@ export default function Billing() {
   const handleGenerate = async () => {
     setGenLoading(true);
     try {
-      // Get all active customers
       const { data: customers, error: custErr } = await supabase
         .from("customers")
-        .select("id, monthly_bill")
+        .select("id, name, phone, monthly_bill")
         .eq("status", "active");
       if (custErr) throw custErr;
 
@@ -76,7 +75,6 @@ export default function Billing() {
         return;
       }
 
-      // Check for existing bills this month
       const { data: existing } = await supabase
         .from("bills")
         .select("customer_id")
@@ -90,6 +88,7 @@ export default function Billing() {
           month: genMonth,
           amount: c.monthly_bill,
           status: "unpaid" as const,
+          due_date: new Date(new Date(genMonth + "-01").getFullYear(), new Date(genMonth + "-01").getMonth() + 1, 15).toISOString().split("T")[0],
         }));
 
       if (!newBills.length) {
@@ -101,6 +100,25 @@ export default function Billing() {
 
       const { error } = await supabase.from("bills").insert(newBills);
       if (error) throw error;
+
+      // Send SMS notifications for generated bills
+      const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const billCustomers = customers.filter((c) => !existingIds.has(c.id));
+      for (const cust of billCustomers) {
+        fetch(
+          `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/send-sms`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: cust.phone,
+              message: `Dear ${cust.name}, your internet bill for ${genMonth} is ${cust.monthly_bill} BDT. Please pay before the due date to avoid service suspension.`,
+              sms_type: "bill_generate",
+              customer_id: cust.id,
+            }),
+          }
+        ).catch(() => {});
+      }
 
       toast.success(`Generated ${newBills.length} bills for ${genMonth}`);
       setGenerateOpen(false);

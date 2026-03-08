@@ -19,9 +19,11 @@ export type Database = {
           amount: number
           created_at: string
           customer_id: string
+          due_date: string | null
           id: string
           month: string
           paid_date: string | null
+          payment_link_token: string | null
           status: string
           updated_at: string
         }
@@ -29,9 +31,11 @@ export type Database = {
           amount?: number
           created_at?: string
           customer_id: string
+          due_date?: string | null
           id?: string
           month: string
           paid_date?: string | null
+          payment_link_token?: string | null
           status?: string
           updated_at?: string
         }
@@ -39,9 +43,11 @@ export type Database = {
           amount?: number
           created_at?: string
           customer_id?: string
+          due_date?: string | null
           id?: string
           month?: string
           paid_date?: string | null
+          payment_link_token?: string | null
           status?: string
           updated_at?: string
         }
@@ -363,6 +369,54 @@ export type Database = {
         }
         Relationships: []
       }
+      reminder_logs: {
+        Row: {
+          bill_id: string | null
+          channel: string
+          created_at: string
+          customer_id: string | null
+          id: string
+          message: string
+          phone: string
+          status: string
+        }
+        Insert: {
+          bill_id?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          message: string
+          phone: string
+          status?: string
+        }
+        Update: {
+          bill_id?: string | null
+          channel?: string
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          message?: string
+          phone?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_logs_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_logs: {
         Row: {
           created_at: string
@@ -403,6 +457,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sms_settings: {
+        Row: {
+          api_token: string | null
+          id: string
+          sender_id: string | null
+          sms_on_bill_generate: boolean | null
+          sms_on_payment: boolean | null
+          sms_on_registration: boolean | null
+          sms_on_suspension: boolean | null
+          updated_at: string
+          whatsapp_enabled: boolean | null
+          whatsapp_phone_id: string | null
+          whatsapp_token: string | null
+        }
+        Insert: {
+          api_token?: string | null
+          id?: string
+          sender_id?: string | null
+          sms_on_bill_generate?: boolean | null
+          sms_on_payment?: boolean | null
+          sms_on_registration?: boolean | null
+          sms_on_suspension?: boolean | null
+          updated_at?: string
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone_id?: string | null
+          whatsapp_token?: string | null
+        }
+        Update: {
+          api_token?: string | null
+          id?: string
+          sender_id?: string | null
+          sms_on_bill_generate?: boolean | null
+          sms_on_payment?: boolean | null
+          sms_on_registration?: boolean | null
+          sms_on_suspension?: boolean | null
+          updated_at?: string
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone_id?: string | null
+          whatsapp_token?: string | null
+        }
+        Relationships: []
       }
       support_tickets: {
         Row: {

@@ -17,6 +17,9 @@ import OLTManagement from "@/pages/OLTManagement";
 import ONUManagement from "@/pages/ONUManagement";
 import Tickets from "@/pages/Tickets";
 import SMSLogs from "@/pages/SMSLogs";
+import SMSSettings from "@/pages/SMSSettings";
+import ReminderLogs from "@/pages/ReminderLogs";
+import PayBill from "@/pages/PayBill";
 import CustomerLogin from "@/pages/portal/CustomerLogin";
 import CustomerDashboard from "@/pages/portal/CustomerDashboard";
 import CustomerBills from "@/pages/portal/CustomerBills";
@@ -49,6 +52,11 @@ function App() {
                 <Route path="/onu" element={<ProtectedRoute><ONUManagement /></ProtectedRoute>} />
                 <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
                 <Route path="/sms" element={<ProtectedRoute><SMSLogs /></ProtectedRoute>} />
+                <Route path="/sms-settings" element={<ProtectedRoute><SMSSettings /></ProtectedRoute>} />
+                <Route path="/reminders" element={<ProtectedRoute><ReminderLogs /></ProtectedRoute>} />
+
+                {/* Public Payment Link */}
+                <Route path="/pay" element={<PayBill />} />
 
                 {/* Customer Portal Routes */}
                 <Route path="/portal/login" element={<CustomerLogin />} />

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import PortalLayout from "@/components/layout/PortalLayout";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,8 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import { format } from "date-fns";
+import { generatePaymentReceiptPDF } from "@/lib/pdf";
 
 export default function CustomerPayments() {
   const { customer } = useCustomerAuth();
@@ -52,12 +54,13 @@ export default function CustomerPayments() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Transaction ID</TableHead>
+                  <TableHead className="text-right">Receipt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                       No payment history found
                     </TableCell>
                   </TableRow>
@@ -72,6 +75,16 @@ export default function CustomerPayments() {
                       <TableCell className="capitalize">{payment.payment_method}</TableCell>
                       <TableCell className="font-mono text-sm">
                         {payment.transaction_id ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => generatePaymentReceiptPDF(payment, customer)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
