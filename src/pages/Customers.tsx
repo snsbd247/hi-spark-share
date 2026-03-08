@@ -11,7 +11,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Eye, Pencil, Printer, Search, Loader2 } from "lucide-react";
+import { Plus, Eye, Pencil, Printer, Search, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
