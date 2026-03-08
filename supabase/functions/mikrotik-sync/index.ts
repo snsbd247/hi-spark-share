@@ -77,6 +77,39 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname.split("/").pop();
 
+    // ─── TEST CONNECTION ───────────────────────────────────────
+    if (req.method === "POST" && path === "test-connection") {
+      const { ip_address, username, password, api_port } = await req.json();
+
+      if (!ip_address || !username || !password) {
+        return new Response(JSON.stringify({ error: "Missing router credentials" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const routerConfig = { ip_address, username, password, api_port: api_port || 8728 };
+
+      try {
+        const identity = await mikrotikRequestWithRouter(routerConfig, "/system/identity");
+        const resource = await mikrotikRequestWithRouter(routerConfig, "/system/resource");
+
+        return new Response(JSON.stringify({
+          success: true,
+          identity: identity?.name || identity?.[0]?.name || "Unknown",
+          version: resource?.version || resource?.[0]?.version || "Unknown",
+          uptime: resource?.uptime || resource?.[0]?.uptime || "Unknown",
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // ─── CREATE PPPOE USER ──────────────────────────────────────
     if (req.method === "POST" && path === "create-pppoe") {
       const { customer_id, pppoe_username, pppoe_password, profile_name, comment, router_id } = await req.json();

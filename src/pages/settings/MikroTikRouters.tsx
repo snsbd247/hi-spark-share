@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server, Wifi } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MikroTikRouters() {
