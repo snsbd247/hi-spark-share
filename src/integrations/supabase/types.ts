@@ -14,16 +14,229 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bills: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          month: string
+          paid_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          month: string
+          paid_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          month?: string
+          paid_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          alt_phone: string | null
+          area: string
+          city: string | null
+          created_at: string
+          customer_id: string
+          email: string | null
+          father_name: string | null
+          house: string | null
+          id: string
+          installation_date: string | null
+          ip_address: string | null
+          monthly_bill: number
+          name: string
+          nid: string | null
+          onu_mac: string | null
+          package_id: string | null
+          password: string | null
+          phone: string
+          pppoe_password: string | null
+          pppoe_username: string | null
+          road: string | null
+          router_mac: string | null
+          status: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          alt_phone?: string | null
+          area: string
+          city?: string | null
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          father_name?: string | null
+          house?: string | null
+          id?: string
+          installation_date?: string | null
+          ip_address?: string | null
+          monthly_bill?: number
+          name: string
+          nid?: string | null
+          onu_mac?: string | null
+          package_id?: string | null
+          password?: string | null
+          phone: string
+          pppoe_password?: string | null
+          pppoe_username?: string | null
+          road?: string | null
+          router_mac?: string | null
+          status?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          alt_phone?: string | null
+          area?: string
+          city?: string | null
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          father_name?: string | null
+          house?: string | null
+          id?: string
+          installation_date?: string | null
+          ip_address?: string | null
+          monthly_bill?: number
+          name?: string
+          nid?: string | null
+          onu_mac?: string | null
+          package_id?: string | null
+          password?: string | null
+          phone?: string
+          pppoe_password?: string | null
+          pppoe_username?: string | null
+          road?: string | null
+          router_mac?: string | null
+          status?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          bandwidth_profile: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          monthly_price: number
+          name: string
+          speed: string
+          updated_at: string
+        }
+        Insert: {
+          bandwidth_profile?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name: string
+          speed: string
+          updated_at?: string
+        }
+        Update: {
+          bandwidth_profile?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          speed?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "admin" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +363,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "admin", "staff"],
+    },
   },
 } as const
