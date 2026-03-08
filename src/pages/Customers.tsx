@@ -23,11 +23,10 @@ import { generateCustomerPDF } from "@/lib/pdf";
 export default function Customers() {
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [viewOpen, setViewOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
-  const [viewCustomer, setViewCustomer] = useState<any>(null);
   const [bulkSyncing, setBulkSyncing] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const bulkSyncCustomers = async () => {
     setBulkSyncing(true);
