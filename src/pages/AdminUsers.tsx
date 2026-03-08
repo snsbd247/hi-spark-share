@@ -32,6 +32,7 @@ export default function AdminUsers() {
   const [deleteUser, setDeleteUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState({
     full_name: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
   });
