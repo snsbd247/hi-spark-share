@@ -180,6 +180,57 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          bill_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          month: string | null
+          paid_at: string
+          payment_method: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          bill_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          month?: string | null
+          paid_at?: string
+          payment_method?: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          bill_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          month?: string | null
+          paid_at?: string
+          payment_method?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
