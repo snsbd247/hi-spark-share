@@ -42,6 +42,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     installation_date: customer?.installation_date ?? "",
     status: customer?.status ?? "active",
     router_id: customer?.router_id ?? "",
+    due_date_day: customer?.due_date_day?.toString() ?? "",
   });
 
   const { data: packages } = useQuery({
