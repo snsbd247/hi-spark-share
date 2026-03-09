@@ -49,9 +49,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (customer.status !== "active") {
+    // Allow suspended users to login (they can view bills/profile but service is off)
+    if (customer.status === "disconnected") {
       return new Response(
-        JSON.stringify({ error: "Your account is not active. Please contact support." }),
+        JSON.stringify({ error: "Your account has been disconnected. Please contact support." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
