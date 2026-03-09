@@ -9,7 +9,6 @@ interface Settings {
 }
 
 export async function generateApplicationFormPDF(customer: any, pkg: any, settings: Settings, photoDataUrl?: string | null) {
-  // If customer has photo_url but no dataUrl passed, try to fetch it
   let photoData = photoDataUrl;
   if (!photoData && customer.photo_url) {
     try {
@@ -22,13 +21,13 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
       });
     } catch { /* skip photo if fetch fails */ }
   }
+
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const margin = 15;
   const contentW = pw - margin * 2;
   let y = 0;
 
-  // Colors
   const navy = [20, 50, 120] as const;
   const lightBg = [245, 247, 250] as const;
   const borderGray = [200, 200, 200] as const;
@@ -37,7 +36,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   doc.setFillColor(...navy);
   doc.rect(0, 0, pw, 38, "F");
 
-  // Logo placeholder
   doc.setFillColor(255, 255, 255);
   doc.circle(28, 19, 10, "F");
   doc.setFontSize(10);
@@ -45,7 +43,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   doc.setTextColor(...navy);
   doc.text("ISP", 23, 22);
 
-  // ISP Name & tagline
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -56,14 +53,12 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   if (settings.mobile) doc.text(`Hotline: ${settings.mobile}`, 45, 28);
   if (settings.address) doc.text(settings.address, 45, 34);
 
-  // Form badge
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("APPLICATION FORM", pw - 20, 14, { align: "right" });
   doc.setDrawColor(255, 255, 255);
   doc.roundedRect(pw - 62, 6, 48, 12, 2, 2, "S");
 
-  // Form number & customer ID
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Form No: ${customer.customer_id || "—"}`, pw - 20, 26, { align: "right" });
@@ -107,7 +102,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   // ─── CUSTOMER INFORMATION ───
   sectionHeader("Customer Information");
 
-  // Photo box on right side
   const photoSize = 28;
   const photoX = pw - margin - photoSize;
   const photoY = y;
@@ -125,18 +119,15 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   }
 
   const infoW = contentW - photoSize - 4;
-  // Row 1
   fieldBox("Applicant Name", customer.name || "", margin, infoW / 2);
   fieldBox("Father Name", customer.father_name || "", margin + infoW / 2, infoW / 2);
   y += 11;
 
-  // Row 2
   fieldBox("Customer ID", customer.customer_id || "", margin, infoW / 3);
   fieldBox("National ID", customer.nid || "", margin + infoW / 3, infoW / 3);
   fieldBox("Email", customer.email || "", margin + (infoW / 3) * 2, infoW / 3);
   y += 11;
 
-  // Row 3 - after photo area
   y = Math.max(y, photoY + photoSize + 2);
   fieldRow([
     { label: "Mobile Number", value: customer.phone || "" },
@@ -157,20 +148,8 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     { label: "City", value: customer.city || "" },
   ]);
 
-  fieldRow([
-    { label: "Flat No", value: "" },
-    { label: "Floor No", value: "" },
-    { label: "Land Owner Name", value: "" },
-  ]);
-
-  fieldBox("Permanent Address", "", margin, contentW, 12);
+  fieldBox("Permanent Address", customer.permanent_address || "", margin, contentW, 12);
   y += 13;
-
-  fieldRow([
-    { label: "Village", value: "" },
-    { label: "Post Office", value: "" },
-    { label: "District", value: "" },
-  ]);
 
   y += 3;
 
@@ -190,6 +169,11 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   fieldRow([
     { label: "IP Address", value: customer.ip_address || "" },
+    { label: "Gateway", value: customer.gateway || "" },
+    { label: "Subnet", value: customer.subnet || "" },
+  ]);
+
+  fieldRow([
     { label: "ONU MAC", value: customer.onu_mac || "" },
     { label: "Router MAC", value: customer.router_mac || "" },
   ]);
@@ -199,16 +183,21 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   // ─── BILLING INFORMATION ───
   sectionHeader("Billing Information");
 
+  const monthlyBill = Number(customer.monthly_bill || 0);
+  const discount = Number(customer.discount || 0);
+  const connectivityFee = Number(customer.connectivity_fee || 0);
+  const totalAmount = monthlyBill - discount + connectivityFee;
+
   fieldRow([
     { label: "Connection Date", value: customer.installation_date || "" },
-    { label: "Monthly Bill", value: `${Number(customer.monthly_bill || 0).toLocaleString()} BDT` },
+    { label: "Monthly Bill", value: `${monthlyBill.toLocaleString()} BDT` },
     { label: "Due Date (Day)", value: customer.due_date_day ? `${customer.due_date_day}th of every month` : "—" },
   ]);
 
   fieldRow([
-    { label: "Connectivity Fee", value: "" },
-    { label: "Discount", value: "" },
-    { label: "Total Amount", value: `${Number(customer.monthly_bill || 0).toLocaleString()} BDT` },
+    { label: "Connectivity Fee", value: `${connectivityFee.toLocaleString()} BDT` },
+    { label: "Discount", value: `${discount.toLocaleString()} BDT` },
+    { label: "Total Amount", value: `${totalAmount.toLocaleString()} BDT` },
   ]);
 
   y += 3;
@@ -217,10 +206,10 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   sectionHeader("Office Use Only");
 
   fieldRow([
-    { label: "POP Location", value: "" },
-    { label: "Installed By", value: "" },
-    { label: "Box Name", value: "" },
-    { label: "Cable Length", value: "" },
+    { label: "POP Location", value: customer.pop_location || "" },
+    { label: "Installed By", value: customer.installed_by || "" },
+    { label: "Box Name", value: customer.box_name || "" },
+    { label: "Cable Length", value: customer.cable_length || "" },
   ]);
 
   // Check if we need a new page for signatures

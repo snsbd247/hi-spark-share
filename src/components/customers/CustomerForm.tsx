@@ -36,9 +36,12 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     road: customer?.road ?? "",
     house: customer?.house ?? "",
     city: customer?.city ?? "",
+    permanent_address: customer?.permanent_address ?? "",
     package_id: customer?.package_id ?? "",
     monthly_bill: customer?.monthly_bill?.toString() ?? "",
     ip_address: customer?.ip_address ?? "",
+    gateway: customer?.gateway ?? "",
+    subnet: customer?.subnet ?? "",
     pppoe_username: customer?.pppoe_username ?? "",
     pppoe_password: customer?.pppoe_password ?? "",
     onu_mac: customer?.onu_mac ?? "",
@@ -47,6 +50,12 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     status: customer?.status ?? "active",
     router_id: customer?.router_id ?? "",
     due_date_day: customer?.due_date_day?.toString() ?? "",
+    discount: customer?.discount?.toString() ?? "0",
+    connectivity_fee: customer?.connectivity_fee?.toString() ?? "0",
+    pop_location: customer?.pop_location ?? "",
+    installed_by: customer?.installed_by ?? "",
+    box_name: customer?.box_name ?? "",
+    cable_length: customer?.cable_length ?? "",
   });
 
   const { data: packages } = useQuery({
@@ -99,7 +108,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         router_id: customerData.router_id,
       };
 
-      // If editing and username changed, pass old username
       if (isUpdate && customer?.pppoe_username && customer.pppoe_username !== customerData.pppoe_username) {
         body.old_pppoe_username = customer.pppoe_username;
       }
@@ -137,9 +145,12 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       road: form.road || null,
       house: form.house || null,
       city: form.city || null,
+      permanent_address: form.permanent_address || null,
       package_id: form.package_id || null,
       monthly_bill: parseFloat(form.monthly_bill) || 0,
       ip_address: form.ip_address || null,
+      gateway: form.gateway || null,
+      subnet: form.subnet || null,
       pppoe_username: form.pppoe_username || null,
       pppoe_password: form.pppoe_password || null,
       onu_mac: form.onu_mac || null,
@@ -148,9 +159,14 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       status: form.status,
       router_id: form.router_id || null,
       due_date_day: form.due_date_day ? parseInt(form.due_date_day) : null,
+      discount: parseFloat(form.discount) || 0,
+      connectivity_fee: parseFloat(form.connectivity_fee) || 0,
+      pop_location: form.pop_location || null,
+      installed_by: form.installed_by || null,
+      box_name: form.box_name || null,
+      cable_length: form.cable_length || null,
     };
 
-    // Upload photo if selected
     const uploadPhoto = async (customerId: string) => {
       if (!photoFile) return null;
       const ext = photoFile.name.split(".").pop();
@@ -176,7 +192,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         if (error) throw error;
         toast.success("Customer updated successfully");
 
-        // Sync to MikroTik if PPPoE credentials exist
         const needsSync = form.router_id && form.pppoe_username && (
           customer.pppoe_username !== form.pppoe_username ||
           customer.pppoe_password !== form.pppoe_password ||
@@ -185,12 +200,10 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         );
 
         if (needsSync) {
-          // Set sync status to pending
           await supabase.from("customers").update({ mikrotik_sync_status: "pending" }).eq("id", customer.id);
           await syncPPPoE(customer.id, payload, pkg, true);
         }
 
-        // Handle status change → disable/enable PPPoE
         if (customer.status !== form.status && form.pppoe_username && form.router_id) {
           if (form.status === "suspended" || form.status === "disconnected") {
             try {
@@ -216,7 +229,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           .single();
         if (error) throw error;
 
-        // Upload photo for new customer
         if (data && photoFile) {
           const photoUrl = await uploadPhoto(data.id);
           if (photoUrl) {
@@ -226,7 +238,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
         toast.success("Customer created successfully");
 
-        // Auto-create PPPoE user on MikroTik
         if (data && form.router_id && form.pppoe_username) {
           await syncPPPoE(data.id, payload, pkg, false);
         }
@@ -248,7 +259,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Personal Information</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Customer Name *</Label>
+            <Label>Applicant Name *</Label>
             <Input value={form.name} onChange={(e) => update("name", e.target.value)} required />
           </div>
           <div className="space-y-1.5">
@@ -264,15 +275,15 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Input value={form.occupation} onChange={(e) => update("occupation", e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>NID</Label>
+            <Label>National ID</Label>
             <Input value={form.nid} onChange={(e) => update("nid", e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Phone *</Label>
+            <Label>Mobile *</Label>
             <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label>Alternative Phone</Label>
+            <Label>Alternative Contact</Label>
             <Input value={form.alt_phone} onChange={(e) => update("alt_phone", e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -308,10 +319,10 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
       {/* Address */}
       <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Address</h3>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Address Information</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Area / Zone *</Label>
+            <Label>Zone / Area *</Label>
             <Select value={form.area} onValueChange={(v) => update("area", v)}>
               <SelectTrigger><SelectValue placeholder="Select zone" /></SelectTrigger>
               <SelectContent>
@@ -335,10 +346,14 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Label>City</Label>
             <Input value={form.city} onChange={(e) => update("city", e.target.value)} />
           </div>
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>Permanent Address</Label>
+            <Input value={form.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} placeholder="Village, Post Office, District" />
+          </div>
         </div>
       </div>
 
-      {/* Connection */}
+      {/* Connection Details */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Connection Details</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -369,20 +384,24 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Monthly Bill *</Label>
-            <Input type="number" value={form.monthly_bill} onChange={(e) => update("monthly_bill", e.target.value)} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label>IP Address</Label>
-            <Input value={form.ip_address} onChange={(e) => update("ip_address", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
             <Label>PPPoE Username</Label>
             <Input value={form.pppoe_username} onChange={(e) => update("pppoe_username", e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>PPPoE Password</Label>
             <Input value={form.pppoe_password} onChange={(e) => update("pppoe_password", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>IP Address</Label>
+            <Input value={form.ip_address} onChange={(e) => update("ip_address", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Gateway</Label>
+            <Input value={form.gateway} onChange={(e) => update("gateway", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Subnet</Label>
+            <Input value={form.subnet} onChange={(e) => update("subnet", e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>ONU MAC</Label>
@@ -393,8 +412,27 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Input value={form.router_mac} onChange={(e) => update("router_mac", e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Installation Date</Label>
+            <Label>Connection Date</Label>
             <Input type="date" value={form.installation_date} onChange={(e) => update("installation_date", e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Billing Information */}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Billing Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Monthly Bill *</Label>
+            <Input type="number" value={form.monthly_bill} onChange={(e) => update("monthly_bill", e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Connectivity Fee</Label>
+            <Input type="number" value={form.connectivity_fee} onChange={(e) => update("connectivity_fee", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Discount</Label>
+            <Input type="number" value={form.discount} onChange={(e) => update("discount", e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Due Date (Day of Month)</Label>
@@ -406,6 +444,29 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Office Use */}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Office Use</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>POP Location</Label>
+            <Input value={form.pop_location} onChange={(e) => update("pop_location", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Installed By</Label>
+            <Input value={form.installed_by} onChange={(e) => update("installed_by", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Box Name</Label>
+            <Input value={form.box_name} onChange={(e) => update("box_name", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cable Length</Label>
+            <Input value={form.cable_length} onChange={(e) => update("cable_length", e.target.value)} />
           </div>
         </div>
       </div>

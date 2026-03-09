@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerInfoCard from "@/components/customers/CustomerInfoCard";
 import CustomerLedger from "@/components/customers/CustomerLedger";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Printer, Download, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Download, FileText } from "lucide-react";
 import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
 import { toast } from "sonner";
 
@@ -56,22 +56,13 @@ export default function CustomerProfilePage() {
     },
   });
 
-  const handleApplicationForm = async (mode: "download" | "print") => {
+  const handleDownloadPDF = async () => {
     if (!customer || !settings) return;
     setGenerating(true);
     try {
       const doc = await generateApplicationFormPDF(customer, customer.packages, settings);
-      if (mode === "print") {
-        const blob = doc.output("blob");
-        const url = URL.createObjectURL(blob);
-        const win = window.open(url);
-        if (win) {
-          win.onload = () => { win.print(); };
-        }
-      } else {
-        doc.save(`${customer.customer_id || "customer"}-application-form.pdf`);
-      }
-      toast.success(mode === "print" ? "Print dialog opened" : "PDF downloaded");
+      doc.save(`${customer.customer_id || "customer"}-application-form.pdf`);
+      toast.success("PDF downloaded");
     } catch (err: any) {
       toast.error("Failed to generate form: " + err.message);
     } finally {
@@ -110,13 +101,9 @@ export default function CustomerProfilePage() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/customers?edit=${id}`)}>
             <FileText className="h-4 w-4 mr-2" /> Edit Customer
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleApplicationForm("print")} disabled={generating}>
-            {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-            Print Application Form
-          </Button>
-          <Button size="sm" onClick={() => handleApplicationForm("download")} disabled={generating}>
+          <Button size="sm" onClick={handleDownloadPDF} disabled={generating}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-            Download PDF
+            Download Application Form
           </Button>
         </div>
       </div>
