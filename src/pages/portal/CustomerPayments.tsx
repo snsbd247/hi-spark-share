@@ -21,13 +21,8 @@ export default function CustomerPayments() {
   const { data: payments, isLoading } = useQuery({
     queryKey: ["customer-payments", customer?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("customer_id", customer!.id)
-        .order("paid_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const result = await fetchCustomerData(customer!.session_token, { include_payments: true });
+      return result.payments || [];
     },
     enabled: !!customer,
   });

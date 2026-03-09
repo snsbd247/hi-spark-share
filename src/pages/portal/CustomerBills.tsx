@@ -34,13 +34,8 @@ export default function CustomerBills() {
   const { data: bills, isLoading } = useQuery({
     queryKey: ["customer-bills-list", customer?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bills")
-        .select("*")
-        .eq("customer_id", customer!.id)
-        .order("month", { ascending: false });
-      if (error) throw error;
-      return data;
+      const result = await fetchCustomerData(customer!.session_token, { include_bills: true });
+      return result.bills || [];
     },
     enabled: !!customer,
   });
