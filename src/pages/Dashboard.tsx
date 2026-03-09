@@ -296,60 +296,53 @@ export default function Dashboard() {
       </Card>
 
       {/* Monthly Collection vs Target Widget */}
-      {(() => {
-        const currentMonth = format(new Date(), "yyyy-MM");
-        const targetAmount = customers?.filter((c) => c.status === "active").reduce((sum, c) => sum + Number(c.monthly_bill), 0) ?? 0;
-        const collectedAmount = revenueBills?.filter((b) => b.month === currentMonth && b.status === "paid").reduce((sum, b) => sum + Number(b.amount), 0) ?? 0;
-        const dueAmount = revenueBills?.filter((b) => b.month === currentMonth && b.status === "unpaid").reduce((sum, b) => sum + Number(b.amount), 0) ?? 0;
-        const collectionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
-
-        return (
-          <Card className="glass-card animate-fade-in mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                Monthly Collection vs Target
-                <span className="text-sm font-normal text-muted-foreground ml-auto">{format(new Date(), "MMMM yyyy")}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Collected</p>
-                    <p className="text-2xl font-bold text-success">৳{collectedAmount.toLocaleString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Target</p>
-                    <p className="text-2xl font-bold text-foreground">৳{targetAmount.toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Progress value={collectionRate} className="h-3" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{collectionRate}% collected</span>
-                    <span>৳{dueAmount.toLocaleString()} remaining</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-success">{revenueBills?.filter((b) => b.month === currentMonth && b.status === "paid").length ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Paid Bills</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-warning">{revenueBills?.filter((b) => b.month === currentMonth && b.status === "unpaid").length ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Unpaid Bills</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-foreground">{active}</p>
-                    <p className="text-xs text-muted-foreground">Active Customers</p>
-                  </div>
-                </div>
+      <Card className={`glass-card animate-fade-in mb-6 ${isLowCollection ? "border-destructive/30" : ""}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className={`h-5 w-5 ${isLowCollection ? "text-destructive" : "text-primary"}`} />
+            Monthly Collection vs Target
+            {isLowCollection && (
+              <span className="text-xs font-medium bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">Below 50%</span>
+            )}
+            <span className="text-sm font-normal text-muted-foreground ml-auto">{format(new Date(), "MMMM yyyy")}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Collected</p>
+                <p className={`text-2xl font-bold ${isLowCollection ? "text-destructive" : "text-success"}`}>৳{collectedAmount.toLocaleString()}</p>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Target</p>
+                <p className="text-2xl font-bold text-foreground">৳{targetAmount.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Progress value={collectionRate} className={`h-3 ${isLowCollection ? "[&>div]:bg-destructive" : ""}`} />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className={isLowCollection ? "text-destructive font-medium" : ""}>{collectionRate}% collected</span>
+                <span>৳{dueAmount.toLocaleString()} remaining</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-border">
+              <div className="text-center">
+                <p className="text-lg font-bold text-success">{revenueBills?.filter((b) => b.month === currentMonth && b.status === "paid").length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Paid Bills</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-warning">{revenueBills?.filter((b) => b.month === currentMonth && b.status === "unpaid").length ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Unpaid Bills</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-foreground">{active}</p>
+                <p className="text-xs text-muted-foreground">Active Customers</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Merchant Payments Today Widget */}
       <Card className="glass-card animate-fade-in">
