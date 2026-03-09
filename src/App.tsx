@@ -60,6 +60,7 @@ function App() {
                 <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
                 <Route path="/merchant-payments" element={<ProtectedRoute><MerchantPayments /></ProtectedRoute>} />
+                <Route path="/merchant-reports" element={<ProtectedRoute><MerchantPaymentReports /></ProtectedRoute>} />
                 <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
                 <Route path="/sms" element={<ProtectedRoute><SMSLogs /></ProtectedRoute>} />
                 <Route path="/sms-settings" element={<ProtectedRoute><SMSSettings /></ProtectedRoute>} />
