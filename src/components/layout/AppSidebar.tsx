@@ -14,6 +14,7 @@ const mainNav = [
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/billing", icon: Receipt, label: "Billing" },
   { to: "/payments", icon: CreditCard, label: "Payments" },
+  { to: "/merchant-payments", icon: Wallet, label: "Merchant Pay" },
   { to: "/olt", icon: Server, label: "OLT" },
   { to: "/onu", icon: Radio, label: "ONU" },
   { to: "/tickets", icon: Ticket, label: "Tickets" },
