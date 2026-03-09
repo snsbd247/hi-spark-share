@@ -13,6 +13,7 @@ const mainNav = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/customers", icon: Users, label: "Customers" },
   { to: "/billing", icon: Receipt, label: "Billing" },
+  { to: "/billing/cycle", icon: Receipt, label: "Billing Cycle" },
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/merchant-payments", icon: Wallet, label: "Merchant Pay" },
   { to: "/merchant-reports", icon: BarChart3, label: "Payment Reports" },
