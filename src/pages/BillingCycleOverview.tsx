@@ -60,7 +60,24 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function BillingCycleOverview() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const currentMonth = format(new Date(), "yyyy-MM");
+
+  const generateBills = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("auto-bill-generate");
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["billing-cycle-overview"] });
+      toast({ title: "Bills Generated", description: `${data?.generated || 0} new bills created for ${currentMonth}.` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["billing-cycle-overview", currentMonth],
