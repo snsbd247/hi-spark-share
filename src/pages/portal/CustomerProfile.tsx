@@ -3,9 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { User, MapPin, Wifi, Loader2 } from "lucide-react";
+import { User, MapPin, Wifi, Loader2, CreditCard, Briefcase } from "lucide-react";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -49,6 +48,11 @@ export default function CustomerProfile() {
     );
   }
 
+  const monthlyBill = Number(customer?.monthly_bill || 0);
+  const discount = Number(customer?.discount || 0);
+  const connectivityFee = Number(customer?.connectivity_fee || 0);
+  const totalAmount = monthlyBill - discount + connectivityFee;
+
   return (
     <PortalLayout>
       <div className="mb-6">
@@ -61,12 +65,18 @@ export default function CustomerProfile() {
         <Card className="glass-card animate-fade-in">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <User className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Personal Information</CardTitle>
-                <p className="text-sm text-muted-foreground font-mono">{customer?.customer_id}</p>
+              <div className="flex items-center gap-3 flex-1">
+                {customer?.photo_url ? (
+                  <img src={customer.photo_url} alt={customer?.name} className="h-12 w-12 rounded-lg object-cover border border-border" />
+                ) : (
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                )}
+                <div>
+                  <CardTitle className="text-base">Personal Information</CardTitle>
+                  <p className="text-sm text-muted-foreground font-mono">{customer?.customer_id}</p>
+                </div>
               </div>
               <Badge variant="outline" className={`ml-auto ${statusColor}`}>
                 {customer?.status}
@@ -76,9 +86,13 @@ export default function CustomerProfile() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Name" value={customer?.name} />
+              <Field label="Father Name" value={customer?.father_name} />
+              <Field label="Mother Name" value={customer?.mother_name} />
+              <Field label="Occupation" value={customer?.occupation} />
               <Field label="Phone" value={customer?.phone} />
+              <Field label="Alt Phone" value={customer?.alt_phone} />
               <Field label="Email" value={customer?.email} />
-              <Field label="Username" value={customer?.username} />
+              <Field label="National ID" value={customer?.nid} />
             </div>
           </CardContent>
         </Card>
@@ -100,11 +114,14 @@ export default function CustomerProfile() {
               <Field label="House" value={customer?.house} />
               <Field label="City" value={customer?.city} />
             </div>
+            <div className="mt-4">
+              <Field label="Permanent Address" value={customer?.permanent_address} />
+            </div>
           </CardContent>
         </Card>
 
         {/* Connection Info */}
-        <Card className="glass-card animate-fade-in lg:col-span-2">
+        <Card className="glass-card animate-fade-in">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
@@ -114,15 +131,37 @@ export default function CustomerProfile() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <Field label="Package" value={pkg?.name} />
               <Field label="Speed" value={pkg?.speed} />
-              <Field label="Monthly Bill" value={`৳${customer?.monthly_bill.toLocaleString()}`} />
               <Field label="IP Address" value={customer?.ip_address} />
+              <Field label="Gateway" value={customer?.gateway} />
+              <Field label="Subnet" value={customer?.subnet} />
               <Field label="PPPoE Username" value={customer?.pppoe_username} />
               <Field label="ONU MAC" value={customer?.onu_mac} />
               <Field label="Router MAC" value={customer?.router_mac} />
               <Field label="Installation Date" value={customer?.installation_date} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Billing Info */}
+        <Card className="glass-card animate-fade-in">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-warning" />
+              </div>
+              <CardTitle className="text-base">Billing Information</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Monthly Bill" value={`৳${monthlyBill.toLocaleString()}`} />
+              <Field label="Discount" value={`৳${discount.toLocaleString()}`} />
+              <Field label="Connectivity Fee" value={`৳${connectivityFee.toLocaleString()}`} />
+              <Field label="Total Amount" value={`৳${totalAmount.toLocaleString()}`} />
+              <Field label="Due Date" value={customer?.due_date_day ? `${customer.due_date_day}th of every month` : "—"} />
             </div>
           </CardContent>
         </Card>

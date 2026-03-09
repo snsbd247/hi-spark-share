@@ -126,102 +126,215 @@ export function generatePaymentReceiptPDF(payment: any, customer: any) {
 
 export function generateCustomerPDF(customer: any) {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
+  const pw = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const contentW = pw - margin * 2;
+  let y = 0;
 
-  // Header
-  doc.setFillColor(30, 58, 138);
-  doc.rect(0, 0, pageWidth, 40, "F");
+  const navy = [20, 50, 120] as const;
+  const lightBg = [245, 247, 250] as const;
+  const borderGray = [200, 200, 200] as const;
+
+  // ─── HEADER ───
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, pw, 38, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.circle(28, 19, 10, "F");
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...navy);
+  doc.text("ISP", 23, 22);
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
-  doc.text("Smart ISP", 20, 18);
-  doc.setFontSize(10);
+  doc.text("Smart ISP", 45, 16);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text("Internet Service Provider", 20, 26);
-  doc.text("Customer Application Form", 20, 33);
-
-  // Customer ID badge
-  doc.setFontSize(12);
-  doc.text(customer.customer_id || "N/A", pageWidth - 20, 25, { align: "right" });
-
-  // Reset
-  doc.setTextColor(30, 30, 30);
-  let y = 55;
-
-  const section = (title: string) => {
-    doc.setFillColor(240, 244, 248);
-    doc.rect(15, y - 5, pageWidth - 30, 8, "F");
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text(title, 20, y);
-    y += 10;
-  };
-
-  const field = (label: string, value: string, x: number) => {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(120, 120, 120);
-    doc.text(label, x, y);
-    doc.setFontSize(10);
-    doc.setTextColor(30, 30, 30);
-    doc.setFont("helvetica", "normal");
-    doc.text(value || "—", x, y + 5);
-  };
-
-  // Personal
-  section("Personal Information");
-  field("Customer Name", customer.name, 20);
-  field("Father Name", customer.father_name || "", 110);
-  y += 14;
-  field("NID", customer.nid || "", 20);
-  field("Phone", customer.phone, 80);
-  field("Alt Phone", customer.alt_phone || "", 140);
-  y += 14;
-  field("Email", customer.email || "", 20);
-  y += 16;
-
-  // Address
-  section("Address");
-  field("Area", customer.area, 20);
-  field("Road", customer.road || "", 80);
-  field("House", customer.house || "", 130);
-  field("City", customer.city || "", 170);
-  y += 16;
-
-  // Connection
-  section("Connection Details");
-  field("Monthly Bill", `BDT ${Number(customer.monthly_bill).toLocaleString()}`, 20);
-  field("IP Address", customer.ip_address || "", 110);
-  y += 14;
-  field("PPPoE Username", customer.pppoe_username || "", 20);
-  field("PPPoE Password", customer.pppoe_password || "", 110);
-  y += 14;
-  field("ONU MAC", customer.onu_mac || "", 20);
-  field("Router MAC", customer.router_mac || "", 110);
-  y += 14;
-  field("Installation Date", customer.installation_date || "", 20);
-  y += 20;
-
-  // Signature area
-  doc.setDrawColor(180, 180, 180);
-  doc.line(20, y + 10, 80, y + 10);
-  doc.line(pageWidth - 80, y + 10, pageWidth - 20, y + 10);
+  doc.text("Internet Service Provider", 45, 22);
 
   doc.setFontSize(9);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Customer Signature", 30, y + 16);
-  doc.text("Authorized Signature", pageWidth - 70, y + 16);
+  doc.setFont("helvetica", "bold");
+  doc.text("APPLICATION FORM", pw - 20, 14, { align: "right" });
+  doc.setDrawColor(255, 255, 255);
+  doc.roundedRect(pw - 62, 6, 48, 12, 2, 2, "S");
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Form No: ${customer.customer_id || "—"}`, pw - 20, 26, { align: "right" });
+  doc.text(`Date: ${new Date().toLocaleDateString("en-GB")}`, pw - 20, 32, { align: "right" });
+
+  y = 44;
+
+  // ─── HELPERS ───
+  const sectionHeader = (title: string) => {
+    doc.setFillColor(...navy);
+    doc.rect(margin, y, contentW, 7, "F");
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(title.toUpperCase(), margin + 4, y + 5);
+    y += 10;
+    doc.setTextColor(30, 30, 30);
+  };
+
+  const fieldBox = (label: string, value: string, x: number, w: number, h = 10) => {
+    doc.setDrawColor(...borderGray);
+    doc.rect(x, y, w, h, "S");
+    doc.setFillColor(...lightBg);
+    doc.rect(x, y, w, 4, "F");
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(80, 80, 80);
+    doc.text(label, x + 2, y + 3);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(20, 20, 20);
+    doc.text(value || "—", x + 2, y + 8);
+  };
+
+  const fieldRow = (fields: { label: string; value: string }[], h = 10) => {
+    const fw = contentW / fields.length;
+    fields.forEach((f, i) => fieldBox(f.label, f.value, margin + fw * i, fw, h));
+    y += h + 1;
+  };
+
+  // ─── CUSTOMER INFORMATION ───
+  sectionHeader("Customer Information");
+
+  fieldRow([
+    { label: "Applicant Name", value: customer.name || "" },
+    { label: "Father Name", value: customer.father_name || "" },
+  ]);
+
+  fieldRow([
+    { label: "Customer ID", value: customer.customer_id || "" },
+    { label: "National ID", value: customer.nid || "" },
+    { label: "Email", value: customer.email || "" },
+  ]);
+
+  fieldRow([
+    { label: "Mobile Number", value: customer.phone || "" },
+    { label: "Alternative Contact", value: customer.alt_phone || "" },
+    { label: "Occupation", value: customer.occupation || "" },
+    { label: "Mother Name", value: customer.mother_name || "" },
+  ]);
+
+  y += 3;
+
+  // ─── ADDRESS INFORMATION ───
+  sectionHeader("Address Information");
+
+  fieldRow([
+    { label: "Zone / Area", value: customer.area || "" },
+    { label: "Road No", value: customer.road || "" },
+    { label: "House No", value: customer.house || "" },
+    { label: "City", value: customer.city || "" },
+  ]);
+
+  fieldBox("Permanent Address", customer.permanent_address || "", margin, contentW, 12);
+  y += 13;
+
+  y += 3;
+
+  // ─── CONNECTION DETAILS ───
+  sectionHeader("Connection Details");
+
+  fieldRow([
+    { label: "Package Name", value: customer.packages?.name || "" },
+    { label: "Speed", value: customer.packages?.speed || "" },
+  ]);
+
+  fieldRow([
+    { label: "PPPoE Username", value: customer.pppoe_username || "" },
+    { label: "PPPoE Password", value: customer.pppoe_password || "" },
+  ]);
+
+  fieldRow([
+    { label: "IP Address", value: customer.ip_address || "" },
+    { label: "Gateway", value: customer.gateway || "" },
+    { label: "Subnet", value: customer.subnet || "" },
+  ]);
+
+  fieldRow([
+    { label: "ONU MAC", value: customer.onu_mac || "" },
+    { label: "Router MAC", value: customer.router_mac || "" },
+  ]);
+
+  y += 3;
+
+  // ─── BILLING INFORMATION ───
+  sectionHeader("Billing Information");
+
+  const monthlyBill = Number(customer.monthly_bill || 0);
+  const discount = Number(customer.discount || 0);
+  const connectivityFee = Number(customer.connectivity_fee || 0);
+  const totalAmount = monthlyBill - discount + connectivityFee;
+
+  fieldRow([
+    { label: "Connection Date", value: customer.installation_date || "" },
+    { label: "Monthly Bill", value: `${monthlyBill.toLocaleString()} BDT` },
+    { label: "Due Date (Day)", value: customer.due_date_day ? `${customer.due_date_day}th of every month` : "—" },
+  ]);
+
+  fieldRow([
+    { label: "Connectivity Fee", value: `${connectivityFee.toLocaleString()} BDT` },
+    { label: "Discount", value: `${discount.toLocaleString()} BDT` },
+    { label: "Total Amount", value: `${totalAmount.toLocaleString()} BDT` },
+  ]);
+
+  y += 3;
+
+  // ─── OFFICE USE ───
+  sectionHeader("Office Use Only");
+
+  fieldRow([
+    { label: "POP Location", value: customer.pop_location || "" },
+    { label: "Installed By", value: customer.installed_by || "" },
+    { label: "Box Name", value: customer.box_name || "" },
+    { label: "Cable Length", value: customer.cable_length || "" },
+  ]);
+
+  // Check if we need a new page for signatures
+  if (y > 240) {
+    doc.addPage();
+    y = 20;
+  }
+
+  y += 8;
+
+  // ─── SIGNATURES ───
+  doc.setDrawColor(...borderGray);
+  const sigW = (contentW - 10) / 3;
+
+  [
+    { label: "Applicant Signature", x: margin },
+    { label: "Admin Signature", x: margin + sigW + 5 },
+    { label: "Marketing Signature", x: margin + (sigW + 5) * 2 },
+  ].forEach(({ label, x }) => {
+    doc.line(x, y + 15, x + sigW, y + 15);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, x + sigW / 2, y + 20, { align: "center" });
+  });
+
+  y += 28;
+
+  // ─── TERMS ───
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.text("I hereby declare that all the information provided above is correct to the best of my knowledge.", margin, y);
+  doc.text("The ISP reserves the right to suspend the connection in case of non-payment or violation of terms.", margin, y + 4);
 
   // Footer
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
   doc.text(
     `Generated on ${new Date().toLocaleDateString()} — Smart ISP Billing System`,
-    pageWidth / 2,
-    285,
-    { align: "center" }
+    pw / 2, 288, { align: "center" }
   );
 
-  doc.save(`${customer.customer_id || "customer"}-application.pdf`);
+  doc.save(`${customer.customer_id || "customer"}-application-form.pdf`);
 }
