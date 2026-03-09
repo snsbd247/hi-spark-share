@@ -15,7 +15,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Loader2, Link2, CheckCircle, AlertCircle, HelpCircle } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, Search, Loader2, Link2, CheckCircle, AlertCircle, HelpCircle, XCircle, MessageSquareText, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -24,6 +27,7 @@ export default function MerchantPayments() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
   const [matchOpen, setMatchOpen] = useState(false);
+  const [smsInfoOpen, setSmsInfoOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -57,7 +61,6 @@ export default function MerchantPayments() {
     queryKey: ["unpaid-bills-for-match", matchCustomerId],
     enabled: !!matchCustomerId,
     queryFn: async () => {
-      // Find customer by customer_id text
       const { data: cust } = await supabase
         .from("customers")
         .select("id, name, customer_id")
@@ -128,10 +131,8 @@ export default function MerchantPayments() {
       const bill = unpaidBills?.find((b) => b.id === matchBillId);
       if (!bill) throw new Error("Bill not found");
 
-      // Mark bill as paid
       await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill.id);
 
-      // Create payment record
       await supabase.from("payments").insert({
         customer_id: bill.cust_uuid,
         bill_id: bill.id,
@@ -143,7 +144,6 @@ export default function MerchantPayments() {
         month: bill.month,
       });
 
-      // Update merchant payment
       await supabase.from("merchant_payments").update({
         status: "matched",
         matched_customer_id: bill.cust_uuid,
@@ -166,15 +166,38 @@ export default function MerchantPayments() {
     }
   };
 
+  const handleReject = async (payment: any) => {
+    if (!confirm("Are you sure you want to reject this transaction?")) return;
+    try {
+      await supabase.from("merchant_payments").update({
+        status: "rejected",
+        notes: (payment.notes || "") + " | Rejected by admin",
+      }).eq("id", payment.id);
+      toast.success("Transaction rejected");
+      queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "matched":
         return <Badge variant="outline" className="bg-success/10 text-success border-success/20"><CheckCircle className="h-3 w-3 mr-1" />Matched</Badge>;
       case "manual_review":
         return <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20"><AlertCircle className="h-3 w-3 mr-1" />Review</Badge>;
+      case "rejected":
+        return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
       default:
         return <Badge variant="outline" className="bg-muted text-muted-foreground"><HelpCircle className="h-3 w-3 mr-1" />Unmatched</Badge>;
     }
+  };
+
+  const apiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sms-receiver`;
+
+  const copyEndpoint = () => {
+    navigator.clipboard.writeText(apiEndpoint);
+    toast.success("API endpoint copied to clipboard");
   };
 
   return (
@@ -184,9 +207,14 @@ export default function MerchantPayments() {
           <h1 className="text-2xl font-bold text-foreground">Merchant Payments</h1>
           <p className="text-muted-foreground mt-1">Reconcile bKash merchant payments with customer bills</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" /> Record Payment
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setSmsInfoOpen(true)}>
+            <MessageSquareText className="h-4 w-4 mr-2" /> SMS Gateway Setup
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> Record Payment
+          </Button>
+        </div>
       </div>
 
       <div className="glass-card rounded-xl">
@@ -202,6 +230,7 @@ export default function MerchantPayments() {
               <SelectItem value="matched">Matched</SelectItem>
               <SelectItem value="unmatched">Unmatched</SelectItem>
               <SelectItem value="manual_review">Manual Review</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -215,11 +244,11 @@ export default function MerchantPayments() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Date</TableHead>
                   <TableHead>Transaction ID</TableHead>
                   <TableHead>Sender Phone</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Reference</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Matched Customer</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -233,19 +262,40 @@ export default function MerchantPayments() {
                 ) : (
                   filtered.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-mono text-sm">{p.transaction_id}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{format(new Date(p.payment_date), "dd MMM yyyy HH:mm")}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <div className="flex items-center gap-1">
+                          {p.transaction_id}
+                          {(p as any).sms_text && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <MessageSquareText className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-xs">{(p as any).sms_text}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{p.sender_phone}</TableCell>
                       <TableCell>৳{Number(p.amount).toLocaleString()}</TableCell>
                       <TableCell className="font-mono text-sm">{p.reference || "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{format(new Date(p.payment_date), "dd MMM yyyy HH:mm")}</TableCell>
                       <TableCell>{statusBadge(p.status)}</TableCell>
                       <TableCell>{(p.customers as any)?.name ? `${(p.customers as any).name} (${(p.customers as any).customer_id})` : "—"}</TableCell>
                       <TableCell className="text-right">
-                        {p.status !== "matched" && (
-                          <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}>
-                            <Link2 className="h-4 w-4 mr-1" /> Match
-                          </Button>
-                        )}
+                        <div className="flex justify-end gap-1">
+                          {p.status !== "matched" && p.status !== "rejected" && (
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}>
+                                <Link2 className="h-4 w-4 mr-1" /> Match
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleReject(p)}>
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -303,6 +353,7 @@ export default function MerchantPayments() {
                 <p><span className="text-muted-foreground">TrxID:</span> {selectedPayment.transaction_id}</p>
                 <p><span className="text-muted-foreground">Amount:</span> ৳{Number(selectedPayment.amount).toLocaleString()}</p>
                 <p><span className="text-muted-foreground">Phone:</span> {selectedPayment.sender_phone}</p>
+                {selectedPayment.sms_text && <p className="text-xs text-muted-foreground italic mt-1">SMS: {selectedPayment.sms_text}</p>}
                 {selectedPayment.notes && <p className="text-xs text-warning">{selectedPayment.notes}</p>}
               </div>
             )}
@@ -330,6 +381,53 @@ export default function MerchantPayments() {
               <Button onClick={handleManualMatch} disabled={loading || !matchBillId}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Match
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS Gateway Setup Dialog */}
+      <Dialog open={smsInfoOpen} onOpenChange={setSmsInfoOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>SMS Gateway Setup</DialogTitle></DialogHeader>
+          <div className="space-y-4 text-sm">
+            <p className="text-muted-foreground">
+              Configure your Android SMS Gateway or SMS Forwarding service to send incoming bKash merchant SMS to the API endpoint below.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label>API Endpoint</Label>
+              <div className="flex gap-2">
+                <Input value={apiEndpoint} readOnly className="font-mono text-xs" />
+                <Button variant="outline" size="icon" onClick={copyEndpoint}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Request Format (POST JSON)</Label>
+              <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`{
+  "sms_text": "You have received Tk 800 from 017XXXXXXXX. TrxID: 9F3X4K. Reference: ISP-00001."
+}`}
+              </pre>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>SMS Format Supported</Label>
+              <p className="text-muted-foreground text-xs">
+                The parser extracts <strong>Amount</strong>, <strong>Sender Phone</strong>, <strong>TrxID</strong>, and <strong>Reference</strong> from standard bKash merchant notification SMS.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Compatible SMS Sources</Label>
+              <ul className="list-disc list-inside text-muted-foreground text-xs space-y-1">
+                <li>Android SMS Gateway App (e.g., SMS Gateway API, Tasker)</li>
+                <li>SMS Forwarding services (e.g., SMS to URL)</li>
+                <li>Any HTTP client that can POST JSON</li>
+              </ul>
             </div>
           </div>
         </DialogContent>
