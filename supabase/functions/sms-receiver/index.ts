@@ -117,6 +117,35 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Send admin SMS notification for unmatched/manual_review payments
+    if (inserted.status !== "matched") {
+      try {
+        const { data: settings } = await supabase
+          .from("general_settings")
+          .select("mobile")
+          .limit(1)
+          .single();
+
+        if (settings?.mobile) {
+          const statusLabel = inserted.status === "manual_review" ? "Manual Review" : "Unmatched";
+          const notifMsg = `[Smart ISP] ${statusLabel} Payment: TrxID ${parsed.transaction_id}, Tk ${parsed.amount}, Ref: ${parsed.reference || "N/A"}, Phone: ${parsed.sender_phone}`;
+
+          const smsUrl = `${supabaseUrl}/functions/v1/send-sms`;
+          await fetch(smsUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceRoleKey}` },
+            body: JSON.stringify({
+              to: settings.mobile,
+              message: notifMsg,
+              sms_type: "merchant_alert",
+            }),
+          });
+        }
+      } catch (notifErr) {
+        console.error("Admin notification error:", notifErr);
+      }
+    }
+
     // Log successful SMS processing
     await supabase.from("sms_logs").insert({
       phone: parsed.sender_phone,
