@@ -431,21 +431,6 @@ export default function MerchantPayments() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Request Format (POST JSON)</Label>
-              <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`{
-  "sms_text": "You have received Tk 800 from 017XXXXXXXX. TrxID: 9F3X4K. Reference: ISP-00001."
-}`}
-              </pre>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>SMS Format Supported</Label>
-              <p className="text-muted-foreground text-xs">
-                The parser extracts <strong>Amount</strong>, <strong>Sender Phone</strong>, <strong>TrxID</strong>, and <strong>Reference</strong> from standard bKash merchant notification SMS.
-              </p>
-            </div>
 
             <div className="space-y-1.5">
               <Label>Headers (Required)</Label>
