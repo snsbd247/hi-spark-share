@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, Users, Receipt, CreditCard, Server, Radio, LogOut, Wifi,
+  LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
   Package, MapPin, Router, Shield, Wallet,
 } from "lucide-react";
