@@ -51,7 +51,6 @@ export default function PayBill() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            amount: bill.amount,
             bill_id: bill.id,
             customer_id: bill.customer_id,
           }),
