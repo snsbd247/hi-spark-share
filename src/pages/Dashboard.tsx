@@ -215,6 +215,41 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Low Collection Rate Alert Banner */}
+      {isLowCollection && (
+        <Alert variant="destructive" className="mb-6 border-destructive/50 bg-destructive/5">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="text-base">Low Collection Rate Warning</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2">
+            <span className="text-sm">
+              Collection is at <strong>{collectionRate}%</strong> — only ৳{collectedAmount.toLocaleString()} collected out of ৳{targetAmount.toLocaleString()} target for {format(new Date(), "MMMM yyyy")}.
+            </span>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-destructive/30 hover:bg-destructive/10"
+                onClick={() => sendCollectionAlert("sms")}
+                disabled={sendingAlert !== null}
+              >
+                {sendingAlert === "sms" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                SMS Alert
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-destructive/30 hover:bg-destructive/10"
+                onClick={() => sendCollectionAlert("email")}
+                disabled={sendingAlert !== null}
+              >
+                {sendingAlert === "email" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Mail className="h-3 w-3 mr-1" />}
+                Email Alert
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
         <StatCard title="Total Customers" value={total} icon={Users} color="text-primary" bgColor="bg-primary/10" />
         <StatCard title="Active Customers" value={active} icon={UserCheck} color="text-success" bgColor="bg-success/10" />
