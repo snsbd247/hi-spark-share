@@ -28,7 +28,7 @@ function StatCard({ title, value, icon: Icon, color, bgColor }: StatCardProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold mt-1 text-card-foreground">{value}</p>
+            <p className="text-2xl sm:text-3xl font-bold mt-1 text-card-foreground">{value}</p>
           </div>
           <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${bgColor}`}>
             <Icon className={`h-6 w-6 ${color}`} />
