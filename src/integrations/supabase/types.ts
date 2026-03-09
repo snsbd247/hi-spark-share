@@ -112,16 +112,22 @@ export type Database = {
         Row: {
           alt_phone: string | null
           area: string
+          box_name: string | null
+          cable_length: string | null
           city: string | null
           connection_status: string
+          connectivity_fee: number | null
           created_at: string
           customer_id: string
+          discount: number | null
           due_date_day: number | null
           email: string | null
           father_name: string | null
+          gateway: string | null
           house: string | null
           id: string
           installation_date: string | null
+          installed_by: string | null
           ip_address: string | null
           mikrotik_sync_status: string
           monthly_bill: number
@@ -132,30 +138,39 @@ export type Database = {
           onu_mac: string | null
           package_id: string | null
           password: string | null
+          permanent_address: string | null
           phone: string
           photo_url: string | null
+          pop_location: string | null
           pppoe_password: string | null
           pppoe_username: string | null
           road: string | null
           router_id: string | null
           router_mac: string | null
           status: string
+          subnet: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
           alt_phone?: string | null
           area: string
+          box_name?: string | null
+          cable_length?: string | null
           city?: string | null
           connection_status?: string
+          connectivity_fee?: number | null
           created_at?: string
           customer_id: string
+          discount?: number | null
           due_date_day?: number | null
           email?: string | null
           father_name?: string | null
+          gateway?: string | null
           house?: string | null
           id?: string
           installation_date?: string | null
+          installed_by?: string | null
           ip_address?: string | null
           mikrotik_sync_status?: string
           monthly_bill?: number
@@ -166,30 +181,39 @@ export type Database = {
           onu_mac?: string | null
           package_id?: string | null
           password?: string | null
+          permanent_address?: string | null
           phone: string
           photo_url?: string | null
+          pop_location?: string | null
           pppoe_password?: string | null
           pppoe_username?: string | null
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
           status?: string
+          subnet?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
           alt_phone?: string | null
           area?: string
+          box_name?: string | null
+          cable_length?: string | null
           city?: string | null
           connection_status?: string
+          connectivity_fee?: number | null
           created_at?: string
           customer_id?: string
+          discount?: number | null
           due_date_day?: number | null
           email?: string | null
           father_name?: string | null
+          gateway?: string | null
           house?: string | null
           id?: string
           installation_date?: string | null
+          installed_by?: string | null
           ip_address?: string | null
           mikrotik_sync_status?: string
           monthly_bill?: number
@@ -200,14 +224,17 @@ export type Database = {
           onu_mac?: string | null
           package_id?: string | null
           password?: string | null
+          permanent_address?: string | null
           phone?: string
           photo_url?: string | null
+          pop_location?: string | null
           pppoe_password?: string | null
           pppoe_username?: string | null
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
           status?: string
+          subnet?: string | null
           updated_at?: string
           username?: string | null
         }
