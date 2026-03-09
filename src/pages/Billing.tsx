@@ -65,7 +65,7 @@ export default function Billing() {
     try {
       const { data: customers, error: custErr } = await supabase
         .from("customers")
-        .select("id, name, phone, monthly_bill")
+        .select("id, name, phone, monthly_bill, due_date_day")
         .eq("status", "active");
       if (custErr) throw custErr;
 
