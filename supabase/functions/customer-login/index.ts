@@ -50,14 +50,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    let passwordValid = false;
-    try {
-      passwordValid = await compare(pppoe_password, storedHash);
-    } catch (e) {
-      // Fallback: direct comparison if bcrypt fails (e.g., hash format issue)
-      console.error("bcrypt compare error:", e);
-      passwordValid = false;
-    }
+    const passwordValid = bcryptjs.compareSync(pppoe_password, storedHash);
     if (!passwordValid) {
       return new Response(
         JSON.stringify({ error: "Invalid PPPoE username or password" }),
