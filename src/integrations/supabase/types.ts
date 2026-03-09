@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_login_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          browser: string | null
+          created_at: string
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          session_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_login_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "admin_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_sessions: {
+        Row: {
+          admin_id: string
+          browser: string
+          created_at: string
+          device_name: string
+          id: string
+          ip_address: string
+          session_token: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          browser?: string
+          created_at?: string
+          device_name?: string
+          id?: string
+          ip_address?: string
+          session_token: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          browser?: string
+          created_at?: string
+          device_name?: string
+          id?: string
+          ip_address?: string
+          session_token?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           amount: number
