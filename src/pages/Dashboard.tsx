@@ -178,6 +178,38 @@ export default function Dashboard() {
         <StatCard title="Total Due" value={`৳${totalDue.toLocaleString()}`} icon={AlertCircle} color="text-warning" bgColor="bg-warning/10" />
       </div>
 
+      {/* Monthly Revenue Trend Chart */}
+      <Card className="glass-card animate-fade-in mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" />
+            Monthly Revenue Trend
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {revenueChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No revenue data available</p>
+          ) : (
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(value: number) => [`৳${value.toLocaleString()}`, undefined]}
+                  />
+                  <Bar dataKey="paid" name="Collected" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="due" name="Due" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Merchant Payments Today Widget */}
       <Card className="glass-card animate-fade-in">
         <CardHeader className="pb-3">
