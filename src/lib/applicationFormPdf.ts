@@ -141,7 +141,8 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   fieldRow([
     { label: "Mobile Number", value: customer.phone || "" },
     { label: "Alternative Contact", value: customer.alt_phone || "" },
-    { label: "Occupation", value: "" },
+    { label: "Occupation", value: customer.occupation || "" },
+    { label: "Mother Name", value: customer.mother_name || "" },
   ]);
 
   y += 3;
