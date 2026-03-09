@@ -1,1 +1,4 @@
 project_id = "udxrzqpivtzunnfenmyd"
+
+[functions.session-expiry]
+verify_jwt = false
