@@ -10,6 +10,7 @@ import { format, subMonths } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { Progress } from "@/components/ui/progress";
 
 interface StatCardProps {
   title: string;
