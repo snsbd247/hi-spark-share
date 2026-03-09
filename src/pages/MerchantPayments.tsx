@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -31,6 +31,32 @@ export default function MerchantPayments() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
+
+  // Realtime subscription for new merchant payments
+  useEffect(() => {
+    const channel = supabase
+      .channel("merchant-payments-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "merchant_payments" },
+        (payload) => {
+          const p = payload.new as any;
+          const statusLabel = p.status === "matched" ? "✅ Matched" : p.status === "manual_review" ? "⚠️ Needs Review" : "❓ Unmatched";
+          toast.info(`New Merchant Payment Received`, {
+            description: `TrxID: ${p.transaction_id} — ৳${Number(p.amount).toLocaleString()} — ${statusLabel}`,
+            duration: 8000,
+          });
+          queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["bills"] });
+          queryClient.invalidateQueries({ queryKey: ["payments"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Form state
   const [form, setForm] = useState({
@@ -405,6 +431,15 @@ export default function MerchantPayments() {
               </div>
             </div>
 
+
+            <div className="space-y-1.5">
+              <Label>Headers (Required)</Label>
+              <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
+{`Content-Type: application/json
+X-API-KEY: YOUR_SMS_RECEIVER_API_KEY`}
+              </pre>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Request Format (POST JSON)</Label>
               <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
@@ -412,13 +447,6 @@ export default function MerchantPayments() {
   "sms_text": "You have received Tk 800 from 017XXXXXXXX. TrxID: 9F3X4K. Reference: ISP-00001."
 }`}
               </pre>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>SMS Format Supported</Label>
-              <p className="text-muted-foreground text-xs">
-                The parser extracts <strong>Amount</strong>, <strong>Sender Phone</strong>, <strong>TrxID</strong>, and <strong>Reference</strong> from standard bKash merchant notification SMS.
-              </p>
             </div>
 
             <div className="space-y-1.5">
