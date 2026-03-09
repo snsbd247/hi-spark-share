@@ -15,8 +15,6 @@ const mainNav = [
   { to: "/billing", icon: Receipt, label: "Billing" },
   { to: "/payments", icon: CreditCard, label: "Payments" },
   { to: "/merchant-payments", icon: Wallet, label: "Merchant Pay" },
-  { to: "/olt", icon: Server, label: "OLT" },
-  { to: "/onu", icon: Radio, label: "ONU" },
   { to: "/tickets", icon: Ticket, label: "Tickets" },
   { to: "/sms", icon: MessageSquare, label: "SMS" },
   { to: "/sms-settings", icon: Settings, label: "SMS Settings" },
