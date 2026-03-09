@@ -132,6 +132,52 @@ export default function Dashboard() {
     }));
   }, [revenueBills]);
 
+  // Collection vs Target calculations
+  const currentMonth = format(new Date(), "yyyy-MM");
+  const targetAmount = customers?.filter((c) => c.status === "active").reduce((sum, c) => sum + Number(c.monthly_bill), 0) ?? 0;
+  const collectedAmount = revenueBills?.filter((b) => b.month === currentMonth && b.status === "paid").reduce((sum, b) => sum + Number(b.amount), 0) ?? 0;
+  const dueAmount = revenueBills?.filter((b) => b.month === currentMonth && b.status === "unpaid").reduce((sum, b) => sum + Number(b.amount), 0) ?? 0;
+  const collectionRate = targetAmount > 0 ? Math.round((collectedAmount / targetAmount) * 100) : 0;
+  const isLowCollection = targetAmount > 0 && collectionRate < 50;
+
+  // In-app toast notification for low collection
+  useEffect(() => {
+    if (isLowCollection && !alertShown && !isLoading) {
+      toast.warning(`⚠️ Collection rate is only ${collectionRate}% — below 50% threshold!`, { duration: 8000 });
+      setAlertShown(true);
+    }
+  }, [isLowCollection, collectionRate, alertShown, isLoading]);
+
+  const sendCollectionAlert = useCallback(async (channel: "sms" | "email") => {
+    setSendingAlert(channel);
+    try {
+      const { data: settings } = await supabase.from("general_settings").select("*").limit(1).single();
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", (await supabase.auth.getUser()).data.user?.id ?? "").single();
+      
+      const alertMessage = `⚠️ Low Collection Alert!\n\nMonth: ${format(new Date(), "MMMM yyyy")}\nCollection Rate: ${collectionRate}%\nCollected: Tk ${collectedAmount.toLocaleString()} / Target: Tk ${targetAmount.toLocaleString()}\nRemaining Due: Tk ${dueAmount.toLocaleString()}\n\n— ${settings?.site_name || "Smart ISP"}`;
+
+      if (channel === "sms") {
+        const adminPhone = profile?.mobile || settings?.mobile;
+        if (!adminPhone) { toast.error("No admin phone number configured in profile or general settings"); return; }
+        const { error } = await supabase.functions.invoke("send-sms", {
+          body: { to: adminPhone, message: alertMessage, sms_type: "collection_alert" },
+        });
+        if (error) throw error;
+        toast.success("SMS alert sent to " + adminPhone);
+      } else {
+        const adminEmail = profile?.email || settings?.email;
+        if (!adminEmail) { toast.error("No admin email configured in profile or general settings"); return; }
+        // Send email via send-sms edge function won't work for email, 
+        // so we'll use a simple notification approach
+        toast.info(`📧 Email alert would be sent to ${adminEmail}.\nTo enable email sending, set up a custom email domain in Cloud → Email settings.`);
+      }
+    } catch (e: any) {
+      toast.error(`Failed to send ${channel} alert: ${e.message}`);
+    } finally {
+      setSendingAlert(null);
+    }
+  }, [collectionRate, collectedAmount, targetAmount, dueAmount]);
+
   const runBillControl = async () => {
     setRunningBillControl(true);
     try {
