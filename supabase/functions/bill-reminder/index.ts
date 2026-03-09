@@ -21,10 +21,13 @@ Deno.serve(async (req) => {
 
     if (action === "check-reminders") {
       const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
       const in5Days = new Date(today);
       in5Days.setDate(today.getDate() + 5);
 
       const todayStr = today.toISOString().split("T")[0];
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
       const in5DaysStr = in5Days.toISOString().split("T")[0];
 
       // Get unpaid bills with due dates
@@ -47,9 +50,12 @@ Deno.serve(async (req) => {
         const customerName = bill.customers.name;
         const amount = bill.amount;
         const month = bill.month;
-        const payLink = `${supabaseUrl.replace('.supabase.co', '')}/pay/${bill.payment_link_token}`;
 
-        if (dueDate === in5DaysStr) {
+        if (dueDate === tomorrowStr) {
+          // 1 day before due date
+          smsType = "bill_reminder";
+          message = `Reminder: Your internet bill of ${amount} BDT is due tomorrow (${dueDate}). Please pay to avoid service suspension.`;
+        } else if (dueDate === in5DaysStr) {
           smsType = "bill_reminder";
           message = `Dear ${customerName}, your internet bill of ${amount} BDT for ${month} is due in 5 days. Please pay to avoid service interruption.`;
         } else if (dueDate === todayStr) {
@@ -61,7 +67,6 @@ Deno.serve(async (req) => {
         }
 
         if (smsType && message) {
-          // Send SMS
           await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
             method: "POST",
             headers: {

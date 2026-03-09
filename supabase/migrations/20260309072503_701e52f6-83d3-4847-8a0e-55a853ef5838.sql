@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS due_date_day integer DEFAULT 1 CHECK (due_date_day >= 1 AND due_date_day <= 28);

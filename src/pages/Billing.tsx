@@ -65,7 +65,7 @@ export default function Billing() {
     try {
       const { data: customers, error: custErr } = await supabase
         .from("customers")
-        .select("id, name, phone, monthly_bill")
+        .select("id, name, phone, monthly_bill, due_date_day")
         .eq("status", "active");
       if (custErr) throw custErr;
 
@@ -83,13 +83,18 @@ export default function Billing() {
       const existingIds = new Set(existing?.map((b) => b.customer_id));
       const newBills = customers
         .filter((c) => !existingIds.has(c.id))
-        .map((c) => ({
-          customer_id: c.id,
-          month: genMonth,
-          amount: c.monthly_bill,
-          status: "unpaid" as const,
-          due_date: new Date(new Date(genMonth + "-01").getFullYear(), new Date(genMonth + "-01").getMonth() + 1, 15).toISOString().split("T")[0],
-        }));
+        .map((c) => {
+          const dueDay = c.due_date_day || 15;
+          const monthDate = new Date(genMonth + "-01");
+          const dueDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dueDay);
+          return {
+            customer_id: c.id,
+            month: genMonth,
+            amount: c.monthly_bill,
+            status: "unpaid" as const,
+            due_date: dueDate.toISOString().split("T")[0],
+          };
+        });
 
       if (!newBills.length) {
         toast.info("Bills already generated for this month");

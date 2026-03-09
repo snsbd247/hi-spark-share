@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { User, Phone, MapPin, Package, Wifi, Calendar, CreditCard } from "lucide-react";
+import { User, Phone, MapPin, Package, Wifi, Calendar, CreditCard, Clock } from "lucide-react";
 
 interface Props {
   customer: any;
@@ -47,6 +47,15 @@ export default function CustomerInfoCard({ customer, dueAmount }: Props) {
           <Info icon={CreditCard} label="Monthly Bill" value={`৳${Number(customer.monthly_bill).toLocaleString()}`} />
           <Info icon={Wifi} label="PPPoE Username" value={customer.pppoe_username} />
           <Info icon={Calendar} label="Connection Date" value={customer.installation_date} />
+          <Info icon={Clock} label="Due Date (Day)" value={customer.due_date_day ? `${customer.due_date_day}th of every month` : "—"} />
+          <Info icon={Calendar} label="Next Billing Date" value={(() => {
+            if (!customer.due_date_day) return "—";
+            const now = new Date();
+            const day = customer.due_date_day;
+            let next = new Date(now.getFullYear(), now.getMonth(), day);
+            if (next <= now) next = new Date(now.getFullYear(), now.getMonth() + 1, day);
+            return next.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+          })()} />
           <div className="flex items-start gap-3">
             <CreditCard className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
             <div>

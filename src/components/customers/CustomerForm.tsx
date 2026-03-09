@@ -42,6 +42,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     installation_date: customer?.installation_date ?? "",
     status: customer?.status ?? "active",
     router_id: customer?.router_id ?? "",
+    due_date_day: customer?.due_date_day?.toString() ?? "",
   });
 
   const { data: packages } = useQuery({
@@ -140,6 +141,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       installation_date: form.installation_date || null,
       status: form.status,
       router_id: form.router_id || null,
+      due_date_day: form.due_date_day ? parseInt(form.due_date_day) : null,
     };
 
     try {
@@ -331,6 +333,17 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           <div className="space-y-1.5">
             <Label>Installation Date</Label>
             <Input type="date" value={form.installation_date} onChange={(e) => update("installation_date", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Due Date (Day of Month)</Label>
+            <Select value={form.due_date_day} onValueChange={(v) => update("due_date_day", v)}>
+              <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <SelectItem key={d} value={d.toString()}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

@@ -116,6 +116,7 @@ export type Database = {
           connection_status: string
           created_at: string
           customer_id: string
+          due_date_day: number | null
           email: string | null
           father_name: string | null
           house: string | null
@@ -146,6 +147,7 @@ export type Database = {
           connection_status?: string
           created_at?: string
           customer_id: string
+          due_date_day?: number | null
           email?: string | null
           father_name?: string | null
           house?: string | null
@@ -176,6 +178,7 @@ export type Database = {
           connection_status?: string
           created_at?: string
           customer_id?: string
+          due_date_day?: number | null
           email?: string | null
           father_name?: string | null
           house?: string | null
