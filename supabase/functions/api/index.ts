@@ -37,7 +37,7 @@ const ALLOWED_TABLES = new Set([
   "general_settings", "sms_settings", "payment_gateways", "mikrotik_routers",
   "olts", "onus", "support_tickets", "ticket_replies", "audit_logs",
   "admin_login_logs", "admin_sessions", "sms_logs", "reminder_logs",
-  "customer_ledger", "customer_sessions",
+  "customer_ledger", "customer_sessions", "sms_templates",
 ]);
 
 const PUBLIC_READ_TABLES = new Set([
