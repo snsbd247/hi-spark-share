@@ -423,6 +423,18 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
               </div>
             )}
 
+            {/* Message Preview */}
+            {message.trim().length > 0 && filteredCustomers.length > 0 && !sending && (
+              <div className="rounded-md border border-border bg-muted/50 p-3">
+                <Label className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
+                  <FileText className="h-3 w-3" /> Preview (for {filteredCustomers[0]?.name || "first customer"})
+                </Label>
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {replacePlaceholders(message, filteredCustomers[0])}
+                </p>
+              </div>
+            )}
+
             {/* Preview count */}
             <div className="flex items-center gap-2">
               {loadingCustomers ? (
