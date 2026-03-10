@@ -6,12 +6,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BKASH_BASE_URL = "https://tokenized.pay.bka.sh/v1.2.0-beta";
-
 // Simple in-memory rate limiter (per isolate)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 5; // max 5 requests per minute per action
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_MAX = 5;
 
 function checkRateLimit(key: string): boolean {
   const now = Date.now();
@@ -48,6 +46,7 @@ async function logRequest(action: string, status: string, details?: string) {
   }
 }
 
+// ── Load credentials from DB ──────────────────────────────────────────
 async function getGatewayConfig() {
   const supabase = getSupabaseAdmin();
   const { data: gw, error } = await supabase
@@ -59,8 +58,16 @@ async function getGatewayConfig() {
   return gw;
 }
 
+async function requireGatewayConfig() {
+  const gw = await getGatewayConfig();
+  if (!gw || !gw.app_key || !gw.app_secret || !gw.username || !gw.password) {
+    throw new Error("bKash gateway not configured. Please save settings in the bKash API Management page first.");
+  }
+  return gw;
+}
+
 async function getTokenFromGateway(gw: any): Promise<string> {
-  const baseUrl = gw.base_url || BKASH_BASE_URL;
+  const baseUrl = gw.base_url || "https://tokenized.pay.bka.sh/v1.2.0-beta";
   const res = await fetch(`${baseUrl}/tokenized/checkout/token/grant`, {
     method: "POST",
     headers: {
@@ -78,51 +85,65 @@ async function getTokenFromGateway(gw: any): Promise<string> {
   return data.id_token;
 }
 
-async function getBkashToken(): Promise<string> {
-  const res = await fetch(`${BKASH_BASE_URL}/tokenized/checkout/token/grant`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      username: Deno.env.get("BKASH_USERNAME")!,
-      password: Deno.env.get("BKASH_PASSWORD")!,
-    },
-    body: JSON.stringify({
-      app_key: Deno.env.get("BKASH_APP_KEY")!,
-      app_secret: Deno.env.get("BKASH_APP_SECRET")!,
-    }),
-  });
-  const data = await res.json();
-  if (!data.id_token) throw new Error(data.statusMessage || "Failed to get bKash token");
-  return data.id_token;
+// ── Send SMS notification ─────────────────────────────────────────────
+async function sendRefundSms(customerId: string, amount: number, trxId: string) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("phone, name, customer_id")
+      .eq("id", customerId)
+      .single();
+
+    if (!customer?.phone) return;
+
+    const { data: smsSettings } = await supabase
+      .from("sms_settings")
+      .select("api_token, sender_id")
+      .limit(1)
+      .single();
+
+    if (!smsSettings?.api_token) return;
+
+    const message = `Dear ${customer.name}, your bKash payment of ৳${amount} (TrxID: ${trxId}) has been refunded. Contact support if you have questions. - Smart ISP`;
+
+    const smsRes = await fetch("https://api.greenweb.com.bd/api.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        token: smsSettings.api_token,
+        to: customer.phone,
+        message,
+        ...(smsSettings.sender_id ? { from: smsSettings.sender_id } : {}),
+      }),
+    });
+
+    const smsResponse = await smsRes.text();
+
+    await supabase.from("sms_logs").insert({
+      phone: customer.phone,
+      message,
+      sms_type: "refund",
+      status: smsResponse.includes("Ok") ? "sent" : "failed",
+      response: smsResponse,
+      customer_id: customerId,
+    });
+  } catch (e) {
+    console.error("Failed to send refund SMS:", e);
+  }
 }
 
+// ── Test Connection ───────────────────────────────────────────────────
 async function handleTestConnection(): Promise<Response> {
   if (!checkRateLimit("test_connection")) {
     await logRequest("test_connection", "rate_limited");
     return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait before trying again." }), {
-      status: 429,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const gw = await getGatewayConfig();
-  if (!gw) {
-    await logRequest("test_connection", "failed", "Gateway not configured");
-    return new Response(JSON.stringify({ error: "bKash gateway not configured. Please save settings first." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!gw.app_key || !gw.app_secret || !gw.username || !gw.password) {
-    await logRequest("test_connection", "failed", "Incomplete credentials");
-    return new Response(JSON.stringify({ error: "Incomplete credentials. Please fill all required fields." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   try {
+    const gw = await requireGatewayConfig();
     const token = await getTokenFromGateway(gw);
     const supabase = getSupabaseAdmin();
     await supabase
@@ -137,12 +158,12 @@ async function handleTestConnection(): Promise<Response> {
   } catch (err) {
     await logRequest("test_connection", "failed", err.message);
     return new Response(JSON.stringify({ error: err.message || "Token grant failed" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }
 
+// ── Query Transaction ─────────────────────────────────────────────────
 async function handleQueryTransaction(body: any): Promise<Response> {
   if (!checkRateLimit("query_transaction")) {
     return new Response(JSON.stringify({ error: "Rate limit exceeded." }), {
@@ -157,24 +178,14 @@ async function handleQueryTransaction(body: any): Promise<Response> {
     });
   }
 
-  const gw = await getGatewayConfig();
-  if (!gw) {
-    return new Response(JSON.stringify({ error: "bKash gateway not configured" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
+    const gw = await requireGatewayConfig();
     const token = await getTokenFromGateway(gw);
-    const baseUrl = gw.base_url || BKASH_BASE_URL;
+    const baseUrl = gw.base_url;
 
     const res = await fetch(`${baseUrl}/tokenized/checkout/payment/status`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-        "X-APP-Key": gw.app_key,
-      },
+      headers: { "Content-Type": "application/json", Authorization: token, "X-APP-Key": gw.app_key },
       body: JSON.stringify({ paymentID }),
     });
 
@@ -192,6 +203,7 @@ async function handleQueryTransaction(body: any): Promise<Response> {
   }
 }
 
+// ── Refund ─────────────────────────────────────────────────────────────
 async function handleRefund(body: any): Promise<Response> {
   if (!checkRateLimit("refund")) {
     return new Response(JSON.stringify({ error: "Rate limit exceeded." }), {
@@ -206,27 +218,16 @@ async function handleRefund(body: any): Promise<Response> {
     });
   }
 
-  const gw = await getGatewayConfig();
-  if (!gw) {
-    return new Response(JSON.stringify({ error: "bKash gateway not configured" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
+    const gw = await requireGatewayConfig();
     const token = await getTokenFromGateway(gw);
-    const baseUrl = gw.base_url || BKASH_BASE_URL;
+    const baseUrl = gw.base_url;
 
     const res = await fetch(`${baseUrl}/tokenized/checkout/payment/refund`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token,
-        "X-APP-Key": gw.app_key,
-      },
+      headers: { "Content-Type": "application/json", Authorization: token, "X-APP-Key": gw.app_key },
       body: JSON.stringify({
-        paymentID,
-        trxID,
+        paymentID, trxID,
         amount: amount.toString(),
         reason: reason || "Customer refund",
         sku: "ISP-REFUND",
@@ -236,13 +237,25 @@ async function handleRefund(body: any): Promise<Response> {
     const data = await res.json();
     await logRequest("refund", data.transactionStatus || data.statusMessage || "processed", `${paymentID} - ৳${amount}`);
 
-    // Update payment status if refund successful
+    const supabase = getSupabaseAdmin();
+
     if (data.transactionStatus === "Completed" || data.statusCode === "0000") {
-      const supabase = getSupabaseAdmin();
+      // Update payment status
+      const { data: payment } = await supabase
+        .from("payments")
+        .select("customer_id")
+        .eq("bkash_payment_id", paymentID)
+        .single();
+
       await supabase
         .from("payments")
         .update({ status: "refunded" })
         .eq("bkash_payment_id", paymentID);
+
+      // Send SMS notification
+      if (payment?.customer_id) {
+        await sendRefundSms(payment.customer_id, Number(amount), trxID);
+      }
     }
 
     return new Response(JSON.stringify(data), {
@@ -256,17 +269,19 @@ async function handleRefund(body: any): Promise<Response> {
   }
 }
 
+// ── Create Payment ────────────────────────────────────────────────────
 async function handleCreate(body: any): Promise<Response> {
   const { bill_id, customer_id, callback_url } = body;
 
   if (!bill_id || !customer_id) {
     return new Response(JSON.stringify({ error: "Missing required fields" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  const gw = await requireGatewayConfig();
   const supabase = getSupabaseAdmin();
+
   const { data: bill, error: billError } = await supabase
     .from("bills")
     .select("amount, customer_id, status")
@@ -275,36 +290,29 @@ async function handleCreate(body: any): Promise<Response> {
 
   if (billError || !bill) {
     return new Response(JSON.stringify({ error: "Bill not found" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   if (bill.customer_id !== customer_id) {
     return new Response(JSON.stringify({ error: "Bill does not belong to this customer" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   if (bill.status === "paid") {
     return new Response(JSON.stringify({ error: "This bill has already been paid" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const amount = Number(bill.amount);
-  const token = await getBkashToken();
+  const token = await getTokenFromGateway(gw);
   const invoiceNumber = `INV-${Date.now()}`;
 
-  const res = await fetch(`${BKASH_BASE_URL}/tokenized/checkout/create`, {
+  const res = await fetch(`${gw.base_url}/tokenized/checkout/create`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token,
-      "X-APP-Key": Deno.env.get("BKASH_APP_KEY")!,
-    },
+    headers: { "Content-Type": "application/json", Authorization: token, "X-APP-Key": gw.app_key },
     body: JSON.stringify({
       mode: "0011",
       payerReference: customer_id,
@@ -320,9 +328,7 @@ async function handleCreate(body: any): Promise<Response> {
 
   if (data.bkashURL) {
     await supabase.from("payments").insert({
-      customer_id,
-      bill_id,
-      amount,
+      customer_id, bill_id, amount,
       payment_method: "bkash",
       status: "pending",
       bkash_payment_id: data.paymentID,
@@ -336,30 +342,26 @@ async function handleCreate(body: any): Promise<Response> {
   }
 
   return new Response(JSON.stringify({ error: data.statusMessage || "Failed to create payment" }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+// ── Execute Payment ───────────────────────────────────────────────────
 async function handleExecute(body: any): Promise<Response> {
   const { paymentID } = body;
 
   if (!paymentID) {
     return new Response(JSON.stringify({ error: "Missing paymentID" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  const token = await getBkashToken();
+  const gw = await requireGatewayConfig();
+  const token = await getTokenFromGateway(gw);
 
-  const res = await fetch(`${BKASH_BASE_URL}/tokenized/checkout/execute`, {
+  const res = await fetch(`${gw.base_url}/tokenized/checkout/execute`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token,
-      "X-APP-Key": Deno.env.get("BKASH_APP_KEY")!,
-    },
+    headers: { "Content-Type": "application/json", Authorization: token, "X-APP-Key": gw.app_key },
     body: JSON.stringify({ paymentID }),
   });
 
@@ -381,8 +383,7 @@ async function handleExecute(body: any): Promise<Response> {
         .eq("bkash_payment_id", paymentID);
 
       return new Response(JSON.stringify({ error: "Payment amount mismatch. Flagged for review." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -427,11 +428,11 @@ async function handleExecute(body: any): Promise<Response> {
     .eq("bkash_payment_id", paymentID);
 
   return new Response(JSON.stringify({ error: data.statusMessage || "Payment failed" }), {
-    status: 400,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+// ── Main Handler ──────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -455,14 +456,12 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(JSON.stringify({ error: "Not found" }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("bKash payment error:", err);
     return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

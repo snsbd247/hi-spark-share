@@ -102,6 +102,21 @@ export default function BkashApiManagement() {
     },
   });
 
+  // Fetch refund history from audit logs
+  const { data: refundLogs, isLoading: loadingRefunds } = useQuery({
+    queryKey: ["bkash-refund-logs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .eq("action", "bkash_refund")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Save settings
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -466,7 +481,61 @@ export default function BkashApiManagement() {
           </CardContent>
         </Card>
 
-        {/* Transaction Detail Dialog */}
+        {/* Refund History Logs */}
+        {isSuperAdmin && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Undo2 className="h-4 w-4" />
+                  Refund History
+                </CardTitle>
+                <CardDescription>All bKash refund attempts with status</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["bkash-refund-logs"] })}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loadingRefunds ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : !refundLogs?.length ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">No refund history found</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Payment ID</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {refundLogs.map((log: any) => {
+                        const details = log.new_data as any;
+                        return (
+                          <TableRow key={log.id}>
+                            <TableCell className="text-xs">{format(new Date(log.created_at), "dd MMM yyyy, hh:mm a")}</TableCell>
+                            <TableCell className="font-mono text-xs">{log.record_id || "—"}</TableCell>
+                            <TableCell className="text-xs">{details?.details || "—"}</TableCell>
+                            <TableCell>
+                              <Badge variant={details?.status === "Completed" || details?.status === "success" ? "default" : "destructive"} className="text-xs">
+                                {details?.status || "unknown"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Dialog open={!!selectedTxn} onOpenChange={(o) => !o && setSelectedTxn(null)}>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Transaction Details</DialogTitle></DialogHeader>
