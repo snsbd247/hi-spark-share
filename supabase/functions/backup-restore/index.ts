@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     // Verify auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -35,19 +35,23 @@ Deno.serve(async (req) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userId = claimsData.claims.sub as string;
 
     // Check super_admin role
     const adminClient = createClient(supabaseUrl, serviceKey);
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (roleData?.role !== "super_admin") {
@@ -59,7 +63,9 @@ Deno.serve(async (req) => {
     const { action, file_name, backup_data } = await req.json();
 
     if (action === "create") {
-      return await createBackup(adminClient, user.id);
+      return await createBackup(adminClient, userId, "backups", "manual");
+    } else if (action === "emergency") {
+      return await createBackup(adminClient, userId, "emergency", "emergency");
     } else if (action === "restore") {
       return await restoreBackup(adminClient, backup_data);
     } else if (action === "delete") {
@@ -77,7 +83,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function createBackup(client: any, userId: string) {
+async function createBackup(client: any, userId: string, bucket: string, backupType: string) {
   const backupData: Record<string, any[]> = {};
 
   for (const table of TABLES) {
@@ -100,10 +106,11 @@ async function createBackup(client: any, userId: string) {
 
   const jsonStr = JSON.stringify({ version: "1.0", created_at: new Date().toISOString(), tables: backupData }, null, 2);
   const now = new Date();
-  const fileName = `backup_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}_${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.json`;
+  const prefix = bucket === "emergency" ? "emergency" : "backup";
+  const fileName = `${prefix}_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}_${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.json`;
 
   const { error: uploadError } = await client.storage
-    .from("backups")
+    .from(bucket)
     .upload(fileName, new Blob([jsonStr], { type: "application/json" }), {
       contentType: "application/json",
       upsert: false,
@@ -115,7 +122,7 @@ async function createBackup(client: any, userId: string) {
 
   await client.from("backup_logs").insert({
     file_name: fileName,
-    backup_type: "manual",
+    backup_type: backupType,
     file_size: fileSize,
     created_by: userId,
     status: "completed",
@@ -129,7 +136,6 @@ async function createBackup(client: any, userId: string) {
 async function restoreBackup(client: any, backupData: any) {
   if (!backupData?.tables) throw new Error("Invalid backup data");
 
-  // Restore order matters due to foreign keys - delete in reverse, insert in order
   const restoreOrder = [
     "general_settings", "packages", "zones", "mikrotik_routers",
     "customers", "bills", "payments", "customer_ledger",
@@ -143,7 +149,6 @@ async function restoreBackup(client: any, backupData: any) {
 
   const deleteOrder = [...restoreOrder].reverse();
 
-  // Delete existing data
   for (const table of deleteOrder) {
     if (backupData.tables[table]) {
       const { error } = await client.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -151,12 +156,10 @@ async function restoreBackup(client: any, backupData: any) {
     }
   }
 
-  // Insert backup data
   const errors: string[] = [];
   for (const table of restoreOrder) {
     const rows = backupData.tables[table];
     if (!rows || rows.length === 0) continue;
-    // Insert in batches of 500
     for (let i = 0; i < rows.length; i += 500) {
       const batch = rows.slice(i, i + 500);
       const { error } = await client.from(table).insert(batch);

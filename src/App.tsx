@@ -45,6 +45,8 @@ import LoginLogs from "@/pages/LoginLogs";
 import AuditLogs from "@/pages/AuditLogs";
 import RoleManagement from "@/pages/settings/RoleManagement";
 import BackupRestore from "@/pages/settings/BackupRestore";
+import SafeMode from "@/pages/SafeMode";
+import SafeModeWrapper from "@/components/SafeModeWrapper";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -77,6 +79,7 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <CustomerAuthProvider>
+              <SafeModeWrapper>
               <Routes>
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
@@ -109,6 +112,7 @@ function App() {
                 <Route path="/settings/nagad" element={<PermissionGuard module="settings"><NagadApiManagement /></PermissionGuard>} />
                 <Route path="/settings/roles" element={<PermissionGuard module="roles"><RoleManagement /></PermissionGuard>} />
                 <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
+                <Route path="/safe-mode" element={<ProtectedRoute><SafeMode onDismiss={() => window.location.href = "/"} /></ProtectedRoute>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />
@@ -124,6 +128,7 @@ function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </SafeModeWrapper>
             </CustomerAuthProvider>
           </AuthProvider>
         </BrowserRouter>
