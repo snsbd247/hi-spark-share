@@ -130,8 +130,12 @@ function NavGroup({ label, icon: Icon, items, collapsed, location, defaultOpen =
 export default function AppSidebar() {
   const { signOut } = useAuth();
   const location = useLocation();
+  const { hasModuleAccess, isSuperAdmin } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const filterItems = (items: NavItem[]) =>
+    items.filter((item) => !item.module || isSuperAdmin || hasModuleAccess(item.module));
 
   // Close mobile sidebar on route change
   useEffect(() => {
