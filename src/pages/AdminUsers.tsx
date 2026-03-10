@@ -34,7 +34,17 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState({
-    full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
+    full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff", custom_role_id: "",
+  });
+
+  // Fetch custom roles for assignment
+  const { data: customRoles } = useQuery({
+    queryKey: ["custom-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("custom_roles").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: users, isLoading } = useQuery({
