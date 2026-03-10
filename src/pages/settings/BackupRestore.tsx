@@ -8,8 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Download, Trash2, Upload, Database, HardDrive, Loader2, AlertTriangle } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Download, Trash2, Upload, Database, HardDrive, Loader2, AlertTriangle,
+  Clock, Calendar, CalendarDays, Recycle,
+} from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -74,6 +80,27 @@ export default function BackupRestore() {
     },
   });
 
+  const cleanupBackups = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("backup-restore", {
+        body: { action: "manual_cleanup" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Cleanup Complete",
+        description: `Deleted ${data.deleted} of ${data.total_found} old backups`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-logs"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Cleanup Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const restoreBackup = useMutation({
     mutationFn: async (file: File) => {
       const text = await file.text();
@@ -129,23 +156,31 @@ export default function BackupRestore() {
     e.target.value = "";
   };
 
+  const getTypeBadgeVariant = (type: string) => {
+    if (type.includes("daily")) return "secondary";
+    if (type.includes("weekly")) return "outline";
+    if (type.includes("monthly")) return "default";
+    if (type === "emergency") return "destructive";
+    return "default";
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Backup & Restore</h1>
-          <p className="text-muted-foreground">Manage database backups and restore from previous snapshots</p>
+          <p className="text-muted-foreground">Manage database backups, schedules, and restore from previous snapshots</p>
         </div>
 
         {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Database className="h-5 w-5 text-primary" />
                 Create Backup
               </CardTitle>
-              <CardDescription>Export all database tables as a backup file</CardDescription>
+              <CardDescription>Export all tables as backup</CardDescription>
             </CardHeader>
             <CardContent>
               <Button
@@ -166,9 +201,9 @@ export default function BackupRestore() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Download className="h-5 w-5 text-primary" />
-                Download Full Backup
+                Download Backup
               </CardTitle>
-              <CardDescription>Create and immediately download a backup</CardDescription>
+              <CardDescription>Create and download immediately</CardDescription>
             </CardHeader>
             <CardContent>
               <Button
@@ -176,7 +211,6 @@ export default function BackupRestore() {
                 onClick={async () => {
                   try {
                     await createBackup.mutateAsync();
-                    // Download the latest after creation
                     const { data } = await supabase
                       .from("backup_logs")
                       .select("file_name")
@@ -204,17 +238,11 @@ export default function BackupRestore() {
                 <Upload className="h-5 w-5 text-destructive" />
                 Restore Backup
               </CardTitle>
-              <CardDescription>Upload a backup file to restore database</CardDescription>
+              <CardDescription>Upload a backup file to restore</CardDescription>
             </CardHeader>
             <CardContent>
               <label>
-                <input
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={handleRestoreFileSelect}
-                  disabled={restoreBackup.isPending}
-                />
+                <input type="file" accept=".json" className="hidden" onChange={handleRestoreFileSelect} disabled={restoreBackup.isPending} />
                 <Button variant="destructive" className="w-full" asChild disabled={restoreBackup.isPending}>
                   <span>
                     {restoreBackup.isPending ? (
@@ -227,7 +255,70 @@ export default function BackupRestore() {
               </label>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Recycle className="h-5 w-5 text-primary" />
+                Cleanup Old Backups
+              </CardTitle>
+              <CardDescription>Remove backups older than 30 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={() => cleanupBackups.mutate()}
+                disabled={cleanupBackups.isPending}
+                className="w-full"
+              >
+                {cleanupBackups.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Cleaning...</>
+                ) : (
+                  <><Recycle className="h-4 w-4 mr-2" /> Run Cleanup</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Auto Backup Schedule Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Automatic Backup Schedule</CardTitle>
+            <CardDescription>Backups run automatically. Old backups (&gt;30 days) are cleaned up daily.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Clock className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Daily Backup</p>
+                  <p className="text-xs text-muted-foreground">Every day at 2:00 AM</p>
+                </div>
+                <Badge variant="secondary" className="ml-auto">Active</Badge>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Calendar className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Weekly Backup</p>
+                  <p className="text-xs text-muted-foreground">Every Sunday at 3:00 AM</p>
+                </div>
+                <Badge variant="secondary" className="ml-auto">Active</Badge>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CalendarDays className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Monthly Backup</p>
+                  <p className="text-xs text-muted-foreground">1st of each month at 4:00 AM</p>
+                </div>
+                <Badge variant="secondary" className="ml-auto">Active</Badge>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              ⚡ Max backup size: 100MB &middot; 🗑️ Auto-cleanup: Daily at 5:00 AM (removes backups older than 30 days, excludes emergency backups)
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Backup History */}
         <Card>
@@ -263,7 +354,7 @@ export default function BackupRestore() {
                       <TableCell className="font-mono text-sm">{backup.file_name}</TableCell>
                       <TableCell>{formatFileSize(backup.file_size)}</TableCell>
                       <TableCell>
-                        <Badge variant={backup.backup_type === "auto" ? "secondary" : "default"}>
+                        <Badge variant={getTypeBadgeVariant(backup.backup_type)}>
                           {backup.backup_type}
                         </Badge>
                       </TableCell>
@@ -273,9 +364,11 @@ export default function BackupRestore() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="ghost" onClick={() => handleDownload(backup.file_name)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        {backup.status === "completed" && (
+                          <Button size="sm" variant="ghost" onClick={() => handleDownload(backup.file_name)}>
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
