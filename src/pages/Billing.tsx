@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { logAudit } from "@/lib/auditLog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Billing() {
   const [search, setSearch] = useState("");
@@ -38,6 +39,10 @@ export default function Billing() {
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
   const { canEdit, adminName, userId } = useAdminRole();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canCreateBill = isSuperAdmin || hasPermission("billing", "create");
+  const canEditBill = isSuperAdmin || hasPermission("billing", "edit");
+  const canDeleteBill = isSuperAdmin || hasPermission("billing", "delete");
 
   const { data: bills, isLoading } = useQuery({
     queryKey: ["bills"],
@@ -170,8 +175,8 @@ export default function Billing() {
           <p className="text-muted-foreground mt-1">Generate and manage customer bills</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>
-          <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> Generate Bills</Button>
+          {canCreateBill && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>}
+          {canCreateBill && <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> Generate Bills</Button>}
         </div>
       </div>
 
@@ -213,15 +218,15 @@ export default function Billing() {
                       <TableCell className="text-sm text-muted-foreground">{format(new Date(bill.created_at), "dd MMM yyyy")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {canEdit && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                setEditBill(bill); setEditMonth(bill.month); setEditAmount(bill.amount.toString()); setEditStatus(bill.status); setEditOpen(true);
-                              }}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(bill)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                          {canEditBill && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              setEditBill(bill); setEditMonth(bill.month); setEditAmount(bill.amount.toString()); setEditStatus(bill.status); setEditOpen(true);
+                            }}><Pencil className="h-4 w-4" /></Button>
+                          )}
+                          {canDeleteBill && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(bill)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                           {bill.status !== "paid" && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => handleMarkPaid(bill)}><CheckCircle className="h-4 w-4" /></Button>

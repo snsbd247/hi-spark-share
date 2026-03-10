@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PermissionGuard from "@/components/PermissionGuard";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -60,31 +61,31 @@ function App() {
                 <Route path="/admin/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-                <Route path="/customers/:id" element={<ProtectedRoute><CustomerProfilePage /></ProtectedRoute>} />
+                <Route path="/customers" element={<PermissionGuard module="customers"><Customers /></PermissionGuard>} />
+                <Route path="/customers/:id" element={<PermissionGuard module="customers"><CustomerProfilePage /></PermissionGuard>} />
                 <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
-                <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-                <Route path="/billing/cycle" element={<ProtectedRoute><BillingCycleOverview /></ProtectedRoute>} />
-                <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
-                <Route path="/merchant-payments" element={<ProtectedRoute><MerchantPayments /></ProtectedRoute>} />
-                <Route path="/merchant-reports" element={<ProtectedRoute><MerchantPaymentReports /></ProtectedRoute>} />
-                <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
-                <Route path="/sms" element={<ProtectedRoute><SMSLogs /></ProtectedRoute>} />
-                <Route path="/sms-settings" element={<ProtectedRoute><SMSSettings /></ProtectedRoute>} />
-                <Route path="/reminders" element={<ProtectedRoute><ReminderLogs /></ProtectedRoute>} />
+                <Route path="/billing" element={<PermissionGuard module="billing"><Billing /></PermissionGuard>} />
+                <Route path="/billing/cycle" element={<PermissionGuard module="billing"><BillingCycleOverview /></PermissionGuard>} />
+                <Route path="/payments" element={<PermissionGuard module="payments"><Payments /></PermissionGuard>} />
+                <Route path="/merchant-payments" element={<PermissionGuard module="merchant_payments"><MerchantPayments /></PermissionGuard>} />
+                <Route path="/merchant-reports" element={<PermissionGuard module="reports"><MerchantPaymentReports /></PermissionGuard>} />
+                <Route path="/tickets" element={<PermissionGuard module="tickets"><Tickets /></PermissionGuard>} />
+                <Route path="/sms" element={<PermissionGuard module="sms"><SMSLogs /></PermissionGuard>} />
+                <Route path="/sms-settings" element={<PermissionGuard module="sms" action="edit"><SMSSettings /></PermissionGuard>} />
+                <Route path="/reminders" element={<PermissionGuard module="sms"><ReminderLogs /></PermissionGuard>} />
                 <Route path="/profile" element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
-                <Route path="/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-                <Route path="/login-logs" element={<ProtectedRoute><LoginLogs /></ProtectedRoute>} />
-                <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+                <Route path="/users" element={<PermissionGuard module="users"><AdminUsers /></PermissionGuard>} />
+                <Route path="/login-logs" element={<PermissionGuard module="settings"><LoginLogs /></PermissionGuard>} />
+                <Route path="/audit-logs" element={<PermissionGuard module="settings"><AuditLogs /></PermissionGuard>} />
 
                 {/* Settings Routes */}
-                <Route path="/settings/general" element={<ProtectedRoute><GeneralSettings /></ProtectedRoute>} />
-                <Route path="/settings/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
-                <Route path="/settings/zones" element={<ProtectedRoute><ZoneManagement /></ProtectedRoute>} />
-                <Route path="/settings/mikrotik" element={<ProtectedRoute><MikroTikRouters /></ProtectedRoute>} />
-                <Route path="/settings/bkash" element={<ProtectedRoute><BkashApiManagement /></ProtectedRoute>} />
-                <Route path="/settings/nagad" element={<ProtectedRoute><NagadApiManagement /></ProtectedRoute>} />
-                <Route path="/settings/roles" element={<ProtectedRoute><RoleManagement /></ProtectedRoute>} />
+                <Route path="/settings/general" element={<PermissionGuard module="settings"><GeneralSettings /></PermissionGuard>} />
+                <Route path="/settings/packages" element={<PermissionGuard module="settings"><Packages /></PermissionGuard>} />
+                <Route path="/settings/zones" element={<PermissionGuard module="settings"><ZoneManagement /></PermissionGuard>} />
+                <Route path="/settings/mikrotik" element={<PermissionGuard module="settings"><MikroTikRouters /></PermissionGuard>} />
+                <Route path="/settings/bkash" element={<PermissionGuard module="settings"><BkashApiManagement /></PermissionGuard>} />
+                <Route path="/settings/nagad" element={<PermissionGuard module="settings"><NagadApiManagement /></PermissionGuard>} />
+                <Route path="/settings/roles" element={<PermissionGuard module="roles"><RoleManagement /></PermissionGuard>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />

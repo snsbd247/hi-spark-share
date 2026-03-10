@@ -23,6 +23,7 @@ import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
 import CustomerImport from "@/components/CustomerImport";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
@@ -34,6 +35,9 @@ export default function Customers() {
   const [pageSize, setPageSize] = useState(20);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canCreate = isSuperAdmin || hasPermission("customers", "create");
+  const canEdit = isSuperAdmin || hasPermission("customers", "edit");
 
   const bulkSyncCustomers = async () => {
     setBulkSyncing(true);
@@ -122,12 +126,16 @@ export default function Customers() {
             {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Sync All to MikroTik
           </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" /> Upload Excel
-          </Button>
-          <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Add Customer
-          </Button>
+          {canCreate && (
+            <>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Upload Excel
+              </Button>
+              <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" /> Add Customer
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -191,9 +199,11 @@ export default function Customers() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/customers/${customer.id}`)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCustomer(customer); setFormOpen(true); }}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            {canEdit && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditCustomer(customer); setFormOpen(true); }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => generateCustomerPDF(customer)}>
                               <Printer className="h-4 w-4" />
                             </Button>

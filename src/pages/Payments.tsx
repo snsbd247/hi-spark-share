@@ -22,6 +22,7 @@ import { generatePaymentReceiptPDF } from "@/lib/pdf";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { logAudit } from "@/lib/auditLog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Payments() {
   const [search, setSearch] = useState("");
@@ -39,6 +40,9 @@ export default function Payments() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const queryClient = useQueryClient();
   const { canEdit, adminName, userId } = useAdminRole();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canEditPayment = isSuperAdmin || hasPermission("payments", "edit");
+  const canDeletePayment = isSuperAdmin || hasPermission("payments", "delete");
 
   const { data: payments, isLoading } = useQuery({
     queryKey: ["admin-payments"],
@@ -154,15 +158,15 @@ export default function Payments() {
                       <TableCell className="text-sm text-muted-foreground">{format(new Date(payment.paid_at), "dd MMM yyyy HH:mm")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {canEdit && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                                setEditPayment(payment); setEditAmount(payment.amount.toString()); setEditMethod(payment.payment_method);
-                                setEditTrxId(payment.transaction_id || ""); setEditStatus(payment.status);
-                                setEditDate(format(new Date(payment.paid_at), "yyyy-MM-dd'T'HH:mm")); setEditOpen(true);
-                              }}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(payment)}><Trash2 className="h-4 w-4" /></Button>
-                            </>
+                          {canEditPayment && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              setEditPayment(payment); setEditAmount(payment.amount.toString()); setEditMethod(payment.payment_method);
+                              setEditTrxId(payment.transaction_id || ""); setEditStatus(payment.status);
+                              setEditDate(format(new Date(payment.paid_at), "yyyy-MM-dd'T'HH:mm")); setEditOpen(true);
+                            }}><Pencil className="h-4 w-4" /></Button>
+                          )}
+                          {canDeletePayment && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(payment)}><Trash2 className="h-4 w-4" /></Button>
                           )}
                           {payment.status === "completed" && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => generatePaymentReceiptPDF(payment, payment.customers)}><Download className="h-4 w-4" /></Button>
