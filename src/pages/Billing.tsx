@@ -7,38 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Pencil, CheckCircle, Loader2, Search } from "lucide-react";
+import { FileText, Pencil, CheckCircle, Loader2, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 export default function Billing() {
   const [search, setSearch] = useState("");
   const [generateOpen, setGenerateOpen] = useState(false);
   const [editBill, setEditBill] = useState<any>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [editMonth, setEditMonth] = useState("");
   const [editAmount, setEditAmount] = useState("");
+  const [editStatus, setEditStatus] = useState("");
   const [genMonth, setGenMonth] = useState(format(new Date(), "yyyy-MM"));
   const [genLoading, setGenLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: bills, isLoading } = useQuery({
@@ -106,7 +99,6 @@ export default function Billing() {
       const { error } = await supabase.from("bills").insert(newBills);
       if (error) throw error;
 
-      // Send SMS notifications for generated bills
       const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const billCustomers = customers.filter((c) => !existingIds.has(c.id));
       for (const cust of billCustomers) {
@@ -154,15 +146,41 @@ export default function Billing() {
     if (!editBill) return;
     const { error } = await supabase
       .from("bills")
-      .update({ amount: parseFloat(editAmount) })
+      .update({
+        month: editMonth,
+        amount: parseFloat(editAmount),
+        status: editStatus,
+        ...(editStatus === "paid" && !editBill.paid_date ? { paid_date: new Date().toISOString() } : {}),
+      })
       .eq("id", editBill.id);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Bill amount updated");
+    toast.success("Bill updated successfully");
     setEditOpen(false);
     queryClient.invalidateQueries({ queryKey: ["bills"] });
+    queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      // Delete related ledger entries
+      await supabase.from("customer_ledger").delete().eq("reference", `BILL-${deleteTarget.id.substring(0, 8)}`);
+      // Delete the bill
+      const { error } = await supabase.from("bills").delete().eq("id", deleteTarget.id);
+      if (error) throw error;
+      toast.success("Bill deleted successfully");
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const statusColor = (status: string) => {
@@ -190,12 +208,7 @@ export default function Billing() {
         <div className="p-4 border-b border-border">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search bills..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <Input placeholder="Search bills..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -220,9 +233,7 @@ export default function Billing() {
               <TableBody>
                 {filtered?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
-                      No bills found
-                    </TableCell>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-12">No bills found</TableCell>
                   </TableRow>
                 ) : (
                   filtered?.map((bill) => (
@@ -232,34 +243,27 @@ export default function Billing() {
                       <TableCell>{bill.month}</TableCell>
                       <TableCell>৳{Number(bill.amount).toLocaleString()}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusColor(bill.status)}>
-                          {bill.status}
-                        </Badge>
+                        <Badge variant="outline" className={statusColor(bill.status)}>{bill.status}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(bill.created_at), "dd MMM yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              setEditBill(bill);
-                              setEditAmount(bill.amount.toString());
-                              setEditOpen(true);
-                            }}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                            setEditBill(bill);
+                            setEditMonth(bill.month);
+                            setEditAmount(bill.amount.toString());
+                            setEditStatus(bill.status);
+                            setEditOpen(true);
+                          }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(bill)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           {bill.status !== "paid" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-success"
-                              onClick={() => handleMarkPaid(bill)}
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => handleMarkPaid(bill)}>
                               <CheckCircle className="h-4 w-4" />
                             </Button>
                           )}
@@ -277,52 +281,54 @@ export default function Billing() {
       {/* Generate Dialog */}
       <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generate Monthly Bills</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Generate Monthly Bills</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Month</Label>
-              <Input
-                type="month"
-                value={genMonth}
-                onChange={(e) => setGenMonth(e.target.value)}
-              />
+              <Input type="month" value={genMonth} onChange={(e) => setGenMonth(e.target.value)} />
             </div>
-            <p className="text-sm text-muted-foreground">
-              This will generate bills for all active customers who don't already have a bill for this month.
-            </p>
+            <p className="text-sm text-muted-foreground">This will generate bills for all active customers who don't already have a bill for this month.</p>
             <div className="flex justify-end">
               <Button onClick={handleGenerate} disabled={genLoading}>
-                {genLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Generate
+                {genLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Generate
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Amount Dialog */}
+      {/* Edit Bill Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Bill Amount</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit Bill</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
+              <Label>Month</Label>
+              <Input type="month" value={editMonth} onChange={(e) => setEditMonth(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
               <Label>Amount</Label>
-              <Input
-                type="number"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
-              />
+              <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleEditSave}>Save</Button>
+              <Button onClick={handleEditSave}>Save Changes</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
     </DashboardLayout>
   );
 }
