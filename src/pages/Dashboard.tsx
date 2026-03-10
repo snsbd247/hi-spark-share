@@ -23,23 +23,13 @@ interface DashboardCardProps {
   linkLabel?: string;
 }
 
-function DashboardCard({ title, value, headerColor, link, linkLabel = "View Details" }: DashboardCardProps) {
-  const navigate = useNavigate();
+function DashboardCard({ title, value, headerColor }: DashboardCardProps) {
   return (
     <Card className="overflow-hidden animate-fade-in shadow-sm hover:shadow-md transition-shadow">
       <div className={`${headerColor} px-4 py-3 text-center`}>
         <p className="text-sm font-bold text-white">{title}</p>
         <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
       </div>
-      {link && (
-        <div
-          className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => navigate(link)}
-        >
-          <span>{linkLabel}</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </div>
-      )}
     </Card>
   );
 }
