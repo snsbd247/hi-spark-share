@@ -14,6 +14,9 @@ const TABLES = [
   "audit_logs", "customer_sessions", "olts", "onus",
 ];
 
+const MAX_BACKUP_SIZE_MB = 100; // 100MB limit
+const RETENTION_DAYS = 30;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,10 +24,32 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY)!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Verify auth
+    const body = await req.json();
+    const { action } = body;
+
+    // Cron-triggered actions use service role key auth (no user session)
+    if (action === "auto" || action === "cleanup") {
+      const authHeader = req.headers.get("Authorization");
+      const token = authHeader?.replace("Bearer ", "");
+      if (token !== anonKey && token !== serviceKey) {
+        return new Response(JSON.stringify({ error: "Unauthorized cron call" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (action === "auto") {
+        const backupType = body.backup_type || "auto_daily";
+        return await createBackup(adminClient, "00000000-0000-0000-0000-000000000001", "backups", backupType);
+      } else if (action === "cleanup") {
+        return await cleanupOldBackups(adminClient);
+      }
+    }
+
+    // User-triggered actions require full auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -46,8 +71,6 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub as string;
 
-    // Check super_admin role
-    const adminClient = createClient(supabaseUrl, serviceKey);
     const { data: roleData } = await adminClient
       .from("user_roles")
       .select("role")
@@ -60,16 +83,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, file_name, backup_data } = await req.json();
-
     if (action === "create") {
       return await createBackup(adminClient, userId, "backups", "manual");
     } else if (action === "emergency") {
       return await createBackup(adminClient, userId, "emergency", "emergency");
     } else if (action === "restore") {
-      return await restoreBackup(adminClient, backup_data);
+      return await restoreBackup(adminClient, body.backup_data);
     } else if (action === "delete") {
-      return await deleteBackup(adminClient, file_name);
+      return await deleteBackup(adminClient, body.file_name);
+    } else if (action === "manual_cleanup") {
+      return await cleanupOldBackups(adminClient);
     } else {
       return new Response(JSON.stringify({ error: "Invalid action" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -105,6 +128,23 @@ async function createBackup(client: any, userId: string, bucket: string, backupT
   }
 
   const jsonStr = JSON.stringify({ version: "1.0", created_at: new Date().toISOString(), tables: backupData }, null, 2);
+  const fileSize = new Blob([jsonStr]).size;
+
+  // Check file size limit
+  if (fileSize > MAX_BACKUP_SIZE_MB * 1024 * 1024) {
+    const msg = `Backup size (${(fileSize / 1024 / 1024).toFixed(1)}MB) exceeds limit (${MAX_BACKUP_SIZE_MB}MB)`;
+    console.error(msg);
+    await client.from("backup_logs").insert({
+      file_name: "size_limit_exceeded",
+      backup_type: backupType,
+      file_size: fileSize,
+      created_by: userId,
+      status: "failed",
+      error_message: msg,
+    });
+    throw new Error(msg);
+  }
+
   const now = new Date();
   const prefix = bucket === "emergency" ? "emergency" : "backup";
   const fileName = `${prefix}_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}_${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.json`;
@@ -118,8 +158,6 @@ async function createBackup(client: any, userId: string, bucket: string, backupT
 
   if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-  const fileSize = new Blob([jsonStr]).size;
-
   await client.from("backup_logs").insert({
     file_name: fileName,
     backup_type: backupType,
@@ -129,6 +167,53 @@ async function createBackup(client: any, userId: string, bucket: string, backupT
   });
 
   return new Response(JSON.stringify({ success: true, file_name: fileName, file_size: fileSize }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function cleanupOldBackups(client: any) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+
+  // Get old backup logs
+  const { data: oldBackups, error: queryError } = await client
+    .from("backup_logs")
+    .select("*")
+    .lt("created_at", cutoffDate.toISOString())
+    .neq("backup_type", "emergency"); // Never auto-delete emergency backups
+
+  if (queryError) {
+    console.error("Cleanup query error:", queryError.message);
+    throw new Error(queryError.message);
+  }
+
+  let deletedCount = 0;
+  const errors: string[] = [];
+
+  for (const backup of oldBackups || []) {
+    try {
+      // Determine bucket from backup type
+      const bucket = backup.backup_type === "emergency" ? "emergency" : "backups";
+      const { error: storageError } = await client.storage.from(bucket).remove([backup.file_name]);
+      if (storageError) {
+        errors.push(`${backup.file_name}: ${storageError.message}`);
+        continue;
+      }
+      await client.from("backup_logs").delete().eq("id", backup.id);
+      deletedCount++;
+    } catch (err: any) {
+      errors.push(`${backup.file_name}: ${err.message}`);
+    }
+  }
+
+  console.log(`Cleanup complete: ${deletedCount} backups deleted, ${errors.length} errors`);
+
+  return new Response(JSON.stringify({
+    success: true,
+    deleted: deletedCount,
+    total_found: oldBackups?.length || 0,
+    errors,
+  }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
