@@ -22,6 +22,8 @@ import { Plus, Search, Loader2, Link2, CheckCircle, AlertCircle, HelpCircle, XCi
 import { toast } from "sonner";
 import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { logAudit } from "@/lib/auditLog";
 
 export default function MerchantPayments() {
   const [search, setSearch] = useState("");
@@ -37,6 +39,7 @@ export default function MerchantPayments() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const queryClient = useQueryClient();
+  const { canEdit, adminName, userId } = useAdminRole();
 
   useEffect(() => {
     const channel = supabase
@@ -44,10 +47,7 @@ export default function MerchantPayments() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "merchant_payments" }, (payload) => {
         const p = payload.new as any;
         const statusLabel = p.status === "matched" ? "✅ Matched" : p.status === "manual_review" ? "⚠️ Needs Review" : "❓ Unmatched";
-        toast.info(`New Merchant Payment Received`, {
-          description: `TrxID: ${p.transaction_id} — ৳${Number(p.amount).toLocaleString()} — ${statusLabel}`,
-          duration: 8000,
-        });
+        toast.info(`New Merchant Payment Received`, { description: `TrxID: ${p.transaction_id} — ৳${Number(p.amount).toLocaleString()} — ${statusLabel}`, duration: 8000 });
         queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
         queryClient.invalidateQueries({ queryKey: ["bills"] });
         queryClient.invalidateQueries({ queryKey: ["payments"] });
@@ -56,21 +56,14 @@ export default function MerchantPayments() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const [form, setForm] = useState({
-    transaction_id: "", sender_phone: "", amount: "", reference: "",
-    payment_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-  });
-
+  const [form, setForm] = useState({ transaction_id: "", sender_phone: "", amount: "", reference: "", payment_date: format(new Date(), "yyyy-MM-dd'T'HH:mm") });
   const [matchCustomerId, setMatchCustomerId] = useState("");
   const [matchBillId, setMatchBillId] = useState("");
 
   const { data: payments, isLoading } = useQuery({
     queryKey: ["merchant-payments"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("merchant_payments")
-        .select("*, customers:matched_customer_id(customer_id, name), bills:matched_bill_id(month, amount)")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("merchant_payments").select("*, customers:matched_customer_id(customer_id, name), bills:matched_bill_id(month, amount)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -94,32 +87,18 @@ export default function MerchantPayments() {
   });
 
   const handleAdd = async () => {
-    if (!form.transaction_id || !form.sender_phone || !form.amount) {
-      toast.error("Transaction ID, Phone, and Amount are required");
-      return;
-    }
+    if (!form.transaction_id || !form.sender_phone || !form.amount) { toast.error("Transaction ID, Phone, and Amount are required"); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.from("merchant_payments").insert({
-        transaction_id: form.transaction_id.trim(), sender_phone: form.sender_phone.trim(),
-        amount: parseFloat(form.amount), reference: form.reference.trim() || null,
-        payment_date: new Date(form.payment_date).toISOString(),
-      });
-      if (error) {
-        toast.error(error.message.includes("duplicate") || error.message.includes("unique") ? "Duplicate Transaction ID" : error.message);
-        return;
-      }
+      const { error } = await supabase.from("merchant_payments").insert({ transaction_id: form.transaction_id.trim(), sender_phone: form.sender_phone.trim(), amount: parseFloat(form.amount), reference: form.reference.trim() || null, payment_date: new Date(form.payment_date).toISOString() });
+      if (error) { toast.error(error.message.includes("duplicate") || error.message.includes("unique") ? "Duplicate Transaction ID" : error.message); return; }
       toast.success("Merchant payment recorded — auto-matching applied");
       setAddOpen(false);
       setForm({ transaction_id: "", sender_phone: "", amount: "", reference: "", payment_date: format(new Date(), "yyyy-MM-dd'T'HH:mm") });
       queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
       queryClient.invalidateQueries({ queryKey: ["bills"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { toast.error(err.message); } finally { setLoading(false); }
   };
 
   const handleManualMatch = async () => {
@@ -129,14 +108,8 @@ export default function MerchantPayments() {
       const bill = unpaidBills?.find((b) => b.id === matchBillId);
       if (!bill) throw new Error("Bill not found");
       await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill.id);
-      await supabase.from("payments").insert({
-        customer_id: bill.cust_uuid, bill_id: bill.id, amount: selectedPayment.amount,
-        payment_method: "bkash_merchant", transaction_id: selectedPayment.transaction_id,
-        status: "completed", paid_at: selectedPayment.payment_date, month: bill.month,
-      });
-      await supabase.from("merchant_payments").update({
-        status: "matched", matched_customer_id: bill.cust_uuid, matched_bill_id: bill.id, notes: "Manually matched by admin",
-      }).eq("id", selectedPayment.id);
+      await supabase.from("payments").insert({ customer_id: bill.cust_uuid, bill_id: bill.id, amount: selectedPayment.amount, payment_method: "bkash_merchant", transaction_id: selectedPayment.transaction_id, status: "completed", paid_at: selectedPayment.payment_date, month: bill.month });
+      await supabase.from("merchant_payments").update({ status: "matched", matched_customer_id: bill.cust_uuid, matched_bill_id: bill.id, notes: "Manually matched by admin" }).eq("id", selectedPayment.id);
       toast.success("Payment manually matched successfully");
       setMatchOpen(false); setSelectedPayment(null); setMatchCustomerId(""); setMatchBillId("");
       queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
@@ -158,11 +131,10 @@ export default function MerchantPayments() {
     if (!editPayment) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from("merchant_payments").update({
-        transaction_id: editForm.transaction_id, sender_phone: editForm.sender_phone,
-        amount: parseFloat(editForm.amount), reference: editForm.reference || null, status: editForm.status,
-      }).eq("id", editPayment.id);
+      const newData = { transaction_id: editForm.transaction_id, sender_phone: editForm.sender_phone, amount: parseFloat(editForm.amount), reference: editForm.reference || null, status: editForm.status };
+      const { error } = await supabase.from("merchant_payments").update(newData).eq("id", editPayment.id);
       if (error) throw error;
+      if (userId) await logAudit({ adminId: userId, adminName, action: "edit", tableName: "merchant_payments", recordId: editPayment.id, oldData: { transaction_id: editPayment.transaction_id, sender_phone: editPayment.sender_phone, amount: editPayment.amount, status: editPayment.status }, newData });
       toast.success("Merchant payment updated");
       setEditOpen(false);
       queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
@@ -175,6 +147,7 @@ export default function MerchantPayments() {
     try {
       const { error } = await supabase.from("merchant_payments").delete().eq("id", deleteTarget.id);
       if (error) throw error;
+      if (userId) await logAudit({ adminId: userId, adminName, action: "delete", tableName: "merchant_payments", recordId: deleteTarget.id, oldData: { transaction_id: deleteTarget.transaction_id, sender_phone: deleteTarget.sender_phone, amount: deleteTarget.amount } });
       toast.success("Merchant payment deleted");
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
@@ -214,13 +187,7 @@ export default function MerchantPayments() {
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="matched">Matched</SelectItem>
-              <SelectItem value="unmatched">Unmatched</SelectItem>
-              <SelectItem value="manual_review">Manual Review</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
+            <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="unmatched">Unmatched</SelectItem><SelectItem value="manual_review">Manual Review</SelectItem><SelectItem value="rejected">Rejected</SelectItem></SelectContent>
           </Select>
         </div>
 
@@ -231,14 +198,7 @@ export default function MerchantPayments() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Transaction ID</TableHead>
-                  <TableHead>Sender Phone</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Matched Customer</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Date</TableHead><TableHead>Transaction ID</TableHead><TableHead>Sender Phone</TableHead><TableHead>Amount</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead>Matched Customer</TableHead><TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -264,24 +224,20 @@ export default function MerchantPayments() {
                       <TableCell>{(p.customers as any)?.name ? `${(p.customers as any).name} (${(p.customers as any).customer_id})` : "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                            setEditPayment(p);
-                            setEditForm({ transaction_id: p.transaction_id, sender_phone: p.sender_phone, amount: p.amount.toString(), reference: p.reference || "", status: p.status });
-                            setEditOpen(true);
-                          }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                setEditPayment(p);
+                                setEditForm({ transaction_id: p.transaction_id, sender_phone: p.sender_phone, amount: p.amount.toString(), reference: p.reference || "", status: p.status });
+                                setEditOpen(true);
+                              }}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}><Trash2 className="h-4 w-4" /></Button>
+                            </>
+                          )}
                           {p.status !== "matched" && p.status !== "rejected" && (
                             <>
-                              <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}>
-                                <Link2 className="h-4 w-4 mr-1" /> Match
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleReject(p)}>
-                                <XCircle className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}><Link2 className="h-4 w-4 mr-1" /> Match</Button>
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleReject(p)}><XCircle className="h-4 w-4" /></Button>
                             </>
                           )}
                         </div>
@@ -329,12 +285,8 @@ export default function MerchantPayments() {
             )}
             <div className="space-y-1.5"><Label>Customer ID</Label><Input value={matchCustomerId} onChange={(e) => { setMatchCustomerId(e.target.value); setMatchBillId(""); }} placeholder="ISP-00001" /></div>
             {unpaidBills && unpaidBills.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Select Unpaid Bill</Label>
-                <Select value={matchBillId} onValueChange={setMatchBillId}>
-                  <SelectTrigger><SelectValue placeholder="Select a bill..." /></SelectTrigger>
-                  <SelectContent>{unpaidBills.map((b) => (<SelectItem key={b.id} value={b.id}>{b.month} — ৳{Number(b.amount).toLocaleString()}</SelectItem>))}</SelectContent>
-                </Select>
+              <div className="space-y-1.5"><Label>Select Unpaid Bill</Label>
+                <Select value={matchBillId} onValueChange={setMatchBillId}><SelectTrigger><SelectValue placeholder="Select a bill..." /></SelectTrigger><SelectContent>{unpaidBills.map((b) => (<SelectItem key={b.id} value={b.id}>{b.month} — ৳{Number(b.amount).toLocaleString()}</SelectItem>))}</SelectContent></Select>
               </div>
             )}
             {unpaidBills && unpaidBills.length === 0 && matchCustomerId && <p className="text-sm text-destructive">No unpaid bills found for this customer</p>}
@@ -354,17 +306,8 @@ export default function MerchantPayments() {
               <div className="space-y-1.5"><Label>Amount</Label><Input type="number" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} /></div>
             </div>
             <div className="space-y-1.5"><Label>Reference</Label><Input value={editForm.reference} onChange={(e) => setEditForm({ ...editForm, reference: e.target.value })} /></div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unmatched">Unmatched</SelectItem>
-                  <SelectItem value="matched">Matched</SelectItem>
-                  <SelectItem value="manual_review">Manual Review</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-1.5"><Label>Status</Label>
+              <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unmatched">Unmatched</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="manual_review">Manual Review</SelectItem><SelectItem value="rejected">Rejected</SelectItem></SelectContent></Select>
             </div>
             <div className="flex justify-end"><Button onClick={handleEditSave} disabled={loading}>{loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes</Button></div>
           </div>
@@ -377,13 +320,10 @@ export default function MerchantPayments() {
           <DialogHeader><DialogTitle>SMS Gateway Setup</DialogTitle></DialogHeader>
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">Configure your Android SMS Gateway or SMS Forwarding service to send incoming bKash merchant SMS to the API endpoint below.</p>
-            <div className="space-y-1.5">
-              <Label>API Endpoint</Label>
-              <div className="flex gap-2"><Input value={apiEndpoint} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={copyEndpoint}><Copy className="h-4 w-4" /></Button></div>
-            </div>
+            <div className="space-y-1.5"><Label>API Endpoint</Label><div className="flex gap-2"><Input value={apiEndpoint} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={copyEndpoint}><Copy className="h-4 w-4" /></Button></div></div>
             <div className="space-y-1.5"><Label>Headers (Required)</Label><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">{`Content-Type: application/json\nX-API-KEY: YOUR_SMS_RECEIVER_API_KEY`}</pre></div>
             <div className="space-y-1.5"><Label>Request Format (POST JSON)</Label><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">{`{\n  "sms_text": "You have received Tk 800 from 017XXXXXXXX. TrxID: 9F3X4K. Reference: ISP-00001."\n}`}</pre></div>
-            <div className="space-y-1.5"><Label>Compatible SMS Sources</Label><ul className="list-disc list-inside text-muted-foreground text-xs space-y-1"><li>Android SMS Gateway App (e.g., SMS Gateway API, Tasker)</li><li>SMS Forwarding services (e.g., SMS to URL)</li><li>Any HTTP client that can POST JSON</li></ul></div>
+            <div className="space-y-1.5"><Label>Compatible SMS Sources</Label><ul className="list-disc list-inside text-muted-foreground text-xs space-y-1"><li>Android SMS Gateway App</li><li>SMS Forwarding services</li><li>Any HTTP client that can POST JSON</li></ul></div>
           </div>
         </DialogContent>
       </Dialog>

@@ -20,6 +20,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { generatePaymentReceiptPDF } from "@/lib/pdf";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { logAudit } from "@/lib/auditLog";
 
 export default function Payments() {
   const [search, setSearch] = useState("");
@@ -36,6 +38,7 @@ export default function Payments() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const queryClient = useQueryClient();
+  const { canEdit, adminName, userId } = useAdminRole();
 
   const { data: payments, isLoading } = useQuery({
     queryKey: ["admin-payments"],
@@ -50,11 +53,7 @@ export default function Payments() {
   });
 
   const filtered = payments?.filter((p) => {
-    const matchSearch =
-      !search ||
-      p.customers?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.customers?.customer_id?.toLowerCase().includes(search.toLowerCase()) ||
-      p.transaction_id?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || p.customers?.name?.toLowerCase().includes(search.toLowerCase()) || p.customers?.customer_id?.toLowerCase().includes(search.toLowerCase()) || p.transaction_id?.toLowerCase().includes(search.toLowerCase());
     const matchMethod = methodFilter === "all" || p.payment_method === methodFilter;
     const paidDate = new Date(p.paid_at);
     const matchFrom = !dateFrom || paidDate >= new Date(dateFrom);
@@ -64,20 +63,10 @@ export default function Payments() {
 
   const handleEditSave = async () => {
     if (!editPayment) return;
-    const { error } = await supabase
-      .from("payments")
-      .update({
-        amount: parseFloat(editAmount),
-        payment_method: editMethod,
-        transaction_id: editTrxId || null,
-        status: editStatus,
-        paid_at: new Date(editDate).toISOString(),
-      })
-      .eq("id", editPayment.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const newData = { amount: parseFloat(editAmount), payment_method: editMethod, transaction_id: editTrxId || null, status: editStatus, paid_at: new Date(editDate).toISOString() };
+    const { error } = await supabase.from("payments").update(newData).eq("id", editPayment.id);
+    if (error) { toast.error(error.message); return; }
+    if (userId) await logAudit({ adminId: userId, adminName, action: "edit", tableName: "payments", recordId: editPayment.id, oldData: { amount: editPayment.amount, payment_method: editPayment.payment_method, transaction_id: editPayment.transaction_id, status: editPayment.status }, newData });
     toast.success("Payment updated successfully");
     setEditOpen(false);
     queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
@@ -87,21 +76,15 @@ export default function Payments() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      // Delete related ledger entries
-      const ref = deleteTarget.transaction_id
-        ? `TXN-${deleteTarget.transaction_id}`
-        : `PAY-${deleteTarget.id.substring(0, 8)}`;
+      const ref = deleteTarget.transaction_id ? `TXN-${deleteTarget.transaction_id}` : `PAY-${deleteTarget.id.substring(0, 8)}`;
       await supabase.from("customer_ledger").delete().eq("reference", ref);
       const { error } = await supabase.from("payments").delete().eq("id", deleteTarget.id);
       if (error) throw error;
+      if (userId) await logAudit({ adminId: userId, adminName, action: "delete", tableName: "payments", recordId: deleteTarget.id, oldData: { amount: deleteTarget.amount, payment_method: deleteTarget.payment_method, customer: deleteTarget.customers?.name } });
       toast.success("Payment deleted successfully");
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setDeleteLoading(false);
-    }
+    } catch (err: any) { toast.error(err.message); } finally { setDeleteLoading(false); }
   };
 
   const statusColor = (status: string) => {
@@ -137,81 +120,52 @@ export default function Payments() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search customer or TrxID..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <Input type="date" placeholder="From date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            <Input type="date" placeholder="To date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             <Select value={methodFilter} onValueChange={setMethodFilter}>
               <SelectTrigger><SelectValue placeholder="Payment method" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Methods</SelectItem>
-                <SelectItem value="bkash">bKash</SelectItem>
-                <SelectItem value="nagad">Nagad</SelectItem>
-                <SelectItem value="bank">Bank</SelectItem>
-                <SelectItem value="cash">Cash</SelectItem>
-              </SelectContent>
+              <SelectContent><SelectItem value="all">All Methods</SelectItem><SelectItem value="bkash">bKash</SelectItem><SelectItem value="nagad">Nagad</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="cash">Cash</SelectItem></SelectContent>
             </Select>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Transaction ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Customer ID</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Transaction ID</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-12">No payments found</TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">No payments found</TableCell></TableRow>
                 ) : (
                   filtered?.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell className="font-mono text-sm">{payment.customers?.customer_id}</TableCell>
                       <TableCell className="font-medium">{payment.customers?.name}</TableCell>
                       <TableCell>৳{Number(payment.amount).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={methodColor(payment.payment_method)}>{payment.payment_method}</Badge>
-                      </TableCell>
+                      <TableCell><Badge variant="outline" className={methodColor(payment.payment_method)}>{payment.payment_method}</Badge></TableCell>
                       <TableCell className="font-mono text-sm">{payment.transaction_id || payment.bkash_trx_id || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={statusColor(payment.status)}>{payment.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(payment.paid_at), "dd MMM yyyy HH:mm")}
-                      </TableCell>
+                      <TableCell><Badge variant="outline" className={statusColor(payment.status)}>{payment.status}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{format(new Date(payment.paid_at), "dd MMM yyyy HH:mm")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                            setEditPayment(payment);
-                            setEditAmount(payment.amount.toString());
-                            setEditMethod(payment.payment_method);
-                            setEditTrxId(payment.transaction_id || "");
-                            setEditStatus(payment.status);
-                            setEditDate(format(new Date(payment.paid_at), "yyyy-MM-dd'T'HH:mm"));
-                            setEditOpen(true);
-                          }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(payment)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                setEditPayment(payment); setEditAmount(payment.amount.toString()); setEditMethod(payment.payment_method);
+                                setEditTrxId(payment.transaction_id || ""); setEditStatus(payment.status);
+                                setEditDate(format(new Date(payment.paid_at), "yyyy-MM-dd'T'HH:mm")); setEditOpen(true);
+                              }}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(payment)}><Trash2 className="h-4 w-4" /></Button>
+                            </>
+                          )}
                           {payment.status === "completed" && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => generatePaymentReceiptPDF(payment, payment.customers)}>
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => generatePaymentReceiptPDF(payment, payment.customers)}><Download className="h-4 w-4" /></Button>
                           )}
                         </div>
                       </TableCell>
@@ -224,50 +178,20 @@ export default function Payments() {
         )}
       </div>
 
-      {/* Edit Payment Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Payment</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Amount</Label>
-              <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+            <div className="space-y-1.5"><Label>Amount</Label><Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Payment Method</Label>
+              <Select value={editMethod} onValueChange={setEditMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bkash">bKash</SelectItem><SelectItem value="nagad">Nagad</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="bkash_merchant">bKash Merchant</SelectItem></SelectContent></Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Payment Method</Label>
-              <Select value={editMethod} onValueChange={setEditMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bkash">bKash</SelectItem>
-                  <SelectItem value="nagad">Nagad</SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                  <SelectItem value="bkash_merchant">bKash Merchant</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-1.5"><Label>Transaction ID</Label><Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="completed">Completed</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="failed">Failed</SelectItem></SelectContent></Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Transaction ID</Label>
-              <Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={editStatus} onValueChange={setEditStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Date</Label>
-              <Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleEditSave}>Save Changes</Button>
-            </div>
+            <div className="space-y-1.5"><Label>Date</Label><Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
+            <div className="flex justify-end"><Button onClick={handleEditSave}>Save Changes</Button></div>
           </div>
         </DialogContent>
       </Dialog>

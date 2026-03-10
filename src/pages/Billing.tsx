@@ -19,6 +19,8 @@ import { FileText, Pencil, CheckCircle, Loader2, Search, Trash2 } from "lucide-r
 import { toast } from "sonner";
 import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { logAudit } from "@/lib/auditLog";
 
 export default function Billing() {
   const [search, setSearch] = useState("");
@@ -33,6 +35,7 @@ export default function Billing() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const queryClient = useQueryClient();
+  const { canEdit, adminName, userId } = useAdminRole();
 
   const { data: bills, isLoading } = useQuery({
     queryKey: ["bills"],
@@ -68,11 +71,7 @@ export default function Billing() {
         return;
       }
 
-      const { data: existing } = await supabase
-        .from("bills")
-        .select("customer_id")
-        .eq("month", genMonth);
-
+      const { data: existing } = await supabase.from("bills").select("customer_id").eq("month", genMonth);
       const existingIds = new Set(existing?.map((b) => b.customer_id));
       const newBills = customers
         .filter((c) => !existingIds.has(c.id))
@@ -80,13 +79,7 @@ export default function Billing() {
           const dueDay = c.due_date_day || 15;
           const monthDate = new Date(genMonth + "-01");
           const dueDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dueDay);
-          return {
-            customer_id: c.id,
-            month: genMonth,
-            amount: c.monthly_bill,
-            status: "unpaid" as const,
-            due_date: dueDate.toISOString().split("T")[0],
-          };
+          return { customer_id: c.id, month: genMonth, amount: c.monthly_bill, status: "unpaid" as const, due_date: dueDate.toISOString().split("T")[0] };
         });
 
       if (!newBills.length) {
@@ -102,19 +95,10 @@ export default function Billing() {
       const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const billCustomers = customers.filter((c) => !existingIds.has(c.id));
       for (const cust of billCustomers) {
-        fetch(
-          `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/send-sms`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: cust.phone,
-              message: `Dear ${cust.name}, your internet bill for ${genMonth} is ${cust.monthly_bill} BDT. Please pay before the due date to avoid service suspension.`,
-              sms_type: "bill_generate",
-              customer_id: cust.id,
-            }),
-          }
-        ).catch(() => {});
+        fetch(`https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/send-sms`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: cust.phone, message: `Dear ${cust.name}, your internet bill for ${genMonth} is ${cust.monthly_bill} BDT. Please pay before the due date to avoid service suspension.`, sms_type: "bill_generate", customer_id: cust.id }),
+        }).catch(() => {});
       }
 
       toast.success(`Generated ${newBills.length} bills for ${genMonth}`);
@@ -129,14 +113,8 @@ export default function Billing() {
   };
 
   const handleMarkPaid = async (bill: any) => {
-    const { error } = await supabase
-      .from("bills")
-      .update({ status: "paid", paid_date: new Date().toISOString() })
-      .eq("id", bill.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill.id);
+    if (error) { toast.error(error.message); return; }
     toast.success("Bill marked as paid");
     queryClient.invalidateQueries({ queryKey: ["bills"] });
     queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
@@ -144,19 +122,10 @@ export default function Billing() {
 
   const handleEditSave = async () => {
     if (!editBill) return;
-    const { error } = await supabase
-      .from("bills")
-      .update({
-        month: editMonth,
-        amount: parseFloat(editAmount),
-        status: editStatus,
-        ...(editStatus === "paid" && !editBill.paid_date ? { paid_date: new Date().toISOString() } : {}),
-      })
-      .eq("id", editBill.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const newData = { month: editMonth, amount: parseFloat(editAmount), status: editStatus, ...(editStatus === "paid" && !editBill.paid_date ? { paid_date: new Date().toISOString() } : {}) };
+    const { error } = await supabase.from("bills").update(newData).eq("id", editBill.id);
+    if (error) { toast.error(error.message); return; }
+    if (userId) await logAudit({ adminId: userId, adminName, action: "edit", tableName: "bills", recordId: editBill.id, oldData: { month: editBill.month, amount: editBill.amount, status: editBill.status }, newData });
     toast.success("Bill updated successfully");
     setEditOpen(false);
     queryClient.invalidateQueries({ queryKey: ["bills"] });
@@ -167,11 +136,10 @@ export default function Billing() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      // Delete related ledger entries
       await supabase.from("customer_ledger").delete().eq("reference", `BILL-${deleteTarget.id.substring(0, 8)}`);
-      // Delete the bill
       const { error } = await supabase.from("bills").delete().eq("id", deleteTarget.id);
       if (error) throw error;
+      if (userId) await logAudit({ adminId: userId, adminName, action: "delete", tableName: "bills", recordId: deleteTarget.id, oldData: { month: deleteTarget.month, amount: deleteTarget.amount, status: deleteTarget.status, customer: deleteTarget.customers?.name } });
       toast.success("Bill deleted successfully");
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["bills"] });
@@ -199,9 +167,7 @@ export default function Billing() {
           <h1 className="text-2xl font-bold text-foreground">Billing</h1>
           <p className="text-muted-foreground mt-1">Generate and manage customer bills</p>
         </div>
-        <Button onClick={() => setGenerateOpen(true)}>
-          <FileText className="h-4 w-4 mr-2" /> Generate Bills
-        </Button>
+        <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> Generate Bills</Button>
       </div>
 
       <div className="glass-card rounded-xl">
@@ -213,9 +179,7 @@ export default function Billing() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-48">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -232,9 +196,7 @@ export default function Billing() {
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-12">No bills found</TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-12">No bills found</TableCell></TableRow>
                 ) : (
                   filtered?.map((bill) => (
                     <TableRow key={bill.id}>
@@ -242,30 +204,22 @@ export default function Billing() {
                       <TableCell className="font-medium">{bill.customers?.name}</TableCell>
                       <TableCell>{bill.month}</TableCell>
                       <TableCell>৳{Number(bill.amount).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={statusColor(bill.status)}>{bill.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(bill.created_at), "dd MMM yyyy")}
-                      </TableCell>
+                      <TableCell><Badge variant="outline" className={statusColor(bill.status)}>{bill.status}</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{format(new Date(bill.created_at), "dd MMM yyyy")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                            setEditBill(bill);
-                            setEditMonth(bill.month);
-                            setEditAmount(bill.amount.toString());
-                            setEditStatus(bill.status);
-                            setEditOpen(true);
-                          }}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(bill)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEdit && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                                setEditBill(bill); setEditMonth(bill.month); setEditAmount(bill.amount.toString()); setEditStatus(bill.status); setEditOpen(true);
+                              }}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(bill)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           {bill.status !== "paid" && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => handleMarkPaid(bill)}>
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => handleMarkPaid(bill)}><CheckCircle className="h-4 w-4" /></Button>
                           )}
                         </div>
                       </TableCell>
@@ -278,52 +232,27 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Generate Dialog */}
       <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Generate Monthly Bills</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Month</Label>
-              <Input type="month" value={genMonth} onChange={(e) => setGenMonth(e.target.value)} />
-            </div>
+            <div className="space-y-1.5"><Label>Month</Label><Input type="month" value={genMonth} onChange={(e) => setGenMonth(e.target.value)} /></div>
             <p className="text-sm text-muted-foreground">This will generate bills for all active customers who don't already have a bill for this month.</p>
-            <div className="flex justify-end">
-              <Button onClick={handleGenerate} disabled={genLoading}>
-                {genLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Generate
-              </Button>
-            </div>
+            <div className="flex justify-end"><Button onClick={handleGenerate} disabled={genLoading}>{genLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Generate</Button></div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Bill Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Bill</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Month</Label>
-              <Input type="month" value={editMonth} onChange={(e) => setEditMonth(e.target.value)} />
+            <div className="space-y-1.5"><Label>Month</Label><Input type="month" value={editMonth} onChange={(e) => setEditMonth(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Amount</Label><Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unpaid">Unpaid</SelectItem><SelectItem value="paid">Paid</SelectItem><SelectItem value="partial">Partial</SelectItem></SelectContent></Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Amount</Label>
-              <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={editStatus} onValueChange={setEditStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleEditSave}>Save Changes</Button>
-            </div>
+            <div className="flex justify-end"><Button onClick={handleEditSave}>Save Changes</Button></div>
           </div>
         </DialogContent>
       </Dialog>
