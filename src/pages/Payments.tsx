@@ -23,6 +23,7 @@ import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { logAudit } from "@/lib/auditLog";
 import { usePermissions } from "@/hooks/usePermissions";
+import { paymentsApi } from "@/lib/api";
 
 export default function Payments() {
   const [search, setSearch] = useState("");
