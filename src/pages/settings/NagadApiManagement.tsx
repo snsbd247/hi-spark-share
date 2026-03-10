@@ -339,6 +339,40 @@ export default function NagadApiManagement() {
           </Card>
         </div>
 
+        {/* Webhook & Callback URLs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Webhook & Callback URLs
+            </CardTitle>
+            <CardDescription>Use these URLs when configuring Nagad merchant dashboard callbacks</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { label: "Payment Create", url: `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/nagad-payment/create`, desc: "Endpoint to initiate a new Nagad payment" },
+              { label: "Payment Verify", url: `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/nagad-payment/verify`, desc: "Endpoint to verify/confirm a Nagad payment" },
+              { label: "Customer Callback", url: `${window.location.origin}/portal/payment-callback`, desc: "Redirect URL after customer completes Nagad payment" },
+            ].map(({ label, url, desc }) => (
+              <div key={label} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-xs text-muted-foreground mb-1">{desc}</p>
+                  <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all block">{url}</code>
+                </div>
+                <Button variant="ghost" size="icon" className="shrink-0 mt-1" onClick={() => {
+                  navigator.clipboard.writeText(url);
+                  setCopiedUrl(label);
+                  toast.success(`${label} URL copied`);
+                  setTimeout(() => setCopiedUrl(null), 2000);
+                }}>
+                  {copiedUrl === label ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         {/* Query & Refund Tool */}
         {isSuperAdmin && (
           <Card>
