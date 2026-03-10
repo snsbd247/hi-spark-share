@@ -48,7 +48,7 @@ export default function LoginLogs() {
     queryKey: ["profiles-map"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("id, full_name, email");
-      return data || [];
+      return (data || []) as { id: string; full_name: string; email: string | null }[];
     },
   });
 

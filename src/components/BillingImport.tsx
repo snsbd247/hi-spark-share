@@ -164,7 +164,7 @@ export default function BillingImport({ open, onOpenChange, onComplete }: Props)
         .from("customers")
         .select("id, customer_id, monthly_bill, due_date_day")
         .eq("status", "active");
-      const custMap = new Map(customers?.map((c) => [c.customer_id.toUpperCase(), c]) || []);
+      const custMap = new Map((customers as { id: string; customer_id: string; monthly_bill: number; due_date_day: number | null }[])?.map((c) => [c.customer_id.toUpperCase(), c]) || []);
 
       const errors: ImportError[] = [];
       let imported = 0;
