@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
-  Package, MapPin, Router, Shield, Wallet, BarChart3, Monitor, FileText, Menu, X,
+  Package, MapPin, Router, Shield, Wallet, BarChart3, Monitor, FileText, Menu, X, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
