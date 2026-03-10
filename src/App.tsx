@@ -76,6 +76,7 @@ function App() {
                 <Route path="/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
                 <Route path="/login-logs" element={<ProtectedRoute><LoginLogs /></ProtectedRoute>} />
                 <Route path="/sessions" element={<ProtectedRoute><SessionManagement /></ProtectedRoute>} />
+                <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
 
                 {/* Settings Routes */}
                 <Route path="/settings/general" element={<ProtectedRoute><GeneralSettings /></ProtectedRoute>} />

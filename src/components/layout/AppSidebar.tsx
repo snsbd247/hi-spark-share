@@ -38,6 +38,7 @@ const settingsNav = [
   { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers" },
   { to: "/sessions", icon: Monitor, label: "Sessions" },
   { to: "/login-logs", icon: FileText, label: "Login Logs" },
+  { to: "/audit-logs", icon: ClipboardList, label: "Audit Logs" },
 ];
 
 interface NavGroupProps {
