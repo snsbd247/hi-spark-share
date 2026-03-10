@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
       if (typeof disabled === "boolean") updateData.ban_duration = disabled ? "876600h" : "none";
 
       if (Object.keys(updateData).length > 0) {
-        const { error } = await supabase.auth.admin.updateUser(user_id, updateData);
+        const { error } = await supabase.auth.admin.updateUserById(user_id, updateData);
         if (error) throw error;
       }
 
