@@ -61,6 +61,17 @@ export default function Dashboard() {
   const [sendingAlert, setSendingAlert] = useState<"sms" | "email" | null>(null);
   const [alertShown, setAlertShown] = useState(false);
 
+  // MikroTik real-time stats
+  const { data: mikrotikStats, isLoading: loadingMikrotik } = useQuery({
+    queryKey: ["mikrotik-router-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient.functions.invoke("mikrotik-sync/router-stats", { body: {} });
+      if (error) throw error;
+      return data as { total_online: number; total_suspended: number; routers: { name: string; online: number; suspended: number; error?: string }[] };
+    },
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  });
+
   const { data: customers, isLoading: loadingCustomers } = useQuery({
     queryKey: ["customers-stats"],
     queryFn: async () => {
