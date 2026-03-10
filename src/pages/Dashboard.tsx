@@ -372,40 +372,25 @@ export default function Dashboard() {
 
       {/* Row 1: Customer & Online Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <DashboardCard title="Total Customer" value={total} headerColor="bg-[hsl(var(--primary))]" link="/customers" />
-        <DashboardCard title="Active Customer" value={active} headerColor="bg-success" link="/customers" />
-        <DashboardCard title="Inactive Customer" value={suspended} headerColor="bg-destructive" link="/customers" />
-        <DashboardCard
-          title="Online Customer"
-          value={loadingMikrotik ? "..." : mikrotikStats?.total_online ?? 0}
-          headerColor="bg-[hsl(var(--primary))]"
-          link="/customers"
-        />
+        <DashboardCard title="Total Customer" value={total} headerColor="bg-[hsl(var(--primary))]" />
+        <DashboardCard title="Active Customer" value={active} headerColor="bg-success" />
+        <DashboardCard title="Inactive Customer" value={suspended} headerColor="bg-destructive" />
+        <DashboardCard title="Online Customer" value={loadingMikrotik ? "..." : mikrotikStats?.total_online ?? 0} headerColor="bg-[hsl(var(--primary))]" />
       </div>
 
-      {/* Row 2: Offline, MikroTik Suspended, Income */}
+      {/* Row 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <DashboardCard
-          title="Offline Customer"
-          value={loadingMikrotik ? "..." : (total - (mikrotikStats?.total_online ?? 0))}
-          headerColor="bg-success"
-          link="/customers"
-        />
-        <DashboardCard
-          title="MikroTik Suspended"
-          value={loadingMikrotik ? "..." : mikrotikStats?.total_suspended ?? 0}
-          headerColor="bg-destructive"
-          link="/customers"
-        />
-        <DashboardCard title="This Month Income" value={`৳${collectedAmount.toLocaleString()}`} headerColor="bg-[hsl(var(--primary))]" link="/payments" />
-        <DashboardCard title="This Month Due" value={`৳${dueAmount.toLocaleString()}`} headerColor="bg-destructive" link="/billing" />
+        <DashboardCard title="Offline Customer" value={loadingMikrotik ? "..." : (total - (mikrotikStats?.total_online ?? 0))} headerColor="bg-success" />
+        <DashboardCard title="MikroTik Suspended" value={loadingMikrotik ? "..." : mikrotikStats?.total_suspended ?? 0} headerColor="bg-destructive" />
+        <DashboardCard title="This Month Income" value={`৳${collectedAmount.toLocaleString()}`} headerColor="bg-[hsl(var(--primary))]" />
+        <DashboardCard title="This Month Due" value={`৳${dueAmount.toLocaleString()}`} headerColor="bg-destructive" />
       </div>
 
-      {/* Row 3: Total Due, Support, Router Health */}
+      {/* Row 3 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <DashboardCard title="Total Due" value={`৳${totalDue.toLocaleString()}`} headerColor="bg-warning" link="/billing" />
-        <DashboardCard title="Support & Ticket" value={openTickets} headerColor="bg-muted-foreground" link="/tickets" />
-        <DashboardCard title="Monthly Revenue" value={`৳${monthlyRevenue.toLocaleString()}`} headerColor="bg-success" link="/payments" />
+        <DashboardCard title="Total Due" value={`৳${totalDue.toLocaleString()}`} headerColor="bg-warning" />
+        <DashboardCard title="Support & Ticket" value={openTickets} headerColor="bg-muted-foreground" />
+        <DashboardCard title="Monthly Revenue" value={`৳${monthlyRevenue.toLocaleString()}`} headerColor="bg-success" />
         {/* Router Health */}
         <Card className="overflow-hidden animate-fade-in shadow-sm hover:shadow-md transition-shadow">
           <div className="bg-[hsl(var(--primary))] px-4 py-3 text-center flex items-center justify-between">
