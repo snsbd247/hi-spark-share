@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import BillingImport from "@/components/BillingImport";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Pencil, CheckCircle, Loader2, Search, Trash2 } from "lucide-react";
+import { FileText, Pencil, CheckCircle, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
@@ -34,6 +35,7 @@ export default function Billing() {
   const [genLoading, setGenLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
   const { canEdit, adminName, userId } = useAdminRole();
 
@@ -167,7 +169,10 @@ export default function Billing() {
           <h1 className="text-2xl font-bold text-foreground">Billing</h1>
           <p className="text-muted-foreground mt-1">Generate and manage customer bills</p>
         </div>
-        <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> Generate Bills</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>
+          <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> Generate Bills</Button>
+        </div>
       </div>
 
       <div className="glass-card rounded-xl">
@@ -258,6 +263,11 @@ export default function Billing() {
       </Dialog>
 
       <ConfirmDeleteDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+
+      <BillingImport open={importOpen} onOpenChange={setImportOpen} onComplete={() => {
+        queryClient.invalidateQueries({ queryKey: ["bills"] });
+        queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+      }} />
     </DashboardLayout>
   );
 }
