@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/apiDb";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerInfoCard from "@/components/customers/CustomerInfoCard";
 import CustomerView from "@/components/customers/CustomerView";
