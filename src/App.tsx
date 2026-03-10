@@ -44,6 +44,7 @@ import CustomerProfilePage from "@/pages/CustomerProfile";
 import LoginLogs from "@/pages/LoginLogs";
 import AuditLogs from "@/pages/AuditLogs";
 import RoleManagement from "@/pages/settings/RoleManagement";
+import BackupRestore from "@/pages/settings/BackupRestore";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
