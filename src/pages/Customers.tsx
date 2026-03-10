@@ -35,6 +35,9 @@ export default function Customers() {
   const [pageSize, setPageSize] = useState(20);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canCreate = isSuperAdmin || hasPermission("customers", "create");
+  const canEdit = isSuperAdmin || hasPermission("customers", "edit");
 
   const bulkSyncCustomers = async () => {
     setBulkSyncing(true);
