@@ -22,6 +22,7 @@ const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
+import CustomerImport from "@/components/CustomerImport";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
