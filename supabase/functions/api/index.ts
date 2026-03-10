@@ -120,7 +120,8 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
   if (operation === "delete") {
     let query = supabase.from(table).delete();
     for (const f of (filters || [])) {
-      if (f.op === "in") query = query.in(f.column, f.value);
+      if (f.column === "__or") query = query.or(f.value);
+      else if (f.op === "in") query = query.in(f.column, f.value);
       else if (f.op === "like") query = query.like(f.column, f.value);
       else query = query[f.op](f.column, f.value);
     }
