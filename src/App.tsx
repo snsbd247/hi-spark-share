@@ -86,6 +86,7 @@ function App() {
                 <Route path="/settings/zones" element={<ProtectedRoute><ZoneManagement /></ProtectedRoute>} />
                 <Route path="/settings/mikrotik" element={<ProtectedRoute><MikroTikRouters /></ProtectedRoute>} />
                 <Route path="/settings/bkash" element={<ProtectedRoute><BkashApiManagement /></ProtectedRoute>} />
+                <Route path="/settings/nagad" element={<ProtectedRoute><NagadApiManagement /></ProtectedRoute>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />

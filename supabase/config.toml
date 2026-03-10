@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.admin-login]
 verify_jwt = false
+
+[functions.nagad-payment]
+verify_jwt = false
