@@ -30,6 +30,115 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
+// ─── GENERIC DATA PROXY HANDLER ─────────────────────────────────
+const ALLOWED_TABLES = new Set([
+  "customers", "bills", "payments", "merchant_payments", "packages", "zones",
+  "profiles", "user_roles", "custom_roles", "permissions", "role_permissions",
+  "general_settings", "sms_settings", "payment_gateways", "mikrotik_routers",
+  "olts", "onus", "support_tickets", "ticket_replies", "audit_logs",
+  "admin_login_logs", "admin_sessions", "sms_logs", "reminder_logs",
+  "customer_ledger", "customer_sessions",
+]);
+
+const PUBLIC_READ_TABLES = new Set([
+  "packages", "zones", "general_settings", "support_tickets", "ticket_replies",
+]);
+
+async function handleDataProxy(supabase: any, userId: string | null, body: any) {
+  const { table, operation, select, filters, order, limit, single, maybeSingle, data, returning } = body;
+
+  if (!table || !ALLOWED_TABLES.has(table)) {
+    return jsonResponse({ error: "Table not allowed" }, 403);
+  }
+
+  // Auth: allow unauthenticated reads on public tables only
+  if (!userId) {
+    if (operation !== "select" || !PUBLIC_READ_TABLES.has(table)) {
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+  }
+
+  // Write authorization: require admin/super_admin (except own profile updates)
+  const writeOps = new Set(["insert", "update", "delete", "upsert"]);
+  if (writeOps.has(operation) && userId) {
+    const isOwnProfileUpdate = table === "profiles" && operation === "update" &&
+      filters?.some((f: any) => f.column === "id" && f.op === "eq" && f.value === userId);
+
+    if (!isOwnProfileUpdate) {
+      const isAdmin = await hasRole(supabase, userId, "admin") || await hasRole(supabase, userId, "super_admin");
+      if (!isAdmin) {
+        return jsonResponse({ error: "Insufficient permissions" }, 403);
+      }
+    }
+  }
+
+  // Build and execute query
+  if (operation === "select") {
+    let query = supabase.from(table).select(select || "*");
+    for (const f of (filters || [])) {
+      if (f.op === "in") query = query.in(f.column, f.value);
+      else if (f.op === "is") query = query.is(f.column, f.value);
+      else query = query[f.op](f.column, f.value);
+    }
+    for (const o of (order || [])) {
+      query = query.order(o.column, { ascending: o.ascending });
+    }
+    if (limit) query = query.limit(limit);
+
+    let result;
+    if (single) result = await query.single();
+    else if (maybeSingle) result = await query.maybeSingle();
+    else result = await query;
+
+    if (result.error) throw result.error;
+    return jsonResponse({ data: result.data });
+  }
+
+  if (operation === "insert") {
+    let query = supabase.from(table).insert(data);
+    if (returning) query = query.select(returning);
+    else query = query.select();
+    const result = single ? await query.single() : await query;
+    if (result.error) throw result.error;
+    return jsonResponse({ data: result.data });
+  }
+
+  if (operation === "update") {
+    let query = supabase.from(table).update(data);
+    for (const f of (filters || [])) {
+      if (f.op === "in") query = query.in(f.column, f.value);
+      else query = query[f.op](f.column, f.value);
+    }
+    if (returning) query = query.select(returning);
+    const result = single ? await query.single() : await query;
+    if (result.error) throw result.error;
+    return jsonResponse({ data: result.data });
+  }
+
+  if (operation === "delete") {
+    let query = supabase.from(table).delete();
+    for (const f of (filters || [])) {
+      if (f.op === "in") query = query.in(f.column, f.value);
+      else if (f.op === "like") query = query.like(f.column, f.value);
+      else query = query[f.op](f.column, f.value);
+    }
+    const result = await query;
+    if (result.error) throw result.error;
+    return jsonResponse({ data: result.data });
+  }
+
+  if (operation === "upsert") {
+    let query = supabase.from(table).upsert(data);
+    if (returning) query = query.select(returning);
+    const result = single ? await query.single() : await query;
+    if (result.error) throw result.error;
+    return jsonResponse({ data: result.data });
+  }
+
+  return jsonResponse({ error: "Invalid operation" }, 400);
+}
+
+// ─── MAIN HANDLER ───────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,50 +147,49 @@ Deno.serve(async (req: Request) => {
   const supabase = getSupabase();
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
-  // Path: /api/{resource}/{action}
   const resource = pathParts[pathParts.length - 2] || "";
   const action = pathParts[pathParts.length - 1] || "";
 
-  // Tickets can be created by customers (no auth required, customer_id in body)
   const isPublicTicketCreate = resource === "tickets" && action === "create";
+  const isDataProxy = resource === "data";
 
-  // Authenticate (skip for public ticket creation)
+  // Authenticate: try to get userId, don't fail for data proxy or public endpoints
   let userId: string | null = null;
-  if (!isPublicTicketCreate) {
-    const auth = await authenticateRequest(supabase, req.headers.get("Authorization"));
-    if (auth.error) return jsonResponse({ error: auth.error }, 401);
-    userId = auth.userId!;
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader) {
+    const auth = await authenticateRequest(supabase, authHeader);
+    if (!auth.error) userId = auth.userId!;
+  }
+
+  // Require auth for specific resource endpoints (not data proxy, it handles its own auth)
+  if (!isPublicTicketCreate && !isDataProxy && !userId) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   try {
+    // ─── GENERIC DATA PROXY ──────────────────────────────────────
+    if (isDataProxy) {
+      const body = await req.json();
+      return await handleDataProxy(supabase, userId, body);
+    }
+
     // ─── BILLS ──────────────────────────────────────────────────
     if (resource === "bills") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
         const { customer_id, month, amount, due_date, status = "unpaid" } = body;
-
         const { data: bill, error } = await supabase
-          .from("bills")
-          .insert({ customer_id, month, amount, due_date, status })
-          .select()
-          .single();
+          .from("bills").insert({ customer_id, month, amount, due_date, status }).select().single();
         if (error) throw error;
-
-        // Business logic: create ledger entry
         await createBillLedgerEntry(supabase, bill);
-
         return jsonResponse({ success: true, bill });
       }
 
       if (action === "generate" && req.method === "POST") {
         const { month } = await req.json();
-
         const { data: customers, error: custErr } = await supabase
-          .from("customers")
-          .select("id, name, phone, monthly_bill, due_date_day")
-          .eq("status", "active");
+          .from("customers").select("id, name, phone, monthly_bill, due_date_day").eq("status", "active");
         if (custErr) throw custErr;
-
         if (!customers?.length) return jsonResponse({ message: "No active customers", generated: 0 });
 
         const { data: existing } = await supabase.from("bills").select("customer_id").eq("month", month);
@@ -93,13 +201,7 @@ Deno.serve(async (req: Request) => {
             const dueDay = c.due_date_day || 15;
             const monthDate = new Date(month + "-01");
             const dueDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dueDay);
-            return {
-              customer_id: c.id,
-              month,
-              amount: c.monthly_bill,
-              status: "unpaid",
-              due_date: dueDate.toISOString().split("T")[0],
-            };
+            return { customer_id: c.id, month, amount: c.monthly_bill, status: "unpaid", due_date: dueDate.toISOString().split("T")[0] };
           });
 
         if (!newBillData.length) return jsonResponse({ message: "All bills already generated", generated: 0 });
@@ -107,12 +209,10 @@ Deno.serve(async (req: Request) => {
         const { data: insertedBills, error } = await supabase.from("bills").insert(newBillData).select();
         if (error) throw error;
 
-        // Business logic: create ledger entries for each bill
         for (const bill of insertedBills || []) {
           await createBillLedgerEntry(supabase, bill);
         }
 
-        // Send SMS notifications
         const smsUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-sms`;
         for (const cust of customers.filter((c: any) => !existingIds.has(c.id))) {
           fetch(smsUrl, {
@@ -121,8 +221,7 @@ Deno.serve(async (req: Request) => {
             body: JSON.stringify({
               to: cust.phone,
               message: `Dear ${cust.name}, your internet bill for ${month} is ${cust.monthly_bill} BDT. Please pay before the due date to avoid service suspension.`,
-              sms_type: "bill_generate",
-              customer_id: cust.id,
+              sms_type: "bill_generate", customer_id: cust.id,
             }),
           }).catch(() => {});
         }
@@ -139,7 +238,6 @@ Deno.serve(async (req: Request) => {
 
       if (action === "delete" && req.method === "POST") {
         const { id } = await req.json();
-        // Delete related ledger entry
         await supabase.from("customer_ledger").delete().like("reference", `BILL-${id.substring(0, 8)}`);
         const { error } = await supabase.from("bills").delete().eq("id", id);
         if (error) throw error;
@@ -148,10 +246,7 @@ Deno.serve(async (req: Request) => {
 
       if (action === "mark-paid" && req.method === "POST") {
         const { id } = await req.json();
-        const { error } = await supabase
-          .from("bills")
-          .update({ status: "paid", paid_date: new Date().toISOString() })
-          .eq("id", id);
+        const { error } = await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
         return jsonResponse({ success: true });
       }
@@ -161,18 +256,10 @@ Deno.serve(async (req: Request) => {
     if (resource === "payments") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
-
-        const { data: payment, error } = await supabase
-          .from("payments")
-          .insert(body)
-          .select()
-          .single();
+        const { data: payment, error } = await supabase.from("payments").insert(body).select().single();
         if (error) throw error;
-
-        // Business logic: create ledger entry + handle reactivation
         await createPaymentLedgerEntry(supabase, payment);
         await handlePaymentReactivation(supabase, payment);
-
         return jsonResponse({ success: true, payment });
       }
 
@@ -197,40 +284,20 @@ Deno.serve(async (req: Request) => {
     if (resource === "merchant-payments") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
-
-        // Check for duplicate
-        const { data: existing } = await supabase
-          .from("merchant_payments")
-          .select("id")
-          .eq("transaction_id", body.transaction_id)
-          .maybeSingle();
-
+        const { data: existing } = await supabase.from("merchant_payments").select("id").eq("transaction_id", body.transaction_id).maybeSingle();
         if (existing) return jsonResponse({ error: "Duplicate Transaction ID" }, 400);
 
-        // Insert the payment
-        const { data: mp, error } = await supabase
-          .from("merchant_payments")
-          .insert({
-            transaction_id: body.transaction_id,
-            sender_phone: body.sender_phone,
-            amount: body.amount,
-            reference: body.reference || null,
-            payment_date: body.payment_date || new Date().toISOString(),
-            sms_text: body.sms_text || null,
-          })
-          .select()
-          .single();
+        const { data: mp, error } = await supabase.from("merchant_payments").insert({
+          transaction_id: body.transaction_id, sender_phone: body.sender_phone, amount: body.amount,
+          reference: body.reference || null, payment_date: body.payment_date || new Date().toISOString(),
+          sms_text: body.sms_text || null,
+        }).select().single();
         if (error) throw error;
 
-        // Business logic: auto-match
         const matchResult = await autoMatchMerchantPayment(supabase, mp);
-
-        // Update the merchant payment with match result
         await supabase.from("merchant_payments").update({
-          status: matchResult.status,
-          matched_customer_id: matchResult.matched_customer_id || null,
-          matched_bill_id: matchResult.matched_bill_id || null,
-          notes: matchResult.notes || null,
+          status: matchResult.status, matched_customer_id: matchResult.matched_customer_id || null,
+          matched_bill_id: matchResult.matched_bill_id || null, notes: matchResult.notes || null,
         }).eq("id", mp.id);
 
         return jsonResponse({ success: true, match_status: matchResult.status });
@@ -238,25 +305,14 @@ Deno.serve(async (req: Request) => {
 
       if (action === "match" && req.method === "POST") {
         const { payment_id, bill_id, customer_id } = await req.json();
-
         const { data: bill } = await supabase.from("bills").select("month").eq("id", bill_id).single();
         const { data: mp } = await supabase.from("merchant_payments").select("amount, transaction_id, payment_date").eq("id", payment_id).single();
-
         if (!bill || !mp) return jsonResponse({ error: "Bill or payment not found" }, 404);
 
-        // Mark bill as paid
         await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill_id);
-
-        // Create payment record + ledger + reactivation
         const { data: payment } = await supabase.from("payments").insert({
-          customer_id,
-          bill_id,
-          amount: mp.amount,
-          payment_method: "bkash_merchant",
-          transaction_id: mp.transaction_id,
-          status: "completed",
-          paid_at: mp.payment_date,
-          month: bill.month,
+          customer_id, bill_id, amount: mp.amount, payment_method: "bkash_merchant",
+          transaction_id: mp.transaction_id, status: "completed", paid_at: mp.payment_date, month: bill.month,
         }).select().single();
 
         if (payment) {
@@ -264,12 +320,9 @@ Deno.serve(async (req: Request) => {
           await handlePaymentReactivation(supabase, { customer_id, bill_id, status: "completed" });
         }
 
-        // Update merchant payment
         await supabase.from("merchant_payments").update({
-          status: "matched",
-          matched_customer_id: customer_id,
-          matched_bill_id: bill_id,
-          notes: "Manually matched by admin",
+          status: "matched", matched_customer_id: customer_id,
+          matched_bill_id: bill_id, notes: "Manually matched by admin",
         }).eq("id", payment_id);
 
         return jsonResponse({ success: true });
@@ -280,18 +333,10 @@ Deno.serve(async (req: Request) => {
     if (resource === "customers") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
-
-        // Business logic: generate customer ID
         const customerId = await generateCustomerId(supabase);
         body.customer_id = customerId;
-
-        const { data, error } = await supabase
-          .from("customers")
-          .insert(body)
-          .select()
-          .single();
+        const { data, error } = await supabase.from("customers").insert(body).select().single();
         if (error) throw error;
-
         return jsonResponse({ success: true, customer: data });
       }
     }
@@ -300,33 +345,19 @@ Deno.serve(async (req: Request) => {
     if (resource === "tickets") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
-
-        // Business logic: generate ticket ID
         const ticketId = await generateTicketId(supabase);
-
-        const { data, error } = await supabase
-          .from("support_tickets")
-          .insert({
-            customer_id: body.customer_id,
-            subject: body.subject,
-            category: body.category || "general",
-            priority: body.priority || "medium",
-            ticket_id: ticketId,
-          })
-          .select()
-          .single();
+        const { data, error } = await supabase.from("support_tickets").insert({
+          customer_id: body.customer_id, subject: body.subject,
+          category: body.category || "general", priority: body.priority || "medium", ticket_id: ticketId,
+        }).select().single();
         if (error) throw error;
 
-        // Add initial message as reply if provided
         if (body.message) {
           await supabase.from("ticket_replies").insert({
-            ticket_id: data.id,
-            sender_type: body.sender_type || "customer",
-            sender_name: body.sender_name || "Customer",
-            message: body.message,
+            ticket_id: data.id, sender_type: body.sender_type || "customer",
+            sender_name: body.sender_name || "Customer", message: body.message,
           });
         }
-
         return jsonResponse({ success: true, ticket: data });
       }
     }
