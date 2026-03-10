@@ -178,7 +178,7 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
         if (row.pppoe_password) insertData.pppoe_password = row.pppoe_password;
         if (row.onu_mac) insertData.onu_mac = row.onu_mac;
 
-        const { error } = await supabase.from("customers").insert(insertData);
+        const { error } = await supabase.from("customers").insert(insertData as any);
         if (error) {
           errors.push({ row: rowNum, name: row.name, reason: error.message, data: row });
         } else {
