@@ -5,10 +5,12 @@ import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
   Package, MapPin, Router, Shield, Wallet, BarChart3, FileText, Menu, X, ClipboardList, Wrench, KeyRound,
+  Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
+import { useTheme } from "next-themes";
 
 interface NavItem {
   to: string;
@@ -133,6 +135,9 @@ export default function AppSidebar() {
   const { hasModuleAccess, isSuperAdmin } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const filterItems = (items: NavItem[]) =>
     items.filter((item) => !item.module || isSuperAdmin || hasModuleAccess(item.module));
@@ -213,7 +218,14 @@ export default function AppSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-sidebar-border">
+      <div className="p-2 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+          {(!collapsed || isMobile) && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
+        </button>
         <button
           onClick={() => signOut()}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
@@ -241,6 +253,11 @@ export default function AppSidebar() {
           <Wifi className="h-4 w-4 text-sidebar-primary-foreground" />
         </div>
         <h2 className="font-bold text-sm text-sidebar-foreground">Smart ISP</h2>
+        <div className="ml-auto">
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground" onClick={toggleTheme}>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Overlay */}

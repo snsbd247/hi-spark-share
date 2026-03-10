@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PermissionGuard from "@/components/PermissionGuard";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
@@ -68,6 +69,7 @@ function App() {
   return (
     <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -124,6 +126,7 @@ function App() {
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
     </ErrorBoundary>
   );
