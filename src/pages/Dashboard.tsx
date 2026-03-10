@@ -439,6 +439,80 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* bKash Payment Collection Summary */}
+      <Card className="glass-card animate-fade-in mt-6">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              bKash Payment Summary
+            </CardTitle>
+            <span className="text-sm text-muted-foreground">Last 30 days</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingBkash ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Today vs Month Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Today</p>
+                  <p className="text-2xl font-bold text-foreground">৳{bkashStats.todayAmount.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{bkashStats.todayCount} transaction{bkashStats.todayCount !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-xs text-muted-foreground mb-1">This Month</p>
+                  <p className="text-2xl font-bold text-foreground">৳{bkashStats.monthAmount.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{bkashStats.monthCount} transaction{bkashStats.monthCount !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              {/* Status Breakdown */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="rounded-lg bg-success/10 p-3 text-center">
+                  <p className="text-xl font-bold text-success">{bkashStats.completed}</p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </div>
+                <div className="rounded-lg bg-warning/10 p-3 text-center">
+                  <p className="text-xl font-bold text-warning">{bkashStats.pending}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
+                <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                  <p className="text-xl font-bold text-destructive">{bkashStats.failed}</p>
+                  <p className="text-xs text-muted-foreground">Failed</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{bkashStats.refunded}</p>
+                  <p className="text-xs text-muted-foreground">Refunded</p>
+                </div>
+              </div>
+
+              {/* Daily Chart */}
+              {bkashStats.dailyData.length > 0 && (
+                <div className="h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={bkashStats.dailyData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="day" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                        formatter={(value: number) => [`৳${value.toLocaleString()}`, "bKash"]}
+                      />
+                      <Bar dataKey="amount" name="bKash" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 }
