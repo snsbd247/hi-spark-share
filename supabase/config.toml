@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.sms-receiver]
 verify_jwt = false
+
+[functions.backup-restore]
+verify_jwt = false

@@ -127,6 +127,39 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_logs: {
+        Row: {
+          backup_type: string
+          created_at: string
+          created_by: string
+          error_message: string | null
+          file_name: string
+          file_size: number
+          id: string
+          status: string
+        }
+        Insert: {
+          backup_type?: string
+          created_at?: string
+          created_by: string
+          error_message?: string | null
+          file_name: string
+          file_size?: number
+          id?: string
+          status?: string
+        }
+        Update: {
+          backup_type?: string
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          file_name?: string
+          file_size?: number
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           amount: number
