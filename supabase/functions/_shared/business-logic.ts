@@ -283,11 +283,19 @@ export async function userHasPermission(supabase: any, userId: string, module: s
 /**
  * Authenticate a request and return user info
  */
-export async function authenticateRequest(supabase: any, authHeader: string | null): Promise<{ userId: string; error?: string } | { userId?: undefined; error: string }> {
+export async function authenticateRequest(_supabase: any, authHeader: string | null): Promise<{ userId: string; error?: string } | { userId?: undefined; error: string }> {
   if (!authHeader) return { error: "Unauthorized" };
 
   const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  // Create a user-scoped client to validate ES256-signed JWTs
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const { data: { user }, error } = await userClient.auth.getUser(token);
   if (error || !user) return { error: "Unauthorized" };
 
   return { userId: user.id };
