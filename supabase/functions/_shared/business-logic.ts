@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
 // Shared business logic - database-agnostic operations
 // These functions contain all business rules previously in DB triggers
 
