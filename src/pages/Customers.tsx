@@ -122,6 +122,9 @@ export default function Customers() {
             {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Sync All to MikroTik
           </Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" /> Upload Excel
+          </Button>
           <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" /> Add Customer
           </Button>
