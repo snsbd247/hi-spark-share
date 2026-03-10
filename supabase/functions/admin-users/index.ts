@@ -104,7 +104,9 @@ Deno.serve(async (req: Request) => {
 
       // Update profile with username and password_hash
       if (data.user) {
-        await supabase.from("profiles").update({
+        // Create profile (previously handled by handle_new_user trigger)
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
           full_name: full_name || "",
           username: username,
           email: email || null,
@@ -112,7 +114,7 @@ Deno.serve(async (req: Request) => {
           address: address || null,
           staff_id: staff_id || null,
           password_hash: password_hash,
-        }).eq("id", data.user.id);
+        }, { onConflict: "id" });
 
         // Assign role
         if (role) {
