@@ -215,15 +215,21 @@ export default function MerchantPaymentImport({ open, onOpenChange, onComplete }
                   onChange={handleFileSelect}
                   disabled={importing}
                 />
-                <Button onClick={() => fileRef.current?.click()} disabled={importing}>
-                  {importing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Upload className="h-4 w-4 mr-2" /> Select File</>}
-                </Button>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={() => fileRef.current?.click()} disabled={importing}>
+                    {importing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Upload className="h-4 w-4 mr-2" /> Select File</>}
+                  </Button>
+                  <Button variant="outline" onClick={downloadTemplate}>
+                    <Download className="h-4 w-4 mr-2" /> Template
+                  </Button>
+                </div>
               </div>
 
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• Duplicates (same Transaction ID) will be skipped automatically</p>
                 <p>• If Reference matches a Customer ID, auto-matching will apply</p>
                 <p>• An error report can be downloaded after import</p>
+                <p>• Download the template for the correct format</p>
               </div>
             </>
           ) : (

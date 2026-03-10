@@ -201,7 +201,7 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
 
   const downloadErrorReport = () => {
     if (!result?.errors.length) return;
-    const wsData = [
+    const wsData: (string | number)[][] = [
       ["Row", "Name", "Reason", "Phone", "Area", "Monthly Bill"],
       ...result.errors.map((e) => [
         e.row, e.name, e.reason,
