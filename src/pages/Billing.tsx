@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { logAudit } from "@/lib/auditLog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Billing() {
   const [search, setSearch] = useState("");
