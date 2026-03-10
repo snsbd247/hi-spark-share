@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Eye, EyeOff, Wifi, WifiOff, TestTube, Save, RefreshCw, Link, Copy, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Eye, EyeOff, Wifi, WifiOff, TestTube, Save, RefreshCw, Link, Copy, Check, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { format } from "date-fns";
@@ -29,6 +31,13 @@ export default function BkashApiManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  // Query / Refund state
+  const [queryPaymentId, setQueryPaymentId] = useState("");
+  const [queryResult, setQueryResult] = useState<any>(null);
+  const [refundTxn, setRefundTxn] = useState<any>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
 
   const [form, setForm] = useState({
     app_key: "", app_secret: "", username: "", password: "",
@@ -140,8 +149,54 @@ export default function BkashApiManagement() {
     onError: (err: any) => toast.error(`Connection failed: ${err.message}`),
   });
 
+  // Query transaction
+  const queryTxnMutation = useMutation({
+    mutationFn: async (paymentID: string) => {
+      const { data, error } = await supabase.functions.invoke("bkash-payment", {
+        body: { action: "query_transaction", paymentID },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      setQueryResult(data);
+      if (data?.error) toast.error(data.error);
+      else toast.success("Transaction details fetched");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Refund
+  const refundMutation = useMutation({
+    mutationFn: async (params: { paymentID: string; trxID: string; amount: string; reason: string }) => {
+      const { data, error } = await supabase.functions.invoke("bkash-payment", {
+        body: { action: "refund", ...params },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.error || data?.statusMessage?.includes("fail")) {
+        toast.error(data.statusMessage || data.error || "Refund failed");
+      } else {
+        toast.success("Refund processed successfully");
+        setRefundTxn(null);
+        setRefundAmount("");
+        setRefundReason("");
+        queryClient.invalidateQueries({ queryKey: ["bkash-transactions"] });
+      }
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const handleEnvChange = (env: string) => {
     setForm(f => ({ ...f, environment: env, base_url: BASE_URLS[env] || f.base_url }));
+  };
+
+  const openRefundDialog = (txn: any) => {
+    setRefundTxn(txn);
+    setRefundAmount(String(txn.amount));
+    setRefundReason("");
   };
 
   return (
@@ -180,7 +235,6 @@ export default function BkashApiManagement() {
                   )}
                 </div>
               </div>
-
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Environment</span>
@@ -191,13 +245,7 @@ export default function BkashApiManagement() {
                   <span className="font-mono text-xs">{gateway?.merchant_number || "—"}</span>
                 </div>
               </div>
-
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => testMutation.mutate()}
-                disabled={testMutation.isPending || !gateway?.app_key}
-              >
+              <Button className="w-full" variant="outline" onClick={() => testMutation.mutate()} disabled={testMutation.isPending || !gateway?.app_key}>
                 {testMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TestTube className="h-4 w-4 mr-2" />}
                 Test Connection
               </Button>
@@ -221,44 +269,28 @@ export default function BkashApiManagement() {
                     <Label>App Key</Label>
                     <Input value={form.app_key} onChange={e => setForm(f => ({ ...f, app_key: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter App Key" />
                   </div>
-
                   <div className="space-y-2">
                     <Label>App Secret</Label>
                     <div className="relative">
-                      <Input
-                        type={showSecret ? "text" : "password"}
-                        value={form.app_secret}
-                        onChange={e => setForm(f => ({ ...f, app_secret: e.target.value }))}
-                        disabled={!isSuperAdmin}
-                        placeholder="Enter App Secret"
-                      />
+                      <Input type={showSecret ? "text" : "password"} value={form.app_secret} onChange={e => setForm(f => ({ ...f, app_secret: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter App Secret" />
                       <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Username</Label>
                     <Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter Username" />
                   </div>
-
                   <div className="space-y-2">
                     <Label>Password</Label>
                     <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        value={form.password}
-                        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                        disabled={!isSuperAdmin}
-                        placeholder="Enter Password"
-                      />
+                      <Input type={showPassword ? "text" : "password"} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter Password" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Environment</Label>
                     <Select value={form.environment} onValueChange={handleEnvChange} disabled={!isSuperAdmin}>
@@ -269,17 +301,14 @@ export default function BkashApiManagement() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Merchant Number</Label>
                     <Input value={form.merchant_number} onChange={e => setForm(f => ({ ...f, merchant_number: e.target.value }))} disabled={!isSuperAdmin} placeholder="01XXXXXXXXX" />
                   </div>
-
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Base URL</Label>
                     <Input value={form.base_url} onChange={e => setForm(f => ({ ...f, base_url: e.target.value }))} disabled={!isSuperAdmin} className="font-mono text-xs" />
                   </div>
-
                   {isSuperAdmin && (
                     <div className="sm:col-span-2 flex justify-end">
                       <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
@@ -315,18 +344,64 @@ export default function BkashApiManagement() {
                   <p className="text-xs text-muted-foreground mb-1">{desc}</p>
                   <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all block">{url}</code>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 mt-1"
-                  onClick={() => copyToClipboard(url, label)}
-                >
+                <Button variant="ghost" size="icon" className="shrink-0 mt-1" onClick={() => copyToClipboard(url, label)}>
                   {copiedUrl === label ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             ))}
           </CardContent>
         </Card>
+
+        {/* Query & Refund Tool */}
+        {isSuperAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Query & Refund Tool
+              </CardTitle>
+              <CardDescription>Look up transaction status or initiate a refund via bKash API</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="query">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="query">Query Transaction</TabsTrigger>
+                  <TabsTrigger value="refund">Refund</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="query">
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label>bKash Payment ID</Label>
+                      <Input value={queryPaymentId} onChange={e => setQueryPaymentId(e.target.value)} placeholder="Enter bKash Payment ID" className="font-mono text-sm" />
+                    </div>
+                    <Button onClick={() => queryTxnMutation.mutate(queryPaymentId)} disabled={queryTxnMutation.isPending || !queryPaymentId}>
+                      {queryTxnMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                      Query
+                    </Button>
+                  </div>
+                  {queryResult && (
+                    <div className="mt-4 rounded-lg border border-border p-4 space-y-2">
+                      <h4 className="text-sm font-semibold mb-2">Query Result</h4>
+                      {Object.entries(queryResult).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-sm border-b border-border pb-1.5 last:border-0">
+                          <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, " $1")}</span>
+                          <span className="font-mono text-xs max-w-[60%] text-right break-all">{String(value ?? "—")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="refund">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Click the <Undo2 className="h-3.5 w-3.5 inline" /> icon on any completed transaction below to initiate a refund.
+                  </p>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Payment Logs */}
         <Card>
@@ -356,6 +431,7 @@ export default function BkashApiManagement() {
                       <TableHead>Transaction ID</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
+                      {isSuperAdmin && <TableHead className="w-10"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -368,10 +444,19 @@ export default function BkashApiManagement() {
                         <TableCell className="font-mono text-xs">{txn.bkash_trx_id || txn.transaction_id || "—"}</TableCell>
                         <TableCell className="text-right font-semibold">৳{txn.amount}</TableCell>
                         <TableCell>
-                          <Badge variant={txn.status === "completed" ? "default" : "destructive"} className="text-xs">
+                          <Badge variant={txn.status === "completed" ? "default" : txn.status === "refunded" ? "outline" : "destructive"} className="text-xs">
                             {txn.status}
                           </Badge>
                         </TableCell>
+                        {isSuperAdmin && (
+                          <TableCell>
+                            {txn.status === "completed" && txn.bkash_payment_id && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openRefundDialog(txn); }}>
+                                <Undo2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -405,6 +490,46 @@ export default function BkashApiManagement() {
                 ))}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Refund Dialog */}
+        <Dialog open={!!refundTxn} onOpenChange={(o) => !o && setRefundTxn(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Refund Transaction</DialogTitle></DialogHeader>
+            {refundTxn && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Payment ID</span><span className="font-mono text-xs">{refundTxn.bkash_payment_id}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">TrxID</span><span className="font-mono text-xs">{refundTxn.bkash_trx_id || refundTxn.transaction_id}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Original Amount</span><span className="font-semibold">৳{refundTxn.amount}</span></div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Refund Amount (৳)</Label>
+                  <Input type="number" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} max={refundTxn.amount} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Reason</Label>
+                  <Textarea value={refundReason} onChange={e => setRefundReason(e.target.value)} placeholder="Reason for refund..." rows={2} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRefundTxn(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                disabled={refundMutation.isPending || !refundAmount || Number(refundAmount) <= 0}
+                onClick={() => refundTxn && refundMutation.mutate({
+                  paymentID: refundTxn.bkash_payment_id,
+                  trxID: refundTxn.bkash_trx_id || refundTxn.transaction_id,
+                  amount: refundAmount,
+                  reason: refundReason,
+                })}
+              >
+                {refundMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Undo2 className="h-4 w-4 mr-2" />}
+                Process Refund
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
