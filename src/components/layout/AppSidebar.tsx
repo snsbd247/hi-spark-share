@@ -258,6 +258,7 @@ export default function AppSidebar() {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
         </div>
+      </div>
 
       {/* Mobile Overlay */}
       {mobileOpen && (
