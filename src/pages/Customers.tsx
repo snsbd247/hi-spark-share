@@ -23,6 +23,7 @@ import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
 import CustomerImport from "@/components/CustomerImport";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function Customers() {
   const [search, setSearch] = useState("");
