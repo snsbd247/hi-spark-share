@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import bcryptjs from "https://esm.sh/bcryptjs@2.4.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -58,6 +59,7 @@ Deno.serve(async (req: Request) => {
         return {
           id: u.id,
           email: u.email,
+          username: profile?.username || "",
           full_name: profile?.full_name || "",
           mobile: profile?.mobile || "",
           staff_id: profile?.staff_id || "",
@@ -75,10 +77,16 @@ Deno.serve(async (req: Request) => {
 
     // ─── CREATE USER ────────────────────────────────────────────
     if (req.method === "POST" && path === "create") {
-      const { email, password, full_name, mobile, address, staff_id, role } = await req.json();
+      const { email, password, full_name, username, mobile, address, staff_id, role } = await req.json();
 
-      if (!email || !password) {
-        return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!email || !password || !username) {
+        return new Response(JSON.stringify({ error: "Email, username and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Check username uniqueness
+      const { data: existing } = await supabase.from("profiles").select("id").eq("username", username).maybeSingle();
+      if (existing) {
+        return new Response(JSON.stringify({ error: "Username already taken" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       const { data, error } = await supabase.auth.admin.createUser({
@@ -89,14 +97,19 @@ Deno.serve(async (req: Request) => {
       });
       if (error) throw error;
 
-      // Update profile
+      // Hash password with bcrypt
+      const password_hash = bcryptjs.hashSync(password, 10);
+
+      // Update profile with username and password_hash
       if (data.user) {
         await supabase.from("profiles").update({
           full_name: full_name || "",
+          username: username,
           email: email || null,
           mobile: mobile || null,
           address: address || null,
           staff_id: staff_id || null,
+          password_hash: password_hash,
         }).eq("id", data.user.id);
 
         // Assign role
@@ -110,10 +123,18 @@ Deno.serve(async (req: Request) => {
 
     // ─── UPDATE USER ────────────────────────────────────────────
     if (req.method === "POST" && path === "update") {
-      const { user_id, email, password, full_name, mobile, address, staff_id, role, disabled } = await req.json();
+      const { user_id, email, password, full_name, username, mobile, address, staff_id, role, disabled } = await req.json();
 
       if (!user_id) {
         return new Response(JSON.stringify({ error: "user_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Check username uniqueness if provided
+      if (username) {
+        const { data: existing } = await supabase.from("profiles").select("id").eq("username", username).neq("id", user_id).maybeSingle();
+        if (existing) {
+          return new Response(JSON.stringify({ error: "Username already taken" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
 
       // Update auth user
@@ -136,6 +157,10 @@ Deno.serve(async (req: Request) => {
         address: address || null,
         staff_id: staff_id || null,
       };
+      if (username) profileUpdate.username = username;
+      if (password) {
+        profileUpdate.password_hash = bcryptjs.hashSync(password, 10);
+      }
       if (typeof disabled === "boolean") {
         profileUpdate.status = disabled ? "disabled" : "active";
       }

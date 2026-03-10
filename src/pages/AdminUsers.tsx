@@ -20,7 +20,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Shield } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -34,7 +34,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState({
-    full_name: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
+    full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
   });
 
   const { data: users, isLoading } = useQuery({
@@ -52,6 +52,7 @@ export default function AdminUsers() {
   const filtered = users?.filter((u: any) => {
     const matchesSearch =
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.username?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.staff_id?.toLowerCase().includes(search.toLowerCase());
     const isDisabled = u.disabled || u.banned;
@@ -64,7 +65,7 @@ export default function AdminUsers() {
 
   const openAdd = () => {
     setEditUser(null);
-    setForm({ full_name: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff" });
+    setForm({ full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff" });
     setFormOpen(true);
   };
 
@@ -72,6 +73,7 @@ export default function AdminUsers() {
     setEditUser(u);
     setForm({
       full_name: u.full_name || "",
+      username: u.username || "",
       email: u.email || "",
       password: "",
       mobile: u.mobile || "",
@@ -91,6 +93,7 @@ export default function AdminUsers() {
           body: {
             user_id: editUser.id,
             full_name: form.full_name,
+            username: form.username,
             email: form.email,
             password: form.password || undefined,
             mobile: form.mobile,
@@ -105,9 +108,11 @@ export default function AdminUsers() {
         toast.success("User updated");
       } else {
         if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
+        if (!form.username) { toast.error("Username is required"); setLoading(false); return; }
         const { data, error } = await supabase.functions.invoke("admin-users/create", {
           body: {
             full_name: form.full_name,
+            username: form.username,
             email: form.email,
             password: form.password,
             mobile: form.mobile,
@@ -152,7 +157,7 @@ export default function AdminUsers() {
     const newDisabled = !u.disabled && !u.banned;
     try {
       const { data, error } = await supabase.functions.invoke("admin-users/update", {
-        body: { user_id: u.id, disabled: newDisabled, full_name: u.full_name, mobile: u.mobile, address: u.address, staff_id: u.staff_id, role: u.roles?.[0] || "staff" },
+        body: { user_id: u.id, disabled: newDisabled, full_name: u.full_name, username: u.username, mobile: u.mobile, address: u.address, staff_id: u.staff_id, role: u.roles?.[0] || "staff" },
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error) throw error;
@@ -174,7 +179,7 @@ export default function AdminUsers() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Users</h1>
           <p className="text-muted-foreground mt-1">Manage admin & staff accounts</p>
@@ -182,13 +187,13 @@ export default function AdminUsers() {
         <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add User</Button>
       </div>
 
-      <div className="mb-4 flex gap-3 items-center">
-        <div className="relative max-w-sm flex-1">
+      <div className="mb-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -200,12 +205,13 @@ export default function AdminUsers() {
       {isLoading ? (
         <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
+        <div className="rounded-lg border border-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">SL#</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Mobile</TableHead>
                 <TableHead>Staff ID</TableHead>
@@ -220,6 +226,7 @@ export default function AdminUsers() {
                 <TableRow key={u.id}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
+                  <TableCell className="font-mono text-sm">{u.username || <span className="text-destructive text-xs">Not set</span>}</TableCell>
                   <TableCell>{u.email}</TableCell>
                   <TableCell>{u.mobile || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{u.staff_id || "—"}</TableCell>
@@ -254,7 +261,7 @@ export default function AdminUsers() {
                 </TableRow>
               ))}
               {(!filtered || filtered.length === 0) && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No users found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -263,24 +270,30 @@ export default function AdminUsers() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editUser ? "Edit User" : "Add User"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Full Name *</Label>
                 <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
               </div>
               <div className="space-y-1.5">
+                <Label>Username *</Label>
+                <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required placeholder="unique username" autoComplete="off" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label>Email *</Label>
                 <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
+              <div className="space-y-1.5">
+                <Label>{editUser ? "New Password (leave blank to keep)" : "Password *"}</Label>
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editUser} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>{editUser ? "New Password (leave blank to keep)" : "Password *"}</Label>
-              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editUser} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Mobile</Label>
                 <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
@@ -320,7 +333,7 @@ export default function AdminUsers() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete "{deleteUser?.full_name || deleteUser?.email}"? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>Are you sure you want to delete "{deleteUser?.full_name || deleteUser?.username}"? This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
