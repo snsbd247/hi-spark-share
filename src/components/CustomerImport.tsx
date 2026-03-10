@@ -1,32 +1,31 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Upload, Download, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Upload, Download, CheckCircle, XCircle, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
-interface ImportRow {
+interface ValidationIssue {
+  row: number;
+  field: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+interface ParsedRow {
+  rowNum: number;
   name: string;
   phone: string;
   area: string;
-  monthly_bill: number;
-  email?: string;
-  nid?: string;
-  father_name?: string;
-  mother_name?: string;
-  alt_phone?: string;
-  road?: string;
-  house?: string;
-  city?: string;
-  ip_address?: string;
-  pppoe_username?: string;
-  pppoe_password?: string;
-  onu_mac?: string;
-  status?: string;
+  monthly_bill: string;
+  email: string;
+  status: string;
+  issues: ValidationIssue[];
+  raw: Record<string, any>;
 }
 
 interface ImportError {
@@ -83,8 +82,12 @@ function downloadTemplate() {
   XLSX.writeFile(wb, "customer-import-template.xlsx");
 }
 
+type Step = "upload" | "preview" | "result";
+
 export default function CustomerImport({ open, onOpenChange, onComplete }: Props) {
+  const [step, setStep] = useState<Step>("upload");
   const [importing, setImporting] = useState(false);
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -98,9 +101,6 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
       return;
     }
 
-    setImporting(true);
-    setResult(null);
-
     try {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
@@ -109,93 +109,105 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
 
       if (!rawRows.length) {
         toast.error("The file is empty or has no data rows");
-        setImporting(false);
         return;
       }
 
-      const rows: ImportRow[] = rawRows.map((raw) => {
+      const parsed: ParsedRow[] = rawRows.map((raw, i) => {
         const n: Record<string, any> = {};
         Object.entries(raw).forEach(([key, val]) => { n[normalizeHeader(key)] = val; });
-        return {
-          name: String(n.name || "").trim(),
-          phone: String(n.phone || "").trim(),
-          area: String(n.area || "").trim(),
-          monthly_bill: parseFloat(n.monthly_bill) || 0,
-          email: n.email ? String(n.email).trim() : undefined,
-          nid: n.nid ? String(n.nid).trim() : undefined,
-          father_name: n.father_name ? String(n.father_name).trim() : undefined,
-          mother_name: n.mother_name ? String(n.mother_name).trim() : undefined,
-          alt_phone: n.alt_phone ? String(n.alt_phone).trim() : undefined,
-          road: n.road ? String(n.road).trim() : undefined,
-          house: n.house ? String(n.house).trim() : undefined,
-          city: n.city ? String(n.city).trim() : undefined,
-          ip_address: n.ip_address ? String(n.ip_address).trim() : undefined,
-          pppoe_username: n.pppoe_username ? String(n.pppoe_username).trim() : undefined,
-          pppoe_password: n.pppoe_password ? String(n.pppoe_password).trim() : undefined,
-          onu_mac: n.onu_mac ? String(n.onu_mac).trim() : undefined,
-          status: n.status ? String(n.status).trim().toLowerCase() : "active",
-        };
+        const rowNum = i + 2;
+        const issues: ValidationIssue[] = [];
+
+        const name = String(n.name || "").trim();
+        const phone = String(n.phone || "").trim();
+        const area = String(n.area || "").trim();
+        const monthly_bill = String(n.monthly_bill || "").trim();
+        const email = String(n.email || "").trim();
+        const status = String(n.status || "active").trim().toLowerCase();
+
+        if (!name) issues.push({ row: rowNum, field: "name", message: "Name is required", severity: "error" });
+        if (!phone) issues.push({ row: rowNum, field: "phone", message: "Phone is required", severity: "error" });
+        else if (phone.length < 6) issues.push({ row: rowNum, field: "phone", message: "Phone number too short", severity: "error" });
+        if (!area) issues.push({ row: rowNum, field: "area", message: "Area is required", severity: "error" });
+        if (monthly_bill && isNaN(parseFloat(monthly_bill))) issues.push({ row: rowNum, field: "monthly_bill", message: "Invalid bill amount", severity: "error" });
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) issues.push({ row: rowNum, field: "email", message: "Invalid email format", severity: "warning" });
+        if (!["active", "inactive", "suspended"].includes(status)) issues.push({ row: rowNum, field: "status", message: `Unknown status "${status}"`, severity: "warning" });
+
+        return { rowNum, name, phone, area, monthly_bill, email, status, issues, raw: n };
       });
 
+      setParsedRows(parsed);
+      setStep("preview");
+    } catch (err: any) {
+      toast.error(`Failed to parse file: ${err.message}`);
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const { errorCount, warningCount, validCount } = useMemo(() => {
+    let errors = 0, warnings = 0, valid = 0;
+    parsedRows.forEach(r => {
+      const hasError = r.issues.some(i => i.severity === "error");
+      if (hasError) errors++;
+      else if (r.issues.some(i => i.severity === "warning")) { warnings++; valid++; }
+      else valid++;
+    });
+    return { errorCount: errors, warningCount: warnings, validCount: valid };
+  }, [parsedRows]);
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
       const errors: ImportError[] = [];
       let imported = 0;
       let duplicates = 0;
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const rowNum = i + 2;
+      for (const row of parsedRows) {
+        if (row.issues.some(i => i.severity === "error")) {
+          errors.push({ row: row.rowNum, name: row.name || "—", reason: row.issues.filter(i => i.severity === "error").map(i => i.message).join(", "), data: row.raw });
+          continue;
+        }
 
-        if (!row.name) { errors.push({ row: rowNum, name: "—", reason: "Missing Name", data: row }); continue; }
-        if (!row.phone) { errors.push({ row: rowNum, name: row.name, reason: "Missing Phone", data: row }); continue; }
-        if (!row.area) { errors.push({ row: rowNum, name: row.name, reason: "Missing Area", data: row }); continue; }
-
-        // Check duplicate by phone
         const { data: existing } = await supabase.from("customers").select("id").eq("phone", row.phone).limit(1);
         if (existing && existing.length > 0) {
           duplicates++;
-          errors.push({ row: rowNum, name: row.name, reason: "Duplicate Phone: " + row.phone, data: row });
+          errors.push({ row: row.rowNum, name: row.name, reason: "Duplicate Phone: " + row.phone, data: row.raw });
           continue;
         }
 
         const insertData: Record<string, any> = {
-          name: row.name,
-          phone: row.phone,
-          area: row.area,
-          monthly_bill: row.monthly_bill,
+          name: row.name, phone: row.phone, area: row.area,
+          monthly_bill: parseFloat(row.monthly_bill) || 0,
           status: row.status || "active",
-          customer_id: "TEMP", // trigger will generate
+          customer_id: "TEMP",
         };
-        if (row.email) insertData.email = row.email;
-        if (row.nid) insertData.nid = row.nid;
-        if (row.father_name) insertData.father_name = row.father_name;
-        if (row.mother_name) insertData.mother_name = row.mother_name;
-        if (row.alt_phone) insertData.alt_phone = row.alt_phone;
-        if (row.road) insertData.road = row.road;
-        if (row.house) insertData.house = row.house;
-        if (row.city) insertData.city = row.city;
-        if (row.ip_address) insertData.ip_address = row.ip_address;
-        if (row.pppoe_username) insertData.pppoe_username = row.pppoe_username;
-        if (row.pppoe_password) insertData.pppoe_password = row.pppoe_password;
-        if (row.onu_mac) insertData.onu_mac = row.onu_mac;
+        const n = row.raw;
+        if (n.email) insertData.email = String(n.email).trim();
+        if (n.nid) insertData.nid = String(n.nid).trim();
+        if (n.father_name) insertData.father_name = String(n.father_name).trim();
+        if (n.mother_name) insertData.mother_name = String(n.mother_name).trim();
+        if (n.alt_phone) insertData.alt_phone = String(n.alt_phone).trim();
+        if (n.road) insertData.road = String(n.road).trim();
+        if (n.house) insertData.house = String(n.house).trim();
+        if (n.city) insertData.city = String(n.city).trim();
+        if (n.ip_address) insertData.ip_address = String(n.ip_address).trim();
+        if (n.pppoe_username) insertData.pppoe_username = String(n.pppoe_username).trim();
+        if (n.pppoe_password) insertData.pppoe_password = String(n.pppoe_password).trim();
+        if (n.onu_mac) insertData.onu_mac = String(n.onu_mac).trim();
 
         const { error } = await supabase.from("customers").insert(insertData as any);
-        if (error) {
-          errors.push({ row: rowNum, name: row.name, reason: error.message, data: row });
-        } else {
-          imported++;
-        }
+        if (error) { errors.push({ row: row.rowNum, name: row.name, reason: error.message, data: row.raw }); }
+        else { imported++; }
       }
 
-      setResult({ total: rows.length, imported, duplicates, errors });
-      if (imported > 0) {
-        toast.success(`${imported} customers imported successfully`);
-        onComplete();
-      }
+      setResult({ total: parsedRows.length, imported, duplicates, errors });
+      setStep("result");
+      if (imported > 0) { toast.success(`${imported} customers imported successfully`); onComplete(); }
     } catch (err: any) {
-      toast.error(`Failed to parse file: ${err.message}`);
+      toast.error(`Import failed: ${err.message}`);
     } finally {
       setImporting(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -203,10 +215,7 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
     if (!result?.errors.length) return;
     const wsData: any[][] = [
       ["Row", "Name", "Reason", "Phone", "Area", "Monthly Bill"],
-      ...result.errors.map((e) => [
-        e.row, e.name, e.reason,
-        e.data?.phone || "", e.data?.area || "", e.data?.monthly_bill || "",
-      ]),
+      ...result.errors.map((e) => [e.row, e.name, e.reason, e.data?.phone || "", e.data?.area || "", e.data?.monthly_bill || ""]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
@@ -215,69 +224,97 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
   };
 
   const handleClose = (o: boolean) => {
-    if (!o) { setResult(null); setImporting(false); }
+    if (!o) { setResult(null); setImporting(false); setStep("upload"); setParsedRows([]); }
     onOpenChange(o);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Upload Excel — Bulk Customer Import</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          {!result ? (
+          {step === "upload" && (
             <>
               <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                 <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground mb-3">
-                  Upload an Excel file (.xlsx, .xls) or CSV with customer data
-                </p>
-                <p className="text-xs font-mono text-muted-foreground mb-4">
-                  Name | Phone | Area | Monthly Bill | ...
-                </p>
-                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} disabled={importing} />
+                <p className="text-sm text-muted-foreground mb-3">Upload an Excel file (.xlsx, .xls) or CSV with customer data</p>
+                <p className="text-xs font-mono text-muted-foreground mb-4">Name | Phone | Area | Monthly Bill | ...</p>
+                <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
                 <div className="flex gap-2 justify-center">
-                  <Button onClick={() => fileRef.current?.click()} disabled={importing}>
-                    {importing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Upload className="h-4 w-4 mr-2" /> Select File</>}
-                  </Button>
-                  <Button variant="outline" onClick={downloadTemplate}>
-                    <Download className="h-4 w-4 mr-2" /> Template
-                  </Button>
+                  <Button onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4 mr-2" /> Select File</Button>
+                  <Button variant="outline" onClick={downloadTemplate}><Download className="h-4 w-4 mr-2" /> Template</Button>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• Required columns: <strong>Name, Phone, Area</strong></p>
                 <p>• Duplicates (same phone) will be skipped</p>
                 <p>• Customer IDs are auto-generated</p>
-                <p>• Download the template for the correct format</p>
               </div>
             </>
-          ) : (
+          )}
+
+          {step === "preview" && (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className="bg-muted/50"><Eye className="h-3 w-3 mr-1" />{parsedRows.length} rows</Badge>
+                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />{validCount} valid</Badge>
+                {errorCount > 0 && <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20"><XCircle className="h-3 w-3 mr-1" />{errorCount} errors</Badge>}
+                {warningCount > 0 && <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><AlertTriangle className="h-3 w-3 mr-1" />{warningCount} warnings</Badge>}
+              </div>
+
+              <div className="max-h-52 overflow-y-auto border border-border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead><tr className="border-b border-border bg-muted/30 sticky top-0">
+                    <th className="py-1.5 px-2 text-left">Row</th><th className="py-1.5 px-2 text-left">Name</th>
+                    <th className="py-1.5 px-2 text-left">Phone</th><th className="py-1.5 px-2 text-left">Area</th>
+                    <th className="py-1.5 px-2 text-left">Bill</th>
+                  </tr></thead>
+                  <tbody>
+                    {parsedRows.map((r) => {
+                      const hasError = r.issues.some(i => i.severity === "error");
+                      const hasWarning = r.issues.some(i => i.severity === "warning");
+                      return (
+                        <tr key={r.rowNum} className={`border-b border-border/50 ${hasError ? "bg-destructive/5" : hasWarning ? "bg-yellow-500/5" : ""}`}>
+                          <td className="py-1 px-2">{r.rowNum}</td>
+                          <td className="py-1 px-2">{r.name || <span className="text-destructive italic">missing</span>}</td>
+                          <td className="py-1 px-2 font-mono">{r.phone || <span className="text-destructive italic">missing</span>}</td>
+                          <td className="py-1 px-2">{r.area || <span className="text-destructive italic">missing</span>}</td>
+                          <td className="py-1 px-2">{r.monthly_bill || "0"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {parsedRows.some(r => r.issues.length > 0) && (
+                <div className="max-h-28 overflow-y-auto border border-border rounded-lg bg-muted/20 p-2 space-y-1">
+                  {parsedRows.flatMap(r => r.issues).slice(0, 15).map((issue, i) => (
+                    <p key={i} className={`text-xs flex items-start gap-1.5 ${issue.severity === "error" ? "text-destructive" : "text-yellow-600"}`}>
+                      {issue.severity === "error" ? <XCircle className="h-3 w-3 mt-0.5 shrink-0" /> : <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />}
+                      <span>Row {issue.row}: {issue.message} ({issue.field})</span>
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <Button variant="outline" size="sm" onClick={() => { setStep("upload"); setParsedRows([]); }}>Back</Button>
+                <Button size="sm" onClick={handleImport} disabled={importing || errorCount === parsedRows.length}>
+                  {importing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Importing...</> : <>Import {validCount} Customers</>}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === "result" && result && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold">{result.total}</p>
-                  <p className="text-xs text-muted-foreground">Total Rows</p>
-                </div>
-                <div className="bg-success/10 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-success">{result.imported}</p>
-                  <p className="text-xs text-muted-foreground">Imported</p>
-                </div>
-                <div className="bg-warning/10 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-warning">{result.duplicates}</p>
-                  <p className="text-xs text-muted-foreground">Duplicates Skipped</p>
-                </div>
-                <div className="bg-destructive/10 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-destructive">{result.errors.length - result.duplicates}</p>
-                  <p className="text-xs text-muted-foreground">Errors</p>
-                </div>
+                <div className="bg-muted/50 rounded-lg p-3 text-center"><p className="text-2xl font-bold">{result.total}</p><p className="text-xs text-muted-foreground">Total Rows</p></div>
+                <div className="bg-green-500/10 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-green-600">{result.imported}</p><p className="text-xs text-muted-foreground">Imported</p></div>
+                <div className="bg-yellow-500/10 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-yellow-600">{result.duplicates}</p><p className="text-xs text-muted-foreground">Duplicates</p></div>
+                <div className="bg-destructive/10 rounded-lg p-3 text-center"><p className="text-2xl font-bold text-destructive">{result.errors.length - result.duplicates}</p><p className="text-xs text-muted-foreground">Errors</p></div>
               </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {result.imported > 0 && <Badge variant="outline" className="bg-success/10 text-success border-success/20"><CheckCircle className="h-3 w-3 mr-1" />{result.imported} imported</Badge>}
-                {result.duplicates > 0 && <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20"><AlertTriangle className="h-3 w-3 mr-1" />{result.duplicates} duplicates</Badge>}
-                {result.errors.length - result.duplicates > 0 && <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20"><XCircle className="h-3 w-3 mr-1" />{result.errors.length - result.duplicates} errors</Badge>}
-              </div>
-
               {result.errors.length > 0 && (
                 <div className="max-h-40 overflow-y-auto border border-border rounded-lg">
                   <table className="w-full text-xs">
@@ -286,18 +323,12 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
                       {result.errors.slice(0, 20).map((e, i) => (
                         <tr key={i} className="border-b border-border/50"><td className="py-1 px-2">{e.row}</td><td className="py-1 px-2">{e.name}</td><td className="py-1 px-2 text-destructive">{e.reason}</td></tr>
                       ))}
-                      {result.errors.length > 20 && <tr><td colSpan={3} className="py-1 px-2 text-muted-foreground text-center">... and {result.errors.length - 20} more</td></tr>}
                     </tbody>
                   </table>
                 </div>
               )}
-
               <div className="flex justify-between">
-                {result.errors.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={downloadErrorReport}>
-                    <Download className="h-4 w-4 mr-2" /> Download Error Report
-                  </Button>
-                )}
+                {result.errors.length > 0 && <Button variant="outline" size="sm" onClick={downloadErrorReport}><Download className="h-4 w-4 mr-2" /> Error Report</Button>}
                 <Button size="sm" className="ml-auto" onClick={() => handleClose(false)}>Done</Button>
               </div>
             </>
