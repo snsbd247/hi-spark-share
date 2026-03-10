@@ -1,57 +1,66 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
-  Package, MapPin, Router, Shield, Wallet, BarChart3, FileText, Menu, X, ClipboardList, Wrench,
+  Package, MapPin, Router, Shield, Wallet, BarChart3, FileText, Menu, X, ClipboardList, Wrench, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
-const topNav = [
+interface NavItem {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  module?: string; // permission module required
+}
+
+const topNav: NavItem[] = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/customers", icon: Users, label: "Customers" },
+  { to: "/customers", icon: Users, label: "Customers", module: "customers" },
 ];
 
-const accountsNav = [
-  { to: "/billing", icon: Receipt, label: "Billing" },
-  { to: "/billing/cycle", icon: Receipt, label: "Billing Cycle" },
-  { to: "/payments", icon: CreditCard, label: "Payments" },
-  { to: "/merchant-payments", icon: Wallet, label: "Merchant Pay" },
-  { to: "/merchant-reports", icon: BarChart3, label: "Payment Reports" },
+const accountsNav: NavItem[] = [
+  { to: "/billing", icon: Receipt, label: "Billing", module: "billing" },
+  { to: "/billing/cycle", icon: Receipt, label: "Billing Cycle", module: "billing" },
+  { to: "/payments", icon: CreditCard, label: "Payments", module: "payments" },
+  { to: "/merchant-payments", icon: Wallet, label: "Merchant Pay", module: "merchant_payments" },
+  { to: "/merchant-reports", icon: BarChart3, label: "Payment Reports", module: "reports" },
 ];
 
-const supportNav = [
-  { to: "/tickets", icon: Ticket, label: "Tickets" },
-  { to: "/sms", icon: MessageSquare, label: "SMS" },
-  { to: "/reminders", icon: Bell, label: "Reminders" },
-  { to: "/sms-settings", icon: Settings, label: "SMS Settings" },
+const supportNav: NavItem[] = [
+  { to: "/tickets", icon: Ticket, label: "Tickets", module: "tickets" },
+  { to: "/sms", icon: MessageSquare, label: "SMS", module: "sms" },
+  { to: "/reminders", icon: Bell, label: "Reminders", module: "sms" },
+  { to: "/sms-settings", icon: Settings, label: "SMS Settings", module: "sms" },
 ];
 
-const paymentGatewayNav = [
-  { to: "/settings/bkash", icon: Wallet, label: "bKash API" },
-  { to: "/settings/nagad", icon: Wallet, label: "Nagad API" },
+const paymentGatewayNav: NavItem[] = [
+  { to: "/settings/bkash", icon: Wallet, label: "bKash API", module: "settings" },
+  { to: "/settings/nagad", icon: Wallet, label: "Nagad API", module: "settings" },
 ];
 
-const toolsNav = [
+const toolsNav: NavItem[] = [
   { to: "/profile", icon: UserCircle, label: "Profile" },
-  { to: "/users", icon: Shield, label: "Users" },
-  { to: "/settings/packages", icon: Package, label: "Packages" },
-  { to: "/settings/zones", icon: MapPin, label: "Zones" },
+  { to: "/users", icon: Shield, label: "Users", module: "users" },
+  { to: "/settings/packages", icon: Package, label: "Packages", module: "settings" },
+  { to: "/settings/zones", icon: MapPin, label: "Zones", module: "settings" },
 ];
 
-const settingsNav = [
-  { to: "/settings/general", icon: Settings, label: "General Settings" },
-  { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers" },
-  { to: "/login-logs", icon: FileText, label: "Login Logs" },
-  { to: "/audit-logs", icon: ClipboardList, label: "Audit Logs" },
+const settingsNav: NavItem[] = [
+  { to: "/settings/general", icon: Settings, label: "General Settings", module: "settings" },
+  { to: "/settings/roles", icon: KeyRound, label: "Roles", module: "roles" },
+  { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers", module: "settings" },
+  { to: "/login-logs", icon: FileText, label: "Login Logs", module: "settings" },
+  { to: "/audit-logs", icon: ClipboardList, label: "Audit Logs", module: "settings" },
 ];
 
 interface NavGroupProps {
   label: string;
   icon: React.ElementType;
-  items: { to: string; icon: React.ElementType; label: string }[];
+  items: NavItem[];
   collapsed: boolean;
   location: ReturnType<typeof useLocation>;
   defaultOpen?: boolean;
@@ -121,8 +130,12 @@ function NavGroup({ label, icon: Icon, items, collapsed, location, defaultOpen =
 export default function AppSidebar() {
   const { signOut } = useAuth();
   const location = useLocation();
+  const { hasModuleAccess, isSuperAdmin } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const filterItems = (items: NavItem[]) =>
+    items.filter((item) => !item.module || isSuperAdmin || hasModuleAccess(item.module));
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -175,7 +188,7 @@ export default function AppSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {topNav.map((item) => (
+        {filterItems(topNav).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -192,11 +205,11 @@ export default function AppSidebar() {
           </NavLink>
         ))}
 
-        <NavGroup label="Accounts" icon={CreditCard} items={accountsNav} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />
-        <NavGroup label="Support" icon={Ticket} items={supportNav} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />
-        <NavGroup label="Payment Gateway" icon={Wallet} items={paymentGatewayNav} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />
-        <NavGroup label="Tools" icon={Wrench} items={toolsNav} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />
-        <NavGroup label="Settings" icon={Settings} items={settingsNav} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />
+        {filterItems(accountsNav).length > 0 && <NavGroup label="Accounts" icon={CreditCard} items={filterItems(accountsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(supportNav).length > 0 && <NavGroup label="Support" icon={Ticket} items={filterItems(supportNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(paymentGatewayNav).length > 0 && <NavGroup label="Payment Gateway" icon={Wallet} items={filterItems(paymentGatewayNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(toolsNav).length > 0 && <NavGroup label="Tools" icon={Wrench} items={filterItems(toolsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(settingsNav).length > 0 && <NavGroup label="Settings" icon={Settings} items={filterItems(settingsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
       </nav>
 
       {/* Footer */}

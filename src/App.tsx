@@ -40,6 +40,7 @@ import AdminUsers from "@/pages/AdminUsers";
 import CustomerProfilePage from "@/pages/CustomerProfile";
 import LoginLogs from "@/pages/LoginLogs";
 import AuditLogs from "@/pages/AuditLogs";
+import RoleManagement from "@/pages/settings/RoleManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ function App() {
                 <Route path="/settings/mikrotik" element={<ProtectedRoute><MikroTikRouters /></ProtectedRoute>} />
                 <Route path="/settings/bkash" element={<ProtectedRoute><BkashApiManagement /></ProtectedRoute>} />
                 <Route path="/settings/nagad" element={<ProtectedRoute><NagadApiManagement /></ProtectedRoute>} />
+                <Route path="/settings/roles" element={<ProtectedRoute><RoleManagement /></ProtectedRoute>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />

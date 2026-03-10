@@ -55,6 +55,7 @@ Deno.serve(async (req: Request) => {
 
       const enriched = users.map((u: any) => {
         const profile = profiles?.find((p: any) => p.id === u.id);
+        const userRoleRow = roles?.find((r: any) => r.user_id === u.id);
         const userRoles = roles?.filter((r: any) => r.user_id === u.id).map((r: any) => r.role) || [];
         return {
           id: u.id,
@@ -66,6 +67,7 @@ Deno.serve(async (req: Request) => {
           address: profile?.address || "",
           avatar_url: profile?.avatar_url || "",
           roles: userRoles,
+          custom_role_id: userRoleRow?.custom_role_id || null,
           created_at: u.created_at,
           banned: u.banned_until ? true : false,
           disabled: u.user_metadata?.disabled === true,
@@ -77,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
     // ─── CREATE USER ────────────────────────────────────────────
     if (req.method === "POST" && path === "create") {
-      const { email, password, full_name, username, mobile, address, staff_id, role } = await req.json();
+      const { email, password, full_name, username, mobile, address, staff_id, role, custom_role_id } = await req.json();
 
       if (!email || !password || !username) {
         return new Response(JSON.stringify({ error: "Email, username and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -114,7 +116,11 @@ Deno.serve(async (req: Request) => {
 
         // Assign role
         if (role) {
-          await supabase.from("user_roles").insert({ user_id: data.user.id, role });
+          await supabase.from("user_roles").insert({ 
+            user_id: data.user.id, 
+            role,
+            custom_role_id: custom_role_id || null,
+          });
         }
       }
 
@@ -123,7 +129,7 @@ Deno.serve(async (req: Request) => {
 
     // ─── UPDATE USER ────────────────────────────────────────────
     if (req.method === "POST" && path === "update") {
-      const { user_id, email, password, full_name, username, mobile, address, staff_id, role, disabled } = await req.json();
+      const { user_id, email, password, full_name, username, mobile, address, staff_id, role, disabled, custom_role_id } = await req.json();
 
       if (!user_id) {
         return new Response(JSON.stringify({ error: "user_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -169,7 +175,11 @@ Deno.serve(async (req: Request) => {
       // Update role
       if (role) {
         await supabase.from("user_roles").delete().eq("user_id", user_id);
-        await supabase.from("user_roles").insert({ user_id, role });
+        await supabase.from("user_roles").insert({ 
+          user_id, 
+          role,
+          custom_role_id: custom_role_id || null,
+        });
       }
 
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

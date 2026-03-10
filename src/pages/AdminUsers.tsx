@@ -34,7 +34,17 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState({
-    full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff",
+    full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff", custom_role_id: "",
+  });
+
+  // Fetch custom roles for assignment
+  const { data: customRoles } = useQuery({
+    queryKey: ["custom-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("custom_roles").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: users, isLoading } = useQuery({
@@ -65,7 +75,7 @@ export default function AdminUsers() {
 
   const openAdd = () => {
     setEditUser(null);
-    setForm({ full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff" });
+    setForm({ full_name: "", username: "", email: "", password: "", mobile: "", address: "", staff_id: "", role: "staff", custom_role_id: "" });
     setFormOpen(true);
   };
 
@@ -80,6 +90,7 @@ export default function AdminUsers() {
       address: u.address || "",
       staff_id: u.staff_id || "",
       role: u.roles?.[0] || "staff",
+      custom_role_id: u.custom_role_id || "",
     });
     setFormOpen(true);
   };
@@ -89,18 +100,19 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       if (editUser) {
-        const { data, error } = await supabase.functions.invoke("admin-users/update", {
-          body: {
-            user_id: editUser.id,
-            full_name: form.full_name,
-            username: form.username,
-            email: form.email,
-            password: form.password || undefined,
-            mobile: form.mobile,
-            address: form.address,
-            staff_id: form.staff_id,
-            role: form.role,
-          },
+          const { data, error } = await supabase.functions.invoke("admin-users/update", {
+            body: {
+              user_id: editUser.id,
+              full_name: form.full_name,
+              username: form.username,
+              email: form.email,
+              password: form.password || undefined,
+              mobile: form.mobile,
+              address: form.address,
+              staff_id: form.staff_id,
+              role: form.role,
+              custom_role_id: form.custom_role_id || undefined,
+            },
           headers: { Authorization: `Bearer ${session?.access_token}` },
         });
         if (error) throw error;
@@ -109,17 +121,18 @@ export default function AdminUsers() {
       } else {
         if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
         if (!form.username) { toast.error("Username is required"); setLoading(false); return; }
-        const { data, error } = await supabase.functions.invoke("admin-users/create", {
-          body: {
-            full_name: form.full_name,
-            username: form.username,
-            email: form.email,
-            password: form.password,
-            mobile: form.mobile,
-            address: form.address,
-            staff_id: form.staff_id,
-            role: form.role,
-          },
+          const { data, error } = await supabase.functions.invoke("admin-users/create", {
+              body: {
+                full_name: form.full_name,
+                username: form.username,
+                email: form.email,
+                password: form.password,
+                mobile: form.mobile,
+                address: form.address,
+                staff_id: form.staff_id,
+                role: form.role,
+                custom_role_id: form.custom_role_id || undefined,
+              },
           headers: { Authorization: `Bearer ${session?.access_token}` },
         });
         if (error) throw error;
@@ -173,8 +186,20 @@ export default function AdminUsers() {
     switch (role) {
       case "super_admin": return "bg-primary/10 text-primary border-primary/20";
       case "admin": return "bg-accent/50 text-accent-foreground border-accent";
+      case "manager": return "bg-chart-1/10 text-chart-1 border-chart-1/20";
+      case "operator": return "bg-chart-2/10 text-chart-2 border-chart-2/20";
+      case "technician": return "bg-chart-3/10 text-chart-3 border-chart-3/20";
+      case "accountant": return "bg-chart-4/10 text-chart-4 border-chart-4/20";
       default: return "bg-muted text-muted-foreground border-border";
     }
+  };
+
+  const getRoleName = (u: any) => {
+    if (u.custom_role_id && customRoles) {
+      const cr = customRoles.find((r: any) => r.id === u.custom_role_id);
+      if (cr) return cr.name;
+    }
+    return u.roles?.[0] || "No role";
   };
 
   return (
@@ -231,11 +256,9 @@ export default function AdminUsers() {
                   <TableCell>{u.mobile || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{u.staff_id || "—"}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      {u.roles?.length > 0 ? u.roles.map((r: string) => (
-                        <Badge key={r} variant="outline" className={roleColor(r)}>{r}</Badge>
-                      )) : <span className="text-muted-foreground text-xs">No role</span>}
-                    </div>
+                    <Badge variant="outline" className={roleColor(u.roles?.[0] || "")}>
+                      {getRoleName(u)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.disabled || u.banned ? "secondary" : "default"}>
@@ -309,12 +332,26 @@ export default function AdminUsers() {
             </div>
             <div className="space-y-1.5">
               <Label>Role *</Label>
-              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.custom_role_id || form.role} onValueChange={(v) => {
+                // Find if it's a custom role id
+                const customRole = customRoles?.find((cr: any) => cr.id === v);
+                if (customRole) {
+                  setForm({ ...form, custom_role_id: customRole.id, role: customRole.db_role });
+                } else {
+                  setForm({ ...form, role: v, custom_role_id: "" });
+                }
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  {customRoles?.map((cr: any) => (
+                    <SelectItem key={cr.id} value={cr.id}>{cr.name}</SelectItem>
+                  )) || (
+                    <>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
