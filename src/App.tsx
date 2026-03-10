@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
-import SessionApprovalListener from "@/components/SessionApprovalListener";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -40,7 +39,6 @@ import PaymentCallback from "@/pages/portal/PaymentCallback";
 import AdminUsers from "@/pages/AdminUsers";
 import CustomerProfilePage from "@/pages/CustomerProfile";
 import LoginLogs from "@/pages/LoginLogs";
-import SessionManagement from "@/pages/SessionManagement";
 import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/NotFound";
 
@@ -55,7 +53,6 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <CustomerAuthProvider>
-              <SessionApprovalListener />
               <Routes>
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
@@ -77,7 +74,6 @@ function App() {
                 <Route path="/profile" element={<ProtectedRoute><AdminProfile /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
                 <Route path="/login-logs" element={<ProtectedRoute><LoginLogs /></ProtectedRoute>} />
-                <Route path="/sessions" element={<ProtectedRoute><SessionManagement /></ProtectedRoute>} />
                 <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
 
                 {/* Settings Routes */}

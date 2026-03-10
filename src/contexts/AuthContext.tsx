@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { removeSession, createActiveSession } from "@/hooks/useAdminSession";
 
 interface AuthContextType {
   user: User | null;
@@ -56,13 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (user) {
-      try {
-        await removeSession(user.id);
-      } catch (e) {
-        console.error("Failed to remove session:", e);
-      }
-    }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
