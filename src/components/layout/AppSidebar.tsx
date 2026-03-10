@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
-  Package, MapPin, Router, Shield, Wallet, BarChart3, Monitor, FileText, Menu, X,
+  Package, MapPin, Router, Shield, Wallet, BarChart3, Monitor, FileText, Menu, X, ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ const settingsNav = [
   { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers" },
   { to: "/sessions", icon: Monitor, label: "Sessions" },
   { to: "/login-logs", icon: FileText, label: "Login Logs" },
+  { to: "/audit-logs", icon: ClipboardList, label: "Audit Logs" },
 ];
 
 interface NavGroupProps {
