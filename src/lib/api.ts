@@ -12,20 +12,51 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 async function apiCall<T = any>(resource: string, action: string, body: any, skipAuth = false): Promise<T> {
-  const headers = skipAuth
-    ? { "Content-Type": "application/json" }
-    : await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/${resource}/${action}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  let retries = 3;
+  let delay = 1000;
 
-  const data = await res.json();
-  if (!res.ok || data.error) {
-    throw new Error(data.error || `API call failed: ${res.status}`);
+  while (true) {
+    try {
+      const headers = skipAuth
+        ? { "Content-Type": "application/json" }
+        : await getAuthHeaders();
+
+      const res = await fetch(`${API_BASE}/${resource}/${action}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      // Handle token expiration with refresh
+      if (res.status === 401 && !skipAuth && retries > 1) {
+        await supabase.auth.refreshSession();
+        retries--;
+        continue;
+      }
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `API call failed: ${res.status}`);
+      }
+      return data;
+    } catch (err: any) {
+      retries--;
+      if (retries <= 0) throw err;
+
+      // Retry only on network errors
+      if (
+        err.message?.includes("Failed to fetch") ||
+        err.message?.includes("NetworkError") ||
+        err.message?.includes("network") ||
+        err.message?.includes("ECONNRESET")
+      ) {
+        await new Promise((r) => setTimeout(r, delay));
+        delay *= 2;
+        continue;
+      }
+      throw err;
+    }
   }
-  return data;
 }
 
 // ─── Bills API ──────────────────────────────────────────────────
