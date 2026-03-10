@@ -1,13 +1,24 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, AlertTriangle, Clock, CheckCircle, Users, Zap } from "lucide-react";
-import { format, setDate, isAfter, isBefore, addMonths, subDays } from "date-fns";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Loader2, AlertTriangle, Clock, CheckCircle, Users, Zap, Pencil, Trash2 } from "lucide-react";
+import { format, subDays, isBefore } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 type CustomerWithBill = {
   id: string;
@@ -29,33 +40,23 @@ type CustomerWithBill = {
 
 function getDueStatus(dueDay: number, billStatus?: string, billDueDate?: string | null) {
   const today = new Date();
-  
   if (billStatus === "paid") return "paid";
-  
   if (billDueDate) {
     const due = new Date(billDueDate);
     if (isBefore(due, today)) return "overdue";
-    const reminderDate = subDays(due, 1);
-    if (isBefore(reminderDate, today)) return "due-tomorrow";
-    const warningDate = subDays(due, 5);
-    if (isBefore(warningDate, today)) return "upcoming";
+    if (isBefore(subDays(due, 1), today)) return "due-tomorrow";
+    if (isBefore(subDays(due, 5), today)) return "upcoming";
   }
-  
   return "pending";
 }
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
-    case "paid":
-      return <Badge variant="outline" className="bg-success/10 text-success border-success/20"><CheckCircle className="h-3 w-3 mr-1" />Paid</Badge>;
-    case "overdue":
-      return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20"><AlertTriangle className="h-3 w-3 mr-1" />Overdue</Badge>;
-    case "due-tomorrow":
-      return <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20"><Clock className="h-3 w-3 mr-1" />Due Tomorrow</Badge>;
-    case "upcoming":
-      return <Badge variant="outline" className="bg-accent text-accent-foreground"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>;
-    default:
-      return <Badge variant="outline" className="bg-muted text-muted-foreground">Pending</Badge>;
+    case "paid": return <Badge variant="outline" className="bg-success/10 text-success border-success/20"><CheckCircle className="h-3 w-3 mr-1" />Paid</Badge>;
+    case "overdue": return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20"><AlertTriangle className="h-3 w-3 mr-1" />Overdue</Badge>;
+    case "due-tomorrow": return <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20"><Clock className="h-3 w-3 mr-1" />Due Tomorrow</Badge>;
+    case "upcoming": return <Badge variant="outline" className="bg-accent text-accent-foreground"><Clock className="h-3 w-3 mr-1" />Upcoming</Badge>;
+    default: return <Badge variant="outline" className="bg-muted text-muted-foreground">Pending</Badge>;
   }
 }
 
@@ -63,6 +64,14 @@ export default function BillingCycleOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentMonth = format(new Date(), "yyyy-MM");
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCustomer, setEditCustomer] = useState<CustomerWithBill | null>(null);
+  const [editBillAmount, setEditBillAmount] = useState("");
+  const [editBillStatus, setEditBillStatus] = useState("");
+  const [editConnectionStatus, setEditConnectionStatus] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<CustomerWithBill | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const generateBills = useMutation({
     mutationFn: async () => {
@@ -83,29 +92,18 @@ export default function BillingCycleOverview() {
     queryKey: ["billing-cycle-overview", currentMonth],
     queryFn: async () => {
       const { data: customers, error: custErr } = await supabase
-        .from("customers")
-        .select("id, customer_id, name, phone, monthly_bill, due_date_day, connection_status, status")
-        .eq("status", "active")
-        .order("due_date_day", { ascending: true });
+        .from("customers").select("id, customer_id, name, phone, monthly_bill, due_date_day, connection_status, status")
+        .eq("status", "active").order("due_date_day", { ascending: true });
       if (custErr) throw custErr;
-
       const { data: bills, error: billErr } = await supabase
-        .from("bills")
-        .select("id, customer_id, month, amount, status, due_date")
-        .eq("month", currentMonth);
+        .from("bills").select("id, customer_id, month, amount, status, due_date").eq("month", currentMonth);
       if (billErr) throw billErr;
-
       const billMap = new Map<string, typeof bills[0]>();
       bills?.forEach(b => billMap.set(b.customer_id, b));
-
-      return (customers || []).map(c => ({
-        ...c,
-        latestBill: billMap.get(c.id),
-      })) as CustomerWithBill[];
+      return (customers || []).map(c => ({ ...c, latestBill: billMap.get(c.id) })) as CustomerWithBill[];
     },
   });
 
-  // Group by due_date_day
   const grouped = new Map<number, CustomerWithBill[]>();
   data?.forEach(c => {
     const day = c.due_date_day || 1;
@@ -117,11 +115,50 @@ export default function BillingCycleOverview() {
   const stats = {
     total: data?.length || 0,
     paid: data?.filter(c => c.latestBill?.status === "paid").length || 0,
-    overdue: data?.filter(c => {
-      const s = getDueStatus(c.due_date_day || 1, c.latestBill?.status, c.latestBill?.due_date);
-      return s === "overdue";
-    }).length || 0,
+    overdue: data?.filter(c => getDueStatus(c.due_date_day || 1, c.latestBill?.status, c.latestBill?.due_date) === "overdue").length || 0,
     noBill: data?.filter(c => !c.latestBill).length || 0,
+  };
+
+  const handleEditSave = async () => {
+    if (!editCustomer) return;
+    try {
+      // Update bill if exists
+      if (editCustomer.latestBill) {
+        const { error } = await supabase.from("bills").update({
+          amount: parseFloat(editBillAmount),
+          status: editBillStatus,
+          ...(editBillStatus === "paid" ? { paid_date: new Date().toISOString() } : {}),
+        }).eq("id", editCustomer.latestBill.id);
+        if (error) throw error;
+      }
+      // Update connection status
+      const { error: custErr } = await supabase.from("customers").update({
+        connection_status: editConnectionStatus,
+      }).eq("id", editCustomer.id);
+      if (custErr) throw custErr;
+      sonnerToast.success("Record updated successfully");
+      setEditOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["billing-cycle-overview"] });
+    } catch (err: any) {
+      sonnerToast.error(err.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.latestBill) return;
+    setDeleteLoading(true);
+    try {
+      await supabase.from("customer_ledger").delete().eq("reference", `BILL-${deleteTarget.latestBill.id.substring(0, 8)}`);
+      const { error } = await supabase.from("bills").delete().eq("id", deleteTarget.latestBill.id);
+      if (error) throw error;
+      sonnerToast.success("Bill deleted successfully");
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["billing-cycle-overview"] });
+    } catch (err: any) {
+      sonnerToast.error(err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -137,30 +174,15 @@ export default function BillingCycleOverview() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3">
-          <Users className="h-5 w-5 text-primary" />
-          <div><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total Active</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3">
-          <CheckCircle className="h-5 w-5 text-success" />
-          <div><p className="text-2xl font-bold">{stats.paid}</p><p className="text-xs text-muted-foreground">Paid</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-destructive" />
-          <div><p className="text-2xl font-bold">{stats.overdue}</p><p className="text-xs text-muted-foreground">Overdue</p></div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3">
-          <Clock className="h-5 w-5 text-warning" />
-          <div><p className="text-2xl font-bold">{stats.noBill}</p><p className="text-xs text-muted-foreground">No Bill Yet</p></div>
-        </CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total Active</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><CheckCircle className="h-5 w-5 text-success" /><div><p className="text-2xl font-bold">{stats.paid}</p><p className="text-xs text-muted-foreground">Paid</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><AlertTriangle className="h-5 w-5 text-destructive" /><div><p className="text-2xl font-bold">{stats.overdue}</p><p className="text-xs text-muted-foreground">Overdue</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Clock className="h-5 w-5 text-warning" /><div><p className="text-2xl font-bold">{stats.noBill}</p><p className="text-xs text-muted-foreground">No Bill Yet</p></div></CardContent></Card>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+        <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : sortedGroups.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">No active customers found</CardContent></Card>
       ) : (
@@ -185,15 +207,16 @@ export default function BillingCycleOverview() {
                         <th className="text-right py-2 px-2 font-medium">Bill</th>
                         <th className="text-center py-2 px-2 font-medium">Status</th>
                         <th className="text-center py-2 px-2 font-medium">Connection</th>
+                        <th className="text-right py-2 px-2 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {customers.map(c => {
                         const dueStatus = getDueStatus(c.due_date_day || 1, c.latestBill?.status, c.latestBill?.due_date);
                         return (
-                          <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/customers/${c.id}`)}>
-                            <td className="py-2 px-2 font-mono text-xs">{c.customer_id}</td>
-                            <td className="py-2 px-2 font-medium">{c.name}</td>
+                          <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                            <td className="py-2 px-2 font-mono text-xs cursor-pointer" onClick={() => navigate(`/customers/${c.id}`)}>{c.customer_id}</td>
+                            <td className="py-2 px-2 font-medium cursor-pointer" onClick={() => navigate(`/customers/${c.id}`)}>{c.name}</td>
                             <td className="py-2 px-2 text-muted-foreground">{c.phone}</td>
                             <td className="py-2 px-2 text-right">৳{Number(c.latestBill?.amount || c.monthly_bill).toLocaleString()}</td>
                             <td className="py-2 px-2 text-center">
@@ -203,6 +226,28 @@ export default function BillingCycleOverview() {
                               <Badge variant="outline" className={c.connection_status === "active" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}>
                                 {c.connection_status}
                               </Badge>
+                            </td>
+                            <td className="py-2 px-2 text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditCustomer(c);
+                                  setEditBillAmount((c.latestBill?.amount || c.monthly_bill).toString());
+                                  setEditBillStatus(c.latestBill?.status || "unpaid");
+                                  setEditConnectionStatus(c.connection_status);
+                                  setEditOpen(true);
+                                }}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                {c.latestBill && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget(c);
+                                  }}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -215,6 +260,53 @@ export default function BillingCycleOverview() {
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Billing Record</DialogTitle></DialogHeader>
+          {editCustomer && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{editCustomer.name} ({editCustomer.customer_id})</p>
+              <div className="space-y-1.5">
+                <Label>Bill Amount</Label>
+                <Input type="number" value={editBillAmount} onChange={(e) => setEditBillAmount(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Bill Status</Label>
+                <Select value={editBillStatus} onValueChange={setEditBillStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unpaid">Unpaid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partial">Partial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Connection Status</Label>
+                <Select value={editConnectionStatus} onValueChange={setEditConnectionStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="pending_reactivation">Pending Reactivation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end"><Button onClick={handleEditSave}>Save Changes</Button></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleteLoading}
+        description="This will delete the bill for this customer. Related ledger entries will also be removed."
+      />
     </DashboardLayout>
   );
 }
