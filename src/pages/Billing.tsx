@@ -67,49 +67,8 @@ export default function Billing() {
   const handleGenerate = async () => {
     setGenLoading(true);
     try {
-      const { data: customers, error: custErr } = await supabase
-        .from("customers")
-        .select("id, name, phone, monthly_bill, due_date_day")
-        .eq("status", "active");
-      if (custErr) throw custErr;
-
-      if (!customers?.length) {
-        toast.info("No active customers to generate bills for");
-        setGenLoading(false);
-        return;
-      }
-
-      const { data: existing } = await supabase.from("bills").select("customer_id").eq("month", genMonth);
-      const existingIds = new Set(existing?.map((b) => b.customer_id));
-      const newBills = customers
-        .filter((c) => !existingIds.has(c.id))
-        .map((c) => {
-          const dueDay = c.due_date_day || 15;
-          const monthDate = new Date(genMonth + "-01");
-          const dueDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dueDay);
-          return { customer_id: c.id, month: genMonth, amount: c.monthly_bill, status: "unpaid" as const, due_date: dueDate.toISOString().split("T")[0] };
-        });
-
-      if (!newBills.length) {
-        toast.info("Bills already generated for this month");
-        setGenLoading(false);
-        setGenerateOpen(false);
-        return;
-      }
-
-      const { error } = await supabase.from("bills").insert(newBills);
-      if (error) throw error;
-
-      const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const billCustomers = customers.filter((c) => !existingIds.has(c.id));
-      for (const cust of billCustomers) {
-        fetch(`https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/send-sms`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: cust.phone, message: `Dear ${cust.name}, your internet bill for ${genMonth} is ${cust.monthly_bill} BDT. Please pay before the due date to avoid service suspension.`, sms_type: "bill_generate", customer_id: cust.id }),
-        }).catch(() => {});
-      }
-
-      toast.success(`Generated ${newBills.length} bills for ${genMonth}`);
+      const result = await billsApi.generate(genMonth);
+      toast.success(`Generated ${result.generated} bills for ${genMonth}`);
       setGenerateOpen(false);
       queryClient.invalidateQueries({ queryKey: ["bills"] });
       queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
@@ -121,23 +80,29 @@ export default function Billing() {
   };
 
   const handleMarkPaid = async (bill: any) => {
-    const { error } = await supabase.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Bill marked as paid");
-    queryClient.invalidateQueries({ queryKey: ["bills"] });
-    queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+    try {
+      await billsApi.markPaid(bill.id);
+      toast.success("Bill marked as paid");
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const handleEditSave = async () => {
     if (!editBill) return;
     const newData = { month: editMonth, amount: parseFloat(editAmount), status: editStatus, ...(editStatus === "paid" && !editBill.paid_date ? { paid_date: new Date().toISOString() } : {}) };
-    const { error } = await supabase.from("bills").update(newData).eq("id", editBill.id);
-    if (error) { toast.error(error.message); return; }
-    if (userId) await logAudit({ adminId: userId, adminName, action: "edit", tableName: "bills", recordId: editBill.id, oldData: { month: editBill.month, amount: editBill.amount, status: editBill.status }, newData });
-    toast.success("Bill updated successfully");
-    setEditOpen(false);
-    queryClient.invalidateQueries({ queryKey: ["bills"] });
-    queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+    try {
+      await billsApi.update(editBill.id, newData);
+      if (userId) await logAudit({ adminId: userId, adminName, action: "edit", tableName: "bills", recordId: editBill.id, oldData: { month: editBill.month, amount: editBill.amount, status: editBill.status }, newData });
+      toast.success("Bill updated successfully");
+      setEditOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const handleDelete = async () => {
