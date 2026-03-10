@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import {
 import { Loader2, Upload, Download, CheckCircle, XCircle, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { useFileDrop } from "@/hooks/useFileDrop";
 
 interface ValidationIssue {
   row: number;
