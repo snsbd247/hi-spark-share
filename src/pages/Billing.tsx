@@ -263,6 +263,11 @@ export default function Billing() {
       </Dialog>
 
       <ConfirmDeleteDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+
+      <BillingImport open={importOpen} onOpenChange={setImportOpen} onComplete={() => {
+        queryClient.invalidateQueries({ queryKey: ["bills"] });
+        queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
+      }} />
     </DashboardLayout>
   );
 }
