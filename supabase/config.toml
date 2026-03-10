@@ -1,5 +1,8 @@
 project_id = "udxrzqpivtzunnfenmyd"
 
+[functions.bkash-payment]
+verify_jwt = false
+
 [functions.session-expiry]
 verify_jwt = false
 
