@@ -116,12 +116,12 @@ export default function SafeMode({ onDismiss, errorMessage }: SafeModeProps) {
     try {
       // Load from both buckets
       const [backupsRes, emergencyRes] = await Promise.all([
-        supabase.storage.from("backups").list("", { sortBy: { column: "created_at", order: "desc" } }),
-        supabase.storage.from("emergency").list("", { sortBy: { column: "created_at", order: "desc" } }),
+        supabase.storage.from("backups").list(),
+        supabase.storage.from("emergency").list(),
       ]);
       const files: string[] = [];
-      if (backupsRes.data) files.push(...backupsRes.data.map((f) => `backups/${f.name}`));
-      if (emergencyRes.data) files.push(...emergencyRes.data.map((f) => `emergency/${f.name}`));
+      if (backupsRes.data) files.push(...backupsRes.data.filter(f => f.name).map((f) => `backups/${f.name}`));
+      if (emergencyRes.data) files.push(...emergencyRes.data.filter(f => f.name).map((f) => `emergency/${f.name}`));
       setBackupFiles(files);
       if (files.length > 0) setLatestBackup(files[0]);
     } catch (err: any) {
