@@ -128,6 +128,7 @@ function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </SafeModeWrapper>
             </CustomerAuthProvider>
           </AuthProvider>
         </BrowserRouter>
