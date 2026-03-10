@@ -493,6 +493,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      <Card className="glass-card animate-fade-in mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
