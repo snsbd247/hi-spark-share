@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
       }).eq("id", acc.user_id);
 
       // Sync Supabase Auth password
-      const { error: authError } = await supabase.auth.admin.updateUser(acc.user_id, {
+      const { error: authError } = await supabase.auth.admin.updateUserById(acc.user_id, {
         password: acc.password,
       });
 
