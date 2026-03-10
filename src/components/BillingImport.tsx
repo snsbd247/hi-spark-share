@@ -252,9 +252,12 @@ export default function BillingImport({ open, onOpenChange, onComplete }: Props)
         <div className="space-y-4">
           {step === "upload" && (
             <>
-              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground mb-3">Upload an Excel file (.xlsx, .xls) or CSV to create bills</p>
+              <div
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-border"}`}
+                onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+              >
+                <Upload className={`h-8 w-8 mx-auto mb-3 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
+                <p className="text-sm text-muted-foreground mb-3">{isDragging ? "Drop file here..." : "Drag & drop or select an Excel/CSV file"}</p>
                 <p className="text-xs font-mono text-muted-foreground mb-4">Customer ID | Month | Amount | Due Date | Status</p>
                 <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
                 <div className="flex gap-2 justify-center">
