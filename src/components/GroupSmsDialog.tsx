@@ -1,19 +1,31 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/apiDb";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Users } from "lucide-react";
+import { Loader2, Send, Users, FileText, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 type CustomerGroup = "all" | "due" | "paid" | "suspended" | "zone" | "package";
+
+// SMS segment calculation
+function getSmsInfo(text: string) {
+  const isUnicode = /[^\x00-\x7F]/.test(text);
+  const charLimit = isUnicode ? 70 : 160;
+  const multiPartLimit = isUnicode ? 67 : 153;
+  const len = text.length;
+  if (len === 0) return { chars: 0, segments: 0, charLimit, isUnicode };
+  const segments = len <= charLimit ? 1 : Math.ceil(len / multiPartLimit);
+  return { chars: len, segments, charLimit, isUnicode };
+}
 
 interface GroupSmsDialogProps {
   open: boolean;
@@ -22,12 +34,17 @@ interface GroupSmsDialogProps {
 }
 
 export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsDialogProps) {
+  const queryClient = useQueryClient();
   const [group, setGroup] = useState<CustomerGroup>("all");
   const [zoneId, setZoneId] = useState("");
   const [packageId, setPackageId] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  const smsInfo = useMemo(() => getSmsInfo(message), [message]);
 
   // Fetch zones
   const { data: zones = [] } = useQuery({
@@ -51,6 +68,17 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
     enabled: open,
   });
 
+  // Fetch templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["sms-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sms_templates").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
   // Fetch customers based on group
   const { data: customers = [], isLoading: loadingCustomers } = useQuery({
     queryKey: ["group-sms-customers", group, zoneId, packageId],
@@ -60,14 +88,12 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
       if (group === "suspended") {
         query = query.eq("connection_status", "suspended");
       } else if (group === "zone" && zoneId) {
-        // Find the zone area_name
         const zone = zones.find((z: any) => z.id === zoneId);
         if (zone) query = query.eq("area", zone.area_name);
       } else if (group === "package" && packageId) {
         query = query.eq("package_id", packageId);
       }
 
-      // For "all", no extra filter needed beyond active status
       if (group !== "suspended") {
         query = query.eq("status", "active");
       }
@@ -105,7 +131,6 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
   }, [customers, group, billFilteredCustomerIds]);
 
   const customerCount = filteredCustomers.length;
-
   const canSend = message.trim().length > 0 && customerCount > 0 && !sending;
 
   const handleSendClick = () => {
@@ -116,12 +141,10 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
   const handleConfirmSend = async () => {
     setConfirmOpen(false);
     setSending(true);
-
     let successCount = 0;
     let failCount = 0;
 
     try {
-      // Send SMS to each customer in batches
       const batchSize = 10;
       for (let i = 0; i < filteredCustomers.length; i += batchSize) {
         const batch = filteredCustomers.slice(i, i + batchSize);
@@ -141,11 +164,8 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
               }
             );
             const data = await res.json();
-            if (res.ok && data.success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
+            if (res.ok && data.success) successCount++;
+            else failCount++;
           } catch {
             failCount++;
           }
@@ -172,17 +192,46 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !message.trim()) {
+      toast.error("Template name and message are required");
+      return;
+    }
+    setSavingTemplate(true);
+    try {
+      const { error } = await supabase.from("sms_templates").insert({ name: templateName.trim(), message: message.trim() });
+      if (error) throw error;
+      toast.success("Template saved");
+      setTemplateName("");
+      queryClient.invalidateQueries({ queryKey: ["sms-templates"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    const { error } = await supabase.from("sms_templates").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Template deleted");
+      queryClient.invalidateQueries({ queryKey: ["sms-templates"] });
+    }
+  };
+
   const resetForm = () => {
     setGroup("all");
     setZoneId("");
     setPackageId("");
     setMessage("");
+    setTemplateName("");
   };
 
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" /> Send Group SMS
@@ -242,6 +291,37 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
               </div>
             )}
 
+            {/* Templates */}
+            {templates.length > 0 && (
+              <div>
+                <Label className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Load Template</Label>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {templates.map((t: any) => (
+                    <div key={t.id} className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMessage(t.message)}
+                        className="text-xs"
+                      >
+                        {t.name}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleDeleteTemplate(t.id)}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Message */}
             <div>
               <Label>Message</Label>
@@ -251,7 +331,40 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
                 placeholder="Type your message here..."
                 rows={4}
               />
+              {/* Character & segment counter */}
+              <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground">
+                <span>
+                  {smsInfo.chars} character{smsInfo.chars !== 1 ? "s" : ""}
+                  {smsInfo.isUnicode && " (Unicode)"}
+                </span>
+                <span>
+                  {smsInfo.segments} SMS segment{smsInfo.segments !== 1 ? "s" : ""}
+                  {smsInfo.segments > 1 && ` (${smsInfo.isUnicode ? 67 : 153} chars/segment)`}
+                </span>
+              </div>
             </div>
+
+            {/* Save as template */}
+            {message.trim().length > 0 && (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Template name..."
+                  className="flex-1 h-9 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveTemplate}
+                  disabled={savingTemplate || !templateName.trim()}
+                >
+                  {savingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
+                  Save
+                </Button>
+              </div>
+            )}
 
             {/* Preview count */}
             <div className="flex items-center gap-2">
@@ -267,11 +380,7 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
 
             {/* Send button */}
             <Button onClick={handleSendClick} disabled={!canSend} className="w-full">
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
+              {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
               {sending ? "Sending..." : "Send Group SMS"}
             </Button>
           </div>
