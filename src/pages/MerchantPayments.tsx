@@ -18,12 +18,13 @@ import {
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Search, Loader2, Link2, CheckCircle, AlertCircle, HelpCircle, XCircle, MessageSquareText, Copy, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Loader2, Link2, CheckCircle, AlertCircle, HelpCircle, XCircle, MessageSquareText, Copy, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { logAudit } from "@/lib/auditLog";
+import MerchantPaymentImport from "@/components/MerchantPaymentImport";
 
 export default function MerchantPayments() {
   const [search, setSearch] = useState("");
@@ -38,6 +39,7 @@ export default function MerchantPayments() {
   const [editForm, setEditForm] = useState({ transaction_id: "", sender_phone: "", amount: "", reference: "", status: "" });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
   const { canEdit, adminName, userId } = useAdminRole();
 
@@ -173,8 +175,9 @@ export default function MerchantPayments() {
           <h1 className="text-2xl font-bold text-foreground">Merchant Payments</h1>
           <p className="text-muted-foreground mt-1">Reconcile bKash merchant payments with customer bills</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setSmsInfoOpen(true)}><MessageSquareText className="h-4 w-4 mr-2" /> SMS Gateway Setup</Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>
           <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" /> Record Payment</Button>
         </div>
       </div>
@@ -329,6 +332,12 @@ export default function MerchantPayments() {
       </Dialog>
 
       <ConfirmDeleteDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+
+      <MerchantPaymentImport open={importOpen} onOpenChange={setImportOpen} onComplete={() => {
+        queryClient.invalidateQueries({ queryKey: ["merchant-payments"] });
+        queryClient.invalidateQueries({ queryKey: ["bills"] });
+        queryClient.invalidateQueries({ queryKey: ["payments"] });
+      }} />
     </DashboardLayout>
   );
 }
