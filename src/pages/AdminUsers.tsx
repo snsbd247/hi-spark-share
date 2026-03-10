@@ -256,11 +256,9 @@ export default function AdminUsers() {
                   <TableCell>{u.mobile || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{u.staff_id || "—"}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      {u.roles?.length > 0 ? u.roles.map((r: string) => (
-                        <Badge key={r} variant="outline" className={roleColor(r)}>{r}</Badge>
-                      )) : <span className="text-muted-foreground text-xs">No role</span>}
-                    </div>
+                    <Badge variant="outline" className={roleColor(u.roles?.[0] || "")}>
+                      {getRoleName(u)}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.disabled || u.banned ? "secondary" : "default"}>
