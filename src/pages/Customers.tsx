@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Eye, Pencil, Printer, Search, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Eye, Pencil, Printer, Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
