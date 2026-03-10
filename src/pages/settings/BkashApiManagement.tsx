@@ -1,0 +1,375 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Eye, EyeOff, Wifi, WifiOff, TestTube, Save, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { format } from "date-fns";
+
+const BASE_URLS: Record<string, string> = {
+  sandbox: "https://tokenized.sandbox.bka.sh/v1.2.0-beta",
+  live: "https://tokenized.pay.bka.sh/v1.2.0-beta",
+};
+
+export default function BkashApiManagement() {
+  const queryClient = useQueryClient();
+  const { role } = useAdminRole();
+  const isSuperAdmin = role === "super_admin";
+
+  const [showSecret, setShowSecret] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedTxn, setSelectedTxn] = useState<any>(null);
+
+  // Form state
+  const [form, setForm] = useState({
+    app_key: "", app_secret: "", username: "", password: "",
+    environment: "sandbox", merchant_number: "", base_url: BASE_URLS.sandbox,
+  });
+  const [formLoaded, setFormLoaded] = useState(false);
+
+  // Fetch gateway config
+  const { data: gateway, isLoading: loadingGateway } = useQuery({
+    queryKey: ["payment-gateway-bkash"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_gateways")
+        .select("*")
+        .eq("gateway_name", "bkash")
+        .maybeSingle();
+      if (error) throw error;
+      if (data && !formLoaded) {
+        setForm({
+          app_key: data.app_key || "",
+          app_secret: data.app_secret || "",
+          username: data.username || "",
+          password: data.password || "",
+          environment: data.environment || "sandbox",
+          merchant_number: data.merchant_number || "",
+          base_url: data.base_url || BASE_URLS.sandbox,
+        });
+        setFormLoaded(true);
+      }
+      return data;
+    },
+  });
+
+  // Fetch recent bKash transactions
+  const { data: transactions, isLoading: loadingTxns } = useQuery({
+    queryKey: ["bkash-transactions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*, customers(customer_id, name)")
+        .or("payment_method.eq.bkash,payment_method.eq.bkash_merchant")
+        .order("paid_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Save settings
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        gateway_name: "bkash",
+        app_key: form.app_key,
+        app_secret: form.app_secret,
+        username: form.username,
+        password: form.password,
+        environment: form.environment,
+        merchant_number: form.merchant_number,
+        base_url: form.base_url,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (gateway?.id) {
+        const { error } = await supabase.from("payment_gateways").update(payload).eq("id", gateway.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("payment_gateways").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("bKash API settings saved");
+      queryClient.invalidateQueries({ queryKey: ["payment-gateway-bkash"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Test connection
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("bkash-payment", {
+        body: { action: "test_connection" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: async (data) => {
+      toast.success("bKash API connection successful!");
+      // Update status
+      if (gateway?.id) {
+        await supabase.from("payment_gateways").update({
+          status: "connected",
+          last_connected_at: new Date().toISOString(),
+        }).eq("id", gateway.id);
+        queryClient.invalidateQueries({ queryKey: ["payment-gateway-bkash"] });
+      }
+    },
+    onError: (err: any) => toast.error(`Connection failed: ${err.message}`),
+  });
+
+  const handleEnvChange = (env: string) => {
+    setForm(f => ({ ...f, environment: env, base_url: BASE_URLS[env] || f.base_url }));
+  };
+
+  const maskValue = (val: string) => {
+    if (!val || val.length <= 4) return "••••••••";
+    return "••••••••" + val.slice(-4);
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">bKash API Management</h1>
+          <p className="text-muted-foreground text-sm">Manage bKash payment gateway integration</p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* API Status Card */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-base">API Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                {gateway?.status === "connected" ? (
+                  <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <Wifi className="h-5 w-5 text-green-600" />
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <WifiOff className="h-5 w-5 text-destructive" />
+                  </div>
+                )}
+                <div>
+                  <Badge variant={gateway?.status === "connected" ? "default" : "destructive"}>
+                    {gateway?.status === "connected" ? "Connected" : "Not Connected"}
+                  </Badge>
+                  {gateway?.last_connected_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Last connected: {format(new Date(gateway.last_connected_at), "dd MMM yyyy, hh:mm a")}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Environment</span>
+                  <Badge variant="outline">{gateway?.environment || "—"}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Merchant</span>
+                  <span className="font-mono text-xs">{gateway?.merchant_number || "—"}</span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => testMutation.mutate()}
+                disabled={testMutation.isPending || !gateway?.app_key}
+              >
+                {testMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <TestTube className="h-4 w-4 mr-2" />}
+                Test Connection
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* API Configuration Form */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">API Configuration</CardTitle>
+              <CardDescription>
+                {isSuperAdmin ? "Configure bKash API credentials" : "Only Super Admins can modify credentials"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingGateway ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>App Key</Label>
+                    <Input value={form.app_key} onChange={e => setForm(f => ({ ...f, app_key: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter App Key" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>App Secret</Label>
+                    <div className="relative">
+                      <Input
+                        type={showSecret ? "text" : "password"}
+                        value={form.app_secret}
+                        onChange={e => setForm(f => ({ ...f, app_secret: e.target.value }))}
+                        disabled={!isSuperAdmin}
+                        placeholder="Enter App Secret"
+                      />
+                      <button type="button" onClick={() => setShowSecret(!showSecret)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Username</Label>
+                    <Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} disabled={!isSuperAdmin} placeholder="Enter Username" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Password</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                        disabled={!isSuperAdmin}
+                        placeholder="Enter Password"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Environment</Label>
+                    <Select value={form.environment} onValueChange={handleEnvChange} disabled={!isSuperAdmin}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sandbox">Sandbox</SelectItem>
+                        <SelectItem value="live">Live</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Merchant Number</Label>
+                    <Input value={form.merchant_number} onChange={e => setForm(f => ({ ...f, merchant_number: e.target.value }))} disabled={!isSuperAdmin} placeholder="01XXXXXXXXX" />
+                  </div>
+
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Base URL</Label>
+                    <Input value={form.base_url} onChange={e => setForm(f => ({ ...f, base_url: e.target.value }))} disabled={!isSuperAdmin} className="font-mono text-xs" />
+                  </div>
+
+                  {isSuperAdmin && (
+                    <div className="sm:col-span-2 flex justify-end">
+                      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+                        {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save Settings
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payment Logs */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Recent bKash Transactions</CardTitle>
+              <CardDescription>Last 50 bKash payment transactions</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ["bkash-transactions"] })}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {loadingTxns ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : !transactions?.length ? (
+              <p className="text-center py-8 text-muted-foreground text-sm">No bKash transactions found</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer ID</TableHead>
+                      <TableHead>Customer Name</TableHead>
+                      <TableHead>Payment ID</TableHead>
+                      <TableHead>Transaction ID</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((txn: any) => (
+                      <TableRow key={txn.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedTxn(txn)}>
+                        <TableCell className="text-xs">{format(new Date(txn.paid_at), "dd MMM yyyy")}</TableCell>
+                        <TableCell className="font-mono text-xs">{txn.customers?.customer_id || "—"}</TableCell>
+                        <TableCell>{txn.customers?.name || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{txn.bkash_payment_id || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs">{txn.bkash_trx_id || txn.transaction_id || "—"}</TableCell>
+                        <TableCell className="text-right font-semibold">৳{txn.amount}</TableCell>
+                        <TableCell>
+                          <Badge variant={txn.status === "completed" ? "default" : "destructive"} className="text-xs">
+                            {txn.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Transaction Detail Dialog */}
+        <Dialog open={!!selectedTxn} onOpenChange={(o) => !o && setSelectedTxn(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Transaction Details</DialogTitle></DialogHeader>
+            {selectedTxn && (
+              <div className="space-y-3">
+                {[
+                  ["Payment ID", selectedTxn.bkash_payment_id],
+                  ["bKash TrxID", selectedTxn.bkash_trx_id || selectedTxn.transaction_id],
+                  ["Amount", `৳${selectedTxn.amount}`],
+                  ["Payment Method", selectedTxn.payment_method],
+                  ["Customer ID", selectedTxn.customers?.customer_id],
+                  ["Customer Name", selectedTxn.customers?.name],
+                  ["Status", selectedTxn.status],
+                  ["Date", format(new Date(selectedTxn.paid_at), "dd MMM yyyy, hh:mm a")],
+                  ["Month", selectedTxn.month],
+                ].map(([label, value]) => (
+                  <div key={label as string} className="flex justify-between border-b border-border pb-2">
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    <span className="text-sm font-medium">{value || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </DashboardLayout>
+  );
+}
