@@ -125,7 +125,7 @@ export function generatePaymentReceiptPDF(payment: any, customer: any, invoiceFo
   doc.save(`receipt-${receiptNo}.pdf`);
 }
 
-export function generateCustomerPDF(customer: any) {
+export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const margin = 15;
