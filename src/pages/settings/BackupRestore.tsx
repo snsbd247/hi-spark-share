@@ -229,6 +229,30 @@ export default function BackupRestore() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
+                <FileCode className="h-5 w-5 text-primary" />
+                SQL Backup
+              </CardTitle>
+              <CardDescription>Export as SQL INSERT statements</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={() => createSqlBackup.mutate()}
+                disabled={createSqlBackup.isPending}
+                className="w-full"
+              >
+                {createSqlBackup.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating SQL...</>
+                ) : (
+                  <><FileCode className="h-4 w-4 mr-2" /> Download SQL Backup</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Download className="h-5 w-5 text-primary" />
                 Download Backup
               </CardTitle>
