@@ -67,6 +67,17 @@ function recordFailure() {
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
+// Clear cached token on auth state changes (login/logout/token refresh)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session?.access_token) {
+    cachedToken = session.access_token;
+    tokenExpiresAt = (session.expires_at || 0) * 1000;
+  } else {
+    cachedToken = null;
+    tokenExpiresAt = 0;
+  }
+});
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const now = Date.now();
 
