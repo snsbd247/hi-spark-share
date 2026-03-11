@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 
-export function generatePaymentReceiptPDF(payment: any, customer: any) {
+export function generatePaymentReceiptPDF(payment: any, customer: any, invoiceFooter?: string) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
