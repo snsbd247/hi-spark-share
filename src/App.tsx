@@ -28,6 +28,7 @@ import ReminderLogs from "@/pages/ReminderLogs";
 import PayBill from "@/pages/PayBill";
 import AdminProfile from "@/pages/AdminProfile";
 import GeneralSettings from "@/pages/settings/GeneralSettings";
+import SystemSettings from "@/pages/settings/SystemSettings";
 import ZoneManagement from "@/pages/settings/ZoneManagement";
 import MikroTikRouters from "@/pages/settings/MikroTikRouters";
 import BkashApiManagement from "@/pages/settings/BkashApiManagement";
@@ -106,13 +107,14 @@ function App() {
 
                 {/* Settings Routes */}
                 <Route path="/settings/general" element={<PermissionGuard module="settings"><GeneralSettings /></PermissionGuard>} />
+                <Route path="/settings/system" element={<PermissionGuard module="settings"><SystemSettings /></PermissionGuard>} />
                 <Route path="/settings/packages" element={<PermissionGuard module="settings"><Packages /></PermissionGuard>} />
                 <Route path="/settings/zones" element={<PermissionGuard module="settings"><ZoneManagement /></PermissionGuard>} />
                 <Route path="/settings/mikrotik" element={<PermissionGuard module="settings"><MikroTikRouters /></PermissionGuard>} />
                 <Route path="/settings/bkash" element={<PermissionGuard module="settings"><BkashApiManagement /></PermissionGuard>} />
                 <Route path="/settings/nagad" element={<PermissionGuard module="settings"><NagadApiManagement /></PermissionGuard>} />
                 <Route path="/settings/roles" element={<PermissionGuard module="roles"><RoleManagement /></PermissionGuard>} />
-                <Route path="/settings/footer" element={<PermissionGuard module="settings" action="manage_footer"><FooterSettings /></PermissionGuard>} />
+                <Route path="/settings/footer" element={<PermissionGuard module="settings"><FooterSettings /></PermissionGuard>} />
                 <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
                 <Route path="/safe-mode" element={<ProtectedRoute><SafeMode onDismiss={() => window.location.href = "/"} /></ProtectedRoute>} />
 

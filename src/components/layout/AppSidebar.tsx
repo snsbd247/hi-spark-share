@@ -52,8 +52,7 @@ const toolsNav: NavItem[] = [
 ];
 
 const settingsNav: NavItem[] = [
-  { to: "/settings/general", icon: Settings, label: "General Settings", module: "settings" },
-  { to: "/settings/footer", icon: FileText, label: "Footer Settings", module: "settings" },
+  { to: "/settings/system", icon: Settings, label: "System Settings", module: "settings" },
   { to: "/settings/roles", icon: KeyRound, label: "Roles", module: "roles" },
   { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers", module: "settings" },
   { to: "/login-logs", icon: FileText, label: "Login Logs", module: "settings" },
