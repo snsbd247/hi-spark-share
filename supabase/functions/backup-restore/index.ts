@@ -277,7 +277,7 @@ async function compareBackup(client: any) {
   });
 }
 
-
+async function restoreSqlBackup(client: any, sqlContent: string) {
   if (!sqlContent || typeof sqlContent !== "string") throw new Error("Invalid SQL content");
 
   // Parse INSERT statements from SQL backup
