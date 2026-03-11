@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   Download, Trash2, Upload, Database, HardDrive, Loader2, AlertTriangle,
-  Clock, Calendar, CalendarDays, Recycle,
+  Clock, Calendar, CalendarDays, Recycle, FileCode,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
