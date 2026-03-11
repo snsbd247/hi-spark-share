@@ -324,9 +324,11 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   y += 28;
 
   // ─── TERMS ───
+  // ─── TERMS / INVOICE FOOTER ───
+  const termsText = invoiceFooter || "I hereby declare that all the information provided above is correct to the best of my knowledge.";
   doc.setFontSize(7);
   doc.setTextColor(120, 120, 120);
-  doc.text("I hereby declare that all the information provided above is correct to the best of my knowledge.", margin, y);
+  doc.text(termsText, margin, y);
   doc.text("The ISP reserves the right to suspend the connection in case of non-payment or violation of terms.", margin, y + 4);
 
   // Footer
