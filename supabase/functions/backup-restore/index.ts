@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
       return await createBackup(adminClient, userId, "emergency", "emergency");
     } else if (action === "restore") {
       return await restoreBackup(adminClient, body.backup_data);
+    } else if (action === "restore_sql") {
+      return await restoreSqlBackup(adminClient, body.sql_content);
     } else if (action === "delete") {
       return await deleteBackup(adminClient, body.file_name);
     } else if (action === "manual_cleanup") {

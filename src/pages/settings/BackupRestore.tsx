@@ -303,7 +303,7 @@ export default function BackupRestore() {
                 <Upload className="h-5 w-5 text-destructive" />
                 Restore Backup
               </CardTitle>
-              <CardDescription>Upload a backup file to restore</CardDescription>
+              <CardDescription>Upload JSON or SQL backup to restore</CardDescription>
             </CardHeader>
             <CardContent>
               <label>
