@@ -25,6 +25,7 @@ export function useSystemHealth() {
   const failureCount = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const emergencyBackupTriggered = useRef(false);
+  const safeModeNotified = useRef(false);
 
   const sendSafeModeNotification = useCallback(async (type: "safe_mode" | "emergency_backup", details?: string) => {
     try {
