@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Building2, Plus, Loader2, Pause, Play, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, Plus, Loader2, Pause, Play, Pencil, Trash2, AlertTriangle, Globe, CheckCircle2, XCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 
 const TENANT_TABLES = [
@@ -24,6 +24,55 @@ const TENANT_TABLES = [
   "tenant_subscriptions",
 ];
 
+function DnsInstructions({ domain }: { domain: string }) {
+  const parts = domain.split(".");
+  const host = parts.length > 2 ? parts[0] : "@";
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard");
+  };
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg bg-muted/50 border text-sm">
+      <p className="font-semibold text-foreground">DNS Setup Instructions</p>
+      <p className="text-muted-foreground">
+        Add the following CNAME record at your domain registrar:
+      </p>
+      <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+        <div>
+          <span className="text-muted-foreground block mb-1">Type</span>
+          <span className="font-semibold">CNAME</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block mb-1">Host</span>
+          <div className="flex items-center gap-1">
+            <span className="font-semibold">{host}</span>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyToClipboard(host)}>
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        <div>
+          <span className="text-muted-foreground block mb-1">Value</span>
+          <div className="flex items-center gap-1">
+            <span className="font-semibold">app.ispbilling.com</span>
+            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyToClipboard("app.ispbilling.com")}>
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Example: <strong>{domain}</strong> → app.ispbilling.com
+      </p>
+      <p className="text-muted-foreground text-xs">
+        SSL: Use Cloudflare proxy or Let's Encrypt for HTTPS support.
+      </p>
+    </div>
+  );
+}
+
 export default function TenantsManagement() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -31,8 +80,8 @@ export default function TenantsManagement() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<"soft" | "permanent">("soft");
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
-  const [form, setForm] = useState({ company_name: "", subdomain: "", contact_email: "", max_customers: "500" });
-  const [editForm, setEditForm] = useState({ company_name: "", contact_email: "", max_customers: "500" });
+  const [form, setForm] = useState({ company_name: "", subdomain: "", contact_email: "", max_customers: "500", custom_domain: "" });
+  const [editForm, setEditForm] = useState({ company_name: "", contact_email: "", max_customers: "500", custom_domain: "", domain_verified: false });
   const [confirmName, setConfirmName] = useState("");
 
   const { data: tenants, isLoading } = useQuery({
@@ -48,11 +97,16 @@ export default function TenantsManagement() {
     mutationFn: async () => {
       const subdomain = form.subdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (!subdomain || !form.company_name) throw new Error("Company name and subdomain are required");
-      const { data, error } = await supabase.from("tenants" as any).insert({
+      const insertData: any = {
         company_name: form.company_name, subdomain,
         contact_email: form.contact_email || null,
         max_customers: parseInt(form.max_customers) || 500,
-      }).select().single();
+      };
+      if (form.custom_domain.trim()) {
+        insertData.custom_domain = form.custom_domain.trim().toLowerCase();
+        insertData.domain_added_at = new Date().toISOString();
+      }
+      const { data, error } = await supabase.from("tenants" as any).insert(insertData).select().single();
       if (error) throw error;
       await supabase.from("general_settings" as any).insert({
         site_name: form.company_name, email: form.contact_email || null, tenant_id: (data as any).id,
@@ -63,7 +117,7 @@ export default function TenantsManagement() {
       queryClient.invalidateQueries({ queryKey: ["sa-tenants"] });
       toast.success("Tenant created successfully");
       setOpen(false);
-      setForm({ company_name: "", subdomain: "", contact_email: "", max_customers: "500" });
+      setForm({ company_name: "", subdomain: "", contact_email: "", max_customers: "500", custom_domain: "" });
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -71,11 +125,20 @@ export default function TenantsManagement() {
   const updateTenant = useMutation({
     mutationFn: async () => {
       if (!selectedTenant) throw new Error("No tenant selected");
-      const { error } = await supabase.from("tenants" as any).update({
+      const updateData: any = {
         company_name: editForm.company_name,
         contact_email: editForm.contact_email || null,
         max_customers: parseInt(editForm.max_customers) || 500,
-      }).eq("id", selectedTenant.id);
+        domain_verified: editForm.domain_verified,
+      };
+      const newDomain = editForm.custom_domain.trim().toLowerCase() || null;
+      const oldDomain = selectedTenant.custom_domain || null;
+      updateData.custom_domain = newDomain;
+      if (newDomain !== oldDomain) {
+        updateData.domain_verified = false;
+        updateData.domain_added_at = newDomain ? new Date().toISOString() : null;
+      }
+      const { error } = await supabase.from("tenants" as any).update(updateData).eq("id", selectedTenant.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -106,7 +169,6 @@ export default function TenantsManagement() {
         const { error } = await supabase.from("tenants" as any).update({ status: "inactive" }).eq("id", selectedTenant.id);
         if (error) throw error;
       } else {
-        // Permanent delete: cascade through all tenant tables
         for (const table of TENANT_TABLES) {
           await supabase.from(table as any).delete().eq("tenant_id", selectedTenant.id);
         }
@@ -123,9 +185,27 @@ export default function TenantsManagement() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const toggleDomainVerified = useMutation({
+    mutationFn: async ({ id, verified }: { id: string; verified: boolean }) => {
+      const { error } = await supabase.from("tenants" as any).update({ domain_verified: !verified }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sa-tenants"] });
+      toast.success("Domain verification status updated");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const openEdit = (t: any) => {
     setSelectedTenant(t);
-    setEditForm({ company_name: t.company_name, contact_email: t.contact_email || "", max_customers: String(t.max_customers || 500) });
+    setEditForm({
+      company_name: t.company_name,
+      contact_email: t.contact_email || "",
+      max_customers: String(t.max_customers || 500),
+      custom_domain: t.custom_domain || "",
+      domain_verified: t.domain_verified || false,
+    });
     setEditOpen(true);
   };
 
@@ -147,7 +227,7 @@ export default function TenantsManagement() {
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" /> Create Tenant</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>Create New ISP Tenant</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-4">
               <div><Label>Company Name *</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="ABC Networks" /></div>
@@ -155,9 +235,14 @@ export default function TenantsManagement() {
                 <Label>Subdomain *</Label>
                 <div className="flex items-center gap-2">
                   <Input value={form.subdomain} onChange={(e) => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} placeholder="abc" />
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">.yourdomain.com</span>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">.ispbilling.com</span>
                 </div>
               </div>
+              <div>
+                <Label>Custom Domain <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input value={form.custom_domain} onChange={(e) => setForm({ ...form, custom_domain: e.target.value })} placeholder="billing.clientdomain.com" />
+              </div>
+              {form.custom_domain.trim() && <DnsInstructions domain={form.custom_domain.trim()} />}
               <div><Label>Contact Email</Label><Input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder="admin@abc.com" /></div>
               <div><Label>Max Customers</Label><Input type="number" value={form.max_customers} onChange={(e) => setForm({ ...form, max_customers: e.target.value })} /></div>
               <Button onClick={() => createTenant.mutate()} disabled={createTenant.isPending} className="w-full">
@@ -170,10 +255,36 @@ export default function TenantsManagement() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Edit Tenant</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-4">
             <div><Label>Company Name</Label><Input value={editForm.company_name} onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })} /></div>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Globe className="h-4 w-4" /> Custom Domain
+              </Label>
+              <Input value={editForm.custom_domain} onChange={(e) => setEditForm({ ...editForm, custom_domain: e.target.value })} placeholder="billing.clientdomain.com" />
+              {editForm.custom_domain.trim() && (
+                <div className="mt-2 flex items-center gap-2">
+                  {editForm.domain_verified ? (
+                    <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> Verified</Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300"><XCircle className="h-3 w-3" /> Unverified</Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-6"
+                    onClick={() => setEditForm({ ...editForm, domain_verified: !editForm.domain_verified })}
+                  >
+                    {editForm.domain_verified ? "Mark Unverified" : "Mark Verified"}
+                  </Button>
+                </div>
+              )}
+            </div>
+            {editForm.custom_domain.trim() && !editForm.domain_verified && (
+              <DnsInstructions domain={editForm.custom_domain.trim()} />
+            )}
             <div><Label>Contact Email</Label><Input type="email" value={editForm.contact_email} onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })} /></div>
             <div><Label>Max Customers</Label><Input type="number" value={editForm.max_customers} onChange={(e) => setEditForm({ ...editForm, max_customers: e.target.value })} /></div>
             <Button onClick={() => updateTenant.mutate()} disabled={updateTenant.isPending} className="w-full">
@@ -240,8 +351,8 @@ export default function TenantsManagement() {
                 <TableRow>
                   <TableHead>Company</TableHead>
                   <TableHead>Subdomain</TableHead>
+                  <TableHead>Custom Domain</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Max Customers</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -251,9 +362,23 @@ export default function TenantsManagement() {
                 {tenants.map((t: any) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.company_name}</TableCell>
-                    <TableCell>{t.subdomain}</TableCell>
+                    <TableCell className="text-sm">{t.subdomain}</TableCell>
+                    <TableCell>
+                      {t.custom_domain ? (
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{t.custom_domain}</span>
+                          {t.domain_verified ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5 text-amber-500" />
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>{t.contact_email || "—"}</TableCell>
-                    <TableCell>{t.max_customers}</TableCell>
                     <TableCell>
                       <Badge variant={t.status === "active" ? "default" : t.status === "inactive" ? "outline" : "destructive"}>{t.status}</Badge>
                     </TableCell>
@@ -265,6 +390,11 @@ export default function TenantsManagement() {
                       <Button variant="ghost" size="icon" onClick={() => toggleStatus.mutate({ id: t.id, status: t.status })} title={t.status === "active" ? "Suspend" : "Activate"}>
                         {t.status === "active" ? <Pause className="h-4 w-4 text-muted-foreground" /> : <Play className="h-4 w-4 text-primary" />}
                       </Button>
+                      {t.custom_domain && (
+                        <Button variant="ghost" size="icon" onClick={() => toggleDomainVerified.mutate({ id: t.id, verified: t.domain_verified })} title={t.domain_verified ? "Unverify Domain" : "Verify Domain"}>
+                          {t.domain_verified ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Globe className="h-4 w-4 text-amber-500" />}
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" onClick={() => openDelete(t)} title="Delete">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

@@ -9,6 +9,8 @@ interface Tenant {
   logo_url: string | null;
   status: string;
   max_customers: number;
+  custom_domain: string | null;
+  domain_verified: boolean;
 }
 
 interface TenantContextType {
@@ -24,38 +26,48 @@ const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 /**
  * Extract subdomain from hostname.
- * e.g., "abc.system.com" → "abc"
  * Returns null for platform-level access (no subdomain or "www" or "admin")
  */
 function extractSubdomain(): string | null {
   const hostname = window.location.hostname;
 
-  // Local development: check for query param ?tenant=abc
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     const params = new URLSearchParams(window.location.search);
     return params.get("tenant");
   }
 
-  // Skip for lovable preview domains
   if (hostname.includes("lovable.app") || hostname.includes("lovable.dev")) {
     const params = new URLSearchParams(window.location.search);
     return params.get("tenant");
   }
 
   const parts = hostname.split(".");
-  // Need at least 3 parts: subdomain.domain.tld
   if (parts.length < 3) return null;
 
   const subdomain = parts[0];
-  // Skip platform-level subdomains
   if (["www", "admin", "api", "app"].includes(subdomain)) return null;
 
   return subdomain;
 }
 
 /**
- * Check if the current route is a Super Admin route
+ * Get the full hostname for custom domain resolution.
+ * Returns null on localhost/preview unless ?domain= is set.
  */
+function getCustomDomainHost(): string | null {
+  const hostname = window.location.hostname;
+
+  // Dev/preview: allow ?domain= override for testing
+  if (hostname === "localhost" || hostname === "127.0.0.1" ||
+      hostname.includes("lovable.app") || hostname.includes("lovable.dev")) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("domain");
+  }
+
+  // In production, use the full hostname as potential custom domain
+  return hostname;
+}
+
 function isSuperAdminRoute(): boolean {
   return window.location.pathname.startsWith("/super-admin");
 }
@@ -69,32 +81,60 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const setTenantId = (id: string | null) => {
     setTenantIdState(id);
-    if (!id) {
-      setTenant(null);
-    }
+    if (!id) setTenant(null);
+  };
+
+  const setTenantFromData = (data: any) => {
+    setTenant({
+      id: data.id,
+      company_name: data.company_name,
+      subdomain: data.subdomain,
+      contact_email: data.contact_email,
+      logo_url: data.logo_url,
+      status: data.status,
+      max_customers: data.max_customers || 500,
+      custom_domain: data.custom_domain || null,
+      domain_verified: data.domain_verified || false,
+    });
+    setTenantIdState(data.id);
   };
 
   useEffect(() => {
     const resolve = async () => {
       try {
-        // Super Admin routes don't need tenant resolution
         if (isSuperAdminRoute()) {
           setIsPlatformAdmin(true);
           setLoading(false);
           return;
         }
 
-        const subdomain = extractSubdomain();
+        // Priority 1: Try custom domain resolution
+        const customDomainHost = getCustomDomainHost();
+        if (customDomainHost) {
+          const { data, error: fetchError } = await supabase
+            .from("tenants" as any)
+            .select("*")
+            .eq("custom_domain", customDomainHost)
+            .eq("domain_verified", true)
+            .eq("status", "active")
+            .single();
 
+          if (!fetchError && data) {
+            setTenantFromData(data as any);
+            setLoading(false);
+            return;
+          }
+          // Not a custom domain match — fall through to subdomain
+        }
+
+        // Priority 2: Try subdomain resolution
+        const subdomain = extractSubdomain();
         if (!subdomain) {
-          // No subdomain — could be platform admin or direct access
-          // Check if user is a platform admin
           setIsPlatformAdmin(true);
           setLoading(false);
           return;
         }
 
-        // Resolve subdomain to tenant
         const { data, error: fetchError } = await supabase
           .from("tenants" as any)
           .select("*")
@@ -108,17 +148,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const tenantData = data as any;
-        setTenant({
-          id: tenantData.id,
-          company_name: tenantData.company_name,
-          subdomain: tenantData.subdomain,
-          contact_email: tenantData.contact_email,
-          logo_url: tenantData.logo_url,
-          status: tenantData.status,
-          max_customers: tenantData.max_customers || 500,
-        });
-        setTenantIdState(tenantData.id);
+        setTenantFromData(data as any);
         setLoading(false);
       } catch (err) {
         console.error("Tenant resolution failed:", err);

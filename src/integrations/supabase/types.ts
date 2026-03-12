@@ -1561,6 +1561,9 @@ export type Database = {
           company_name: string
           contact_email: string | null
           created_at: string
+          custom_domain: string | null
+          domain_added_at: string | null
+          domain_verified: boolean
           id: string
           logo_url: string | null
           max_customers: number | null
@@ -1572,6 +1575,9 @@ export type Database = {
           company_name: string
           contact_email?: string | null
           created_at?: string
+          custom_domain?: string | null
+          domain_added_at?: string | null
+          domain_verified?: boolean
           id?: string
           logo_url?: string | null
           max_customers?: number | null
@@ -1583,6 +1589,9 @@ export type Database = {
           company_name?: string
           contact_email?: string | null
           created_at?: string
+          custom_domain?: string | null
+          domain_added_at?: string | null
+          domain_verified?: boolean
           id?: string
           logo_url?: string | null
           max_customers?: number | null
