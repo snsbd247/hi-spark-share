@@ -401,6 +401,20 @@ export default function TenantsManagement() {
                       <Button variant="ghost" size="icon" onClick={() => navigate(`/super-admin/tenants/${t.id}/integrations`)} title="Integration Settings">
                         <Settings2 className="h-4 w-4 text-primary" />
                       </Button>
+                      <Button variant="ghost" size="icon" title="Generate Demo Data" onClick={async () => {
+                        toast.loading("Generating demo data...", { id: "demo" });
+                        try {
+                          const { data, error } = await supabase.functions.invoke("demo-data", { body: { tenant_id: t.id } });
+                          if (error) throw error;
+                          if (data?.error) throw new Error(data.error);
+                          toast.success(`Demo data created: ${data.created.customers} customers, ${data.created.bills} bills, ${data.created.payments} payments`, { id: "demo" });
+                          queryClient.invalidateQueries({ queryKey: ["tenants"] });
+                        } catch (err: any) {
+                          toast.error(err.message, { id: "demo" });
+                        }
+                      }}>
+                        <Database className="h-4 w-4 text-accent" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => openDelete(t)} title="Delete">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
