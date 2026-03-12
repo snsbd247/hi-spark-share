@@ -268,14 +268,16 @@ export default function Customers() {
           <DialogHeader>
             <DialogTitle>{editCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
           </DialogHeader>
-          <CustomerForm
-            customer={editCustomer}
-            onSuccess={() => {
-              setFormOpen(false);
-              queryClient.invalidateQueries({ queryKey: ["customers"] });
-              queryClient.invalidateQueries({ queryKey: ["customers-stats"] });
-            }}
-          />
+          {formOpen && (
+            <CustomerForm
+              customer={editCustomer}
+              onSuccess={() => {
+                setFormOpen(false);
+                queryClient.invalidateQueries({ queryKey: ["customers"] });
+                queryClient.invalidateQueries({ queryKey: ["customers-stats"] });
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
