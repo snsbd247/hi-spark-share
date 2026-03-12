@@ -315,7 +315,7 @@ function PaymentSection({ data, gateway, onSave, onUpdateStatus }: {
     setTesting(true);
     try {
       const fn = isBkash ? "bkash-payment" : "nagad-payment";
-      const { error } = await supabase.functions.invoke(fn, { body: { action: "test_connection" } });
+      const { error } = await supabase.functions.invoke(fn, { body: { action: "test_connection", tenant_id: data?.tenant_id } });
       if (error) throw error;
       toast.success(`${label} API connection test successful!`);
       await onUpdateStatus(gateway, "connected");
