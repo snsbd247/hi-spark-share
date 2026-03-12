@@ -104,6 +104,7 @@ function App() {
                 <Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
                 <Route path="/super-admin/dashboard" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
                 <Route path="/super-admin/tenants" element={<SuperAdminGuard><TenantsManagement /></SuperAdminGuard>} />
+                <Route path="/super-admin/tenants/:tenantId/integrations" element={<SuperAdminGuard><TenantIntegrations /></SuperAdminGuard>} />
                 <Route path="/super-admin/plans" element={<SuperAdminGuard><PlansManagement /></SuperAdminGuard>} />
                 <Route path="/super-admin/subscriptions" element={<SuperAdminGuard><SubscriptionsManagement /></SuperAdminGuard>} />
                 <Route path="/super-admin/monitoring" element={<SuperAdminGuard><PlatformMonitoring /></SuperAdminGuard>} />

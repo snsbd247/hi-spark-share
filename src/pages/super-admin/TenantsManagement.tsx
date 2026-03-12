@@ -398,6 +398,9 @@ export default function TenantsManagement() {
                           {t.domain_verified ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <Globe className="h-4 w-4 text-amber-500" />}
                         </Button>
                       )}
+                      <Button variant="ghost" size="icon" onClick={() => navigate(`/super-admin/tenants/${t.id}/integrations`)} title="Integration Settings">
+                        <Settings2 className="h-4 w-4 text-primary" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => openDelete(t)} title="Delete">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
