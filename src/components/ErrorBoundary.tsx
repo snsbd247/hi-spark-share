@@ -17,10 +17,18 @@ export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null, errorInfo: "" };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
+    // Ignore non-fatal React DOM cleanup errors caused by portal conflicts
+    if (error?.message?.includes("removeChild") || error?.message?.includes("removeNode")) {
+      console.warn("[ErrorBoundary] Ignoring non-fatal DOM cleanup error:", error.message);
+      return {};
+    }
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (error?.message?.includes("removeChild") || error?.message?.includes("removeNode")) {
+      return; // Don't log non-fatal portal cleanup errors
+    }
     console.error("[ErrorBoundary]", error, info.componentStack);
     this.setState({ errorInfo: info.componentStack || "" });
   }
