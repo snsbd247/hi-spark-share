@@ -45,7 +45,7 @@ export default function SuperAdminGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) return <Navigate to="/admin/login" replace />;
+  if (!user) return <Navigate to="/super-admin/login" replace />;
   if (!isAuthorized) return <Navigate to="/" replace />;
 
   return <>{children}</>;
