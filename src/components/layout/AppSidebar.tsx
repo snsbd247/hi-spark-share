@@ -39,10 +39,7 @@ const supportNav: NavItem[] = [
   { to: "/sms-settings", icon: Settings, label: "SMS Settings", module: "sms" },
 ];
 
-const paymentGatewayNav: NavItem[] = [
-  { to: "/settings/bkash", icon: Wallet, label: "bKash API", module: "settings" },
-  { to: "/settings/nagad", icon: Wallet, label: "Nagad API", module: "settings" },
-];
+// Payment gateway settings removed - managed centrally by Super Admin
 
 const toolsNav: NavItem[] = [
   { to: "/profile", icon: UserCircle, label: "Profile" },
