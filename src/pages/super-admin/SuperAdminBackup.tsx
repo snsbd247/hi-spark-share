@@ -78,9 +78,51 @@ export default function SuperAdminBackup() {
         }
       }
 
+      // Generate SQL dump
+      const sqlLines: string[] = [
+        `-- ISP Platform Backup`,
+        `-- Generated: ${new Date().toISOString()}`,
+        `-- Scope: ${scope === "platform" ? "Full Platform" : "Tenant: " + (tenants?.find(t => t.id === selectedTenant)?.company_name || selectedTenant)}`,
+        `-- Format: PostgreSQL compatible SQL`,
+        ``,
+        `BEGIN;`,
+        ``,
+      ];
+
+      for (const table of tables) {
+        const rows = backupData[table];
+        if (!rows?.length) continue;
+
+        sqlLines.push(`-- Table: ${table} (${rows.length} rows)`);
+
+        // DELETE existing data for tenant-scoped restore
+        if (scope === "tenant" && selectedTenant) {
+          sqlLines.push(`DELETE FROM public.${table} WHERE tenant_id = '${selectedTenant}';`);
+        } else {
+          sqlLines.push(`TRUNCATE TABLE public.${table} CASCADE;`);
+        }
+
+        for (const row of rows) {
+          const columns = Object.keys(row);
+          const values = columns.map(col => {
+            const val = row[col];
+            if (val === null || val === undefined) return "NULL";
+            if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+            if (typeof val === "number") return String(val);
+            if (typeof val === "object") return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
+            return `'${String(val).replace(/'/g, "''")}'`;
+          });
+          sqlLines.push(`INSERT INTO public.${table} (${columns.join(", ")}) VALUES (${values.join(", ")});`);
+        }
+        sqlLines.push(``);
+      }
+
+      sqlLines.push(`COMMIT;`);
+
       const tenantName = scope === "tenant" ? tenants?.find(t => t.id === selectedTenant)?.company_name || "unknown" : "platform";
-      const fileName = `backup_${tenantName.toLowerCase().replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmmss")}.json`;
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+      const fileName = `backup_${tenantName.toLowerCase().replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmmss")}.sql`;
+      const sqlContent = sqlLines.join("\n");
+      const blob = new Blob([sqlContent], { type: "application/sql" });
 
       await supabase.storage.from("backups").upload(fileName, blob);
 
