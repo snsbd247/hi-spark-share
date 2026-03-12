@@ -54,11 +54,15 @@ import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
 
 // Super Admin Pages
+import SuperAdminLogin from "@/pages/super-admin/SuperAdminLogin";
 import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
 import TenantsManagement from "@/pages/super-admin/TenantsManagement";
 import PlansManagement from "@/pages/super-admin/PlansManagement";
 import SubscriptionsManagement from "@/pages/super-admin/SubscriptionsManagement";
 import PlatformMonitoring from "@/pages/super-admin/PlatformMonitoring";
+import SuperAdminSystemSettings from "@/pages/super-admin/SuperAdminSystemSettings";
+import SuperAdminAuditLogs from "@/pages/super-admin/SuperAdminAuditLogs";
+import SuperAdminPayments from "@/pages/super-admin/SuperAdminPayments";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,14 +97,16 @@ function App() {
               <SafeModeWrapper>
               <Routes>
                 {/* Super Admin Routes */}
+                <Route path="/super-admin/login" element={<SuperAdminLogin />} />
                 <Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+                <Route path="/super-admin/dashboard" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
                 <Route path="/super-admin/tenants" element={<SuperAdminGuard><TenantsManagement /></SuperAdminGuard>} />
                 <Route path="/super-admin/plans" element={<SuperAdminGuard><PlansManagement /></SuperAdminGuard>} />
                 <Route path="/super-admin/subscriptions" element={<SuperAdminGuard><SubscriptionsManagement /></SuperAdminGuard>} />
                 <Route path="/super-admin/monitoring" element={<SuperAdminGuard><PlatformMonitoring /></SuperAdminGuard>} />
-                <Route path="/super-admin/settings" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
-                <Route path="/super-admin/payments" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
-                <Route path="/super-admin/audit-logs" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+                <Route path="/super-admin/settings" element={<SuperAdminGuard><SuperAdminSystemSettings /></SuperAdminGuard>} />
+                <Route path="/super-admin/payments" element={<SuperAdminGuard><SuperAdminPayments /></SuperAdminGuard>} />
+                <Route path="/super-admin/audit-logs" element={<SuperAdminGuard><SuperAdminAuditLogs /></SuperAdminGuard>} />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
