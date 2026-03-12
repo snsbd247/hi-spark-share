@@ -136,6 +136,11 @@ export default function CustomerView({ customer }: CustomerViewProps) {
           <Field label="House" value={customer.house} />
           <Field label="City" value={customer.city} />
         </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-3">
+          <Field label="Village" value={customer.village} />
+          <Field label="Post Office" value={customer.post_office} />
+          <Field label="District" value={customer.district} />
+        </div>
         <div className="mt-3">
           <Field label="Permanent Address" value={customer.permanent_address} />
         </div>

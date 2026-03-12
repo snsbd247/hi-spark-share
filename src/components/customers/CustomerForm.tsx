@@ -41,6 +41,9 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     house: customer?.house ?? "",
     city: customer?.city ?? "",
     permanent_address: customer?.permanent_address ?? "",
+    village: customer?.village ?? "",
+    post_office: customer?.post_office ?? "",
+    district: customer?.district ?? "",
     package_id: customer?.package_id ?? "",
     monthly_bill: customer?.monthly_bill?.toString() ?? "",
     ip_address: customer?.ip_address ?? "",
@@ -150,6 +153,9 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       house: form.house || null,
       city: form.city || null,
       permanent_address: form.permanent_address || null,
+      village: form.village || null,
+      post_office: form.post_office || null,
+      district: form.district || null,
       package_id: form.package_id || null,
       monthly_bill: parseFloat(form.monthly_bill) || 0,
       ip_address: form.ip_address || null,
@@ -339,9 +345,21 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Label>City</Label>
             <Input value={form.city} onChange={(e) => update("city", e.target.value)} />
           </div>
+          <div className="space-y-1.5">
+            <Label>Village</Label>
+            <Input value={form.village} onChange={(e) => update("village", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Post Office</Label>
+            <Input value={form.post_office} onChange={(e) => update("post_office", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>District</Label>
+            <Input value={form.district} onChange={(e) => update("district", e.target.value)} />
+          </div>
           <div className="sm:col-span-2 space-y-1.5">
             <Label>Permanent Address</Label>
-            <Input value={form.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} placeholder="Village, Post Office, District" />
+            <Input value={form.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} />
           </div>
         </div>
       </div>

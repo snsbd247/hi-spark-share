@@ -148,6 +148,12 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     { label: "City", value: customer.city || "" },
   ]);
 
+  fieldRow([
+    { label: "Village", value: customer.village || "" },
+    { label: "Post Office", value: customer.post_office || "" },
+    { label: "District", value: customer.district || "" },
+  ]);
+
   fieldBox("Permanent Address", customer.permanent_address || "", margin, contentW, 12);
   y += 13;
 

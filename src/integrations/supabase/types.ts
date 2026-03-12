@@ -412,6 +412,7 @@ export type Database = {
           created_at: string
           customer_id: string
           discount: number | null
+          district: string | null
           due_date_day: number | null
           email: string | null
           father_name: string | null
@@ -433,6 +434,7 @@ export type Database = {
           phone: string
           photo_url: string | null
           pop_location: string | null
+          post_office: string | null
           pppoe_password: string | null
           pppoe_password_hash: string | null
           pppoe_username: string | null
@@ -444,6 +446,7 @@ export type Database = {
           tenant_id: string | null
           updated_at: string
           username: string | null
+          village: string | null
         }
         Insert: {
           alt_phone?: string | null
@@ -456,6 +459,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           discount?: number | null
+          district?: string | null
           due_date_day?: number | null
           email?: string | null
           father_name?: string | null
@@ -477,6 +481,7 @@ export type Database = {
           phone: string
           photo_url?: string | null
           pop_location?: string | null
+          post_office?: string | null
           pppoe_password?: string | null
           pppoe_password_hash?: string | null
           pppoe_username?: string | null
@@ -488,6 +493,7 @@ export type Database = {
           tenant_id?: string | null
           updated_at?: string
           username?: string | null
+          village?: string | null
         }
         Update: {
           alt_phone?: string | null
@@ -500,6 +506,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           discount?: number | null
+          district?: string | null
           due_date_day?: number | null
           email?: string | null
           father_name?: string | null
@@ -521,6 +528,7 @@ export type Database = {
           phone?: string
           photo_url?: string | null
           pop_location?: string | null
+          post_office?: string | null
           pppoe_password?: string | null
           pppoe_password_hash?: string | null
           pppoe_username?: string | null
@@ -532,6 +540,7 @@ export type Database = {
           tenant_id?: string | null
           updated_at?: string
           username?: string | null
+          village?: string | null
         }
         Relationships: [
           {
