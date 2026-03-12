@@ -1610,22 +1610,30 @@ export type Database = {
           bkash_app_secret: string | null
           bkash_base_url: string | null
           bkash_environment: string | null
+          bkash_last_connected_at: string | null
           bkash_password: string | null
+          bkash_status: string | null
           bkash_username: string | null
           created_at: string
           id: string
           nagad_api_key: string | null
           nagad_api_secret: string | null
           nagad_base_url: string | null
+          nagad_last_connected_at: string | null
+          nagad_status: string | null
           sms_api_key: string | null
           sms_gateway_url: string | null
+          sms_last_connected_at: string | null
           sms_sender_id: string | null
+          sms_status: string | null
           smtp_encryption: string | null
           smtp_from_email: string | null
           smtp_from_name: string | null
           smtp_host: string | null
+          smtp_last_connected_at: string | null
           smtp_password: string | null
           smtp_port: string | null
+          smtp_status: string | null
           smtp_username: string | null
           tenant_id: string
           updated_at: string
@@ -1635,22 +1643,30 @@ export type Database = {
           bkash_app_secret?: string | null
           bkash_base_url?: string | null
           bkash_environment?: string | null
+          bkash_last_connected_at?: string | null
           bkash_password?: string | null
+          bkash_status?: string | null
           bkash_username?: string | null
           created_at?: string
           id?: string
           nagad_api_key?: string | null
           nagad_api_secret?: string | null
           nagad_base_url?: string | null
+          nagad_last_connected_at?: string | null
+          nagad_status?: string | null
           sms_api_key?: string | null
           sms_gateway_url?: string | null
+          sms_last_connected_at?: string | null
           sms_sender_id?: string | null
+          sms_status?: string | null
           smtp_encryption?: string | null
           smtp_from_email?: string | null
           smtp_from_name?: string | null
           smtp_host?: string | null
+          smtp_last_connected_at?: string | null
           smtp_password?: string | null
           smtp_port?: string | null
+          smtp_status?: string | null
           smtp_username?: string | null
           tenant_id: string
           updated_at?: string
@@ -1660,22 +1676,30 @@ export type Database = {
           bkash_app_secret?: string | null
           bkash_base_url?: string | null
           bkash_environment?: string | null
+          bkash_last_connected_at?: string | null
           bkash_password?: string | null
+          bkash_status?: string | null
           bkash_username?: string | null
           created_at?: string
           id?: string
           nagad_api_key?: string | null
           nagad_api_secret?: string | null
           nagad_base_url?: string | null
+          nagad_last_connected_at?: string | null
+          nagad_status?: string | null
           sms_api_key?: string | null
           sms_gateway_url?: string | null
+          sms_last_connected_at?: string | null
           sms_sender_id?: string | null
+          sms_status?: string | null
           smtp_encryption?: string | null
           smtp_from_email?: string | null
           smtp_from_name?: string | null
           smtp_host?: string | null
+          smtp_last_connected_at?: string | null
           smtp_password?: string | null
           smtp_port?: string | null
+          smtp_status?: string | null
           smtp_username?: string | null
           tenant_id?: string
           updated_at?: string
