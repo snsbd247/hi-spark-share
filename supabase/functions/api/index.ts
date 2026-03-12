@@ -30,22 +30,45 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
-// ─── GENERIC DATA PROXY HANDLER ─────────────────────────────────
-const ALLOWED_TABLES = new Set([
+// ─── TENANT-AWARE TABLES ────────────────────────────────────────
+// Tables that require tenant_id filtering in multi-tenant mode
+const TENANT_SCOPED_TABLES = new Set([
   "customers", "bills", "payments", "merchant_payments", "packages", "zones",
   "profiles", "user_roles", "custom_roles", "permissions", "role_permissions",
   "general_settings", "sms_settings", "payment_gateways", "mikrotik_routers",
   "olts", "onus", "support_tickets", "ticket_replies", "audit_logs",
   "admin_login_logs", "admin_sessions", "sms_logs", "reminder_logs",
-  "customer_ledger", "customer_sessions", "sms_templates",
+  "customer_ledger", "customer_sessions", "sms_templates", "backup_logs",
+]);
+
+// Tables that are platform-level (no tenant_id filtering)
+const PLATFORM_TABLES = new Set([
+  "tenants", "subscription_plans", "tenant_subscriptions", "platform_admins",
+]);
+
+// ─── GENERIC DATA PROXY HANDLER ─────────────────────────────────
+const ALLOWED_TABLES = new Set([
+  ...TENANT_SCOPED_TABLES,
+  ...PLATFORM_TABLES,
 ]);
 
 const PUBLIC_READ_TABLES = new Set([
   "packages", "zones", "general_settings", "support_tickets", "ticket_replies",
+  "tenants", "subscription_plans",
 ]);
 
+async function isPlatformAdmin(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("platform_admins")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1);
+  if (data?.length > 0) return true;
+  return await hasRole(supabase, userId, "super_admin");
+}
+
 async function handleDataProxy(supabase: any, userId: string | null, body: any) {
-  const { table, operation, select, filters, order, limit, single, maybeSingle, data, returning } = body;
+  const { table, operation, select, filters, order, limit, single, maybeSingle, data, returning, tenant_id } = body;
 
   if (!table || !ALLOWED_TABLES.has(table)) {
     return jsonResponse({ error: "Table not allowed" }, 403);
@@ -64,7 +87,12 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
     const isOwnProfileUpdate = table === "profiles" && operation === "update" &&
       filters?.some((f: any) => f.column === "id" && f.op === "eq" && f.value === userId);
 
-    if (!isOwnProfileUpdate) {
+    // Platform tables require platform admin
+    if (PLATFORM_TABLES.has(table)) {
+      if (!(await isPlatformAdmin(supabase, userId))) {
+        return jsonResponse({ error: "Platform admin access required" }, 403);
+      }
+    } else if (!isOwnProfileUpdate) {
       const isAdmin = await hasRole(supabase, userId, "admin") || await hasRole(supabase, userId, "super_admin");
       if (!isAdmin) {
         return jsonResponse({ error: "Insufficient permissions" }, 403);
@@ -72,10 +100,33 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
     }
   }
 
+  // ─── TENANT FILTERING ─────────────────────────────────────────
+  // For tenant-scoped tables, automatically inject tenant_id filter
+  const shouldFilterByTenant = TENANT_SCOPED_TABLES.has(table) && tenant_id;
+  const effectiveFilters = [...(filters || [])];
+
+  if (shouldFilterByTenant && operation === "select") {
+    // Add tenant_id filter for reads
+    const hasTenantFilter = effectiveFilters.some((f: any) => f.column === "tenant_id");
+    if (!hasTenantFilter) {
+      effectiveFilters.push({ column: "tenant_id", op: "eq", value: tenant_id });
+    }
+  }
+
+  // For writes, inject tenant_id into data
+  let effectiveData = data;
+  if (shouldFilterByTenant && (operation === "insert" || operation === "upsert")) {
+    if (Array.isArray(data)) {
+      effectiveData = data.map((row: any) => ({ ...row, tenant_id }));
+    } else if (data && typeof data === "object") {
+      effectiveData = { ...data, tenant_id };
+    }
+  }
+
   // Build and execute query
   if (operation === "select") {
     let query = supabase.from(table).select(select || "*");
-    for (const f of (filters || [])) {
+    for (const f of effectiveFilters) {
       if (f.column === "__or") query = query.or(f.value);
       else if (f.op === "in") query = query.in(f.column, f.value);
       else if (f.op === "is") query = query.is(f.column, f.value);
@@ -96,7 +147,7 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
   }
 
   if (operation === "insert") {
-    let query = supabase.from(table).insert(data);
+    let query = supabase.from(table).insert(effectiveData);
     if (returning) query = query.select(returning);
     else query = query.select();
     const result = single ? await query.single() : await query;
@@ -105,11 +156,15 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
   }
 
   if (operation === "update") {
-    let query = supabase.from(table).update(data);
-    for (const f of (filters || [])) {
+    let query = supabase.from(table).update(effectiveData);
+    for (const f of effectiveFilters) {
       if (f.column === "__or") query = query.or(f.value);
       else if (f.op === "in") query = query.in(f.column, f.value);
       else query = query[f.op](f.column, f.value);
+    }
+    // Also filter by tenant_id for updates
+    if (shouldFilterByTenant) {
+      query = query.eq("tenant_id", tenant_id);
     }
     if (returning) query = query.select(returning);
     const result = single ? await query.single() : await query;
@@ -119,11 +174,15 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
 
   if (operation === "delete") {
     let query = supabase.from(table).delete();
-    for (const f of (filters || [])) {
+    for (const f of effectiveFilters) {
       if (f.column === "__or") query = query.or(f.value);
       else if (f.op === "in") query = query.in(f.column, f.value);
       else if (f.op === "like") query = query.like(f.column, f.value);
       else query = query[f.op](f.column, f.value);
+    }
+    // Also filter by tenant_id for deletes
+    if (shouldFilterByTenant) {
+      query = query.eq("tenant_id", tenant_id);
     }
     const result = await query;
     if (result.error) throw result.error;
@@ -131,7 +190,7 @@ async function handleDataProxy(supabase: any, userId: string | null, body: any) 
   }
 
   if (operation === "upsert") {
-    let query = supabase.from(table).upsert(data);
+    let query = supabase.from(table).upsert(effectiveData);
     if (returning) query = query.select(returning);
     const result = single ? await query.single() : await query;
     if (result.error) throw result.error;
@@ -180,22 +239,28 @@ Deno.serve(async (req: Request) => {
     if (resource === "bills") {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
-        const { customer_id, month, amount, due_date, status = "unpaid" } = body;
+        const { customer_id, month, amount, due_date, status = "unpaid", tenant_id } = body;
+        const insertData: any = { customer_id, month, amount, due_date, status };
+        if (tenant_id) insertData.tenant_id = tenant_id;
         const { data: bill, error } = await supabase
-          .from("bills").insert({ customer_id, month, amount, due_date, status }).select().single();
+          .from("bills").insert(insertData).select().single();
         if (error) throw error;
         await createBillLedgerEntry(supabase, bill);
         return jsonResponse({ success: true, bill });
       }
 
       if (action === "generate" && req.method === "POST") {
-        const { month } = await req.json();
-        const { data: customers, error: custErr } = await supabase
+        const { month, tenant_id } = await req.json();
+        let custQuery = supabase
           .from("customers").select("id, name, phone, monthly_bill, due_date_day").eq("status", "active");
+        if (tenant_id) custQuery = custQuery.eq("tenant_id", tenant_id);
+        const { data: customers, error: custErr } = await custQuery;
         if (custErr) throw custErr;
         if (!customers?.length) return jsonResponse({ message: "No active customers", generated: 0 });
 
-        const { data: existing } = await supabase.from("bills").select("customer_id").eq("month", month);
+        let billQuery = supabase.from("bills").select("customer_id").eq("month", month);
+        if (tenant_id) billQuery = billQuery.eq("tenant_id", tenant_id);
+        const { data: existing } = await billQuery;
         const existingIds = new Set(existing?.map((b: any) => b.customer_id));
 
         const newBillData = customers
@@ -204,7 +269,9 @@ Deno.serve(async (req: Request) => {
             const dueDay = c.due_date_day || 15;
             const monthDate = new Date(month + "-01");
             const dueDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), dueDay);
-            return { customer_id: c.id, month, amount: c.monthly_bill, status: "unpaid", due_date: dueDate.toISOString().split("T")[0] };
+            const bill: any = { customer_id: c.id, month, amount: c.monthly_bill, status: "unpaid", due_date: dueDate.toISOString().split("T")[0] };
+            if (tenant_id) bill.tenant_id = tenant_id;
+            return bill;
           });
 
         if (!newBillData.length) return jsonResponse({ message: "All bills already generated", generated: 0 });
@@ -290,11 +357,14 @@ Deno.serve(async (req: Request) => {
         const { data: existing } = await supabase.from("merchant_payments").select("id").eq("transaction_id", body.transaction_id).maybeSingle();
         if (existing) return jsonResponse({ error: "Duplicate Transaction ID" }, 400);
 
-        const { data: mp, error } = await supabase.from("merchant_payments").insert({
+        const insertData: any = {
           transaction_id: body.transaction_id, sender_phone: body.sender_phone, amount: body.amount,
           reference: body.reference || null, payment_date: body.payment_date || new Date().toISOString(),
           sms_text: body.sms_text || null,
-        }).select().single();
+        };
+        if (body.tenant_id) insertData.tenant_id = body.tenant_id;
+
+        const { data: mp, error } = await supabase.from("merchant_payments").insert(insertData).select().single();
         if (error) throw error;
 
         const matchResult = await autoMatchMerchantPayment(supabase, mp);
@@ -349,10 +419,13 @@ Deno.serve(async (req: Request) => {
       if (action === "create" && req.method === "POST") {
         const body = await req.json();
         const ticketId = await generateTicketId(supabase);
-        const { data, error } = await supabase.from("support_tickets").insert({
+        const insertData: any = {
           customer_id: body.customer_id, subject: body.subject,
           category: body.category || "general", priority: body.priority || "medium", ticket_id: ticketId,
-        }).select().single();
+        };
+        if (body.tenant_id) insertData.tenant_id = body.tenant_id;
+
+        const { data, error } = await supabase.from("support_tickets").insert(insertData).select().single();
         if (error) throw error;
 
         if (body.message) {
