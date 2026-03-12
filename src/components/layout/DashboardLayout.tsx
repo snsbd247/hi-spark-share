@@ -1,8 +1,12 @@
 import { ReactNode } from "react";
 import AppSidebar from "./AppSidebar";
 import DynamicFooter from "@/components/DynamicFooter";
+import { useTenantSync } from "@/hooks/useTenantSync";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  // Sync tenant context with API proxy for all tenant admin pages
+  useTenantSync();
+
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
