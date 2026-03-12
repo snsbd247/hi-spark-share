@@ -4,6 +4,17 @@ import { toast } from "sonner";
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const API_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api`;
 
+// ─── Tenant ID Management ───────────────────────────────────────
+let currentTenantId: string | null = null;
+
+export function setApiTenantId(tenantId: string | null) {
+  currentTenantId = tenantId;
+}
+
+export function getApiTenantId(): string | null {
+  return currentTenantId;
+}
+
 // ─── Error Classification ───────────────────────────────────────
 type ErrorKind = "network" | "auth" | "permission" | "validation" | "server" | "timeout" | "unknown";
 
@@ -48,7 +59,6 @@ function checkCircuit() {
     if (Date.now() < circuitState.openUntil) {
       throw new ApiError("Service temporarily unavailable — please wait", "network");
     }
-    // Half-open: allow one request through
     circuitState.failures = circuitState.threshold - 1;
   }
 }
@@ -67,7 +77,6 @@ function recordFailure() {
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
-// Clear cached token on auth state changes (login/logout/token refresh)
 supabase.auth.onAuthStateChange((event, session) => {
   if (session?.access_token) {
     cachedToken = session.access_token;
@@ -81,7 +90,6 @@ supabase.auth.onAuthStateChange((event, session) => {
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const now = Date.now();
 
-  // Use cached token if valid (with 60s buffer)
   if (cachedToken && tokenExpiresAt > now + 60_000) {
     return { "Content-Type": "application/json", Authorization: `Bearer ${cachedToken}` };
   }
@@ -119,6 +127,11 @@ const BASE_DELAY_MS = 1000;
 async function dataApiCall(payload: any): Promise<any> {
   checkCircuit();
 
+  // Inject tenant_id into payload if available
+  if (currentTenantId) {
+    payload.tenant_id = currentTenantId;
+  }
+
   let lastError: ApiError | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -139,7 +152,6 @@ async function dataApiCall(payload: any): Promise<any> {
 
       clearTimeout(timeoutId);
 
-      // Auth failure → refresh token and retry once
       if (res.status === 401 && attempt < MAX_RETRIES - 1) {
         cachedToken = null;
         tokenExpiresAt = 0;

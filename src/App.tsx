@@ -5,11 +5,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PermissionGuard from "@/components/PermissionGuard";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
+import SuperAdminGuard from "@/components/SuperAdminGuard";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -51,11 +53,17 @@ import SafeModeWrapper from "@/components/SafeModeWrapper";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
 
+// Super Admin Pages
+import SuperAdminDashboard from "@/pages/super-admin/SuperAdminDashboard";
+import TenantsManagement from "@/pages/super-admin/TenantsManagement";
+import PlansManagement from "@/pages/super-admin/PlansManagement";
+import SubscriptionsManagement from "@/pages/super-admin/SubscriptionsManagement";
+import PlatformMonitoring from "@/pages/super-admin/PlatformMonitoring";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error: any) => {
-        // Don't retry auth or permission errors
         if (error?.status === 401 || error?.status === 403) return false;
         if (error?.kind === "auth" || error?.kind === "permission") return false;
         return failureCount < 2;
@@ -81,8 +89,19 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <CustomerAuthProvider>
+              <TenantProvider>
               <SafeModeWrapper>
               <Routes>
+                {/* Super Admin Routes */}
+                <Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+                <Route path="/super-admin/tenants" element={<SuperAdminGuard><TenantsManagement /></SuperAdminGuard>} />
+                <Route path="/super-admin/plans" element={<SuperAdminGuard><PlansManagement /></SuperAdminGuard>} />
+                <Route path="/super-admin/subscriptions" element={<SuperAdminGuard><SubscriptionsManagement /></SuperAdminGuard>} />
+                <Route path="/super-admin/monitoring" element={<SuperAdminGuard><PlatformMonitoring /></SuperAdminGuard>} />
+                <Route path="/super-admin/settings" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+                <Route path="/super-admin/payments" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+                <Route path="/super-admin/audit-logs" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
                 <Route path="/admin/forgot-password" element={<ForgotPassword />} />
@@ -133,6 +152,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </SafeModeWrapper>
+              </TenantProvider>
             </CustomerAuthProvider>
           </AuthProvider>
         </BrowserRouter>
