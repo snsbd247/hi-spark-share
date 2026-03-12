@@ -168,22 +168,75 @@ export default function SuperAdminBackup() {
       const { data: fileData, error } = await supabase.storage.from("backups").download(restoreDialog.file_name);
       if (error) throw error;
       const text = await fileData.text();
-      const backupData = JSON.parse(text);
 
+      // Parse SQL backup: extract INSERT statements and replay via Supabase client
       const tables = restoreDialog.backup_type === "tenant" ? TENANT_TABLES : ALL_TABLES;
       const tenantId = restoreDialog.tenant_id;
 
-      // Delete then re-insert in reverse dependency order
+      // Step 1: Delete existing data in reverse dependency order
       for (const table of [...tables].reverse()) {
         if (tenantId) {
           await (supabase as any).from(table).delete().eq("tenant_id", tenantId);
         }
       }
 
+      // Step 2: Parse INSERT statements from SQL and re-insert via client
+      const insertRegex = /INSERT INTO public\.(\w+)\s*\(([^)]+)\)\s*VALUES\s*\((.+)\);/g;
+      const rowsByTable: Record<string, any[]> = {};
+
+      let match;
+      while ((match = insertRegex.exec(text)) !== null) {
+        const tableName = match[1];
+        const columns = match[2].split(",").map(c => c.trim());
+        const rawValues = match[3];
+
+        // Parse values carefully handling quoted strings with commas
+        const values: any[] = [];
+        let current = "";
+        let inQuote = false;
+        let depth = 0;
+        for (let i = 0; i < rawValues.length; i++) {
+          const ch = rawValues[i];
+          if (ch === "'" && rawValues[i - 1] !== "'") {
+            inQuote = !inQuote;
+            current += ch;
+          } else if (!inQuote && ch === "," && depth === 0) {
+            values.push(current.trim());
+            current = "";
+          } else {
+            if (ch === "(") depth++;
+            if (ch === ")") depth--;
+            current += ch;
+          }
+        }
+        if (current.trim()) values.push(current.trim());
+
+        const row: Record<string, any> = {};
+        columns.forEach((col, i) => {
+          const val = values[i] || "NULL";
+          if (val === "NULL") { row[col] = null; }
+          else if (val === "TRUE") { row[col] = true; }
+          else if (val === "FALSE") { row[col] = false; }
+          else if (val.startsWith("'") && val.endsWith("'")) {
+            row[col] = val.slice(1, -1).replace(/''/g, "'");
+          } else if (val.endsWith("::jsonb")) {
+            const jsonStr = val.replace(/::jsonb$/, "").slice(1, -1).replace(/''/g, "'");
+            try { row[col] = JSON.parse(jsonStr); } catch { row[col] = jsonStr; }
+          } else if (!isNaN(Number(val))) {
+            row[col] = Number(val);
+          } else {
+            row[col] = val;
+          }
+        });
+
+        if (!rowsByTable[tableName]) rowsByTable[tableName] = [];
+        rowsByTable[tableName].push(row);
+      }
+
+      // Insert in table order
       for (const table of tables) {
-        const rows = backupData[table];
+        const rows = rowsByTable[table];
         if (rows?.length) {
-          // Insert in batches of 100
           for (let i = 0; i < rows.length; i += 100) {
             const batch = rows.slice(i, i + 100);
             await (supabase as any).from(table).insert(batch);
