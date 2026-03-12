@@ -5,19 +5,26 @@ import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Plus, Loader2, CreditCard } from "lucide-react";
+import { Plus, Loader2, CreditCard, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function SubscriptionsManagement() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedSub, setSelectedSub] = useState<any>(null);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("");
+  const [editStatus, setEditStatus] = useState("active");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editPlan, setEditPlan] = useState("");
 
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ["sa-subscriptions-all"],
@@ -49,21 +56,42 @@ export default function SubscriptionsManagement() {
   const createSubscription = useMutation({
     mutationFn: async () => {
       if (!selectedTenant || !selectedPlan) throw new Error("Select tenant and plan");
-      const { error } = await supabase.from("tenant_subscriptions" as any).insert({
-        tenant_id: selectedTenant,
-        plan_id: selectedPlan,
-      });
+      const { error } = await supabase.from("tenant_subscriptions" as any).insert({ tenant_id: selectedTenant, plan_id: selectedPlan });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sa-subscriptions-all"] });
-      toast.success("Subscription assigned");
-      setOpen(false);
-      setSelectedTenant("");
-      setSelectedPlan("");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["sa-subscriptions-all"] }); toast.success("Subscription assigned"); setOpen(false); setSelectedTenant(""); setSelectedPlan(""); },
     onError: (err: any) => toast.error(err.message),
   });
+
+  const updateSubscription = useMutation({
+    mutationFn: async () => {
+      if (!selectedSub) return;
+      const updates: any = { status: editStatus, plan_id: editPlan };
+      if (editEndDate) updates.end_date = new Date(editEndDate).toISOString();
+      const { error } = await supabase.from("tenant_subscriptions" as any).update(updates).eq("id", selectedSub.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["sa-subscriptions-all"] }); toast.success("Subscription updated"); setEditOpen(false); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const deleteSubscription = useMutation({
+    mutationFn: async () => {
+      if (!selectedSub) return;
+      const { error } = await supabase.from("tenant_subscriptions" as any).delete().eq("id", selectedSub.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["sa-subscriptions-all"] }); toast.success("Subscription deleted"); setDeleteOpen(false); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const openEdit = (s: any) => {
+    setSelectedSub(s);
+    setEditStatus(s.status);
+    setEditPlan(s.plan_id);
+    setEditEndDate(s.end_date ? format(new Date(s.end_date), "yyyy-MM-dd") : "");
+    setEditOpen(true);
+  };
 
   return (
     <SuperAdminLayout>
@@ -81,18 +109,14 @@ export default function SubscriptionsManagement() {
                 <Label>Tenant</Label>
                 <Select value={selectedTenant} onValueChange={setSelectedTenant}>
                   <SelectTrigger><SelectValue placeholder="Select tenant" /></SelectTrigger>
-                  <SelectContent>
-                    {tenants?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{tenants?.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.company_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Plan</Label>
                 <Select value={selectedPlan} onValueChange={setSelectedPlan}>
                   <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
-                  <SelectContent>
-                    {plans?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{plans?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <Button onClick={() => createSubscription.mutate()} disabled={createSubscription.isPending} className="w-full">
@@ -102,6 +126,56 @@ export default function SubscriptionsManagement() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Subscription</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Plan</Label>
+              <Select value={editPlan} onValueChange={setEditPlan}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{plans?.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} />
+            </div>
+            <Button onClick={() => updateSubscription.mutate()} disabled={updateSubscription.isPending} className="w-full">
+              {updateSubscription.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Subscription</DialogTitle>
+            <DialogDescription>Are you sure? This will remove the subscription record for {selectedSub?.tenants?.company_name}.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteSubscription.mutate()} disabled={deleteSubscription.isPending}>
+              {deleteSubscription.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card className="shadow-sm">
         <CardContent className="p-0">
@@ -118,6 +192,8 @@ export default function SubscriptionsManagement() {
                   <TableHead>Price/mo</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,8 +202,15 @@ export default function SubscriptionsManagement() {
                     <TableCell className="font-medium">{s.tenants?.company_name ?? "—"}</TableCell>
                     <TableCell>{s.subscription_plans?.name ?? "—"}</TableCell>
                     <TableCell>৳{Number(s.subscription_plans?.monthly_price ?? 0).toLocaleString()}</TableCell>
-                    <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={s.status === "active" ? "default" : s.status === "expired" ? "destructive" : "secondary"}>{s.status}</Badge>
+                    </TableCell>
                     <TableCell>{format(new Date(s.start_date), "dd MMM yyyy")}</TableCell>
+                    <TableCell>{s.end_date ? format(new Date(s.end_date), "dd MMM yyyy") : "—"}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedSub(s); setDeleteOpen(true); }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
