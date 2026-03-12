@@ -263,7 +263,7 @@ export default function TenantsManagement() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => toggleStatus.mutate({ id: t.id, status: t.status })} title={t.status === "active" ? "Suspend" : "Activate"}>
-                        {t.status === "active" ? <Pause className="h-4 w-4 text-orange-500" /> : <Play className="h-4 w-4 text-green-500" />}
+                        {t.status === "active" ? <Pause className="h-4 w-4 text-muted-foreground" /> : <Play className="h-4 w-4 text-primary" />}
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openDelete(t)} title="Delete">
                         <Trash2 className="h-4 w-4 text-destructive" />
