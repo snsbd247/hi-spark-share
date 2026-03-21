@@ -51,12 +51,12 @@ export default function AdminUsers() {
     queryKey: ["admin-users"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("admin-users/list", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: {},
       });
       if (error) throw error;
       return data?.users || [];
     },
-    enabled: !!session,
+    enabled: !!user,
   });
 
   const filtered = users?.filter((u: any) => {
