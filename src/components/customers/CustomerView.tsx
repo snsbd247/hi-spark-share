@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { RefreshCw, Loader2, Ban, Play } from "lucide-react";
 import { toast } from "sonner";
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+import api from "@/lib/api";
 
 interface CustomerViewProps {
   customer: any;
