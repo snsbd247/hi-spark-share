@@ -1,13 +1,12 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, FileText, Mail, MessageSquare, Server, Receipt } from "lucide-react";
+import { Settings, FileText, Mail, MessageSquare, Receipt } from "lucide-react";
 import GeneralSettingsTab from "@/components/settings/GeneralSettingsTab";
 import FooterSettingsTab from "@/components/settings/FooterSettingsTab";
 import InvoiceSettingsTab from "@/components/settings/InvoiceSettingsTab";
 import SmsTemplatesTab from "@/components/settings/SmsTemplatesTab";
 import EmailTemplatesTab from "@/components/settings/EmailTemplatesTab";
-import SmtpSettingsTab from "@/components/settings/SmtpSettingsTab";
 
 export default function SystemSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -36,9 +35,6 @@ export default function SystemSettings() {
           <TabsTrigger value="email-templates" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Mail className="h-4 w-4" /> Email Templates
           </TabsTrigger>
-          <TabsTrigger value="smtp" className="flex items-center gap-1.5 text-xs sm:text-sm">
-            <Server className="h-4 w-4" /> SMTP
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general"><GeneralSettingsTab /></TabsContent>
@@ -46,7 +42,6 @@ export default function SystemSettings() {
         <TabsContent value="invoice"><InvoiceSettingsTab /></TabsContent>
         <TabsContent value="sms-templates"><SmsTemplatesTab /></TabsContent>
         <TabsContent value="email-templates"><EmailTemplatesTab /></TabsContent>
-        <TabsContent value="smtp"><SmtpSettingsTab /></TabsContent>
       </Tabs>
     </DashboardLayout>
   );
