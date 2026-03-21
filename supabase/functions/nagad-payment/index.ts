@@ -13,29 +13,9 @@ function getSupabaseAdmin() {
   );
 }
 
-// ── Load credentials from tenant_integrations or fallback to payment_gateways ──
-async function getGatewayConfig(tenantId?: string) {
+// ── Load Nagad credentials from payment_gateways ──
+async function getGatewayConfig() {
   const supabase = getSupabaseAdmin();
-
-  // Try tenant-specific config first
-  if (tenantId) {
-    const { data: tenantConfig } = await supabase
-      .from("tenant_integrations")
-      .select("nagad_api_key, nagad_api_secret, nagad_base_url")
-      .eq("tenant_id", tenantId)
-      .maybeSingle();
-
-    if (tenantConfig?.nagad_api_key && tenantConfig?.nagad_api_secret) {
-      return {
-        id: tenantId,
-        app_key: tenantConfig.nagad_api_key,
-        app_secret: tenantConfig.nagad_api_secret,
-        base_url: tenantConfig.nagad_base_url || "https://sandbox.mynagad.com:10061/remote-payment-gateway-1.0/api/dfs",
-      };
-    }
-  }
-
-  // Fallback to payment_gateways table
   const { data, error } = await supabase
     .from("payment_gateways")
     .select("*")
@@ -80,66 +60,48 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, tenant_id, ...params } = await req.json();
+    const { action, ...params } = await req.json();
 
     if (!checkRateLimit(action || "unknown")) {
       return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again in 1 minute." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (action === "test_connection") {
-      const gw = await getGatewayConfig(tenant_id);
+      const gw = await getGatewayConfig();
       try {
         const testUrl = `${gw.base_url}/check/payment/verify`;
         const res = await fetch(testUrl, { method: "GET" });
 
         const supabase = getSupabaseAdmin();
-        if (tenant_id) {
-          await supabase
-            .from("tenant_integrations")
-            .update({ nagad_status: "connected", nagad_last_connected_at: new Date().toISOString() })
-            .eq("tenant_id", tenant_id);
-        } else {
-          await supabase
-            .from("payment_gateways")
-            .update({ status: "connected", last_connected_at: new Date().toISOString() })
-            .eq("id", gw.id);
-        }
+        await supabase
+          .from("payment_gateways")
+          .update({ status: "connected", last_connected_at: new Date().toISOString() })
+          .eq("id", gw.id);
 
-        await logRequest("nagad_test_connection", gw.id || tenant_id, "success", `HTTP ${res.status}`);
+        await logRequest("nagad_test_connection", gw.id, "success", `HTTP ${res.status}`);
         return new Response(JSON.stringify({ success: true, status: res.status }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } catch (e: any) {
         const supabase = getSupabaseAdmin();
-        if (tenant_id) {
-          await supabase
-            .from("tenant_integrations")
-            .update({ nagad_status: "disconnected" })
-            .eq("tenant_id", tenant_id);
-        } else {
-          await supabase
-            .from("payment_gateways")
-            .update({ status: "disconnected" })
-            .eq("id", gw.id);
-        }
-        await logRequest("nagad_test_connection", gw.id || tenant_id, "failed", e.message);
+        await supabase
+          .from("payment_gateways")
+          .update({ status: "disconnected" })
+          .eq("id", gw.id);
+        await logRequest("nagad_test_connection", gw.id, "failed", e.message);
         throw new Error("Cannot reach Nagad API: " + e.message);
       }
     }
 
     if (action === "query_transaction") {
-      const gw = await getGatewayConfig(tenant_id);
+      const gw = await getGatewayConfig();
       const { paymentRefId } = params;
       if (!paymentRefId) throw new Error("paymentRefId is required");
 
       const url = `${gw.base_url}/verify/payment/${paymentRefId}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       await logRequest("nagad_query", paymentRefId, data?.status || "unknown", JSON.stringify(data).slice(0, 200));
       return new Response(JSON.stringify(data), {
@@ -148,21 +110,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === "refund") {
-      const gw = await getGatewayConfig(tenant_id);
+      const gw = await getGatewayConfig();
       const { paymentRefId, amount, reason } = params;
       if (!paymentRefId || !amount) throw new Error("paymentRefId and amount are required");
 
       const url = `${gw.base_url}/purchase/refund`;
-      const refundBody = {
-        paymentRefId,
-        amount: String(amount),
-        reason: reason || "Refund",
-      };
-
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(refundBody),
+        body: JSON.stringify({ paymentRefId, amount: String(amount), reason: reason || "Refund" }),
       });
       const data = await res.json();
 
@@ -170,19 +126,10 @@ Deno.serve(async (req) => {
       const supabase = getSupabaseAdmin();
 
       if (isSuccess) {
-        await supabase
-          .from("payments")
-          .update({ status: "refunded" })
-          .eq("transaction_id", paymentRefId)
-          .eq("payment_method", "nagad");
+        await supabase.from("payments").update({ status: "refunded" }).eq("transaction_id", paymentRefId).eq("payment_method", "nagad");
 
         try {
-          const { data: payment } = await supabase
-            .from("payments")
-            .select("customer_id, amount, customers(phone, name)")
-            .eq("transaction_id", paymentRefId)
-            .maybeSingle();
-
+          const { data: payment } = await supabase.from("payments").select("customer_id, amount, customers(phone, name)").eq("transaction_id", paymentRefId).maybeSingle();
           if (payment?.customers?.phone) {
             const { data: smsSettings } = await supabase.from("sms_settings").select("api_token, sender_id").limit(1).maybeSingle();
             if (smsSettings?.api_token) {
@@ -194,20 +141,17 @@ Deno.serve(async (req) => {
       }
 
       await logRequest("nagad_refund", paymentRefId, isSuccess ? "success" : "failed", JSON.stringify(data).slice(0, 200));
-
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
