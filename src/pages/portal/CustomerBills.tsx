@@ -22,7 +22,7 @@ import {
 import { Loader2, CreditCard, Smartphone, Building2, Banknote } from "lucide-react";
 import { toast } from "sonner";
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+import api from "@/lib/api";
 
 export default function CustomerBills() {
   const { customer } = useCustomerAuth();
