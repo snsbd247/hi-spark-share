@@ -13,7 +13,7 @@ import { Loader2, Send, Users, FileText, Save, Trash2, Info } from "lucide-react
 import { toast } from "sonner";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+import api from "@/lib/api";
 
 type CustomerGroup = "all" | "due" | "paid" | "suspended" | "zone" | "package";
 
