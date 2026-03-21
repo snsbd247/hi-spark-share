@@ -1,128 +1,53 @@
-import { supabase } from "@/integrations/supabase/client";
+import axios from 'axios';
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const API_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api`;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-const REQUEST_TIMEOUT_MS = 30_000;
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
 
-// ─── Auth Headers with Caching ──────────────────────────────────
-let cachedToken: string | null = null;
-let tokenExpiresAt = 0;
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const now = Date.now();
-  if (cachedToken && tokenExpiresAt > now + 60_000) {
-    return { "Content-Type": "application/json", Authorization: `Bearer ${cachedToken}` };
+// Attach admin auth token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    cachedToken = session.access_token;
-    tokenExpiresAt = (session.expires_at || 0) * 1000;
-    return { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` };
-  }
-  return { "Content-Type": "application/json" };
-}
+  return config;
+});
 
-async function refreshAndGetHeaders(): Promise<Record<string, string>> {
-  try {
-    const { data: { session } } = await supabase.auth.refreshSession();
-    if (session?.access_token) {
-      cachedToken = session.access_token;
-      tokenExpiresAt = (session.expires_at || 0) * 1000;
-      return { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` };
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/portal')) {
+        window.location.href = '/login';
+      }
     }
-  } catch {
-    cachedToken = null;
-    tokenExpiresAt = 0;
+    return Promise.reject(error);
   }
-  return { "Content-Type": "application/json" };
-}
+);
 
-// ─── Error Helpers ──────────────────────────────────────────────
-function isNetworkError(msg: string): boolean {
-  return ["Failed to fetch", "NetworkError", "network", "ECONNRESET", "ERR_NETWORK", "AbortError"]
-    .some(k => msg.includes(k));
-}
-
-function isRetryableStatus(status: number): boolean {
-  return status === 502 || status === 503 || status === 504 || status === 429;
-}
-
-// ─── Core API Call ──────────────────────────────────────────────
-async function apiCall<T = any>(resource: string, action: string, body: any, skipAuth = false): Promise<T> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const headers = skipAuth
-        ? { "Content-Type": "application/json" }
-        : attempt === 0
-          ? await getAuthHeaders()
-          : await refreshAndGetHeaders();
-
-      const res = await fetch(`${API_BASE}/${resource}/${action}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Auth expired → refresh and retry
-      if (res.status === 401 && !skipAuth && attempt < MAX_RETRIES - 1) {
-        cachedToken = null;
-        tokenExpiresAt = 0;
-        lastError = new Error("Session expired");
-        continue;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        const err = new Error(data.error || `API call failed: ${res.status}`);
-        if (isRetryableStatus(res.status) && attempt < MAX_RETRIES - 1) {
-          lastError = err;
-          await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
-          continue;
-        }
-        throw err;
-      }
-
-      return data;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      lastError = err;
-
-      const msg = err?.message || "";
-      if (isNetworkError(msg) && attempt < MAX_RETRIES - 1) {
-        await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
-        continue;
-      }
-      throw err;
-    }
-  }
-
-  throw lastError || new Error("Request failed after retries");
-}
+export default api;
 
 // ─── Bills API ──────────────────────────────────────────────────
 export const billsApi = {
   create: (bill: { customer_id: string; month: string; amount: number; due_date?: string }) =>
-    apiCall("bills", "create", bill),
+    api.post('/bills', bill).then(r => r.data),
   generate: (month: string) =>
-    apiCall("bills", "generate", { month }),
+    api.post('/bills/generate', { month }).then(r => r.data),
   update: (id: string, updates: Record<string, any>) =>
-    apiCall("bills", "update", { id, ...updates }),
+    api.put(`/bills/${id}`, updates).then(r => r.data),
   delete: (id: string) =>
-    apiCall("bills", "delete", { id }),
+    api.delete(`/bills/${id}`).then(r => r.data),
   markPaid: (id: string) =>
-    apiCall("bills", "mark-paid", { id }),
+    api.put(`/bills/${id}`, { status: 'paid' }).then(r => r.data),
 };
 
 // ─── Payments API ───────────────────────────────────────────────
@@ -130,11 +55,11 @@ export const paymentsApi = {
   create: (payment: {
     customer_id: string; amount: number; payment_method: string;
     bill_id?: string; transaction_id?: string; month?: string; status?: string;
-  }) => apiCall("payments", "create", payment),
+  }) => api.post('/payments', payment).then(r => r.data),
   update: (id: string, updates: Record<string, any>) =>
-    apiCall("payments", "update", { id, ...updates }),
-  delete: (id: string, transaction_id?: string) =>
-    apiCall("payments", "delete", { id, transaction_id }),
+    api.put(`/payments/${id}`, updates).then(r => r.data),
+  delete: (id: string) =>
+    api.delete(`/payments/${id}`).then(r => r.data),
 };
 
 // ─── Merchant Payments API ──────────────────────────────────────
@@ -142,15 +67,15 @@ export const merchantPaymentsApi = {
   create: (payment: {
     transaction_id: string; sender_phone: string; amount: number;
     reference?: string; payment_date?: string;
-  }) => apiCall("merchant-payments", "create", payment),
+  }) => api.post('/merchant-payments', payment).then(r => r.data),
   match: (payment_id: string, bill_id: string, customer_id: string) =>
-    apiCall("merchant-payments", "match", { payment_id, bill_id, customer_id }),
+    api.post(`/merchant-payments/${payment_id}/match`, { bill_id, customer_id }).then(r => r.data),
 };
 
 // ─── Customers API ──────────────────────────────────────────────
 export const customersApi = {
   create: (customer: Record<string, any>) =>
-    apiCall("customers", "create", customer),
+    api.post('/customers', customer).then(r => r.data),
 };
 
 // ─── Tickets API ────────────────────────────────────────────────
@@ -158,5 +83,38 @@ export const ticketsApi = {
   create: (ticket: {
     customer_id: string; subject: string; category?: string;
     priority?: string; message?: string; sender_type?: string; sender_name?: string;
-  }) => apiCall("tickets", "create", ticket, true),
+  }) => api.post('/tickets', ticket).then(r => r.data),
 };
+
+// Customer portal API (uses session token)
+export const portalApi = axios.create({
+  baseURL: API_BASE_URL + '/portal',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
+
+portalApi.interceptors.request.use((config) => {
+  const session = localStorage.getItem('customer_portal_session');
+  if (session) {
+    try {
+      const parsed = JSON.parse(session);
+      config.headers['X-Session-Token'] = parsed.session_token;
+    } catch {}
+  }
+  return config;
+});
+
+portalApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('customer_portal_session');
+      if (window.location.pathname.startsWith('/portal')) {
+        window.location.href = '/portal/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
