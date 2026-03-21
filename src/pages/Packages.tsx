@@ -132,14 +132,10 @@ export default function Packages() {
       // Remove profile from MikroTik first
       if (deletePkg.mikrotik_profile_name) {
         try {
-          await fetch(
-            `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/remove-profile`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ package_id: deletePkg.id, router_id: deletePkg.router_id }),
-            }
-          );
+          await api.post('/mikrotik/remove-profile', {
+            package_id: deletePkg.id,
+            router_id: deletePkg.router_id,
+          });
         } catch { /* best effort */ }
       }
       const { error } = await supabase.from("packages").delete().eq("id", deletePkg.id);
