@@ -133,7 +133,7 @@ export default function AdminUsers() {
                 role: form.role,
                 custom_role_id: form.custom_role_id || undefined,
               },
-          headers: { Authorization: `Bearer ${session?.access_token}` },
+          });
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
