@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreMerchantPaymentRequest;
+use App\Http\Requests\MatchMerchantPaymentRequest;
 use App\Models\MerchantPayment;
 use App\Models\Bill;
 use App\Models\Payment;
@@ -17,13 +19,8 @@ class MerchantPaymentController extends Controller
         protected LedgerService $ledgerService
     ) {}
 
-    public function store(Request $request)
+    public function store(StoreMerchantPaymentRequest $request)
     {
-        $request->validate([
-            'transaction_id' => 'required|string|unique:merchant_payments,transaction_id',
-            'sender_phone' => 'required|string',
-            'amount' => 'required|numeric|min:0',
-        ]);
 
         $mp = MerchantPayment::create($request->only([
             'transaction_id', 'sender_phone', 'amount', 'reference', 'payment_date', 'sms_text',
