@@ -119,11 +119,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         body.old_pppoe_username = customer.pppoe_username;
       }
 
-      const res = await fetch(
-        `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/${endpoint}`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-      );
-      const data = await res.json();
+      const { data } = await api.post(`/mikrotik/${endpoint}`, body);
       if (data.success) {
         toast.success(`PPPoE user ${isUpdate ? "updated" : "created"} on MikroTik`);
       } else {
