@@ -194,11 +194,7 @@ export default function Packages() {
   const bulkSyncPackages = async () => {
     setBulkSyncing(true);
     try {
-      const res = await fetch(
-        `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mikrotik-sync/bulk-sync-packages`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }
-      );
-      const data = await res.json();
+      const { data } = await api.post('/mikrotik/bulk-sync-packages', {});
       if (data.success) {
         const r = data.results;
         toast.success(`Bulk sync complete: ${r.synced} synced, ${r.failed} failed`);
