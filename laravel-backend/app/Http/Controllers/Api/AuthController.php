@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AdminLoginRequest;
 use App\Models\AdminLoginLog;
 use App\Models\AdminSession;
 use App\Models\Profile;
@@ -13,13 +14,8 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(AdminLoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|string',
-            'password' => 'required|string',
-        ]);
-
         $profile = Profile::where('email', $request->email)
             ->orWhere('username', $request->email)
             ->first();
@@ -32,10 +28,8 @@ class AuthController extends Controller
             return response()->json(['error' => 'Account is disabled'], 403);
         }
 
-        // Get role
         $role = UserRole::where('user_id', $profile->id)->first();
 
-        // Create session
         $sessionToken = Str::uuid()->toString();
         $session = AdminSession::create([
             'admin_id' => $profile->id,
@@ -45,7 +39,6 @@ class AuthController extends Controller
             'device_name' => $request->input('device_name', 'Unknown'),
         ]);
 
-        // Log login
         AdminLoginLog::create([
             'admin_id' => $profile->id,
             'action' => 'login',

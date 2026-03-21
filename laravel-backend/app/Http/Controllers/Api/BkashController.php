@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreatePaymentGatewayRequest;
 use App\Services\BkashService;
 use Illuminate\Http\Request;
 
@@ -10,14 +11,8 @@ class BkashController extends Controller
 {
     public function __construct(protected BkashService $bkashService) {}
 
-    public function createPayment(Request $request)
+    public function createPayment(CreatePaymentGatewayRequest $request)
     {
-        $request->validate([
-            'bill_id' => 'required|uuid|exists:bills,id',
-            'customer_id' => 'required|uuid|exists:customers,id',
-            'amount' => 'required|numeric|min:1',
-        ]);
-
         $result = $this->bkashService->createPayment(
             $request->bill_id,
             $request->customer_id,

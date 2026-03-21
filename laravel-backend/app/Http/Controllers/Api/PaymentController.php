@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePaymentRequest;
 use App\Models\Payment;
 use App\Models\Bill;
 use App\Services\BillingService;
@@ -16,13 +17,8 @@ class PaymentController extends Controller
         protected LedgerService $ledgerService
     ) {}
 
-    public function store(Request $request)
+    public function store(StorePaymentRequest $request)
     {
-        $request->validate([
-            'customer_id' => 'required|uuid|exists:customers,id',
-            'amount' => 'required|numeric|min:0',
-            'payment_method' => 'required|string',
-        ]);
 
         $payment = Payment::create([
             'customer_id' => $request->customer_id,
