@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
+import axios from "axios";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-// Only store minimal, non-sensitive fields in localStorage
 interface CustomerSession {
   id: string;
   customer_id: string;
@@ -17,7 +17,6 @@ interface CustomerSession {
   expires_at: string;
 }
 
-// Full profile with sensitive fields — only fetched on demand from server
 export interface CustomerProfile {
   id: string;
   customer_id: string;
@@ -60,40 +59,30 @@ interface CustomerAuthContextType {
 }
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(undefined);
-
 const STORAGE_KEY = "customer_portal_session";
 
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<CustomerSession | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Validate session on load
   useEffect(() => {
     const validateSession = async () => {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) {
-        setLoading(false);
-        return;
-      }
+      if (!saved) { setLoading(false); return; }
 
       try {
         const session: CustomerSession = JSON.parse(saved);
-
-        // Client-side expiry check
         if (new Date(session.expires_at) < new Date()) {
           localStorage.removeItem(STORAGE_KEY);
           setLoading(false);
           return;
         }
 
-        // Server-side validation
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-verify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_token: session.session_token }),
+        const res = await axios.post(`${API_BASE_URL}/customer/verify`, {
+          session_token: session.session_token,
         });
 
-        if (res.ok) {
+        if (res.data.valid) {
           setCustomer(session);
         } else {
           localStorage.removeItem(STORAGE_KEY);
@@ -103,36 +92,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     };
-
     validateSession();
   }, []);
 
   const signIn = async (pppoeUsername: string, pppoePassword: string) => {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pppoe_username: pppoeUsername, pppoe_password: pppoePassword }),
+    const { data } = await axios.post(`${API_BASE_URL}/customer/login`, {
+      pppoe_username: pppoeUsername,
+      pppoe_password: pppoePassword,
     });
 
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.error || "Login failed");
-    }
-
-    const data = result.customer;
     const session: CustomerSession = {
-      id: data.id,
-      customer_id: data.customer_id,
-      name: data.name,
-      phone: data.phone,
-      area: data.area,
-      status: data.status,
-      monthly_bill: Number(data.monthly_bill),
-      package_id: data.package_id,
-      photo_url: data.photo_url,
-      session_token: result.session_token,
-      expires_at: result.expires_at,
+      ...data.customer,
+      monthly_bill: Number(data.customer.monthly_bill),
+      session_token: data.session_token,
+      expires_at: data.expires_at,
     };
 
     setCustomer(session);
@@ -148,22 +121,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     if (!customer?.session_token) return null;
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_token: customer.session_token, include_profile: true }),
+      const { data } = await axios.post(`${API_BASE_URL}/customer/verify`, {
+        session_token: customer.session_token,
+        include_profile: true,
       });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          signOut();
-        }
-        return null;
-      }
-
-      const data = await res.json();
       return data.customer as CustomerProfile;
-    } catch {
+    } catch (err: any) {
+      if (err.response?.status === 401) signOut();
       return null;
     }
   }, [customer?.session_token, signOut]);
