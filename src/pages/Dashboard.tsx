@@ -3,7 +3,7 @@ import { supabase } from "@/lib/apiDb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Loader2, RefreshCw, Router, Target, Wallet, CreditCard } from "lucide-react";
-import { supabase as supabaseClient } from "@/integrations/supabase/client";
+import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { toast } from "sonner";
 import { useState, useMemo, useCallback } from "react";
