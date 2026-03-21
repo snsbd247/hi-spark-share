@@ -56,8 +56,7 @@ export default function Dashboard() {
   const { data: mikrotikStats, isLoading: loadingMikrotik, refetch: refetchMikrotik } = useQuery({
     queryKey: ["mikrotik-router-stats"],
     queryFn: async () => {
-      const { data, error } = await supabaseClient.functions.invoke("mikrotik-sync/router-stats", { body: {} });
-      if (error) throw error;
+      const { data } = await api.post('/mikrotik/router-stats', {});
       return data as { total_online: number; total_suspended: number; routers: { name: string; online: number; suspended: number; error?: string }[] };
     },
     refetchInterval: 30000,
