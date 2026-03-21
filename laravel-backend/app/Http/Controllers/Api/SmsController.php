@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SendSmsRequest;
+use App\Http\Requests\SendBulkSmsRequest;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 
@@ -10,13 +12,8 @@ class SmsController extends Controller
 {
     public function __construct(protected SmsService $smsService) {}
 
-    public function send(Request $request)
+    public function send(SendSmsRequest $request)
     {
-        $request->validate([
-            'to' => 'required|string',
-            'message' => 'required|string',
-            'sms_type' => 'required|string',
-        ]);
 
         $result = $this->smsService->send(
             $request->to,
