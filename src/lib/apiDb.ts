@@ -1,184 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const API_BASE = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api`;
-
-// ─── Error Classification ───────────────────────────────────────
-type ErrorKind = "network" | "auth" | "permission" | "validation" | "server" | "timeout" | "unknown";
-
-class ApiError extends Error {
-  kind: ErrorKind;
-  status?: number;
-  retryable: boolean;
-
-  constructor(message: string, kind: ErrorKind, status?: number) {
-    super(message);
-    this.name = "ApiError";
-    this.kind = kind;
-    this.status = status;
-    this.retryable = kind === "network" || kind === "timeout" || kind === "server";
-  }
-}
-
-function classifyError(err: any, status?: number): ApiError {
-  if (err instanceof ApiError) return err;
-
-  const msg = err?.message || String(err);
-
-  if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("network") || msg.includes("ECONNRESET") || msg.includes("ERR_NETWORK")) {
-    return new ApiError("Network error — check your connection", "network");
-  }
-  if (msg.includes("AbortError") || msg.includes("timeout") || msg.includes("signal")) {
-    return new ApiError("Request timed out", "timeout");
-  }
-  if (status === 401) return new ApiError("Session expired", "auth", 401);
-  if (status === 403) return new ApiError("Insufficient permissions", "permission", 403);
-  if (status === 400 || status === 422) return new ApiError(msg, "validation", status);
-  if (status && status >= 500) return new ApiError("Server error — try again", "server", status);
-
-  return new ApiError(msg || "Unknown error", "unknown");
-}
-
-// ─── Circuit Breaker ────────────────────────────────────────────
-const circuitState = { failures: 0, openUntil: 0, threshold: 5, cooldownMs: 30_000 };
-
-function checkCircuit() {
-  if (circuitState.failures >= circuitState.threshold) {
-    if (Date.now() < circuitState.openUntil) {
-      throw new ApiError("Service temporarily unavailable — please wait", "network");
-    }
-    circuitState.failures = circuitState.threshold - 1;
-  }
-}
-
-function recordSuccess() { circuitState.failures = 0; }
-
-function recordFailure() {
-  circuitState.failures++;
-  if (circuitState.failures >= circuitState.threshold) {
-    circuitState.openUntil = Date.now() + circuitState.cooldownMs;
-    toast.error("Connection issues detected. Retrying automatically...");
-  }
-}
-
-// ─── Auth Headers with Caching ──────────────────────────────────
-let cachedToken: string | null = null;
-let tokenExpiresAt = 0;
-
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session?.access_token) {
-    cachedToken = session.access_token;
-    tokenExpiresAt = (session.expires_at || 0) * 1000;
-  } else {
-    cachedToken = null;
-    tokenExpiresAt = 0;
-  }
-});
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const now = Date.now();
-
-  if (cachedToken && tokenExpiresAt > now + 60_000) {
-    return { "Content-Type": "application/json", Authorization: `Bearer ${cachedToken}` };
-  }
-
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    cachedToken = session.access_token;
-    tokenExpiresAt = (session.expires_at || 0) * 1000;
-    return { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` };
-  }
-
-  return { "Content-Type": "application/json" };
-}
-
-async function refreshAndGetHeaders(): Promise<Record<string, string>> {
-  try {
-    const { data: { session } } = await supabase.auth.refreshSession();
-    if (session?.access_token) {
-      cachedToken = session.access_token;
-      tokenExpiresAt = (session.expires_at || 0) * 1000;
-      return { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` };
-    }
-  } catch {
-    cachedToken = null;
-    tokenExpiresAt = 0;
-  }
-  return { "Content-Type": "application/json" };
-}
-
-// ─── Core API Call with Full Error Handling ──────────────────────
-const REQUEST_TIMEOUT_MS = 30_000;
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 1000;
-
-async function dataApiCall(payload: any): Promise<any> {
-  checkCircuit();
-
-  let lastError: ApiError | null = null;
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const headers = attempt === 0
-        ? await getAuthHeaders()
-        : await refreshAndGetHeaders();
-
-      const res = await fetch(`${API_BASE}/data/query`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (res.status === 401 && attempt < MAX_RETRIES - 1) {
-        cachedToken = null;
-        tokenExpiresAt = 0;
-        lastError = classifyError(null, 401);
-        continue;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const err = classifyError(new Error(data.error || `API error ${res.status}`), res.status);
-        if (err.retryable && attempt < MAX_RETRIES - 1) {
-          lastError = err;
-          recordFailure();
-          await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
-          continue;
-        }
-        throw err;
-      }
-
-      recordSuccess();
-      return data;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-
-      if (err instanceof ApiError && !err.retryable) throw err;
-
-      const classified = classifyError(err);
-      lastError = classified;
-
-      if (classified.retryable && attempt < MAX_RETRIES - 1) {
-        recordFailure();
-        await new Promise((r) => setTimeout(r, BASE_DELAY_MS * Math.pow(2, attempt)));
-        continue;
-      }
-
-      recordFailure();
-      throw classified;
-    }
-  }
-
-  throw lastError || new ApiError("Request failed after retries", "unknown");
-}
+/**
+ * apiDb — Laravel API compatibility layer
+ * Provides a Supabase-like query builder interface that calls the Laravel API backend.
+ * This ensures all existing components work without modification.
+ */
+import api from '@/lib/api';
 
 // ─── Query Builder (Supabase-compatible API) ────────────────────
 type FilterOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "is" | "in";
@@ -193,6 +18,7 @@ class QueryBuilder<T = any> {
   private _filters: QueryFilter[] = [];
   private _orders: QueryOrder[] = [];
   private _limitCount?: number;
+  private _offsetCount?: number;
   private _singleRow = false;
   private _maybeSingleRow = false;
   private _data: any = null;
@@ -229,6 +55,7 @@ class QueryBuilder<T = any> {
   }
 
   limit(count: number) { this._limitCount = count; return this; }
+  range(from: number, to: number) { this._offsetCount = from; this._limitCount = to - from + 1; return this; }
   single() { this._singleRow = true; return this; }
   maybeSingle() { this._maybeSingleRow = true; return this; }
 
@@ -239,36 +66,218 @@ class QueryBuilder<T = any> {
     return this._execute().then(resolve, reject);
   }
 
-  private async _execute(): Promise<{ data: any; error: any }> {
+  private _buildParams(): Record<string, any> {
+    const params: Record<string, any> = {};
+    if (this._selectCols && this._selectCols !== "*") params.select = this._selectCols;
+    for (const f of this._filters) {
+      if (f.column === "__or") { params._or = f.value; continue; }
+      if (f.op === "eq") params[f.column] = f.value;
+      else if (f.op === "in") params[`${f.column}__in`] = f.value;
+      else params[`${f.column}__${f.op}`] = f.value;
+    }
+    if (this._orders.length > 0) {
+      params.sort_by = this._orders[0].column;
+      params.sort_dir = this._orders[0].ascending ? 'asc' : 'desc';
+    }
+    if (this._limitCount) params.per_page = this._limitCount;
+    if (this._offsetCount) params.page = Math.floor(this._offsetCount / (this._limitCount || 25)) + 1;
+    params.paginate = false; // return array, not paginated
+    return params;
+  }
+
+  private async _execute(): Promise<{ data: any; error: any; count?: number }> {
     try {
-      const result = await dataApiCall({
-        table: this._table,
-        operation: this._operation,
-        select: this._selectCols,
-        filters: this._filters,
-        order: this._orders,
-        limit: this._limitCount,
-        single: this._singleRow,
-        maybeSingle: this._maybeSingleRow,
-        data: this._data,
-        returning: this._returning,
-      });
-      return { data: result.data, error: null };
+      const tablePath = this._table.replace(/_/g, '-');
+
+      if (this._operation === "select") {
+        const params = this._buildParams();
+        const { data: response } = await api.get(`/${tablePath}`, { params });
+        let rows = response.data || response;
+        if (!Array.isArray(rows)) rows = [rows];
+
+        if (this._singleRow) return { data: rows[0] || null, error: null };
+        if (this._maybeSingleRow) return { data: rows[0] || null, error: null };
+        return { data: rows, error: null, count: rows.length };
+      }
+
+      if (this._operation === "insert") {
+        const { data: response } = await api.post(`/${tablePath}`, this._data);
+        return { data: Array.isArray(this._data) ? response : response, error: null };
+      }
+
+      if (this._operation === "update") {
+        const idFilter = this._filters.find(f => f.column === "id" && f.op === "eq");
+        if (idFilter) {
+          const { data: response } = await api.put(`/${tablePath}/${idFilter.value}`, this._data);
+          return { data: response, error: null };
+        }
+        // Bulk update: send filters along with data
+        const { data: response } = await api.put(`/${tablePath}`, {
+          ...this._data,
+          _filters: this._filters,
+        });
+        return { data: response, error: null };
+      }
+
+      if (this._operation === "delete") {
+        const idFilter = this._filters.find(f => f.column === "id" && f.op === "eq");
+        if (idFilter) {
+          const { data: response } = await api.delete(`/${tablePath}/${idFilter.value}`);
+          return { data: response, error: null };
+        }
+        return { data: null, error: null };
+      }
+
+      if (this._operation === "upsert") {
+        const { data: response } = await api.post(`/${tablePath}`, {
+          ...this._data,
+          _upsert: true,
+        });
+        return { data: response, error: null };
+      }
+
+      return { data: null, error: new Error(`Unknown operation: ${this._operation}`) };
     } catch (err: any) {
       console.error(`[apiDb] ${this._operation} ${this._table} failed:`, err.message);
-      return { data: null, error: err };
+      return { data: null, error: { message: err.response?.data?.error || err.message } };
     }
   }
 }
 
-// ─── Exported Client ────────────────────────────────────────────
+// ─── Mock Auth for compatibility ─────────────────────────────────
+const authCompat = {
+  getSession: async () => {
+    const token = localStorage.getItem('admin_token');
+    const user = localStorage.getItem('admin_user');
+    if (token && user) {
+      return {
+        data: {
+          session: {
+            access_token: token,
+            user: JSON.parse(user),
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          },
+        },
+        error: null,
+      };
+    }
+    return { data: { session: null }, error: null };
+  },
+  getUser: async () => {
+    const user = localStorage.getItem('admin_user');
+    return { data: { user: user ? JSON.parse(user) : null }, error: null };
+  },
+  signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+    const { data } = await api.post('/admin/login', { email, password });
+    localStorage.setItem('admin_token', data.token);
+    localStorage.setItem('admin_user', JSON.stringify(data.user));
+    return {
+      data: { user: data.user, session: { access_token: data.token, user: data.user } },
+      error: null,
+    };
+  },
+  signOut: async () => {
+    try { await api.post('/admin/logout'); } catch {}
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    return { error: null };
+  },
+  resetPasswordForEmail: async (email: string) => {
+    await api.post('/admin/forgot-password', { email });
+    return { data: {}, error: null };
+  },
+  updateUser: async (updates: any) => {
+    const { data } = await api.put('/admin/profile', updates);
+    return { data: { user: data }, error: null };
+  },
+  refreshSession: async () => {
+    const token = localStorage.getItem('admin_token');
+    const user = localStorage.getItem('admin_user');
+    return {
+      data: {
+        session: token ? { access_token: token, user: user ? JSON.parse(user) : null } : null,
+      },
+      error: null,
+    };
+  },
+  onAuthStateChange: (callback: (event: string, session: any) => void) => {
+    // Check current state immediately
+    const token = localStorage.getItem('admin_token');
+    const user = localStorage.getItem('admin_user');
+    if (token && user) {
+      setTimeout(() => callback('SIGNED_IN', { access_token: token, user: JSON.parse(user) }), 0);
+    }
+    // Listen for storage changes (cross-tab)
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'admin_token') {
+        if (e.newValue) {
+          const u = localStorage.getItem('admin_user');
+          callback('SIGNED_IN', { access_token: e.newValue, user: u ? JSON.parse(u) : null });
+        } else {
+          callback('SIGNED_OUT', null);
+        }
+      }
+    };
+    window.addEventListener('storage', handler);
+    return { data: { subscription: { unsubscribe: () => window.removeEventListener('storage', handler) } } };
+  },
+};
+
+// ─── Mock Storage for compatibility ──────────────────────────────
+const storageCompat = {
+  from: (bucket: string) => ({
+    upload: async (path: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucket', bucket);
+      formData.append('path', path);
+      try {
+        const { data } = await api.post('/storage/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return { data: { path: data.path }, error: null };
+      } catch (err: any) {
+        return { data: null, error: { message: err.message } };
+      }
+    },
+    getPublicUrl: (path: string) => {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      return { data: { publicUrl: `${baseUrl}/storage/${bucket}/${path}` } };
+    },
+    remove: async (paths: string[]) => {
+      try {
+        await api.post('/storage/delete', { bucket, paths });
+        return { data: null, error: null };
+      } catch (err: any) {
+        return { data: null, error: { message: err.message } };
+      }
+    },
+  }),
+};
+
+// ─── Mock Functions for compatibility ────────────────────────────
+const functionsCompat = {
+  invoke: async (name: string, options?: { body?: any; headers?: Record<string, string> }) => {
+    try {
+      const { data } = await api.post(`/functions/${name}`, options?.body || {});
+      return { data, error: null };
+    } catch (err: any) {
+      return { data: null, error: { message: err.response?.data?.error || err.message } };
+    }
+  },
+};
+
+// ─── Exported Client (Supabase-compatible interface) ─────────────
 export const apiDb = {
   from(table: string) { return new QueryBuilder(table); },
-  auth: supabase.auth,
-  storage: supabase.storage,
-  functions: supabase.functions,
-  channel: supabase.channel.bind(supabase),
-  removeChannel: supabase.removeChannel.bind(supabase),
+  auth: authCompat,
+  storage: storageCompat,
+  functions: functionsCompat,
+  channel: (..._args: any[]) => ({
+    on: (..._a: any[]) => ({ subscribe: () => ({}) }),
+    subscribe: () => ({}),
+  }),
+  removeChannel: (..._args: any[]) => {},
 };
 
 export { apiDb as supabase };

@@ -1,6 +1,6 @@
-import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
+import axios from "axios";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 interface FetchOptions {
   include_profile?: boolean;
@@ -10,16 +10,9 @@ interface FetchOptions {
 }
 
 export async function fetchCustomerData(sessionToken: string, options: FetchOptions) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/customer-verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_token: sessionToken, ...options }),
+  const { data } = await axios.post(`${API_BASE_URL}/customer/verify`, {
+    session_token: sessionToken,
+    ...options,
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(err.error || "Request failed");
-  }
-
-  return res.json();
+  return data;
 }

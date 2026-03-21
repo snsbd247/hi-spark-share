@@ -84,7 +84,7 @@ export default function Payments() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
-      await paymentsApi.delete(deleteTarget.id, deleteTarget.transaction_id);
+      await paymentsApi.delete(deleteTarget.id);
       if (userId) await logAudit({ adminId: userId, adminName, action: "delete", tableName: "payments", recordId: deleteTarget.id, oldData: { amount: deleteTarget.amount, payment_method: deleteTarget.payment_method, customer: deleteTarget.customers?.name } });
       toast.success("Payment deleted successfully");
       setDeleteTarget(null);

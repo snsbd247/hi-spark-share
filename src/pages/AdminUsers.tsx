@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function AdminUsers() {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
@@ -51,12 +51,12 @@ export default function AdminUsers() {
     queryKey: ["admin-users"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("admin-users/list", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: {},
       });
       if (error) throw error;
       return data?.users || [];
     },
-    enabled: !!session,
+    enabled: !!user,
   });
 
   const filtered = users?.filter((u: any) => {
@@ -100,7 +100,7 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       if (editUser) {
-          const { data, error } = await supabase.functions.invoke("admin-users/update", {
+        const { data, error } = await supabase.functions.invoke("admin-users/update", {
             body: {
               user_id: editUser.id,
               full_name: form.full_name,
@@ -113,7 +113,6 @@ export default function AdminUsers() {
               role: form.role,
               custom_role_id: form.custom_role_id || undefined,
             },
-          headers: { Authorization: `Bearer ${session?.access_token}` },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -121,19 +120,18 @@ export default function AdminUsers() {
       } else {
         if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
         if (!form.username) { toast.error("Username is required"); setLoading(false); return; }
-          const { data, error } = await supabase.functions.invoke("admin-users/create", {
-              body: {
-                full_name: form.full_name,
-                username: form.username,
-                email: form.email,
-                password: form.password,
-                mobile: form.mobile,
-                address: form.address,
-                staff_id: form.staff_id,
-                role: form.role,
-                custom_role_id: form.custom_role_id || undefined,
-              },
-          headers: { Authorization: `Bearer ${session?.access_token}` },
+        const { data, error } = await supabase.functions.invoke("admin-users/create", {
+            body: {
+              full_name: form.full_name,
+              username: form.username,
+              email: form.email,
+              password: form.password,
+              mobile: form.mobile,
+              address: form.address,
+              staff_id: form.staff_id,
+              role: form.role,
+              custom_role_id: form.custom_role_id || undefined,
+            },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -153,7 +151,6 @@ export default function AdminUsers() {
     try {
       const { data, error } = await supabase.functions.invoke("admin-users/delete", {
         body: { user_id: deleteUser.id },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -171,7 +168,6 @@ export default function AdminUsers() {
     try {
       const { data, error } = await supabase.functions.invoke("admin-users/update", {
         body: { user_id: u.id, disabled: newDisabled, full_name: u.full_name, username: u.username, mobile: u.mobile, address: u.address, staff_id: u.staff_id, role: u.roles?.[0] || "staff" },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
