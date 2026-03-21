@@ -19,7 +19,7 @@ interface CustomerFormProps {
   onSuccess: () => void;
 }
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+import api from "@/lib/api";
 
 export default function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
   const isEdit = !!customer;
