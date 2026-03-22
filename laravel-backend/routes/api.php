@@ -9,11 +9,13 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\GenericCrudController;
 use App\Http\Controllers\Api\MerchantPaymentController;
+use App\Http\Controllers\Api\MikrotikBillControlController;
 use App\Http\Controllers\Api\MikrotikController;
 use App\Http\Controllers\Api\NagadController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\SmsController;
+use App\Http\Controllers\Api\StorageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -81,10 +83,26 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/bkash/create-payment', [BkashController::class, 'createPayment']);
     Route::post('/nagad/create-payment', [NagadController::class, 'createPayment']);
 
-    // MikroTik
+    // MikroTik — core
     Route::post('/mikrotik/sync', [MikrotikController::class, 'sync']);
     Route::post('/mikrotik/sync-all', [MikrotikController::class, 'syncAll']);
     Route::post('/mikrotik/test-connection', [MikrotikController::class, 'testConnection']);
+
+    // MikroTik — extended
+    Route::post('/mikrotik/bill-control', [MikrotikBillControlController::class, 'billControl']);
+    Route::post('/mikrotik/disable-pppoe', [MikrotikBillControlController::class, 'disablePppoe']);
+    Route::post('/mikrotik/enable-pppoe', [MikrotikBillControlController::class, 'enablePppoe']);
+    Route::post('/mikrotik/sync-profile', [MikrotikBillControlController::class, 'syncProfile']);
+    Route::post('/mikrotik/remove-profile', [MikrotikBillControlController::class, 'removeProfile']);
+    Route::post('/mikrotik/bulk-sync-packages', [MikrotikBillControlController::class, 'bulkSyncPackages']);
+    Route::get('/mikrotik/router-stats/{routerId}', [MikrotikBillControlController::class, 'routerStats']);
+
+    // Storage
+    Route::post('/storage/upload', [StorageController::class, 'upload']);
+    Route::get('/storage/list', [StorageController::class, 'list']);
+    Route::get('/storage/download', [StorageController::class, 'download']);
+    Route::post('/storage/delete', [StorageController::class, 'delete']);
+    Route::get('/storage/serve/{bucket}/{path}', [StorageController::class, 'serve'])->where('path', '.*');
 
     // Generic CRUD — catches all remaining tables
     Route::get('/{table}', [GenericCrudController::class, 'index']);

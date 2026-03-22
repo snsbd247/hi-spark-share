@@ -230,4 +230,201 @@ class MikrotikService
         $router->update(['status' => 'active']);
         return ['success' => true, 'message' => 'Connection successful'];
     }
+
+    /**
+     * Disable a customer's PPPoE secret on the router.
+     */
+    public function disablePppoe(Customer $customer): array
+    {
+        return $this->setPppoeDisabled($customer, true);
+    }
+
+    /**
+     * Enable a customer's PPPoE secret on the router.
+     */
+    public function enablePppoe(Customer $customer): array
+    {
+        return $this->setPppoeDisabled($customer, false);
+    }
+
+    protected function setPppoeDisabled(Customer $customer, bool $disabled): array
+    {
+        if (!$customer->router || !$customer->pppoe_username) {
+            return ['success' => false, 'error' => 'Missing router or PPPoE credentials'];
+        }
+
+        $conn = $this->connect($customer->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            // Find the secret
+            $existing = $this->sendCommand($conn, [
+                '/ppp/secret/print',
+                '?name=' . $customer->pppoe_username,
+            ]);
+
+            $existingId = null;
+            foreach ($existing as $line) {
+                if (str_starts_with($line, '=.id=')) {
+                    $existingId = substr($line, 4);
+                }
+            }
+
+            if (!$existingId) {
+                fclose($conn->socket);
+                return ['success' => false, 'error' => 'PPPoE secret not found on router'];
+            }
+
+            $this->sendCommand($conn, [
+                '/ppp/secret/set',
+                '=.id=' . $existingId,
+                '=disabled=' . ($disabled ? 'yes' : 'no'),
+            ]);
+
+            // Disconnect active session if disabling
+            if ($disabled) {
+                $this->sendCommand($conn, [
+                    '/ppp/active/remove',
+                    '?name=' . $customer->pppoe_username,
+                ]);
+            }
+
+            fclose($conn->socket);
+
+            $customer->update([
+                'connection_status' => $disabled ? 'disabled' : 'active',
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'PPPoE ' . ($disabled ? 'disabled' : 'enabled') . ' successfully',
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Sync a package profile to its assigned router.
+     */
+    public function syncProfile(Package $package): array
+    {
+        if (!$package->router) {
+            return ['success' => false, 'error' => 'No router assigned'];
+        }
+
+        $conn = $this->connect($package->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $profileName = $package->mikrotik_profile_name ?? $package->name ?? 'default';
+            $this->ensureProfile($conn, $package, $profileName);
+            fclose($conn->socket);
+            return ['success' => true, 'message' => "Profile '{$profileName}' synced"];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Remove a package profile from its assigned router.
+     */
+    public function removeProfile(Package $package): array
+    {
+        if (!$package->router) {
+            return ['success' => false, 'error' => 'No router assigned'];
+        }
+
+        $conn = $this->connect($package->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $profileName = $package->mikrotik_profile_name ?? $package->name;
+
+            $check = $this->sendCommand($conn, [
+                '/ppp/profile/print',
+                '?name=' . $profileName,
+            ]);
+
+            $profileId = null;
+            foreach ($check as $line) {
+                if (str_starts_with($line, '=.id=')) {
+                    $profileId = substr($line, 4);
+                }
+            }
+
+            if ($profileId) {
+                $this->sendCommand($conn, [
+                    '/ppp/profile/remove',
+                    '=.id=' . $profileId,
+                ]);
+            }
+
+            fclose($conn->socket);
+            return ['success' => true, 'message' => "Profile '{$profileName}' removed"];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Get router resource stats (uptime, CPU, memory, version).
+     */
+    public function getRouterStats(string $routerId): array
+    {
+        $router = MikrotikRouter::findOrFail($routerId);
+        $conn = $this->connect($router);
+
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $resource = $this->sendCommand($conn, ['/system/resource/print']);
+
+            $stats = [];
+            foreach ($resource as $line) {
+                if (str_contains($line, '=')) {
+                    $parts = explode('=', $line, 3);
+                    if (count($parts) >= 3) {
+                        $stats[$parts[1]] = $parts[2];
+                    }
+                }
+            }
+
+            // Get active PPPoE connections count
+            $active = $this->sendCommand($conn, ['/ppp/active/print']);
+            $activeCount = 0;
+            foreach ($active as $line) {
+                if (str_starts_with($line, '=.id=')) $activeCount++;
+            }
+
+            fclose($conn->socket);
+
+            return [
+                'success' => true,
+                'data' => [
+                    'uptime'             => $stats['uptime'] ?? 'N/A',
+                    'cpu_load'           => $stats['cpu-load'] ?? 'N/A',
+                    'free_memory'        => $stats['free-memory'] ?? 'N/A',
+                    'total_memory'       => $stats['total-memory'] ?? 'N/A',
+                    'version'            => $stats['version'] ?? 'N/A',
+                    'board_name'         => $stats['board-name'] ?? 'N/A',
+                    'active_connections' => $activeCount,
+                ],
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
