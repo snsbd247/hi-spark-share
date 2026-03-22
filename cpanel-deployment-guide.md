@@ -1,52 +1,76 @@
-# Smart ISP — cPanel Deployment Guide (বাংলা + English)
+# Smart ISP — cPanel Deployment Guide
+# Domain: isp.ismail.bd
+# Document Root: /home/ismail/public_html/isp.ismail.bd/
 
-## 📁 ফোল্ডার স্ট্রাকচার (cPanel এ)
+## 📁 cPanel ফোল্ডার স্ট্রাকচার
 
 ```
-public_html/
-├── api/                    ← Laravel backend (laravel-backend/ এর সব ফাইল)
-│   ├── app/
-│   ├── bootstrap/
-│   ├── config/
-│   ├── database/
-│   ├── public/             ← Laravel public folder
-│   │   ├── index.php       ← ⚠️ এটা এডিট করতে হবে (নিচে দেখুন)
-│   │   └── .htaccess
-│   ├── routes/
-│   ├── storage/
-│   ├── vendor/
-│   ├── .env                ← Production environment
-│   ├── artisan
-│   └── composer.json
-├── assets/                 ← React build এর assets (auto-generated)
-├── index.html              ← React SPA entry point
-├── .htaccess               ← React SPA routing
-└── favicon.ico
+/home/ismail/
+├── laravel-backend/                    ← Laravel source (already uploaded?)
+└── public_html/
+    └── isp.ismail.bd/                  ← 🔴 Document Root
+        ├── api/                        ← Laravel backend
+        │   ├── app/
+        │   ├── bootstrap/
+        │   ├── config/
+        │   ├── database/
+        │   ├── public/
+        │   │   ├── index.php
+        │   │   └── .htaccess
+        │   ├── routes/
+        │   ├── storage/
+        │   ├── vendor/                 ← composer install এ তৈরি হবে
+        │   ├── .env                    ← Production credentials
+        │   ├── .htaccess               ← ⭐ cpanel-htaccess ফাইল
+        │   ├── artisan
+        │   └── composer.json
+        │
+        ├── assets/                     ← React build (auto)
+        ├── index.html                  ← React SPA
+        ├── .htaccess                   ← SPA routing
+        └── favicon.ico
 ```
 
 ---
 
 ## 🚀 Step-by-Step Setup
 
-### Step 1: Laravel Backend Upload
+### Step 1: Laravel Backend আপলোড
 
-1. **cPanel File Manager** অথবা **FTP** দিয়ে `public_html/api/` ফোল্ডার তৈরি করুন
-2. `laravel-backend/` এর সব ফাইল `public_html/api/` তে আপলোড করুন
-3. **গুরুত্বপূর্ণ**: `vendor/` ফোল্ডার আপলোড করবেন না — SSH দিয়ে install করুন
+**Option A: cPanel File Manager দিয়ে**
+1. `public_html/isp.ismail.bd/` তে `api` ফোল্ডার তৈরি করুন
+2. `laravel-backend/` এর সব ফাইল `api/` তে আপলোড করুন (vendor/ বাদে)
 
-### Step 2: Composer Install (SSH)
+**Option B: SSH দিয়ে (faster)**
+```bash
+cd /home/ismail
+cp -r laravel-backend/* public_html/isp.ismail.bd/api/
+```
+
+### Step 2: api/.htaccess তৈরি করুন
+
+`public_html/isp.ismail.bd/api/.htaccess` ফাইল তৈরি করুন:
+
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+```
+
+### Step 3: Composer Install
 
 ```bash
-cd ~/public_html/api
+cd /home/ismail/public_html/isp.ismail.bd/api
 composer install --optimize-autoloader --no-dev
 ```
 
-> **SSH নেই?** লোকাল মেশিনে `composer install --no-dev` করে `vendor/` ফোল্ডারসহ আপলোড করুন।
+> SSH না থাকলে: লোকালে `composer install --no-dev` করে vendor/ সহ আপলোড করুন
 
-### Step 3: Environment Setup
+### Step 4: Environment Setup
 
 ```bash
-cd ~/public_html/api
+cd /home/ismail/public_html/isp.ismail.bd/api
 cp .env.example .env
 php artisan key:generate
 ```
@@ -57,76 +81,45 @@ php artisan key:generate
 APP_NAME="Smart ISP"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://yourdomain.com/api
+APP_URL=https://isp.ismail.bd/api
 
-FRONTEND_URL=https://yourdomain.com
+FRONTEND_URL=https://isp.ismail.bd
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=your_cpanel_db_name
-DB_USERNAME=your_cpanel_db_user
-DB_PASSWORD=your_db_password
+DB_DATABASE=ismail_isp_management
+DB_USERNAME=ismail_ispuser
+DB_PASSWORD=your_password_here
 
-SANCTUM_STATEFUL_DOMAINS=yourdomain.com,www.yourdomain.com
+SANCTUM_STATEFUL_DOMAINS=isp.ismail.bd,www.isp.ismail.bd
 ```
 
-### Step 4: Laravel public/index.php এডিট করুন
+> ⚠️ cPanel MySQL Databases থেকে database ও user তৈরি করুন।
+> cPanel এ username prefix লাগে, যেমন: `ismail_isp_management`
 
-`public_html/api/public/index.php` এডিট:
+### Step 5: Database Setup
 
-```php
-<?php
+1. **cPanel → MySQL Databases**
+   - New Database: `ismail_isp_management` (বা আপনার পছন্দের নাম)
+   - New User: `ismail_ispuser` + password
+   - Add User to Database → All Privileges ✓
 
-use Illuminate\Http\Request;
-
-define('LARAVEL_START', microtime(true));
-
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
-}
-
-require __DIR__.'/../vendor/autoload.php';
-
-(require_once __DIR__.'/../bootstrap/app.php')
-    ->handleRequest(Request::capture());
-```
-
-> এটা সাধারণত ডিফল্ট থাকে, কিন্তু চেক করে নিন path ঠিক আছে কিনা।
-
-### Step 5: .htaccess for API subfolder
-
-`public_html/api/public/.htaccess` ঠিক আছে কিনা চেক করুন (ডিফল্ট Laravel .htaccess কাজ করবে)।
-
-**গুরুত্বপূর্ণ**: cPanel এ `public_html/api/.htaccess` তৈরি করুন যাতে সব request `public/` ফোল্ডারে যায়:
-
-```apache
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^(.*)$ public/$1 [L]
-</IfModule>
-```
-
-### Step 6: Database Setup
-
-1. **cPanel → MySQL Databases** → নতুন database তৈরি করুন
-2. নতুন user তৈরি করুন ও database এ assign করুন (All Privileges)
-3. `.env` তে database credentials আপডেট করুন
-
+2. Migration রান করুন:
 ```bash
-cd ~/public_html/api
+cd /home/ismail/public_html/isp.ismail.bd/api
 php artisan migrate --seed
 ```
 
-### Step 7: Storage Link ও Permissions
+### Step 6: Storage & Permissions
 
 ```bash
-cd ~/public_html/api
+cd /home/ismail/public_html/isp.ismail.bd/api
 php artisan storage:link
 chmod -R 775 storage bootstrap/cache
 ```
 
-### Step 8: Cache Config (Production)
+### Step 7: Production Cache
 
 ```bash
 php artisan config:cache
@@ -134,64 +127,60 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### Step 9: React Frontend Build ও Upload
+### Step 8: React Frontend Build ও Upload
 
-**লোকাল মেশিনে:**
-
+**আপনার লোকাল মেশিনে:**
 ```bash
-# .env.production আপডেট করুন
-VITE_API_URL="https://yourdomain.com/api/api"
-
-# Build করুন
 npm run build
 ```
 
-`dist/` ফোল্ডারের সব ফাইল `public_html/` তে আপলোড করুন (api/ ফোল্ডার বাদে)।
+`dist/` ফোল্ডারের সব ফাইল `public_html/isp.ismail.bd/` তে আপলোড করুন:
+- `index.html`
+- `assets/` ফোল্ডার
+- অন্য সব ফাইল
 
-### Step 10: Cron Job Setup
+### Step 9: Cron Job
 
 **cPanel → Cron Jobs** → প্রতি মিনিটে:
-
 ```
-* * * * * cd /home/yourusername/public_html/api && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/ismail/public_html/isp.ismail.bd/api && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ---
 
 ## 🔧 Troubleshooting
 
-### "500 Internal Server Error"
-- `storage/` ও `bootstrap/cache/` permissions চেক করুন (775)
-- `php artisan config:clear` রান করুন
-- `.env` তে `APP_DEBUG=true` করে error দেখুন
+### 500 Error?
+```bash
+cd /home/ismail/public_html/isp.ismail.bd/api
+chmod -R 775 storage bootstrap/cache
+php artisan config:clear
+# Debug দেখতে .env তে APP_DEBUG=true করুন, পরে false করুন
+```
 
-### "CORS Error"
-- `config/cors.php` তে আপনার domain যোগ করুন
-- `SANCTUM_STATEFUL_DOMAINS` চেক করুন
+### CORS Error?
+`config/cors.php` চেক করুন — `isp.ismail.bd` allowed origins এ আছে কিনা।
 
-### "API URL Not Found"
-- `VITE_API_URL` সঠিক কিনা চেক করুন
-- URL হবে: `https://yourdomain.com/api/api` (একটা `/api` Laravel folder, আরেকটা `/api` route prefix)
-
-### Subdomain API Setup (বিকল্প)
-API কে subdomain এ রাখতে চাইলে:
-1. cPanel → Subdomains → `api.yourdomain.com` তৈরি করুন
-2. Document root: `public_html/api/public`
-3. `.env.production`: `VITE_API_URL="https://api.yourdomain.com/api"`
+### Login কাজ করছে না?
+- API URL চেক: `https://isp.ismail.bd/api/api/admin/login`
+- `.env` তে `SANCTUM_STATEFUL_DOMAINS=isp.ismail.bd`
 
 ---
 
-## ✅ Checklist
+## ✅ Final Checklist
 
-- [ ] Laravel ফাইল `public_html/api/` তে আপলোড হয়েছে
-- [ ] `composer install` হয়েছে
-- [ ] `.env` তে database credentials সেট হয়েছে
+- [ ] `public_html/isp.ismail.bd/api/` তে Laravel আপলোড
+- [ ] `api/.htaccess` তৈরি (RewriteRule public/)
+- [ ] `composer install` সম্পন্ন
+- [ ] `.env` তে DB credentials সেট
 - [ ] `php artisan key:generate` হয়েছে
-- [ ] `php artisan migrate --seed` হয়েছে
+- [ ] MySQL database ও user তৈরি
+- [ ] `php artisan migrate --seed` সম্পন্ন
 - [ ] `php artisan storage:link` হয়েছে
-- [ ] `storage/` ও `bootstrap/cache/` permissions 775
-- [ ] React `dist/` build `public_html/` তে আপলোড হয়েছে
-- [ ] `.htaccess` ফাইল ঠিক আছে
-- [ ] Cron job সেটআপ হয়েছে
-- [ ] `APP_DEBUG=false` প্রোডাকশনে
+- [ ] Permissions 775 (storage, bootstrap/cache)
+- [ ] React `dist/` আপলোড
+- [ ] `.htaccess` (SPA routing) আছে
+- [ ] Cron job সেটআপ
+- [ ] `APP_DEBUG=false`
 - [ ] HTTPS কাজ করছে
+- [ ] Login test: admin / admin123
