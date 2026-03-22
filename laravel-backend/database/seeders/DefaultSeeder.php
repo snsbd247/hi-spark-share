@@ -73,6 +73,8 @@ class DefaultSeeder extends Seeder
             Package::create($pkg);
         }
 
-        $this->command->info('Default data seeded! Login: admin@smartisp.com / admin123');
+        $this->command->info('Default data seeded!');
+        $this->command->info('Admin #1 → username: admin / password: admin123');
+        $this->command->info('Admin #2 → username: ismail / password: Admin@123');
     }
 }
