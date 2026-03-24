@@ -4,13 +4,17 @@
  * This ensures all existing components work without modification.
  */
 import api from '@/lib/api';
-import { API_PUBLIC_ROOT } from '@/lib/apiBaseUrl';
+import { API_PUBLIC_ROOT, IS_LOVABLE_RUNTIME } from '@/lib/apiBaseUrl';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
 // ─── Query Builder (Supabase-compatible API) ────────────────────
 type FilterOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "is" | "in";
 
 interface QueryFilter { column: string; op: FilterOp; value: any; }
 interface QueryOrder { column: string; ascending: boolean; }
+
+const isNetworkError = (err: any) => !err?.response && (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK');
+const shouldUseEdgeFallback = IS_LOVABLE_RUNTIME;
 
 class QueryBuilder<T = any> {
   private _table: string;
@@ -90,6 +94,41 @@ class QueryBuilder<T = any> {
     return params;
   }
 
+  private async _executeViaEdgeProxy(): Promise<{ data: any; error: any; count?: number }> {
+    const { data: response, error } = await supabaseClient.functions.invoke('api/data/proxy', {
+      body: {
+        table: this._table,
+        operation: this._operation,
+        select: this._selectCols,
+        filters: this._filters,
+        order: this._orders,
+        limit: this._limitCount,
+        single: this._singleRow,
+        maybeSingle: this._maybeSingleRow,
+        data: this._data,
+        returning: this._returning,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Edge proxy request failed');
+    }
+
+    const payload = response?.data ?? null;
+
+    if (this._operation === 'select') {
+      if (this._singleRow || this._maybeSingleRow) {
+        return { data: payload || null, error: null };
+      }
+
+      const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+      if (this._headMode) return { data: null, error: null, count: rows.length };
+      return { data: rows, error: null, count: rows.length };
+    }
+
+    return { data: payload, error: null };
+  }
+
   private async _execute(): Promise<{ data: any; error: any; count?: number }> {
     try {
       const tablePath = this._table.replace(/_/g, '-');
@@ -144,6 +183,15 @@ class QueryBuilder<T = any> {
 
       return { data: null, error: new Error(`Unknown operation: ${this._operation}`) };
     } catch (err: any) {
+      if (shouldUseEdgeFallback && isNetworkError(err)) {
+        try {
+          return await this._executeViaEdgeProxy();
+        } catch (edgeErr: any) {
+          console.error(`[apiDb] edge fallback ${this._operation} ${this._table} failed:`, edgeErr.message);
+          return { data: null, error: { message: edgeErr.message || 'Network fallback failed' } };
+        }
+      }
+
       console.error(`[apiDb] ${this._operation} ${this._table} failed:`, err.message);
       return { data: null, error: { message: err.response?.data?.error || err.message } };
     }
@@ -167,13 +215,75 @@ const authCompat = {
         error: null,
       };
     }
+
+    if (shouldUseEdgeFallback) {
+      const { data, error } = await supabaseClient.auth.getSession();
+      return { data: { session: data.session }, error };
+    }
+
     return { data: { session: null }, error: null };
   },
   getUser: async () => {
     const user = localStorage.getItem('admin_user');
+    if (!user && shouldUseEdgeFallback) {
+      const { data, error } = await supabaseClient.auth.getUser();
+      return { data: { user: data.user }, error };
+    }
     return { data: { user: user ? JSON.parse(user) : null }, error: null };
   },
   signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+    if (shouldUseEdgeFallback) {
+      const { data: edgeData, error: edgeError } = await supabaseClient.functions.invoke('admin-login', {
+        body: { username: email, password },
+      });
+
+      if (edgeError || !edgeData?.email || !edgeData?.user_id) {
+        return {
+          data: { user: null, session: null },
+          error: { message: edgeError?.message || edgeData?.error || 'Login failed' },
+        };
+      }
+
+      const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: edgeData.email,
+        password,
+      });
+
+      if (authError || !authData.session) {
+        return { data: { user: null, session: null }, error: { message: authError?.message || 'Login failed' } };
+      }
+
+      const [{ data: roleData }, { data: profileData }] = await Promise.all([
+        supabaseClient
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', edgeData.user_id)
+          .limit(1)
+          .maybeSingle(),
+        supabaseClient
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', edgeData.user_id)
+          .maybeSingle(),
+      ]);
+
+      const userPayload = {
+        id: edgeData.user_id,
+        email: edgeData.email,
+        name: profileData?.full_name || edgeData.email,
+        role: roleData?.role || 'staff',
+        avatar_url: profileData?.avatar_url || null,
+      };
+
+      localStorage.setItem('admin_token', authData.session.access_token);
+      localStorage.setItem('admin_user', JSON.stringify(userPayload));
+
+      return {
+        data: { user: userPayload, session: { access_token: authData.session.access_token, user: userPayload } },
+        error: null,
+      };
+    }
+
     const { data } = await api.post('/admin/login', { email, password });
     localStorage.setItem('admin_token', data.token);
     localStorage.setItem('admin_user', JSON.stringify(data.user));
@@ -183,20 +293,35 @@ const authCompat = {
     };
   },
   signOut: async () => {
+    if (shouldUseEdgeFallback) {
+      await supabaseClient.auth.signOut();
+    }
     try { await api.post('/admin/logout'); } catch {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     return { error: null };
   },
   resetPasswordForEmail: async (email: string, _options?: any) => {
+    if (shouldUseEdgeFallback) {
+      return supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+    }
     await api.post('/admin/forgot-password', { email });
     return { data: {}, error: null };
   },
   updateUser: async (updates: any) => {
+    if (shouldUseEdgeFallback) {
+      const { data, error } = await supabaseClient.auth.updateUser(updates);
+      return { data: { user: data.user }, error };
+    }
     const { data } = await api.put('/admin/profile', updates);
     return { data: { user: data }, error: null };
   },
   refreshSession: async () => {
+    if (shouldUseEdgeFallback) {
+      return supabaseClient.auth.refreshSession();
+    }
     const token = localStorage.getItem('admin_token');
     const user = localStorage.getItem('admin_user');
     return {
@@ -207,6 +332,10 @@ const authCompat = {
     };
   },
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
+    if (shouldUseEdgeFallback) {
+      return supabaseClient.auth.onAuthStateChange(callback);
+    }
+
     const token = localStorage.getItem('admin_token');
     const user = localStorage.getItem('admin_user');
     if (token && user) {
