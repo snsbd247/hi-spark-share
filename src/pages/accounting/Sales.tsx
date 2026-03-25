@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2, Search, FileDown } from "lucide-react";
+import { generateSalesInvoicePDF } from "@/lib/accountingPdf";
 
 interface SaleItem { product_id: string; quantity: number; unit_price: number; }
 
@@ -168,7 +169,8 @@ export default function Sales() {
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Due</TableHead>
-                  <TableHead>Status</TableHead>
+                   <TableHead>Status</TableHead>
+                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,6 +187,7 @@ export default function Sales() {
                     <TableCell className="text-right">৳{Number(s.paid_amount).toLocaleString()}</TableCell>
                     <TableCell className="text-right text-destructive">৳{Number(s.due_amount).toLocaleString()}</TableCell>
                     <TableCell><Badge variant={s.status === "completed" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
+                    <TableCell><Button variant="ghost" size="icon" onClick={() => generateSalesInvoicePDF(s)} title="Download Invoice"><FileDown className="h-4 w-4" /></Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
