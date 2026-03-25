@@ -282,21 +282,44 @@ export async function userHasPermission(supabase: any, userId: string, module: s
 
 /**
  * Authenticate a request and return user info
+ * Supports both Supabase JWTs and custom admin session tokens
  */
-export async function authenticateRequest(_supabase: any, authHeader: string | null): Promise<{ userId: string; error?: string } | { userId?: undefined; error: string }> {
+export async function authenticateRequest(supabase: any, authHeader: string | null): Promise<{ userId: string; error?: string } | { userId?: undefined; error: string }> {
   if (!authHeader) return { error: "Unauthorized" };
 
   const token = authHeader.replace("Bearer ", "");
 
-  // Create a user-scoped client to validate ES256-signed JWTs
-  const userClient = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } }
-  );
+  // 1. Try custom admin session token (UUID format from Laravel-style auth)
+  try {
+    const { data: session, error: sessErr } = await supabase
+      .from("admin_sessions")
+      .select("admin_id, status")
+      .eq("session_token", token)
+      .eq("status", "active")
+      .maybeSingle();
 
-  const { data: { user }, error } = await userClient.auth.getUser(token);
-  if (error || !user) return { error: "Unauthorized" };
+    if (!sessErr && session?.admin_id) {
+      return { userId: session.admin_id };
+    }
+  } catch {
+    // Not a session token, try JWT next
+  }
 
-  return { userId: user.id };
+  // 2. Try Supabase JWT via getClaims (preferred over getUser for edge functions)
+  try {
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data, error } = await userClient.auth.getUser(token);
+    if (!error && data?.user) {
+      return { userId: data.user.id };
+    }
+  } catch {
+    // JWT validation failed
+  }
+
+  return { error: "Unauthorized" };
 }
