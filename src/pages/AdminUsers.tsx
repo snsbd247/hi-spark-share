@@ -27,6 +27,7 @@ import { format } from "date-fns";
 
 export default function AdminUsers() {
   const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
