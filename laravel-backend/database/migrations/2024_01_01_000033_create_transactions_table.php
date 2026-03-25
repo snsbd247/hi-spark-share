@@ -10,17 +10,20 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('type');                     // income, expense, transfer
-            $table->string('category');                 // payment, purchase, sale, salary, utility, refund, adjustment
+            $table->string('type');                     // income, expense, transfer, journal
+            $table->string('category');                 // payment, purchase, sale, salary, utility, refund, adjustment, journal
             $table->decimal('amount', 12, 2);
+            $table->decimal('debit', 12, 2)->default(0);
+            $table->decimal('credit', 12, 2)->default(0);
             $table->date('date');
             $table->text('description')->nullable();
-            $table->string('reference_type')->nullable(); // payment, purchase, sale, bill, manual
-            $table->uuid('reference_id')->nullable();     // FK to the source record
-            $table->uuid('account_id')->nullable();       // which account was affected
+            $table->string('reference_type')->nullable();
+            $table->uuid('reference_id')->nullable();
+            $table->uuid('account_id')->nullable();
             $table->uuid('customer_id')->nullable();
             $table->uuid('vendor_id')->nullable();
-            $table->uuid('created_by')->nullable();       // admin profile id
+            $table->uuid('created_by')->nullable();
+            $table->string('journal_ref')->nullable();  // groups double-entry pairs
             $table->timestamps();
 
             $table->foreign('account_id')->references('id')->on('accounts')->nullOnDelete();
@@ -31,6 +34,7 @@ return new class extends Migration
             $table->index('type');
             $table->index('category');
             $table->index('date');
+            $table->index('journal_ref');
             $table->index(['reference_type', 'reference_id']);
         });
     }

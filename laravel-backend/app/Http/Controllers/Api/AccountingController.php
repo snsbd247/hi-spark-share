@@ -12,18 +12,33 @@ class AccountingController extends Controller
 {
     public function __construct(protected AccountingService $accountingService) {}
 
+    // ─── Chart of Accounts ───────────────────────────────
+
+    public function chartOfAccounts()
+    {
+        return response()->json(
+            $this->accountingService->getChartOfAccounts()
+        );
+    }
+
     // ─── Accounts CRUD ───────────────────────────────────
 
     public function accounts(Request $request)
     {
-        $query = Account::query();
+        $query = Account::with('children');
 
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
 
+        if ($request->boolean('flat', false)) {
+            return response()->json(
+                Account::orderBy('code')->orderBy('name')->get()
+            );
+        }
+
         return response()->json(
-            $query->orderBy('type')->orderBy('name')->get()
+            $query->orderBy('code')->orderBy('name')->get()
         );
     }
 
@@ -33,12 +48,20 @@ class AccountingController extends Controller
             'name'        => 'required|string|max:255',
             'type'        => 'required|string|in:asset,liability,income,expense,equity',
             'code'        => 'nullable|string|max:20|unique:accounts,code',
+            'parent_id'   => 'nullable|uuid|exists:accounts,id',
             'description' => 'nullable|string|max:500',
         ]);
 
-        $account = Account::create($request->only([
-            'name', 'type', 'code', 'description',
-        ]));
+        $level = 0;
+        if ($request->parent_id) {
+            $parent = Account::find($request->parent_id);
+            $level = $parent ? $parent->level + 1 : 0;
+        }
+
+        $account = Account::create(array_merge(
+            $request->only(['name', 'type', 'code', 'parent_id', 'description']),
+            ['level' => $level]
+        ));
 
         return response()->json($account, 201);
     }
@@ -51,9 +74,20 @@ class AccountingController extends Controller
             return response()->json(['error' => 'Cannot modify system account'], 422);
         }
 
-        $account->update($request->only([
-            'name', 'type', 'code', 'description', 'is_active',
-        ]));
+        $level = $account->level;
+        if ($request->has('parent_id') && $request->parent_id !== $account->parent_id) {
+            if ($request->parent_id) {
+                $parent = Account::find($request->parent_id);
+                $level = $parent ? $parent->level + 1 : 0;
+            } else {
+                $level = 0;
+            }
+        }
+
+        $account->update(array_merge(
+            $request->only(['name', 'type', 'code', 'parent_id', 'description', 'is_active']),
+            ['level' => $level]
+        ));
 
         return response()->json($account);
     }
@@ -70,6 +104,10 @@ class AccountingController extends Controller
             return response()->json(['error' => 'Cannot delete account with transactions'], 422);
         }
 
+        if ($account->children()->exists()) {
+            return response()->json(['error' => 'Cannot delete account with child accounts'], 422);
+        }
+
         $account->delete();
         return response()->json(['success' => true]);
     }
@@ -83,15 +121,15 @@ class AccountingController extends Controller
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
-
         if ($request->has('category')) {
             $query->where('category', $request->category);
         }
-
         if ($request->has('account_id')) {
             $query->where('account_id', $request->account_id);
         }
-
+        if ($request->has('journal_ref')) {
+            $query->where('journal_ref', $request->journal_ref);
+        }
         if ($request->has('from') && $request->has('to')) {
             $query->whereBetween('date', [$request->from, $request->to]);
         }
@@ -130,6 +168,37 @@ class AccountingController extends Controller
         return response()->json($txn, 201);
     }
 
+    // ─── Journal Entries ─────────────────────────────────
+
+    public function storeJournalEntry(Request $request)
+    {
+        $request->validate([
+            'description' => 'nullable|string|max:500',
+            'entries'     => 'required|array|min:2',
+            'entries.*.account_id' => 'required|uuid|exists:accounts,id',
+            'entries.*.debit'      => 'nullable|numeric|min:0',
+            'entries.*.credit'     => 'nullable|numeric|min:0',
+            'entries.*.date'       => 'nullable|date',
+        ]);
+
+        $admin = $request->get('admin_user');
+
+        try {
+            $journalRef = $this->accountingService->createJournalEntry(
+                $request->entries,
+                $request->description,
+                $admin?->id
+            );
+
+            return response()->json([
+                'success'     => true,
+                'journal_ref' => $journalRef,
+            ], 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+    }
+
     // ─── Reports ─────────────────────────────────────────
 
     public function summary(Request $request)
@@ -150,6 +219,13 @@ class AccountingController extends Controller
     {
         return response()->json(
             $this->accountingService->getProfitLoss($request->from, $request->to)
+        );
+    }
+
+    public function balanceSheet(Request $request)
+    {
+        return response()->json(
+            $this->accountingService->getBalanceSheet($request->as_of)
         );
     }
 }
