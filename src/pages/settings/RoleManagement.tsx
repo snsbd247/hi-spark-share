@@ -236,7 +236,7 @@ export default function RoleManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles?.map((role: any, i: number) => (
+              {roles?.filter((role: any) => isSuperAdmin || role.db_role !== "super_admin").map((role: any, i: number) => (
                 <TableRow key={role.id}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell className="font-medium">{role.name}</TableCell>
