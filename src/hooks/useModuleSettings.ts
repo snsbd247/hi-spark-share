@@ -31,7 +31,7 @@ export function useModuleSettings() {
         .from("system_settings")
         .select("setting_value")
         .eq("setting_key", SETTING_KEY)
-        .single();
+        .maybeSingle();
 
       if (error || !data?.setting_value) {
         // Default: all enabled
@@ -60,7 +60,7 @@ export function useModuleSettings() {
         .from("system_settings")
         .select("id")
         .eq("setting_key", SETTING_KEY)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
