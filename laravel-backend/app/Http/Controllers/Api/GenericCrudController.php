@@ -46,6 +46,8 @@ class GenericCrudController extends Controller
         'purchase_items' => \App\Models\PurchaseItem::class,
         'sales' => \App\Models\Sale::class,
         'sale_items' => \App\Models\SaleItem::class,
+        'expenses' => \App\Models\Expense::class,
+        'daily_reports' => \App\Models\DailyReport::class,
     ];
 
     protected function getModel(string $table)

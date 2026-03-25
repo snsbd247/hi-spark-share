@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BkashController;
 use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EmailController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GenericCrudController;
 use App\Http\Controllers\Api\MerchantPaymentController;
 use App\Http\Controllers\Api\MikrotikBillControlController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SalesController;
 use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\StorageController;
@@ -51,6 +53,11 @@ Route::any('/nagad/callback', [NagadController::class, 'callback']);
 |--------------------------------------------------------------------------
 */
 Route::middleware(['admin.auth', 'tenant'])->group(function () {
+
+    // ══════════════════════════════════════════════════════
+    // ── CORE ISP MODULE ──────────────────────────────────
+    // ══════════════════════════════════════════════════════
+
     // ── Auth ──────────────────────────────────────────────
     Route::post('/admin/logout', [AuthController::class, 'logout']);
     Route::get('/admin/me', [AuthController::class, 'me']);
@@ -103,7 +110,7 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     Route::get('/mikrotik/router-stats/{routerId}', [MikrotikBillControlController::class, 'routerStats']);
 
     // ══════════════════════════════════════════════════════
-    // ── ACCOUNTING & INVENTORY MODULE ─────────────────────
+    // ── ACCOUNTING & INVENTORY MODULE ────────────────────
     // ══════════════════════════════════════════════════════
 
     // ── Vendors (CRUD) ───────────────────────────────────
@@ -139,6 +146,14 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     Route::post('/sales/{id}/cancel', [SalesController::class, 'cancel']);
     Route::delete('/sales/{id}', [SalesController::class, 'destroy']);
 
+    // ── Expenses ─────────────────────────────────────────
+    Route::get('/expenses', [ExpenseController::class, 'index']);
+    Route::get('/expenses/summary', [ExpenseController::class, 'summary']);
+    Route::get('/expenses/{id}', [ExpenseController::class, 'show']);
+    Route::post('/expenses', [ExpenseController::class, 'store']);
+    Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
+    Route::delete('/expenses/{id}', [ExpenseController::class, 'destroy']);
+
     // ── Accounting ───────────────────────────────────────
     Route::get('/accounting/accounts', [AccountingController::class, 'accounts']);
     Route::post('/accounting/accounts', [AccountingController::class, 'createAccount']);
@@ -151,6 +166,17 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     Route::get('/accounting/summary', [AccountingController::class, 'summary']);
     Route::get('/accounting/balances', [AccountingController::class, 'accountBalances']);
     Route::get('/accounting/profit-loss', [AccountingController::class, 'profitLoss']);
+
+    // ── Reports ──────────────────────────────────────────
+    Route::get('/reports/dashboard', [ReportController::class, 'dashboard']);
+    Route::get('/reports/profit-loss', [ReportController::class, 'profitLoss']);
+    Route::get('/reports/daily', [ReportController::class, 'daily']);
+    Route::get('/reports/monthly', [ReportController::class, 'monthly']);
+    Route::get('/reports/sales', [ReportController::class, 'salesReport']);
+    Route::get('/reports/vendor-dues', [ReportController::class, 'vendorDues']);
+    Route::get('/reports/customer-dues', [ReportController::class, 'customerDues']);
+    Route::get('/reports/stock', [ReportController::class, 'stockReport']);
+    Route::get('/reports/expense-breakdown', [ReportController::class, 'expenseBreakdown']);
 
     // ── Storage ──────────────────────────────────────────
     Route::post('/storage/upload', [StorageController::class, 'upload']);

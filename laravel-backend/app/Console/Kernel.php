@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
         Commands\GenerateBills::class,
         Commands\AutoSuspend::class,
         Commands\CleanupSessions::class,
+        Commands\CalculateDailyProfit::class,
     ];
 
     /**
@@ -21,14 +22,20 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        // ── ISP Billing ──────────────────────────────────
         // Generate monthly bills on 1st of each month at midnight
         $schedule->command('bills:generate')->monthlyOn(1, '00:00');
 
         // Auto-suspend customers with overdue bills (7+ days) every day at 2 AM
         $schedule->command('customers:auto-suspend --days=7')->dailyAt('02:00');
 
+        // ── Sessions ─────────────────────────────────────
         // Cleanup expired sessions every hour
         $schedule->command('sessions:cleanup')->hourly();
+
+        // ── Accounting / Reports ─────────────────────────
+        // Calculate daily profit at end of day (11:55 PM)
+        $schedule->command('reports:daily-profit')->dailyAt('23:55');
     }
 
     /**
