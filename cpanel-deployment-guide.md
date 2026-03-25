@@ -1,14 +1,12 @@
 # Smart ISP — cPanel Deployment Guide
-# Domain: isp.ismail.bd
-# Document Root: /home/ismail/public_html/isp.ismail.bd/
+# যে কোনো Domain এ কাজ করবে (Domain-Agnostic)
 
 ## 📁 cPanel ফোল্ডার স্ট্রাকচার
 
 ```
-/home/ismail/
-├── laravel-backend/                    ← Laravel source (already uploaded?)
+/home/<cpanel-user>/
 └── public_html/
-    └── isp.ismail.bd/                  ← 🔴 Document Root
+    └── <yourdomain.com>/              ← 🔴 Document Root
         ├── api/                        ← Laravel backend
         │   ├── app/
         │   ├── bootstrap/
@@ -38,18 +36,18 @@
 ### Step 1: Laravel Backend আপলোড
 
 **Option A: cPanel File Manager দিয়ে**
-1. `public_html/isp.ismail.bd/` তে `api` ফোল্ডার তৈরি করুন
+1. Document root এ `api` ফোল্ডার তৈরি করুন
 2. `laravel-backend/` এর সব ফাইল `api/` তে আপলোড করুন (vendor/ বাদে)
 
 **Option B: SSH দিয়ে (faster)**
 ```bash
-cd /home/ismail
-cp -r laravel-backend/* public_html/isp.ismail.bd/api/
+cd /home/<cpanel-user>
+cp -r laravel-backend/* public_html/<yourdomain.com>/api/
 ```
 
 ### Step 2: api/.htaccess তৈরি করুন
 
-`public_html/isp.ismail.bd/api/.htaccess` ফাইল তৈরি করুন:
+`<document-root>/api/.htaccess` ফাইল তৈরি করুন:
 
 ```apache
 <IfModule mod_rewrite.c>
@@ -61,7 +59,7 @@ cp -r laravel-backend/* public_html/isp.ismail.bd/api/
 ### Step 3: Composer Install
 
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 composer install --optimize-autoloader --no-dev
 ```
 
@@ -70,7 +68,7 @@ composer install --optimize-autoloader --no-dev
 ### Step 4: Environment Setup
 
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 cp .env.example .env
 php artisan key:generate
 ```
@@ -81,40 +79,40 @@ php artisan key:generate
 APP_NAME="Smart ISP"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://isp.ismail.bd/api
+APP_URL=https://yourdomain.com/api
 
-FRONTEND_URL=https://isp.ismail.bd
+FRONTEND_URL=https://yourdomain.com
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=ismail_isp_management
-DB_USERNAME=ismail_ispuser
-DB_PASSWORD=your_password_here
+DB_DATABASE=your_db_name
+DB_USERNAME=your_db_user
+DB_PASSWORD=your_password
 
-SANCTUM_STATEFUL_DOMAINS=isp.ismail.bd,www.isp.ismail.bd
+SANCTUM_STATEFUL_DOMAINS=yourdomain.com,www.yourdomain.com
 ```
 
 > ⚠️ cPanel MySQL Databases থেকে database ও user তৈরি করুন।
-> cPanel এ username prefix লাগে, যেমন: `ismail_isp_management`
+> cPanel এ username prefix লাগে, যেমন: `cpaneluser_dbname`
 
 ### Step 5: Database Setup
 
 1. **cPanel → MySQL Databases**
-   - New Database: `ismail_isp_management` (বা আপনার পছন্দের নাম)
-   - New User: `ismail_ispuser` + password
+   - New Database: `your_db_name`
+   - New User: `your_db_user` + password
    - Add User to Database → All Privileges ✓
 
 2. Migration রান করুন:
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 php artisan migrate --seed
 ```
 
 ### Step 6: Storage & Permissions
 
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 php artisan storage:link
 chmod -R 775 storage bootstrap/cache
 ```
@@ -134,7 +132,7 @@ php artisan view:cache
 npm run build
 ```
 
-`dist/` ফোল্ডারের সব ফাইল `public_html/isp.ismail.bd/` তে আপলোড করুন:
+`dist/` ফোল্ডারের সব ফাইল document root এ আপলোড করুন:
 - `index.html`
 - `assets/` ফোল্ডার
 - অন্য সব ফাইল
@@ -143,7 +141,7 @@ npm run build
 
 **cPanel → Cron Jobs** → প্রতি মিনিটে:
 ```
-* * * * * cd /home/ismail/public_html/isp.ismail.bd/api && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd <document-root>/api && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ---
@@ -152,24 +150,24 @@ npm run build
 
 ### 500 Error?
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 chmod -R 775 storage bootstrap/cache
 php artisan config:clear
 # Debug দেখতে .env তে APP_DEBUG=true করুন, পরে false করুন
 ```
 
 ### CORS Error?
-`config/cors.php` চেক করুন — `isp.ismail.bd` allowed origins এ আছে কিনা।
+`config/cors.php` চেক করুন — আপনার domain allowed origins এ আছে কিনা।
 
 ### Login কাজ করছে না?
-- API URL চেক: `https://isp.ismail.bd/api/api/admin/login`
-- `.env` তে `SANCTUM_STATEFUL_DOMAINS=isp.ismail.bd`
+- API URL চেক: `https://yourdomain.com/api/api/admin/login`
+- `.env` তে `SANCTUM_STATEFUL_DOMAINS=yourdomain.com`
 
 ---
 
 ## ✅ Final Checklist
 
-- [ ] `public_html/isp.ismail.bd/api/` তে Laravel আপলোড
+- [ ] Document root এর `api/` তে Laravel আপলোড
 - [ ] `api/.htaccess` তৈরি (RewriteRule public/)
 - [ ] `composer install` সম্পন্ন
 - [ ] `.env` তে DB credentials সেট
@@ -183,4 +181,4 @@ php artisan config:clear
 - [ ] Cron job সেটআপ
 - [ ] `APP_DEBUG=false`
 - [ ] HTTPS কাজ করছে
-- [ ] Login test: admin / admin123
+- [ ] Login test সম্পন্ন

@@ -1,6 +1,5 @@
 # Smart ISP — সম্পূর্ণ Deploy গাইড (শুরু থেকে শেষ)
-# Domain: isp.ismail.bd
-# cPanel User: ismail
+# যে কোনো Domain ও cPanel এ কাজ করবে (Domain-Agnostic)
 
 ---
 
@@ -40,7 +39,7 @@ smart-isp/
 │   └── favicon.ico
 ├── laravel-backend/      ← এটা cPanel এ api/ তে যাবে
 ├── public/
-│   └── .htaccess         ← এটা isp.ismail.bd/ তে যাবে
+│   └── .htaccess         ← এটা document root এ যাবে
 ├── src/
 └── ...
 ```
@@ -59,7 +58,7 @@ smart-isp/
 ### Step 5: cPanel এ আপলোড
 
 1. **cPanel → File Manager** ওপেন করুন
-2. `public_html/isp.ismail.bd/` ফোল্ডারে যান
+2. আপনার domain এর document root এ যান (যেমন `public_html/yourdomain.com/`)
 3. **+ Folder** বাটনে ক্লিক করুন → নাম দিন: `api`
 4. `api/` ফোল্ডারে ঢুকুন
 5. **Upload** বাটনে ক্লিক করুন
@@ -72,7 +71,7 @@ smart-isp/
 
 সঠিক structure:
 ```
-public_html/isp.ismail.bd/api/
+<document-root>/api/
 ├── app/            ✅ সঠিক
 ├── bootstrap/
 ├── config/
@@ -85,7 +84,7 @@ public_html/isp.ismail.bd/api/
 
 ভুল structure (এটা হলে ঠিক করুন):
 ```
-public_html/isp.ismail.bd/api/
+<document-root>/api/
 └── laravel-backend/     ❌ এরকম হলে ভিতরের সব Move করুন api/ তে
     ├── app/
     └── ...
@@ -96,14 +95,14 @@ public_html/isp.ismail.bd/api/
 **cPanel → Terminal** (অথবা SSH client দিয়ে connect করুন):
 
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 bash setup.sh
 ```
 
 Script আপনাকে জিজ্ঞেস করবে:
 ```
-DB_DATABASE [ismail_isp_management]: → Enter চাপুন অথবা নাম দিন
-DB_USERNAME [ismail_ispuser]: → আপনার cPanel DB user
+DB_DATABASE [your_db_name]: → Enter চাপুন অথবা নাম দিন
+DB_USERNAME [your_db_user]: → আপনার cPanel DB user
 DB_PASSWORD: → পাসওয়ার্ড টাইপ করুন (দেখাবে না)
 ```
 
@@ -121,8 +120,8 @@ composer install --optimize-autoloader --no-dev
 তারপর `vendor/` ফোল্ডারসহ ZIP করে আপলোড করুন।
 
 **2) cPanel → MySQL Databases:**
-- New Database: `ismail_isp_management`
-- New User: `ismail_ispuser` + password
+- New Database: `your_db_name`
+- New User: `your_db_user` + password
 - Add User to Database → **All Privileges** ✓
 
 **3) .env ফাইল তৈরি:**
@@ -134,24 +133,24 @@ composer install --optimize-autoloader --no-dev
 APP_NAME="Smart ISP"
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://isp.ismail.bd/api
-FRONTEND_URL=https://isp.ismail.bd
+APP_URL=https://yourdomain.com/api
+FRONTEND_URL=https://yourdomain.com
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=ismail_isp_management
-DB_USERNAME=ismail_ispuser
-DB_PASSWORD=আপনার_পাসওয়ার্ড
+DB_DATABASE=your_db_name
+DB_USERNAME=your_db_user
+DB_PASSWORD=your_password
 
-SANCTUM_STATEFUL_DOMAINS=isp.ismail.bd,www.isp.ismail.bd
+SANCTUM_STATEFUL_DOMAINS=yourdomain.com,www.yourdomain.com
 ```
 
 **4) PHP Commands (cPanel → Terminal বা Cron Job দিয়ে):**
 
 যদি cPanel এ Terminal থাকে:
 ```bash
-cd /home/ismail/public_html/isp.ismail.bd/api
+cd <document-root>/api
 php artisan key:generate
 php artisan migrate --seed
 php artisan storage:link
@@ -162,10 +161,10 @@ php artisan route:cache
 Terminal না থাকলে **Cron Job দিয়ে** একবার রান করুন:
 - cPanel → Cron Jobs → Add New:
 ```
-* * * * * cd /home/ismail/public_html/isp.ismail.bd/api && php artisan key:generate && php artisan migrate --seed && php artisan storage:link && php artisan config:cache && php artisan route:cache >> /home/ismail/setup-log.txt 2>&1
+* * * * * cd <document-root>/api && php artisan key:generate && php artisan migrate --seed && php artisan storage:link && php artisan config:cache && php artisan route:cache >> /home/<cpanel-user>/setup-log.txt 2>&1
 ```
 - 2 মিনিট পর Cron Job টা **ডিলিট** করুন
-- `/home/ismail/setup-log.txt` চেক করুন
+- `/home/<cpanel-user>/setup-log.txt` চেক করুন
 
 **5) api/.htaccess তৈরি:**
 - cPanel File Manager → `api/` ফোল্ডারে
@@ -185,14 +184,14 @@ Terminal না থাকলে **Cron Job দিয়ে** একবার র
 ### Step 7: dist/ ফোল্ডার আপলোড
 
 1. লোকালে `dist/` ফোল্ডারের ভিতরের সব ফাইল ZIP করুন → `frontend.zip`
-2. cPanel File Manager → `public_html/isp.ismail.bd/` তে যান
+2. cPanel File Manager → document root এ যান
 3. **Upload** → `frontend.zip` আপলোড
 4. **Right Click → Extract**
 5. ZIP ডিলিট করুন
 
 ### Step 8: SPA .htaccess আপলোড
 
-`public/.htaccess` ফাইলটা `public_html/isp.ismail.bd/.htaccess` হিসেবে আপলোড করুন।
+`public/.htaccess` ফাইলটা document root এ `.htaccess` হিসেবে আপলোড করুন।
 
 অথবা cPanel এ `.htaccess` তৈরি করুন:
 ```apache
@@ -212,7 +211,7 @@ Terminal না থাকলে **Cron Job দিয়ে** একবার র
 
 ### cPanel এ পুরো structure:
 ```
-public_html/isp.ismail.bd/
+<document-root>/
 ├── .htaccess             ← SPA routing
 ├── index.html            ← React app
 ├── assets/               ← JS/CSS files
@@ -231,9 +230,9 @@ public_html/isp.ismail.bd/
 ```
 
 ### Test করুন:
-1. `https://isp.ismail.bd` → Login page দেখাবে
-2. `https://isp.ismail.bd/api/api/admin/login` → API response আসবে
-3. Login: `ismail` / `Admin@123`
+1. `https://yourdomain.com` → Login page দেখাবে
+2. `https://yourdomain.com/api/api/admin/login` → API response আসবে
+3. আপনার admin credentials দিয়ে login করুন
 
 ---
 
@@ -241,7 +240,7 @@ public_html/isp.ismail.bd/
 
 cPanel → Cron Jobs → প্রতি মিনিটে:
 ```
-* * * * * cd /home/ismail/public_html/isp.ismail.bd/api && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd <document-root>/api && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 ---
