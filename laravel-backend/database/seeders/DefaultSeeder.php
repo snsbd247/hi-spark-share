@@ -126,7 +126,7 @@ class DefaultSeeder extends Seeder
         $this->command->info('Default data seeded!');
         $this->command->info('Admin #1 → username: admin / password: admin123');
         $this->command->info('Admin #2 → username: ismail / password: Admin@123');
-        $this->command->info('13 default accounting accounts created.');
+        $this->command->info('Chart of Accounts with hierarchy created (5 root + children).');
         $this->command->info('All module permissions seeded.');
     }
 }

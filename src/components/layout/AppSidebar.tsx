@@ -49,6 +49,7 @@ const hrNav: NavItem[] = [
 ];
 
 const accountsNav: NavItem[] = [
+  { to: "/accounting/chart-of-accounts", icon: FileText, label: "Chart of Accounts", module: "accounting" },
   { to: "/accounting/income-head", icon: TrendingUp, label: "Income Head", module: "accounting" },
   { to: "/accounting/expense-head", icon: DollarSign, label: "Expense Head", module: "accounting" },
   { to: "/accounting/others-head", icon: BoxIcon, label: "Others Head", module: "accounting" },
