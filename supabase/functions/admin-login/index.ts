@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     const sessionToken = crypto.randomUUID();
 
     // Store session
-    await supabase.from("admin_sessions").insert({
+    const { error: sessionErr } = await supabase.from("admin_sessions").insert({
       admin_id: profile.id,
       session_token: sessionToken,
       ip_address: req.headers.get("x-forwarded-for") || "0.0.0.0",
@@ -99,6 +99,14 @@ Deno.serve(async (req: Request) => {
       device_name: "Web Browser",
       status: "active",
     });
+
+    if (sessionErr) {
+      console.error("Session insert error:", JSON.stringify(sessionErr));
+      return new Response(
+        JSON.stringify({ error: "Failed to create session: " + sessionErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Log login
     await supabase.from("admin_login_logs").insert({
