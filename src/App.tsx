@@ -11,7 +11,6 @@ import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PermissionGuard from "@/components/PermissionGuard";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
-import SafeModeWrapper from "@/components/SafeModeWrapper";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -49,7 +48,6 @@ import LoginLogs from "@/pages/LoginLogs";
 import AuditLogs from "@/pages/AuditLogs";
 import RoleManagement from "@/pages/settings/RoleManagement";
 import BackupRestore from "@/pages/settings/BackupRestore";
-import SafeMode from "@/pages/SafeMode";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
 import AccProducts from "@/pages/accounting/Products";
@@ -108,7 +106,6 @@ function App() {
           <AuthProvider>
             <CustomerAuthProvider>
               <BrandingProvider>
-              <SafeModeWrapper>
               <Routes>
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
@@ -177,7 +174,6 @@ function App() {
                 <Route path="/settings/bkash" element={<PermissionGuard module="settings"><BkashApiManagement /></PermissionGuard>} />
                 <Route path="/settings/nagad" element={<PermissionGuard module="settings"><NagadApiManagement /></PermissionGuard>} />
                 <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
-                <Route path="/safe-mode" element={<ProtectedRoute><SafeMode onDismiss={() => window.location.href = "/"} /></ProtectedRoute>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />
@@ -193,7 +189,6 @@ function App() {
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-              </SafeModeWrapper>
               </BrandingProvider>
             </CustomerAuthProvider>
           </AuthProvider>

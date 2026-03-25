@@ -1,16 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/apiDb";
-import { useSystemHealth } from "@/hooks/useSystemHealth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Database, Shield, Activity, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Bell, Database, Activity, CheckCircle, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
 export default function NotificationCenter() {
-  const health = useSystemHealth();
   const queryClient = useQueryClient();
 
   const { data: backupLogs } = useQuery({
@@ -57,59 +55,15 @@ export default function NotificationCenter() {
     return <Activity className="h-3.5 w-3.5 text-warning animate-pulse shrink-0" />;
   };
 
-  const healthStatus = health.safeModeActive
-    ? { label: "Safe Mode", variant: "destructive" as const, icon: <Shield className="h-4 w-4" /> }
-    : health.dbConnected
-    ? { label: "Healthy", variant: "default" as const, icon: <Activity className="h-4 w-4" /> }
-    : { label: "Degraded", variant: "secondary" as const, icon: <AlertTriangle className="h-4 w-4" /> };
-
   return (
     <Card className="glass-card animate-fade-in">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Bell className="h-5 w-5 text-primary" />
           Notification Center
-          <div className="ml-auto flex items-center gap-2">
-            <Badge variant={healthStatus.variant} className="flex items-center gap-1 text-xs">
-              {healthStatus.icon}
-              {healthStatus.label}
-            </Badge>
-          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* System Health */}
-        <div className="rounded-lg border border-border p-3 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Activity className="h-4 w-4 text-primary" />
-            System Health
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded bg-muted/50 p-2">
-              <p className={`text-lg font-bold ${health.dbConnected ? "text-success" : "text-destructive"}`}>
-                {health.dbConnected ? "✓" : "✗"}
-              </p>
-              <p className="text-xs text-muted-foreground">Database</p>
-            </div>
-            <div className="rounded bg-muted/50 p-2">
-              <p className="text-lg font-bold text-foreground">{health.consecutiveFailures}</p>
-              <p className="text-xs text-muted-foreground">Failures</p>
-            </div>
-            <div className="rounded bg-muted/50 p-2">
-              <p className="text-xs font-medium text-foreground">
-                {health.lastCheck ? formatDistanceToNow(health.lastCheck, { addSuffix: true }) : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground">Last Check</p>
-            </div>
-          </div>
-          {health.safeModeActive && (
-            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2 text-xs text-destructive flex items-center gap-2">
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              Safe Mode is active! Database connectivity lost after {health.consecutiveFailures} failures.
-            </div>
-          )}
-        </div>
-
         {/* Recent Backup Events */}
         <div className="rounded-lg border border-border p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
