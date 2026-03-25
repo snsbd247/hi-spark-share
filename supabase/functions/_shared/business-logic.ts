@@ -309,41 +309,30 @@ export async function authenticateRequest(supabase: any, authHeader: string | nu
 
   // 2) Supabase JWT validation
   try {
-    const { data: serviceUserData, error: serviceUserError } = await supabase.auth.getUser(token);
-    if (!serviceUserError && serviceUserData?.user?.id) {
-      return { userId: serviceUserData.user.id };
+    // Validate token directly
+    const tokenClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!
+    );
+
+    const { data: tokenUserData, error: tokenUserError } = await tokenClient.auth.getUser(token);
+    if (!tokenUserError && tokenUserData?.user?.id) {
+      return { userId: tokenUserData.user.id };
     }
 
-    if (serviceUserError) {
-      console.error("[auth] service getUser failed", serviceUserError.message);
-    }
-
+    // Fallback: user-scoped client with Authorization header
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    const sub = claimsData?.claims?.sub;
-    if (!claimsError && typeof sub === "string" && sub.length > 0) {
-      return { userId: sub };
-    }
-
-    if (claimsError) {
-      console.error("[auth] getClaims failed", claimsError.message);
-    }
-
     const { data, error } = await userClient.auth.getUser();
     if (!error && data?.user?.id) {
       return { userId: data.user.id };
     }
-
-    if (error) {
-      console.error("[auth] userClient getUser failed", error.message);
-    }
-  } catch (err) {
-    console.error("[auth] JWT validation failed", err);
+  } catch {
+    // JWT validation failed
   }
 
   return { error: "Unauthorized" };
