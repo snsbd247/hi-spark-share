@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/apiDb";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { format } from "date-fns";
 
 export default function AdminUsers() {
   const { user } = useAuth();
+  const { isSuperAdmin } = usePermissions();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
@@ -60,6 +62,8 @@ export default function AdminUsers() {
   });
 
   const filtered = users?.filter((u: any) => {
+    // Non-super_admin users cannot see super_admin users
+    if (!isSuperAdmin && u.roles?.includes("super_admin")) return false;
     const matchesSearch =
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.username?.toLowerCase().includes(search.toLowerCase()) ||
@@ -339,13 +343,13 @@ export default function AdminUsers() {
               }}>
                 <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
-                  {customRoles?.map((cr: any) => (
+                {customRoles?.filter((cr: any) => isSuperAdmin || cr.db_role !== "super_admin").map((cr: any) => (
                     <SelectItem key={cr.id} value={cr.id}>{cr.name}</SelectItem>
                   )) || (
                     <>
                       <SelectItem value="staff">Staff</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                     </>
                   )}
                 </SelectContent>

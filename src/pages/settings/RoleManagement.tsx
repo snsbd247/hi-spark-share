@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/lib/apiDb";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default function RoleManagement() {
+  const { isSuperAdmin } = usePermissions();
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editRole, setEditRole] = useState<any>(null);
@@ -234,7 +236,7 @@ export default function RoleManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles?.map((role: any, i: number) => (
+              {roles?.filter((role: any) => isSuperAdmin || role.db_role !== "super_admin").map((role: any, i: number) => (
                 <TableRow key={role.id}>
                   <TableCell>{i + 1}</TableCell>
                   <TableCell className="font-medium">{role.name}</TableCell>
@@ -284,7 +286,7 @@ export default function RoleManagement() {
                 <Select value={form.db_role} onValueChange={(v) => setForm({ ...form, db_role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DB_ROLES.map((r) => (
+                    {DB_ROLES.filter(r => isSuperAdmin || r.value !== "super_admin").map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
