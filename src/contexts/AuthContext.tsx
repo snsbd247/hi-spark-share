@@ -95,46 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: { username, password },
     });
 
-    if (edgeError || !edgeData?.email || !edgeData?.user_id) {
-      throw new Error(edgeError?.message || edgeData?.error || "Login failed");
+    if (edgeError || !edgeData?.success) {
+      throw new Error(edgeData?.error || edgeError?.message || "Login failed");
     }
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: edgeData.email,
-      password,
-    });
+    const adminUser: AdminUser = edgeData.user;
 
-    if (authError || !authData.session) {
-      throw new Error(authError?.message || "Login failed");
-    }
-
-    const [{ data: roleData }, { data: profileData }] = await Promise.all([
-      supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", edgeData.user_id)
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", edgeData.user_id)
-        .maybeSingle(),
-    ]);
-
-    const adminUser: AdminUser = {
-      id: edgeData.user_id,
-      email: edgeData.email,
-      name: profileData?.full_name || edgeData.email,
-      role: roleData?.role || "staff",
-      avatar_url: profileData?.avatar_url || undefined,
-    };
-
-    localStorage.setItem("admin_token", authData.session.access_token);
+    localStorage.setItem("admin_token", edgeData.token);
     localStorage.setItem("admin_user", JSON.stringify(adminUser));
     setUser(adminUser);
 
-    return { user: adminUser, token: authData.session.access_token };
+    return { user: adminUser, token: edgeData.token };
   };
 
   const signOut = async () => {
