@@ -11,7 +11,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, DollarSign, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Building2, FileDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { generateProfitLossPDF } from "@/lib/accountingPdf";
 
 export default function Reports() {
   const currentYear = new Date().getFullYear();
