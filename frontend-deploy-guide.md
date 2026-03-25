@@ -9,10 +9,14 @@
 
 ## 🔨 Step 1: .env.production চেক করুন
 
-`.env.production` ফাইলে এটা আছে কিনা নিশ্চিত করুন:
+`.env.production` ফাইলে আপনার ডোমেইন সেট করুন (অথবা খালি রাখলে auto-detect হবে):
 
 ```
-VITE_API_URL="https://isp.ismail.bd/api/api"
+# আপনার ডোমেইন অনুযায়ী সেট করুন:
+VITE_API_URL="https://yourdomain.com/api/api"
+
+# অথবা খালি রাখুন — অ্যাপ নিজেই ডোমেইন detect করবে:
+VITE_API_URL=""
 ```
 
 ---
