@@ -52,7 +52,7 @@ import BackupRestore from "@/pages/settings/BackupRestore";
 import SafeMode from "@/pages/SafeMode";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
-// AccountingDashboard merged into main Dashboard
+// AccountingDashboard page removed — merged into main Dashboard
 import AccProducts from "@/pages/accounting/Products";
 import AccVendors from "@/pages/accounting/Vendors";
 import AccPurchases from "@/pages/accounting/Purchases";
