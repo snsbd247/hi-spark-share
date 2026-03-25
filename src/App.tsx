@@ -52,7 +52,7 @@ import BackupRestore from "@/pages/settings/BackupRestore";
 import SafeMode from "@/pages/SafeMode";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
-import AccountingDashboard from "@/pages/accounting/AccountingDashboard";
+// AccountingDashboard merged into main Dashboard
 import AccProducts from "@/pages/accounting/Products";
 import AccVendors from "@/pages/accounting/Vendors";
 import AccPurchases from "@/pages/accounting/Purchases";
@@ -115,7 +115,7 @@ function App() {
                 <Route path="/audit-logs" element={<PermissionGuard module="settings"><AuditLogs /></PermissionGuard>} />
 
                 {/* Accounting Routes */}
-                <Route path="/accounting" element={<PermissionGuard module="accounting"><AccountingDashboard /></PermissionGuard>} />
+                {/* Accounting Dashboard merged into main Dashboard */}
                 <Route path="/accounting/products" element={<PermissionGuard module="accounting"><AccProducts /></PermissionGuard>} />
                 <Route path="/accounting/vendors" element={<PermissionGuard module="accounting"><AccVendors /></PermissionGuard>} />
                 <Route path="/accounting/purchases" element={<PermissionGuard module="accounting"><AccPurchases /></PermissionGuard>} />

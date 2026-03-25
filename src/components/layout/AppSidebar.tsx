@@ -43,11 +43,13 @@ const supportNav: NavItem[] = [
 // Payment gateway settings removed - managed centrally by Super Admin
 
 const inventoryNav: NavItem[] = [
-  { to: "/accounting", icon: TrendingUp, label: "Dashboard", module: "accounting" },
   { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "accounting" },
   { to: "/accounting/vendors", icon: Building2, label: "Vendors", module: "accounting" },
   { to: "/accounting/purchases", icon: ShoppingCart, label: "Purchases", module: "accounting" },
   { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "accounting" },
+];
+
+const accountingNav: NavItem[] = [
   { to: "/accounting/expenses", icon: Receipt, label: "Expenses", module: "accounting" },
   { to: "/accounting/reports", icon: BarChart3, label: "Reports", module: "accounting" },
 ];
@@ -230,7 +232,8 @@ export default function AppSidebar() {
 
         {filterItems(accountsNav).length > 0 && <NavGroup label="Accounts" icon={CreditCard} items={filterItems(accountsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
         {filterItems(supportNav).length > 0 && <NavGroup label="Support" icon={Ticket} items={filterItems(supportNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
-        {filterItems(inventoryNav).length > 0 && <NavGroup label="Accounting" icon={TrendingUp} items={filterItems(inventoryNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(inventoryNav).length > 0 && <NavGroup label="Inventory" icon={BoxIcon} items={filterItems(inventoryNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
+        {filterItems(accountingNav).length > 0 && <NavGroup label="Accounts" icon={TrendingUp} items={filterItems(accountingNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
         {filterItems(toolsNav).length > 0 && <NavGroup label="Tools" icon={Wrench} items={filterItems(toolsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
         {filterItems(settingsNav).length > 0 && <NavGroup label="Settings" icon={Settings} items={filterItems(settingsNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
       </nav>

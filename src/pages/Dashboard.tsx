@@ -2,18 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/apiDb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Loader2, RefreshCw, Router, Target, Wallet, CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DollarSign, Loader2, RefreshCw, Router, Target, Wallet, CreditCard, TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, Package } from "lucide-react";
 import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { toast } from "sonner";
 import { useState, useMemo, useCallback } from "react";
 import { format, subMonths } from "date-fns";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import NotificationCenter from "@/components/NotificationCenter";
+
+const ACC_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#6366f1"];
 
 interface DashboardCardProps {
   title: string;
@@ -61,6 +65,58 @@ export default function Dashboard() {
     },
     refetchInterval: 30000,
   });
+
+  // Accounting data
+  const { data: accProducts = [] } = useQuery({
+    queryKey: ["acc-products-dash"],
+    queryFn: () => api.get("/products").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accPurchases = [] } = useQuery({
+    queryKey: ["acc-purchases-dash"],
+    queryFn: () => api.get("/purchases").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accSales = [] } = useQuery({
+    queryKey: ["acc-sales-dash"],
+    queryFn: () => api.get("/sales").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accExpenses = [] } = useQuery({
+    queryKey: ["acc-expenses-dash"],
+    queryFn: () => api.get("/expenses").then(r => r.data?.data || r.data || []),
+  });
+
+  const totalAccSales = accSales.reduce((s: number, sale: any) => s + Number(sale.total || 0), 0);
+  const totalAccPurchases = accPurchases.reduce((s: number, p: any) => s + Number(p.total || 0), 0);
+  const totalAccExpenses = accExpenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+  const netProfit = totalAccSales - totalAccPurchases - totalAccExpenses;
+  const lowStockProducts = accProducts.filter((p: any) => p.stock_quantity <= p.low_stock_alert);
+
+  const accMonthlyData = useMemo(() => {
+    const months: Record<string, { month: string; income: number; expense: number }> = {};
+    accSales.forEach((s: any) => {
+      const m = s.sale_date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].income += Number(s.total || 0);
+    });
+    accPurchases.forEach((p: any) => {
+      const m = p.purchase_date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].expense += Number(p.total || 0);
+    });
+    accExpenses.forEach((e: any) => {
+      const m = e.date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].expense += Number(e.amount || 0);
+    });
+    return Object.values(months).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);
+  }, [accSales, accPurchases, accExpenses]);
+
+  const expenseByCategory = useMemo(() => {
+    const cats: Record<string, number> = {};
+    accExpenses.forEach((e: any) => {
+      cats[e.category || "other"] = (cats[e.category || "other"] || 0) + Number(e.amount || 0);
+    });
+    return Object.entries(cats).map(([name, value]) => ({ name, value }));
+  }, [accExpenses]);
 
   const handleRefreshMikrotik = useCallback(async () => {
     setRefreshingMikrotik(true);
@@ -614,6 +670,115 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      {/* Accounting Overview Section */}
+      <div className="mt-8 mb-6">
+        <h2 className="text-xl font-bold text-foreground mb-4">Accounting Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="h-8 w-8 text-success" />
+                <div><p className="text-2xl font-bold">৳{totalAccSales.toLocaleString()}</p><p className="text-sm text-muted-foreground">Total Sales</p></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <ShoppingCart className="h-8 w-8 text-primary" />
+                <div><p className="text-2xl font-bold">৳{totalAccPurchases.toLocaleString()}</p><p className="text-sm text-muted-foreground">Total Purchases</p></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <TrendingDown className="h-8 w-8 text-destructive" />
+                <div><p className="text-2xl font-bold">৳{totalAccExpenses.toLocaleString()}</p><p className="text-sm text-muted-foreground">Total Expenses</p></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <DollarSign className={`h-8 w-8 ${netProfit >= 0 ? "text-success" : "text-destructive"}`} />
+                <div><p className={`text-2xl font-bold ${netProfit >= 0 ? "text-success" : "text-destructive"}`}>৳{netProfit.toLocaleString()}</p><p className="text-sm text-muted-foreground">Net Profit</p></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card>
+            <CardHeader><CardTitle>Income vs Expense (Monthly)</CardTitle></CardHeader>
+            <CardContent>
+              {accMonthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={accMonthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
+                    <Bar dataKey="income" fill="hsl(var(--primary))" name="Income" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expense" fill="hsl(var(--destructive))" name="Expense" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground py-12">No data yet</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Expenses by Category</CardTitle></CardHeader>
+            <CardContent>
+              {expenseByCategory.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={expenseByCategory} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                      {expenseByCategory.map((_, i) => <Cell key={i} fill={ACC_COLORS[i % ACC_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-center text-muted-foreground py-12">No expenses recorded</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {lowStockProducts.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />Low Stock Alerts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead className="text-right">Stock</TableHead>
+                    <TableHead className="text-right">Alert Level</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {lowStockProducts.map((p: any) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.sku}</TableCell>
+                      <TableCell className="text-right text-destructive font-bold">{p.stock_quantity}</TableCell>
+                      <TableCell className="text-right">{p.low_stock_alert}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Notification Center */}
       <div className="mt-6">
         <NotificationCenter />
