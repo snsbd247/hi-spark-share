@@ -43,6 +43,8 @@ const ALLOWED_TABLES = new Set([
   "designations", "employees", "attendance", "loans", "salary_sheets",
   // Accounting
   "accounts", "income_heads", "expense_heads", "other_heads", "transactions",
+  // Inventory / Purchases
+  "products", "purchases", "purchase_items",
   // Supplier
   "suppliers", "supplier_payments",
 ]);
