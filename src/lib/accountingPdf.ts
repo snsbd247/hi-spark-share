@@ -1,5 +1,67 @@
 import jsPDF from "jspdf";
 
+export function generatePaymentAdvicePDF(supplier: any, payment: any, remainingDue: number) {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const navy = [20, 50, 120] as const;
+
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, pw, 40, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("Payment Advice", 14, 22);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Date: ${new Date(payment.paid_date || payment.date || new Date()).toLocaleDateString("en-GB")}`, 14, 33);
+  doc.text("Smart ISP", pw - 14, 22, { align: "right" });
+
+  let y = 55;
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Paid To:", 14, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(supplier?.name || "—", 50, y);
+  y += 7;
+  if (supplier?.company) { doc.text(`Company: ${supplier.company}`, 14, y); y += 7; }
+  if (supplier?.phone) { doc.text(`Phone: ${supplier.phone}`, 14, y); y += 7; }
+
+  y += 5;
+  doc.setFillColor(240, 240, 240);
+  doc.rect(14, y, pw - 28, 10, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Description", 16, y + 7);
+  doc.text("Amount", pw - 16, y + 7, { align: "right" });
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  const desc = payment.purchase_no ? `Payment against Invoice #${payment.purchase_no}` : `Supplier Payment - ${payment.payment_method}`;
+  doc.text(desc, 16, y);
+  doc.text(`BDT ${Number(payment.amount).toLocaleString()}`, pw - 16, y, { align: "right" });
+  y += 8;
+  if (payment.reference) { doc.text(`Reference: ${payment.reference}`, 16, y); y += 8; }
+
+  y += 5;
+  doc.line(14, y, pw - 14, y);
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text("Total Paid:", 16, y);
+  doc.text(`BDT ${Number(payment.amount).toLocaleString()}`, pw - 16, y, { align: "right" });
+  y += 8;
+  doc.text("Remaining Due:", 16, y);
+  doc.text(`BDT ${Math.max(0, remainingDue).toLocaleString()}`, pw - 16, y, { align: "right" });
+
+  y += 20;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
+  doc.text("This is a computer-generated payment advice and does not require a signature.", 14, y);
+
+  doc.save(`payment-advice-${supplier?.name || "supplier"}-${Date.now()}.pdf`);
+}
+
 interface MonthlyPLRow {
   month: string;
   income: number;

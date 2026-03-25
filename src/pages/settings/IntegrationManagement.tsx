@@ -405,7 +405,7 @@ function BkashTab() {
     },
   });
 
-  const [form, setForm] = useState({ app_key: "", app_secret: "", username: "", password: "", environment: "sandbox", merchant_number: "", base_url: BASE_URLS.sandbox });
+  const [form, setForm] = useState({ app_key: "", app_secret: "", username: "", password: "", environment: "sandbox", merchant_number: "", base_url: BASE_URLS.sandbox, receiving_account_id: "" });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -415,6 +415,7 @@ function BkashTab() {
         username: gateway.username || "", password: gateway.password || "",
         environment: gateway.environment || "sandbox", merchant_number: gateway.merchant_number || "",
         base_url: gateway.base_url || BASE_URLS.sandbox,
+        receiving_account_id: (gateway as any).receiving_account_id || "",
       });
       setLoaded(true);
     }
@@ -422,7 +423,8 @@ function BkashTab() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { gateway_name: "bkash" as const, ...form, updated_at: new Date().toISOString() };
+      const { receiving_account_id, ...rest } = form;
+      const payload = { gateway_name: "bkash" as const, ...rest, receiving_account_id: receiving_account_id || null, updated_at: new Date().toISOString() };
       if (gateway?.id) {
         const { error } = await supabase.from("payment_gateways").update(payload).eq("id", gateway.id);
         if (error) throw error;
@@ -474,6 +476,11 @@ function BkashTab() {
             <div className="space-y-2 sm:col-span-2">
               <Label>Base URL</Label>
               <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} disabled={!canEdit} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Receiving Ledger Account</Label>
+              <LedgerAccountSelect value={form.receiving_account_id} onChange={(v) => setForm({ ...form, receiving_account_id: v })} disabled={!canEdit} />
+              <p className="text-xs text-muted-foreground">Select which ledger account receives bKash payments</p>
             </div>
           </div>
           {canEdit && (
@@ -529,7 +536,7 @@ function NagadTab() {
     },
   });
 
-  const [form, setForm] = useState({ app_key: "", app_secret: "", username: "", password: "", environment: "sandbox", merchant_number: "", base_url: BASE_URLS.sandbox });
+  const [form, setForm] = useState({ app_key: "", app_secret: "", username: "", password: "", environment: "sandbox", merchant_number: "", base_url: BASE_URLS.sandbox, receiving_account_id: "" });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -539,6 +546,7 @@ function NagadTab() {
         username: gateway.username || "", password: gateway.password || "",
         environment: gateway.environment || "sandbox", merchant_number: gateway.merchant_number || "",
         base_url: gateway.base_url || BASE_URLS.sandbox,
+        receiving_account_id: (gateway as any).receiving_account_id || "",
       });
       setLoaded(true);
     }
@@ -546,7 +554,8 @@ function NagadTab() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = { gateway_name: "nagad" as const, ...form, updated_at: new Date().toISOString() };
+      const { receiving_account_id, ...rest } = form;
+      const payload = { gateway_name: "nagad" as const, ...rest, receiving_account_id: receiving_account_id || null, updated_at: new Date().toISOString() };
       if (gateway?.id) {
         const { error } = await supabase.from("payment_gateways").update(payload).eq("id", gateway.id);
         if (error) throw error;
@@ -599,6 +608,11 @@ function NagadTab() {
               <Label>Base URL</Label>
               <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} disabled={!canEdit} className="font-mono text-xs" />
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Receiving Ledger Account</Label>
+              <LedgerAccountSelect value={form.receiving_account_id} onChange={(v) => setForm({ ...form, receiving_account_id: v })} disabled={!canEdit} />
+              <p className="text-xs text-muted-foreground">Select which ledger account receives Nagad payments</p>
+            </div>
           </div>
           {canEdit && (
             <div className="flex justify-end mt-4">
@@ -630,6 +644,29 @@ function NagadTab() {
 }
 
 // ─── Shared Components ───────────────────────────────────────────
+function LedgerAccountSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled: boolean }) {
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["accounts-for-select"],
+    staleTime: 120_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("accounts").select("id, name, code, type").order("code");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  return (
+    <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)} disabled={disabled}>
+      <SelectTrigger><SelectValue placeholder="Select Ledger Account" /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">— No Ledger Selected —</SelectItem>
+        {accounts.map((a: any) => (
+          <SelectItem key={a.id} value={a.id}>[{a.code}] {a.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function LoadingState() {
   return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 }

@@ -1079,6 +1079,7 @@ export type Database = {
           last_connected_at: string | null
           merchant_number: string | null
           password: string | null
+          receiving_account_id: string | null
           status: string
           updated_at: string
           username: string | null
@@ -1094,6 +1095,7 @@ export type Database = {
           last_connected_at?: string | null
           merchant_number?: string | null
           password?: string | null
+          receiving_account_id?: string | null
           status?: string
           updated_at?: string
           username?: string | null
@@ -1109,11 +1111,20 @@ export type Database = {
           last_connected_at?: string | null
           merchant_number?: string | null
           password?: string | null
+          receiving_account_id?: string | null
           status?: string
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_gateways_receiving_account_id_fkey"
+            columns: ["receiving_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -1196,6 +1207,51 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          buy_price: number
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sell_price: number
+          sku: string | null
+          status: string
+          stock: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          buy_price?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sell_price?: number
+          sku?: string | null
+          status?: string
+          stock?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buy_price?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sell_price?: number
+          sku?: string | null
+          status?: string
+          stock?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -1240,6 +1296,98 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      purchase_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          product_id: string | null
+          purchase_id: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_id: string
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          purchase_id?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          paid_amount: number
+          purchase_no: string
+          status: string
+          supplier_id: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          purchase_no: string
+          status?: string
+          supplier_id: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          purchase_no?: string
+          status?: string
+          supplier_id?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reminder_logs: {
         Row: {
@@ -1487,6 +1635,7 @@ export type Database = {
           notes: string | null
           paid_date: string
           payment_method: string
+          purchase_id: string | null
           reference: string | null
           supplier_id: string
         }
@@ -1497,6 +1646,7 @@ export type Database = {
           notes?: string | null
           paid_date?: string
           payment_method?: string
+          purchase_id?: string | null
           reference?: string | null
           supplier_id: string
         }
@@ -1507,10 +1657,18 @@ export type Database = {
           notes?: string | null
           paid_date?: string
           payment_method?: string
+          purchase_id?: string | null
           reference?: string | null
           supplier_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_payments_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supplier_payments_supplier_id_fkey"
             columns: ["supplier_id"]
