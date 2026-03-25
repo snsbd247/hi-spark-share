@@ -43,11 +43,13 @@ const supportNav: NavItem[] = [
 // Payment gateway settings removed - managed centrally by Super Admin
 
 const inventoryNav: NavItem[] = [
-  { to: "/accounting", icon: TrendingUp, label: "Dashboard", module: "accounting" },
   { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "accounting" },
   { to: "/accounting/vendors", icon: Building2, label: "Vendors", module: "accounting" },
   { to: "/accounting/purchases", icon: ShoppingCart, label: "Purchases", module: "accounting" },
   { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "accounting" },
+];
+
+const accountingNav: NavItem[] = [
   { to: "/accounting/expenses", icon: Receipt, label: "Expenses", module: "accounting" },
   { to: "/accounting/reports", icon: BarChart3, label: "Reports", module: "accounting" },
 ];
