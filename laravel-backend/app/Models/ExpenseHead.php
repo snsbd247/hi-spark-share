@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Models;
+
+use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Model;
+
+class ExpenseHead extends Model
+{
+    use HasUuid;
+
+    protected $fillable = ['id', 'name', 'description', 'status'];
+}
