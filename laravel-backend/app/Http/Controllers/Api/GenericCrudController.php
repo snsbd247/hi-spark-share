@@ -48,6 +48,19 @@ class GenericCrudController extends Controller
         'sale_items' => \App\Models\SaleItem::class,
         'expenses' => \App\Models\Expense::class,
         'daily_reports' => \App\Models\DailyReport::class,
+        // HR
+        'designations' => \App\Models\Designation::class,
+        'employees' => \App\Models\Employee::class,
+        'attendances' => \App\Models\Attendance::class,
+        'loans' => \App\Models\Loan::class,
+        'salary_sheets' => \App\Models\SalarySheet::class,
+        // Supplier
+        'suppliers' => \App\Models\Supplier::class,
+        'supplier_payments' => \App\Models\SupplierPayment::class,
+        // Accounting Heads
+        'income_heads' => \App\Models\IncomeHead::class,
+        'expense_heads' => \App\Models\ExpenseHead::class,
+        'other_heads' => \App\Models\OtherHead::class,
     ];
 
     protected function getModel(string $table)
