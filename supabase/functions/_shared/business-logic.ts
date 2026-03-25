@@ -287,13 +287,15 @@ export async function userHasPermission(supabase: any, userId: string, module: s
 export async function authenticateRequest(supabase: any, authHeader: string | null): Promise<{ userId: string; error?: string } | { userId?: undefined; error: string }> {
   if (!authHeader) return { error: "Unauthorized" };
 
-  const token = authHeader.replace("Bearer ", "");
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match?.[1]) return { error: "Unauthorized" };
+  const token = match[1].trim();
 
-  // 1. Try custom admin session token (UUID format from Laravel-style auth)
+  // 1) Custom admin session token (Laravel-style UUID token)
   try {
     const { data: session, error: sessErr } = await supabase
       .from("admin_sessions")
-      .select("admin_id, status")
+      .select("admin_id")
       .eq("session_token", token)
       .eq("status", "active")
       .maybeSingle();
@@ -302,19 +304,26 @@ export async function authenticateRequest(supabase: any, authHeader: string | nu
       return { userId: session.admin_id };
     }
   } catch {
-    // Not a session token, try JWT next
+    // continue with JWT validation
   }
 
-  // 2. Try Supabase JWT via getClaims (preferred over getUser for edge functions)
+  // 2) Supabase JWT validation (signing-keys friendly)
   try {
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
 
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    const sub = claimsData?.claims?.sub;
+    if (!claimsError && typeof sub === "string" && sub.length > 0) {
+      return { userId: sub };
+    }
+
+    // Fallback for older tokens/environments
     const { data, error } = await userClient.auth.getUser(token);
-    if (!error && data?.user) {
+    if (!error && data?.user?.id) {
       return { userId: data.user.id };
     }
   } catch {
