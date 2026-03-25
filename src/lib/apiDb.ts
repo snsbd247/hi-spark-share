@@ -128,56 +128,32 @@ class QueryBuilder<T = any> {
       return responseJson;
     };
 
-    const { data: sessionData } = await supabaseClient.auth.getSession();
-    let accessToken = sessionData?.session?.access_token || localStorage.getItem('admin_token') || '';
+    // Prioritize admin_token (Laravel session) over Supabase JWT
+    const adminToken = localStorage.getItem('admin_token');
+    let accessToken = adminToken || '';
+    
+    if (!accessToken) {
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      accessToken = sessionData?.session?.access_token || '';
+    }
 
     if (!accessToken) {
       throw new Error('No active session. Please sign in again.');
     }
 
-    try {
-      const response = await invokeProxy(accessToken);
-      const payload = response?.data ?? null;
+    const response = await invokeProxy(accessToken);
+    const payload = response?.data ?? null;
 
-      if (this._operation === 'select') {
-        if (this._singleRow || this._maybeSingleRow) {
-          return { data: payload || null, error: null };
-        }
-
-        const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
-        if (this._headMode) return { data: null, error: null, count: rows.length };
-        return { data: rows, error: null, count: rows.length };
+    if (this._operation === 'select') {
+      if (this._singleRow || this._maybeSingleRow) {
+        return { data: payload || null, error: null };
       }
-
-      return { data: payload, error: null };
-    } catch (err: any) {
-      const firstMessage = err?.message || 'Edge proxy request failed';
-      const mayBeAuthIssue = /unauthorized|401|session/i.test(firstMessage);
-
-      if (mayBeAuthIssue) {
-        const { data: refreshed, error: refreshError } = await supabaseClient.auth.refreshSession();
-        const refreshedToken = refreshed?.session?.access_token;
-
-        if (!refreshError && refreshedToken) {
-          const response = await invokeProxy(refreshedToken);
-          const payload = response?.data ?? null;
-
-          if (this._operation === 'select') {
-            if (this._singleRow || this._maybeSingleRow) {
-              return { data: payload || null, error: null };
-            }
-
-            const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
-            if (this._headMode) return { data: null, error: null, count: rows.length };
-            return { data: rows, error: null, count: rows.length };
-          }
-
-          return { data: payload, error: null };
-        }
-      }
-
-      throw err;
+      const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+      if (this._headMode) return { data: null, error: null, count: rows.length };
+      return { data: rows, error: null, count: rows.length };
     }
+
+    return { data: payload, error: null };
   }
 
   private async _execute(): Promise<{ data: any; error: any; count?: number }> {
