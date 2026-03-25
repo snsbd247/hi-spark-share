@@ -95,45 +95,89 @@ class QueryBuilder<T = any> {
   }
 
   private async _executeViaEdgeProxy(): Promise<{ data: any; error: any; count?: number }> {
-    const adminToken = localStorage.getItem('admin_token');
-    const headers: Record<string, string> = {};
-    if (adminToken) {
-      headers['Authorization'] = `Bearer ${adminToken}`;
-    }
+    const payloadBody = {
+      table: this._table,
+      operation: this._operation,
+      select: this._selectCols,
+      filters: this._filters,
+      order: this._orders,
+      limit: this._limitCount,
+      single: this._singleRow,
+      maybeSingle: this._maybeSingleRow,
+      data: this._data,
+      returning: this._returning,
+    };
 
-    const { data: response, error } = await supabaseClient.functions.invoke('api/data/proxy', {
-      body: {
-        table: this._table,
-        operation: this._operation,
-        select: this._selectCols,
-        filters: this._filters,
-        order: this._orders,
-        limit: this._limitCount,
-        single: this._singleRow,
-        maybeSingle: this._maybeSingleRow,
-        data: this._data,
-        returning: this._returning,
-      },
-      headers,
-    });
+    const invokeProxy = async (token: string) => {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/data/proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payloadBody),
+      });
 
-    if (error) {
-      throw new Error(error.message || 'Edge proxy request failed');
-    }
-
-    const payload = response?.data ?? null;
-
-    if (this._operation === 'select') {
-      if (this._singleRow || this._maybeSingleRow) {
-        return { data: payload || null, error: null };
+      const responseJson = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = responseJson?.error || `Edge function returned ${res.status}`;
+        throw new Error(message);
       }
 
-      const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
-      if (this._headMode) return { data: null, error: null, count: rows.length };
-      return { data: rows, error: null, count: rows.length };
+      return responseJson;
+    };
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    let accessToken = sessionData?.session?.access_token || localStorage.getItem('admin_token') || '';
+
+    if (!accessToken) {
+      throw new Error('No active session. Please sign in again.');
     }
 
-    return { data: payload, error: null };
+    try {
+      const response = await invokeProxy(accessToken);
+      const payload = response?.data ?? null;
+
+      if (this._operation === 'select') {
+        if (this._singleRow || this._maybeSingleRow) {
+          return { data: payload || null, error: null };
+        }
+
+        const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+        if (this._headMode) return { data: null, error: null, count: rows.length };
+        return { data: rows, error: null, count: rows.length };
+      }
+
+      return { data: payload, error: null };
+    } catch (err: any) {
+      const firstMessage = err?.message || 'Edge proxy request failed';
+      const mayBeAuthIssue = /unauthorized|401|session/i.test(firstMessage);
+
+      if (mayBeAuthIssue) {
+        const { data: refreshed, error: refreshError } = await supabaseClient.auth.refreshSession();
+        const refreshedToken = refreshed?.session?.access_token;
+
+        if (!refreshError && refreshedToken) {
+          const response = await invokeProxy(refreshedToken);
+          const payload = response?.data ?? null;
+
+          if (this._operation === 'select') {
+            if (this._singleRow || this._maybeSingleRow) {
+              return { data: payload || null, error: null };
+            }
+
+            const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
+            if (this._headMode) return { data: null, error: null, count: rows.length };
+            return { data: rows, error: null, count: rows.length };
+          }
+
+          return { data: payload, error: null };
+        }
+      }
+
+      throw err;
+    }
   }
 
   private async _execute(): Promise<{ data: any; error: any; count?: number }> {
