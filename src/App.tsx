@@ -52,13 +52,28 @@ import BackupRestore from "@/pages/settings/BackupRestore";
 import SafeMode from "@/pages/SafeMode";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
-// AccountingDashboard page removed — merged into main Dashboard
 import AccProducts from "@/pages/accounting/Products";
 import AccVendors from "@/pages/accounting/Vendors";
 import AccPurchases from "@/pages/accounting/Purchases";
 import AccSales from "@/pages/accounting/Sales";
 import AccExpenses from "@/pages/accounting/Expenses";
 import AccReports from "@/pages/accounting/Reports";
+import IncomeHead from "@/pages/accounting/IncomeHead";
+import ExpenseHead from "@/pages/accounting/ExpenseHead";
+import OthersHead from "@/pages/accounting/OthersHead";
+import AllTransactions from "@/pages/accounting/AllTransactions";
+import DesignationList from "@/pages/hr/DesignationList";
+import EmployeeList from "@/pages/hr/EmployeeList";
+import DailyAttendance from "@/pages/hr/DailyAttendance";
+import MonthlyAttendance from "@/pages/hr/MonthlyAttendance";
+import LoanManagement from "@/pages/hr/LoanManagement";
+import SalarySheet from "@/pages/hr/SalarySheet";
+import SupplierList from "@/pages/supplier/SupplierList";
+import SupplierPayments from "@/pages/supplier/SupplierPayments";
+import DailyReport from "@/pages/reporting/DailyReport";
+import FinancialStatement from "@/pages/reporting/FinancialStatement";
+import BtrcReport from "@/pages/reporting/BtrcReport";
+import TrafficMonitor from "@/pages/reporting/TrafficMonitor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,14 +129,35 @@ function App() {
                 <Route path="/login-logs" element={<PermissionGuard module="settings"><LoginLogs /></PermissionGuard>} />
                 <Route path="/audit-logs" element={<PermissionGuard module="settings"><AuditLogs /></PermissionGuard>} />
 
+                {/* HR Routes */}
+                <Route path="/hr/designations" element={<PermissionGuard module="hr"><DesignationList /></PermissionGuard>} />
+                <Route path="/hr/employees" element={<PermissionGuard module="hr"><EmployeeList /></PermissionGuard>} />
+                <Route path="/hr/daily-attendance" element={<PermissionGuard module="hr"><DailyAttendance /></PermissionGuard>} />
+                <Route path="/hr/monthly-attendance" element={<PermissionGuard module="hr"><MonthlyAttendance /></PermissionGuard>} />
+                <Route path="/hr/loans" element={<PermissionGuard module="hr"><LoanManagement /></PermissionGuard>} />
+                <Route path="/hr/salary" element={<PermissionGuard module="hr"><SalarySheet /></PermissionGuard>} />
+
                 {/* Accounting Routes */}
-                {/* Accounting Dashboard merged into main Dashboard */}
+                <Route path="/accounting/income-head" element={<PermissionGuard module="accounting"><IncomeHead /></PermissionGuard>} />
+                <Route path="/accounting/expense-head" element={<PermissionGuard module="accounting"><ExpenseHead /></PermissionGuard>} />
+                <Route path="/accounting/others-head" element={<PermissionGuard module="accounting"><OthersHead /></PermissionGuard>} />
+                <Route path="/accounting/transactions" element={<PermissionGuard module="accounting"><AllTransactions /></PermissionGuard>} />
                 <Route path="/accounting/products" element={<PermissionGuard module="accounting"><AccProducts /></PermissionGuard>} />
                 <Route path="/accounting/vendors" element={<PermissionGuard module="accounting"><AccVendors /></PermissionGuard>} />
                 <Route path="/accounting/purchases" element={<PermissionGuard module="accounting"><AccPurchases /></PermissionGuard>} />
                 <Route path="/accounting/sales" element={<PermissionGuard module="accounting"><AccSales /></PermissionGuard>} />
                 <Route path="/accounting/expenses" element={<PermissionGuard module="accounting"><AccExpenses /></PermissionGuard>} />
                 <Route path="/accounting/reports" element={<PermissionGuard module="accounting"><AccReports /></PermissionGuard>} />
+
+                {/* Supplier Routes */}
+                <Route path="/supplier/list" element={<PermissionGuard module="supplier"><SupplierList /></PermissionGuard>} />
+                <Route path="/supplier/payments" element={<PermissionGuard module="supplier"><SupplierPayments /></PermissionGuard>} />
+
+                {/* Reporting Routes */}
+                <Route path="/reporting/daily" element={<PermissionGuard module="reports"><DailyReport /></PermissionGuard>} />
+                <Route path="/reporting/financial" element={<PermissionGuard module="reports"><FinancialStatement /></PermissionGuard>} />
+                <Route path="/reporting/btrc" element={<PermissionGuard module="reports"><BtrcReport /></PermissionGuard>} />
+                <Route path="/reporting/traffic" element={<PermissionGuard module="reports"><TrafficMonitor /></PermissionGuard>} />
 
                 {/* Settings Routes */}
                 <Route path="/settings/general" element={<PermissionGuard module="settings"><GeneralSettings /></PermissionGuard>} />
@@ -140,7 +176,7 @@ function App() {
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />
 
-                {/* Customer Routes */}
+                {/* Customer Portal Routes */}
                 <Route path="/login" element={<CustomerLogin />} />
                 <Route path="/portal" element={<CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>} />
                 <Route path="/portal/bills" element={<CustomerProtectedRoute><CustomerBills /></CustomerProtectedRoute>} />
