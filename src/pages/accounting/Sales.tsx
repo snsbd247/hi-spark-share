@@ -169,7 +169,8 @@ export default function Sales() {
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Due</TableHead>
-                  <TableHead>Status</TableHead>
+                   <TableHead>Status</TableHead>
+                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
