@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/apiDb";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -27,6 +27,10 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
 
 export default function Customers() {
+  const [searchParams] = useSearchParams();
+  const statusFilter = searchParams.get("status");
+  const connectionFilter = searchParams.get("connection");
+  const miscFilter = searchParams.get("filter");
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
@@ -78,7 +82,27 @@ export default function Customers() {
       c.customer_id.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.includes(search) ||
       c.area.toLowerCase().includes(search.toLowerCase())
-  );
+  )?.filter((c) => {
+    if (statusFilter) {
+      if (statusFilter === "new") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
+        return new Date(c.created_at) >= sevenDaysAgo;
+      }
+      if (statusFilter === "inactive") return c.status === "suspended" || c.status === "inactive";
+      if (statusFilter === "free") return Number(c.monthly_bill) === 0;
+      if (statusFilter === "left") return c.status === "left" || c.status === "disconnected";
+      return c.status === statusFilter;
+    }
+    if (connectionFilter) {
+      if (connectionFilter === "online") return c.connection_status === "active" || c.connection_status === "online";
+      if (connectionFilter === "offline") return c.connection_status === "offline" || c.connection_status === "disconnected";
+    }
+    if (miscFilter === "due") {
+      return c.status === "active" && Number(c.monthly_bill) > 0;
+    }
+    return true;
+  });
 
   const totalItems = filtered?.length ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -112,12 +136,26 @@ export default function Customers() {
     }
   };
 
+  const pageTitle = useMemo(() => {
+    if (statusFilter === "new") return "New Customers";
+    if (statusFilter === "active") return "Active Customers";
+    if (statusFilter === "inactive") return "Inactive Customers";
+    if (statusFilter === "free") return "Free Customers";
+    if (statusFilter === "left") return "Left Customers";
+    if (connectionFilter === "online") return "Online Customers";
+    if (connectionFilter === "offline") return "Offline Customers";
+    if (miscFilter === "due") return "Due Customers";
+    return "Customers";
+  }, [statusFilter, connectionFilter, miscFilter]);
+
   return (
     <DashboardLayout>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customers</h1>
-          <p className="text-muted-foreground mt-1">Manage your customer base</p>
+          <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
+          <p className="text-muted-foreground mt-1">
+            {totalItems} customer{totalItems !== 1 ? "s" : ""} found
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={bulkSyncCustomers} disabled={bulkSyncing}>
