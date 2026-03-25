@@ -1,5 +1,5 @@
 const LOCAL_API_BASE_URL = "http://localhost:8000/api";
-const PREVIEW_FALLBACK_API_BASE_URL = "https://isp.ismail.bd/api/api";
+const PREVIEW_FALLBACK_API_BASE_URL = "https://isp.syncsolutionbd.com/api/api";
 
 const envApiBaseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, "") || "";
 const isEnvLocalhost = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(envApiBaseUrl);
