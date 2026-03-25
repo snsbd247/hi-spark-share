@@ -286,7 +286,7 @@ export default function RoleManagement() {
                 <Select value={form.db_role} onValueChange={(v) => setForm({ ...form, db_role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {DB_ROLES.map((r) => (
+                    {DB_ROLES.filter(r => isSuperAdmin || r.value !== "super_admin").map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                     ))}
                   </SelectContent>
