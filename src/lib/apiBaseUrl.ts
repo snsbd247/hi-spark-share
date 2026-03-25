@@ -17,4 +17,4 @@ export const API_BASE_URL = (() => {
 })();
 
 export const API_PUBLIC_ROOT = API_BASE_URL.replace(/\/api$/, "");
-export const IS_LOVABLE_RUNTIME = isLovablePreview;
+export const IS_LOVABLE_RUNTIME = isLovablePreview || isLovableCustomDomain;
