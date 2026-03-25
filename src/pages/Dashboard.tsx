@@ -66,6 +66,58 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  // Accounting data
+  const { data: accProducts = [] } = useQuery({
+    queryKey: ["acc-products-dash"],
+    queryFn: () => api.get("/products").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accPurchases = [] } = useQuery({
+    queryKey: ["acc-purchases-dash"],
+    queryFn: () => api.get("/purchases").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accSales = [] } = useQuery({
+    queryKey: ["acc-sales-dash"],
+    queryFn: () => api.get("/sales").then(r => r.data?.data || r.data || []),
+  });
+  const { data: accExpenses = [] } = useQuery({
+    queryKey: ["acc-expenses-dash"],
+    queryFn: () => api.get("/expenses").then(r => r.data?.data || r.data || []),
+  });
+
+  const totalAccSales = accSales.reduce((s: number, sale: any) => s + Number(sale.total || 0), 0);
+  const totalAccPurchases = accPurchases.reduce((s: number, p: any) => s + Number(p.total || 0), 0);
+  const totalAccExpenses = accExpenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+  const netProfit = totalAccSales - totalAccPurchases - totalAccExpenses;
+  const lowStockProducts = accProducts.filter((p: any) => p.stock_quantity <= p.low_stock_alert);
+
+  const accMonthlyData = useMemo(() => {
+    const months: Record<string, { month: string; income: number; expense: number }> = {};
+    accSales.forEach((s: any) => {
+      const m = s.sale_date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].income += Number(s.total || 0);
+    });
+    accPurchases.forEach((p: any) => {
+      const m = p.purchase_date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].expense += Number(p.total || 0);
+    });
+    accExpenses.forEach((e: any) => {
+      const m = e.date?.substring(0, 7) || "Unknown";
+      if (!months[m]) months[m] = { month: m, income: 0, expense: 0 };
+      months[m].expense += Number(e.amount || 0);
+    });
+    return Object.values(months).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);
+  }, [accSales, accPurchases, accExpenses]);
+
+  const expenseByCategory = useMemo(() => {
+    const cats: Record<string, number> = {};
+    accExpenses.forEach((e: any) => {
+      cats[e.category || "other"] = (cats[e.category || "other"] || 0) + Number(e.amount || 0);
+    });
+    return Object.entries(cats).map(([name, value]) => ({ name, value }));
+  }, [accExpenses]);
+
   const handleRefreshMikrotik = useCallback(async () => {
     setRefreshingMikrotik(true);
     await refetchMikrotik();
