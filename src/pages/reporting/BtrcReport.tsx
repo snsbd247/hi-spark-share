@@ -12,8 +12,8 @@ export default function BtrcReport() {
   const inactive = customers.filter((c: any) => c.status !== "active").length;
   const total = customers.length;
 
-  const byArea = customers.reduce((acc: Record<string, number>, c: any) => { acc[c.area] = (acc[c.area] || 0) + 1; return acc; }, {});
-  const byPackage = customers.reduce((acc: Record<string, number>, c: any) => { const pkg = packages.find((p: any) => p.id === c.package_id); const name = pkg?.name || "No Package"; acc[name] = (acc[name] || 0) + 1; return acc; }, {});
+  const byArea: Record<string, number> = customers.reduce((acc: Record<string, number>, c: any) => { acc[c.area] = (acc[c.area] || 0) + 1; return acc; }, {});
+  const byPackage: Record<string, number> = customers.reduce((acc: Record<string, number>, c: any) => { const pkg = packages.find((p: any) => p.id === c.package_id); const name = pkg?.name || "No Package"; acc[name] = (acc[name] || 0) + 1; return acc; }, {});
 
   return (
     <DashboardLayout>
