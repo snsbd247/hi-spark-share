@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import apiDb from "@/lib/apiDb";
+import { apiDb } from "@/lib/apiDb";
 
 export default function BtrcReport() {
   const { data: customers = [], isLoading } = useQuery({ queryKey: ["customers-btrc"], queryFn: async () => { const { data } = await apiDb.from("customers").select("*"); return data || []; } });
