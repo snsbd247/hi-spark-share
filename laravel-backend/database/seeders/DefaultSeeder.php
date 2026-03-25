@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Account;
 use App\Models\GeneralSetting;
 use App\Models\Package;
+use App\Models\Permission;
 use App\Models\Profile;
 use App\Models\SmsSetting;
 use App\Models\UserRole;
@@ -85,9 +86,34 @@ class DefaultSeeder extends Seeder
             Account::create($acc);
         }
 
+        // ── Default Permissions ──────────────────────────
+        $modules = [
+            'customers'         => ['view', 'create', 'edit', 'delete'],
+            'billing'           => ['view', 'create', 'edit', 'delete'],
+            'payments'          => ['view', 'create', 'edit', 'delete'],
+            'merchant_payments' => ['view', 'create', 'edit', 'delete'],
+            'tickets'           => ['view', 'create', 'edit', 'delete'],
+            'sms'               => ['view', 'create', 'edit', 'delete'],
+            'accounting'        => ['view', 'create', 'edit', 'delete'],
+            'reports'           => ['view'],
+            'settings'          => ['view', 'edit'],
+            'users'             => ['view', 'create', 'edit', 'delete'],
+            'roles'             => ['view', 'create', 'edit', 'delete'],
+        ];
+
+        foreach ($modules as $module => $actions) {
+            foreach ($actions as $action) {
+                Permission::firstOrCreate(
+                    ['module' => $module, 'action' => $action],
+                    ['description' => ucfirst($action) . ' ' . str_replace('_', ' ', $module)]
+                );
+            }
+        }
+
         $this->command->info('Default data seeded!');
         $this->command->info('Admin #1 → username: admin / password: admin123');
         $this->command->info('Admin #2 → username: ismail / password: Admin@123');
         $this->command->info('13 default accounting accounts created.');
+        $this->command->info('All module permissions seeded.');
     }
 }

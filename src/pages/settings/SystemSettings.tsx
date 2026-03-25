@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, FileText, Mail, MessageSquare, Receipt } from "lucide-react";
+import { Settings, FileText, Mail, MessageSquare, Receipt, ToggleLeft } from "lucide-react";
 import GeneralSettingsTab from "@/components/settings/GeneralSettingsTab";
 import FooterSettingsTab from "@/components/settings/FooterSettingsTab";
 import InvoiceSettingsTab from "@/components/settings/InvoiceSettingsTab";
 import SmsTemplatesTab from "@/components/settings/SmsTemplatesTab";
 import EmailTemplatesTab from "@/components/settings/EmailTemplatesTab";
+import ModuleSettingsTab from "@/components/settings/ModuleSettingsTab";
 
 export default function SystemSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -23,6 +24,9 @@ export default function SystemSettings() {
           <TabsTrigger value="general" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Settings className="h-4 w-4" /> General
           </TabsTrigger>
+          <TabsTrigger value="modules" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <ToggleLeft className="h-4 w-4" /> Modules
+          </TabsTrigger>
           <TabsTrigger value="footer" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <FileText className="h-4 w-4" /> Footer
           </TabsTrigger>
@@ -38,6 +42,7 @@ export default function SystemSettings() {
         </TabsList>
 
         <TabsContent value="general"><GeneralSettingsTab /></TabsContent>
+        <TabsContent value="modules"><ModuleSettingsTab /></TabsContent>
         <TabsContent value="footer"><FooterSettingsTab /></TabsContent>
         <TabsContent value="invoice"><InvoiceSettingsTab /></TabsContent>
         <TabsContent value="sms-templates"><SmsTemplatesTab /></TabsContent>

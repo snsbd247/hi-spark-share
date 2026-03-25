@@ -42,6 +42,7 @@ const MODULE_LABELS: Record<string, string> = {
   merchant_payments: "Merchant Payments",
   tickets: "Tickets",
   sms: "SMS",
+  accounting: "Accounting & Inventory",
   settings: "Settings",
   users: "Users",
   roles: "Roles",

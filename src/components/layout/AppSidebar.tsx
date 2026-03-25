@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useModuleSettings } from "@/hooks/useModuleSettings";
 import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,
   ChevronLeft, ChevronDown, Ticket, MessageSquare, Settings, Bell, UserCircle,
@@ -143,6 +144,7 @@ export default function AppSidebar() {
   const { signOut } = useAuth();
   const location = useLocation();
   const { hasModuleAccess, isSuperAdmin } = usePermissions();
+  const { isModuleEnabled } = useModuleSettings();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -150,7 +152,13 @@ export default function AppSidebar() {
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   const filterItems = (items: NavItem[]) =>
-    items.filter((item) => !item.module || isSuperAdmin || hasModuleAccess(item.module));
+    items.filter((item) => {
+      // Check permission
+      if (item.module && !isSuperAdmin && !hasModuleAccess(item.module)) return false;
+      // Check module enabled (super admin sees all)
+      if (item.module && !isSuperAdmin && !isModuleEnabled(item.module)) return false;
+      return true;
+    });
 
   // Close mobile sidebar on route change
   useEffect(() => {
