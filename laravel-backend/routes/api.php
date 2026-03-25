@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountingController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillController;
@@ -14,8 +15,12 @@ use App\Http\Controllers\Api\MikrotikController;
 use App\Http\Controllers\Api\NagadController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PortalController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\SalesController;
 use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\StorageController;
+use App\Http\Controllers\Api\VendorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -96,6 +101,56 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     Route::post('/mikrotik/remove-profile', [MikrotikBillControlController::class, 'removeProfile']);
     Route::post('/mikrotik/bulk-sync-packages', [MikrotikBillControlController::class, 'bulkSyncPackages']);
     Route::get('/mikrotik/router-stats/{routerId}', [MikrotikBillControlController::class, 'routerStats']);
+
+    // ══════════════════════════════════════════════════════
+    // ── ACCOUNTING & INVENTORY MODULE ─────────────────────
+    // ══════════════════════════════════════════════════════
+
+    // ── Vendors (CRUD) ───────────────────────────────────
+    Route::get('/vendors', [VendorController::class, 'index']);
+    Route::get('/vendors/{id}', [VendorController::class, 'show']);
+    Route::post('/vendors', [VendorController::class, 'store']);
+    Route::put('/vendors/{id}', [VendorController::class, 'update']);
+    Route::delete('/vendors/{id}', [VendorController::class, 'destroy']);
+
+    // ── Products / Inventory (CRUD) ──────────────────────
+    Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/stock-summary', [ProductController::class, 'stockSummary']);
+    Route::get('/products/low-stock', [ProductController::class, 'lowStock']);
+    Route::get('/products/{id}', [ProductController::class, 'show']);
+    Route::post('/products', [ProductController::class, 'store']);
+    Route::put('/products/{id}', [ProductController::class, 'update']);
+    Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+    // ── Purchases ────────────────────────────────────────
+    Route::get('/purchases', [PurchaseController::class, 'index']);
+    Route::get('/purchases/vendor/{vendorId}', [PurchaseController::class, 'vendorHistory']);
+    Route::get('/purchases/{id}', [PurchaseController::class, 'show']);
+    Route::post('/purchases', [PurchaseController::class, 'store']);
+    Route::post('/purchases/{id}/pay', [PurchaseController::class, 'addPayment']);
+    Route::delete('/purchases/{id}', [PurchaseController::class, 'destroy']);
+
+    // ── Sales ────────────────────────────────────────────
+    Route::get('/sales', [SalesController::class, 'index']);
+    Route::get('/sales/profit-report', [SalesController::class, 'profitReport']);
+    Route::get('/sales/{id}', [SalesController::class, 'show']);
+    Route::post('/sales', [SalesController::class, 'store']);
+    Route::post('/sales/{id}/pay', [SalesController::class, 'addPayment']);
+    Route::post('/sales/{id}/cancel', [SalesController::class, 'cancel']);
+    Route::delete('/sales/{id}', [SalesController::class, 'destroy']);
+
+    // ── Accounting ───────────────────────────────────────
+    Route::get('/accounting/accounts', [AccountingController::class, 'accounts']);
+    Route::post('/accounting/accounts', [AccountingController::class, 'createAccount']);
+    Route::put('/accounting/accounts/{id}', [AccountingController::class, 'updateAccount']);
+    Route::delete('/accounting/accounts/{id}', [AccountingController::class, 'deleteAccount']);
+
+    Route::get('/accounting/transactions', [AccountingController::class, 'transactions']);
+    Route::post('/accounting/transactions', [AccountingController::class, 'storeTransaction']);
+
+    Route::get('/accounting/summary', [AccountingController::class, 'summary']);
+    Route::get('/accounting/balances', [AccountingController::class, 'accountBalances']);
+    Route::get('/accounting/profit-loss', [AccountingController::class, 'profitLoss']);
 
     // ── Storage ──────────────────────────────────────────
     Route::post('/storage/upload', [StorageController::class, 'upload']);

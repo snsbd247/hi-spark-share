@@ -37,6 +37,15 @@ class GenericCrudController extends Controller
         'role_permissions' => \App\Models\RolePermission::class,
         'admin_sessions' => \App\Models\AdminSession::class,
         'admin_login_logs' => \App\Models\AdminLoginLog::class,
+        // Accounting & Inventory
+        'vendors' => \App\Models\Vendor::class,
+        'products' => \App\Models\Product::class,
+        'accounts' => \App\Models\Account::class,
+        'transactions' => \App\Models\Transaction::class,
+        'purchases' => \App\Models\Purchase::class,
+        'purchase_items' => \App\Models\PurchaseItem::class,
+        'sales' => \App\Models\Sale::class,
+        'sale_items' => \App\Models\SaleItem::class,
     ];
 
     protected function getModel(string $table)
