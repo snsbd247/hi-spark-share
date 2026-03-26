@@ -62,6 +62,15 @@ import IncomeHead from "@/pages/accounting/IncomeHead";
 import ExpenseHead from "@/pages/accounting/ExpenseHead";
 import OthersHead from "@/pages/accounting/OthersHead";
 import AllTransactions from "@/pages/accounting/AllTransactions";
+import AllLedgersList from "@/pages/accounting/AllLedgersList";
+import ChequeRegister from "@/pages/accounting/ChequeRegister";
+import TrialBalance from "@/pages/accounting/TrialBalance";
+import ProfitLoss from "@/pages/accounting/ProfitLoss";
+import CashFlowStatement from "@/pages/accounting/CashFlowStatement";
+import Daybook from "@/pages/accounting/Daybook";
+import EquityChanges from "@/pages/accounting/EquityChanges";
+import ReceivablePayable from "@/pages/accounting/ReceivablePayable";
+import SalesPurchaseReport from "@/pages/reporting/SalesPurchaseReport";
 import DesignationList from "@/pages/hr/DesignationList";
 import EmployeeList from "@/pages/hr/EmployeeList";
 import DailyAttendance from "@/pages/hr/DailyAttendance";
@@ -147,6 +156,14 @@ function App() {
                 <Route path="/accounting/expense-head" element={<PermissionGuard module="accounting"><ExpenseHead /></PermissionGuard>} />
                 <Route path="/accounting/others-head" element={<PermissionGuard module="accounting"><OthersHead /></PermissionGuard>} />
                 <Route path="/accounting/transactions" element={<PermissionGuard module="accounting"><AllTransactions /></PermissionGuard>} />
+                <Route path="/accounting/all-ledgers" element={<PermissionGuard module="accounting"><AllLedgersList /></PermissionGuard>} />
+                <Route path="/accounting/cheque-register" element={<PermissionGuard module="accounting"><ChequeRegister /></PermissionGuard>} />
+                <Route path="/accounting/trial-balance" element={<PermissionGuard module="accounting"><TrialBalance /></PermissionGuard>} />
+                <Route path="/accounting/profit-loss" element={<PermissionGuard module="accounting"><ProfitLoss /></PermissionGuard>} />
+                <Route path="/accounting/cash-flow" element={<PermissionGuard module="accounting"><CashFlowStatement /></PermissionGuard>} />
+                <Route path="/accounting/equity-changes" element={<PermissionGuard module="accounting"><EquityChanges /></PermissionGuard>} />
+                <Route path="/accounting/daybook" element={<PermissionGuard module="accounting"><Daybook /></PermissionGuard>} />
+                <Route path="/accounting/receivable-payable" element={<PermissionGuard module="accounting"><ReceivablePayable /></PermissionGuard>} />
                 <Route path="/accounting/products" element={<PermissionGuard module="accounting"><AccProducts /></PermissionGuard>} />
                 <Route path="/accounting/sales" element={<PermissionGuard module="accounting"><AccSales /></PermissionGuard>} />
                 <Route path="/accounting/expenses" element={<PermissionGuard module="accounting"><AccExpenses /></PermissionGuard>} />
@@ -163,6 +180,7 @@ function App() {
                 <Route path="/reporting/financial" element={<PermissionGuard module="reports"><FinancialStatement /></PermissionGuard>} />
                 <Route path="/reporting/btrc" element={<PermissionGuard module="reports"><BtrcReport /></PermissionGuard>} />
                 <Route path="/reporting/traffic" element={<PermissionGuard module="reports"><TrafficMonitor /></PermissionGuard>} />
+                <Route path="/reporting/sales-purchase" element={<PermissionGuard module="reports"><SalesPurchaseReport /></PermissionGuard>} />
 
                 {/* Settings Routes */}
                 <Route path="/settings/general" element={<PermissionGuard module="settings"><GeneralSettings /></PermissionGuard>} />

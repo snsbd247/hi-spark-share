@@ -50,12 +50,20 @@ const hrNav: NavItem[] = [
 
 const accountsNav: NavItem[] = [
   { to: "/accounting/chart-of-accounts", icon: FileText, label: "Chart of Accounts", module: "accounting" },
+  { to: "/accounting/all-ledgers", icon: Users, label: "All Ledgers", module: "accounting" },
+  { to: "/accounting/cheque-register", icon: CreditCard, label: "Cheque Register", module: "accounting" },
+  { to: "/accounting/transactions", icon: Receipt, label: "All Transactions", module: "accounting" },
   { to: "/accounting/journal-entries", icon: BookOpen, label: "Journal Entries", module: "accounting" },
-  { to: "/accounting/balance-sheet", icon: Scale, label: "Balance Sheet", module: "accounting" },
+  { to: "/accounting/daybook", icon: FileText, label: "Daybook", module: "accounting" },
   { to: "/accounting/income-head", icon: TrendingUp, label: "Income Head", module: "accounting" },
   { to: "/accounting/expense-head", icon: DollarSign, label: "Expense Head", module: "accounting" },
   { to: "/accounting/others-head", icon: BoxIcon, label: "Others Head", module: "accounting" },
-  { to: "/accounting/transactions", icon: Receipt, label: "All Transactions", module: "accounting" },
+  { to: "/accounting/trial-balance", icon: Scale, label: "Trial Balance", module: "accounting" },
+  { to: "/accounting/profit-loss", icon: TrendingUp, label: "Profit & Loss", module: "accounting" },
+  { to: "/accounting/balance-sheet", icon: Scale, label: "Balance Sheet", module: "accounting" },
+  { to: "/accounting/cash-flow", icon: Wallet, label: "Cash Flow", module: "accounting" },
+  { to: "/accounting/equity-changes", icon: BarChart3, label: "Changes in Equity", module: "accounting" },
+  { to: "/accounting/receivable-payable", icon: Receipt, label: "Receivable & Payable", module: "accounting" },
 ];
 
 const supplierNav: NavItem[] = [
@@ -87,6 +95,7 @@ const inventoryNav: NavItem[] = [
 const reportingNav: NavItem[] = [
   { to: "/reporting/daily", icon: FileText, label: "Daily Report", module: "reports" },
   { to: "/reporting/financial", icon: BarChart3, label: "Financial Statement", module: "reports" },
+  { to: "/reporting/sales-purchase", icon: ShoppingCart, label: "Sales & Purchase", module: "reports" },
   { to: "/reporting/btrc", icon: ClipboardList, label: "BTRC Report", module: "reports" },
   { to: "/reporting/traffic", icon: Activity, label: "Traffic Monitor", module: "reports" },
 ];
