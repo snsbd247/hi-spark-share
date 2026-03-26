@@ -141,7 +141,7 @@ export default function Purchases() {
 
   const filtered = purchases.filter((p: any) =>
     p.purchase_no?.toLowerCase().includes(search.toLowerCase()) ||
-    getSupplierName(p.supplier_id).toLowerCase().includes(search.toLowerCase())
+    (getSupplierName(p.supplier_id) || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
