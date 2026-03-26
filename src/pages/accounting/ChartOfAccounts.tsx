@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import api from "@/lib/api";
+import { apiDb } from "@/lib/apiDb";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +23,24 @@ interface Account {
   level: number;
   balance: number;
   description: string | null;
-  is_system: boolean;
-  is_active: boolean;
+  is_system: boolean | null;
+  is_active: boolean | null;
+  status: string;
   all_children?: Account[];
+}
+
+function buildTree(flat: Account[]): Account[] {
+  const map = new Map<string, Account>();
+  flat.forEach(a => map.set(a.id, { ...a, all_children: [] }));
+  const roots: Account[] = [];
+  map.forEach(a => {
+    if (a.parent_id && map.has(a.parent_id)) {
+      map.get(a.parent_id)!.all_children!.push(a);
+    } else {
+      roots.push(a);
+    }
+  });
+  return roots;
 }
 
 const TYPE_COLORS: Record<string, string> = {
