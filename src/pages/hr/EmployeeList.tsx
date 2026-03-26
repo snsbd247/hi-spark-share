@@ -15,6 +15,7 @@ import { apiDb } from "@/lib/apiDb";
 
 export default function EmployeeList() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const emptyForm = { employee_id: "", name: "", phone: "", email: "", designation_id: "", joining_date: "", salary: "", address: "" };
