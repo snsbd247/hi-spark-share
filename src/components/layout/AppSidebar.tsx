@@ -95,6 +95,7 @@ const inventoryNav: NavItem[] = [
 const reportingNav: NavItem[] = [
   { to: "/reporting/daily", icon: FileText, label: "Daily Report", module: "reports" },
   { to: "/reporting/financial", icon: BarChart3, label: "Financial Statement", module: "reports" },
+  { to: "/reporting/sales-purchase", icon: ShoppingCart, label: "Sales & Purchase", module: "reports" },
   { to: "/reporting/btrc", icon: ClipboardList, label: "BTRC Report", module: "reports" },
   { to: "/reporting/traffic", icon: Activity, label: "Traffic Monitor", module: "reports" },
 ];
