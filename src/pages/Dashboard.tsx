@@ -323,7 +323,7 @@ export default function Dashboard() {
       }
     });
     return Object.entries(months).map(([month, vals]) => ({
-      month: format(new Date(month + "-01"), "MMM yy"),
+      month: safeFormat(month + "-01", "MMM yy", month),
       paid: vals.paid,
       due: vals.due,
     }));
