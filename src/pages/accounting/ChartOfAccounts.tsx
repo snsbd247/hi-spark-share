@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { apiDb } from "@/lib/apiDb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText } from "lucide-react";
+import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, BookOpen } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 
 interface Account {
@@ -27,6 +28,9 @@ interface Account {
   is_active: boolean | null;
   status: string;
   all_children?: Account[];
+  total_debit?: number;
+  total_credit?: number;
+  closing_balance?: number;
 }
 
 function buildTree(flat: Account[]): Account[] {
@@ -51,18 +55,20 @@ const TYPE_COLORS: Record<string, string> = {
   equity: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
 };
 
-function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild, canEdit, canDelete }: {
+function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild, onViewStatement, canEdit, canDelete }: {
   account: Account;
   expanded: Set<string>;
   onToggle: (id: string) => void;
   onEdit: (a: Account) => void;
   onDelete: (id: string) => void;
   onAddChild: (parentId: string, parentType: string) => void;
+  onViewStatement: (a: Account) => void;
   canEdit: boolean;
   canDelete: boolean;
 }) {
   const hasChildren = account.all_children && account.all_children.length > 0;
   const isOpen = expanded.has(account.id);
+  const fmt = (v: number) => `৳${Math.abs(v).toLocaleString("en-BD", { minimumFractionDigits: 2 })}`;
 
   return (
     <>
@@ -81,12 +87,16 @@ function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild,
         </TableCell>
         <TableCell><code className="text-xs bg-muted px-1.5 py-0.5 rounded">{account.code || "—"}</code></TableCell>
         <TableCell><Badge variant="outline" className={TYPE_COLORS[account.type] || ""}>{account.type}</Badge></TableCell>
-        <TableCell className="text-right font-mono">৳{Number(account.balance).toLocaleString("en-BD", { minimumFractionDigits: 2 })}</TableCell>
-        <TableCell>
-          <Badge variant={account.is_active ? "default" : "secondary"}>{account.is_active ? "Active" : "Inactive"}</Badge>
+        <TableCell className="text-right font-mono text-sm">{fmt(account.total_debit || 0)}</TableCell>
+        <TableCell className="text-right font-mono text-sm">{fmt(account.total_credit || 0)}</TableCell>
+        <TableCell className={`text-right font-mono font-semibold ${(account.closing_balance || 0) < 0 ? "text-destructive" : ""}`}>
+          {fmt(account.closing_balance || 0)}
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex items-center gap-1 justify-end">
+          <div className="flex items-center gap-0.5 justify-end">
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => onViewStatement(account)} title="View Ledger Statement">
+              <BookOpen className="h-3.5 w-3.5" />
+            </Button>
             <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => onAddChild(account.id, account.type)} title="Add Sub-Account">
               <Plus className="h-3.5 w-3.5" />
             </Button>
@@ -112,6 +122,7 @@ function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild,
           onEdit={onEdit}
           onDelete={onDelete}
           onAddChild={onAddChild}
+          onViewStatement={onViewStatement}
           canEdit={canEdit}
           canDelete={canDelete}
         />
@@ -122,6 +133,7 @@ function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild,
 
 export default function ChartOfAccounts() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission("accounting", "create");
   const canEdit = hasPermission("accounting", "edit");
@@ -132,6 +144,7 @@ export default function ChartOfAccounts() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ name: "", type: "asset", code: "", parent_id: "", description: "" });
 
+  // Fetch accounts
   const { data: flatAccounts = [], isLoading } = useQuery({
     queryKey: ["accounts-flat"],
     queryFn: async () => {
@@ -140,7 +153,52 @@ export default function ChartOfAccounts() {
     },
   });
 
-  const accounts = useMemo(() => buildTree(flatAccounts), [flatAccounts]);
+  // Fetch all transactions to compute debit/credit per account
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["all-transactions-summary"],
+    queryFn: async () => {
+      const { data } = await apiDb.from("transactions").select("account_id, debit, credit");
+      return data || [];
+    },
+  });
+
+  // Compute debit/credit totals per account
+  const accountTotals = useMemo(() => {
+    const map = new Map<string, { debit: number; credit: number }>();
+    transactions.forEach((t: any) => {
+      if (!t.account_id) return;
+      const existing = map.get(t.account_id) || { debit: 0, credit: 0 };
+      existing.debit += Number(t.debit || 0);
+      existing.credit += Number(t.credit || 0);
+      map.set(t.account_id, existing);
+    });
+    return map;
+  }, [transactions]);
+
+  // Enrich accounts with debit/credit/closing balance
+  const enrichedAccounts = useMemo(() => {
+    return flatAccounts.map((a: any) => {
+      const totals = accountTotals.get(a.id) || { debit: 0, credit: 0 };
+      const isDebitNormal = ["asset", "expense"].includes(a.type);
+      const closingBalance = isDebitNormal
+        ? totals.debit - totals.credit
+        : totals.credit - totals.debit;
+      return {
+        ...a,
+        total_debit: totals.debit,
+        total_credit: totals.credit,
+        closing_balance: closingBalance,
+      };
+    });
+  }, [flatAccounts, accountTotals]);
+
+  const accounts = useMemo(() => buildTree(enrichedAccounts), [enrichedAccounts]);
+
+  // Summary totals by type
+  const totalsByType = enrichedAccounts.reduce((acc: Record<string, number>, a: any) => {
+    acc[a.type] = (acc[a.type] || 0) + (a.closing_balance || 0);
+    return acc;
+  }, {});
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -160,9 +218,7 @@ export default function ChartOfAccounts() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiDb.from("accounts").delete().eq("id", id);
-    },
+    mutationFn: async (id: string) => apiDb.from("accounts").delete().eq("id", id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
       toast.success("Account deleted");
@@ -188,6 +244,10 @@ export default function ChartOfAccounts() {
     setDialogOpen(true);
   };
 
+  const handleViewStatement = (acc: Account) => {
+    navigate(`/accounting/ledger-statement?account_id=${acc.id}&name=${encodeURIComponent(acc.name)}&code=${encodeURIComponent(acc.code || "")}`);
+  };
+
   const toggleExpand = (id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -204,12 +264,6 @@ export default function ChartOfAccounts() {
     collect(accounts);
     setExpanded(allIds);
   };
-
-  // Summary
-  const totalsByType = flatAccounts.reduce((acc: Record<string, number>, a: any) => {
-    acc[a.type] = (acc[a.type] || 0) + Number(a.balance);
-    return acc;
-  }, {});
 
   return (
     <DashboardLayout>
@@ -263,7 +317,7 @@ export default function ChartOfAccounts() {
                           <SelectContent>
                             <SelectItem value="none">None (Root Level)</SelectItem>
                             {flatAccounts.map((a: any) => (
-                              <SelectItem key={a.id} value={a.id}>{"─".repeat(a.level)} {a.name} ({a.code})</SelectItem>
+                              <SelectItem key={a.id} value={a.id}>{"─".repeat(a.level || 0)} {a.name} ({a.code})</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -305,16 +359,17 @@ export default function ChartOfAccounts() {
                   <TableHead>Account Name</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Total Debit</TableHead>
+                  <TableHead className="text-right">Total Credit</TableHead>
+                  <TableHead className="text-right">Closing Balance</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
                 ) : accounts.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No accounts found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No accounts found</TableCell></TableRow>
                 ) : (
                   accounts.map((acc: Account) => (
                     <AccountRow
@@ -325,6 +380,7 @@ export default function ChartOfAccounts() {
                       onEdit={handleEdit}
                       onDelete={(id) => { if (confirm("Delete this account?")) deleteMutation.mutate(id); }}
                       onAddChild={handleAddChild}
+                      onViewStatement={handleViewStatement}
                       canEdit={canEdit}
                       canDelete={canDelete}
                     />

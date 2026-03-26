@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import api from "@/lib/api";
+import { apiDb } from "@/lib/apiDb";
+import { postToLedger } from "@/lib/ledger";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,20 +30,44 @@ export default function JournalEntries() {
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["accounts-flat"],
-    queryFn: () => api.get("/accounting/accounts?flat=true").then(r => r.data),
+    queryFn: async () => {
+      const { data } = await apiDb.from("accounts").select("*").order("code", { ascending: true });
+      return data || [];
+    },
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => api.post("/accounting/journal-entries", data),
-    onSuccess: (r) => {
-      queryClient.invalidateQueries({ queryKey: ["chart-of-accounts"] });
+    mutationFn: async (data: { description: string; entries: JournalLine[]; date: string }) => {
+      const totalDebit = data.entries.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+      const totalCredit = data.entries.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+
+      if (Math.abs(totalDebit - totalCredit) > 0.01) {
+        throw new Error("Debit and Credit must be equal");
+      }
+
+      // Post each line to ledger
+      for (const entry of data.entries) {
+        if (!entry.account_id) continue;
+        await postToLedger({
+          description: data.description || "Journal Entry",
+          account_id: entry.account_id,
+          debit: Number(entry.debit) || 0,
+          credit: Number(entry.credit) || 0,
+          type: "journal",
+          reference: `JE-${Date.now()}`,
+          date: data.date,
+        });
+      }
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(`Journal entry created: ${r.data.journal_ref}`);
+      queryClient.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+      toast.success("Journal entry posted successfully");
       setLines([{ account_id: "", debit: 0, credit: 0 }, { account_id: "", debit: 0, credit: 0 }]);
       setDescription("");
     },
-    onError: (e: any) => toast.error(e.response?.data?.error || "Failed to create journal entry"),
+    onError: (e: any) => toast.error(e.message || "Failed to create journal entry"),
   });
 
   const totalDebit = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
@@ -61,10 +86,7 @@ export default function JournalEntries() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isBalanced) { toast.error("Debit and Credit must be equal"); return; }
-    mutation.mutate({
-      description,
-      entries: lines.map(l => ({ ...l, date })),
-    });
+    mutation.mutate({ description, entries: lines, date });
   };
 
   return (
@@ -142,7 +164,7 @@ export default function JournalEntries() {
                     <span className="text-sm text-destructive">Difference: ৳{Math.abs(totalDebit - totalCredit).toFixed(2)}</span>
                   )}
                   <Button type="submit" disabled={!isBalanced || mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : "Post Journal Entry"}
+                    {mutation.isPending ? "Posting..." : "Post Journal Entry"}
                   </Button>
                 </div>
               </div>
