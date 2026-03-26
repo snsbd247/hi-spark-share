@@ -88,11 +88,15 @@ export default function Sales() {
           await apiDb.from("products").update({ stock: Math.max(0, Number(prod.stock) - item.quantity) }).eq("id", item.product_id);
         }
       }
+
+      // Post to accounting ledger
+      await postSaleToLedger(saleNo, total, formData.paid_amount, formData.payment_method, formData.sale_date);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Sale created");
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Sale created & posted to ledger");
       closeDialog();
     },
     onError: () => toast.error("Failed to create sale"),

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import api from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiDb } from "@/lib/apiDb";
+import { postPurchaseToLedger } from "@/lib/ledger";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, ShoppingCart, Search } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
 
 interface PurchaseItem { product_id: string; quantity: number; unit_price: number; }
 
@@ -22,32 +23,85 @@ export default function Purchases() {
   const [search, setSearch] = useState("");
 
   const [form, setForm] = useState({
-    vendor_id: "", purchase_date: new Date().toISOString().split("T")[0],
-    payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "",
+    supplier_id: "", purchase_date: new Date().toISOString().split("T")[0],
+    paid_amount: 0, notes: "",
   });
   const [items, setItems] = useState<PurchaseItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
 
   const { data: purchases = [], isLoading } = useQuery({
     queryKey: ["purchases"],
-    queryFn: () => api.get("/purchases").then(r => r.data?.data || r.data || []),
+    queryFn: async () => {
+      const { data } = await apiDb.from("purchases").select("*").order("date", { ascending: false });
+      return data || [];
+    },
   });
 
-  const { data: vendors = [] } = useQuery({
-    queryKey: ["vendors"],
-    queryFn: () => api.get("/vendors").then(r => r.data?.data || r.data || []),
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => { const { data } = await apiDb.from("suppliers").select("*"); return data || []; },
   });
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => api.get("/products").then(r => r.data?.data || r.data || []),
+    queryFn: async () => { const { data } = await apiDb.from("products").select("*"); return data || []; },
   });
 
   const create = useMutation({
-    mutationFn: (data: any) => api.post("/purchases", data),
+    mutationFn: async (formData: any) => {
+      const purchaseItems: PurchaseItem[] = formData.items;
+      const totalAmount = purchaseItems.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+
+      // Generate purchase number
+      const { data: last } = await apiDb.from("purchases").select("purchase_no").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const lastNum = last?.purchase_no ? parseInt(last.purchase_no.replace("PUR-", "")) : 0;
+      const purchaseNo = `PUR-${String(lastNum + 1).padStart(5, "0")}`;
+
+      const { data: purchase, error } = await apiDb.from("purchases").insert({
+        purchase_no: purchaseNo,
+        supplier_id: formData.supplier_id,
+        date: formData.purchase_date,
+        total_amount: totalAmount,
+        paid_amount: formData.paid_amount,
+        notes: formData.notes,
+        status: formData.paid_amount >= totalAmount ? "paid" : "unpaid",
+      }).select().single();
+      if (error) throw error;
+
+      // Insert purchase items
+      const itemsToInsert = purchaseItems.map((item) => ({
+        purchase_id: purchase.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      }));
+      await apiDb.from("purchase_items").insert(itemsToInsert);
+
+      // Increase product stock
+      for (const item of purchaseItems) {
+        const prod = products.find((p: any) => p.id === item.product_id);
+        if (prod) {
+          await apiDb.from("products").update({ stock: Number(prod.stock) + item.quantity }).eq("id", item.product_id);
+        }
+      }
+
+      // Post to accounting ledger
+      await postPurchaseToLedger(purchaseNo, totalAmount, formData.paid_amount, formData.purchase_date);
+
+      // Update supplier total_due
+      const due = totalAmount - formData.paid_amount;
+      if (due > 0) {
+        const { data: sup } = await apiDb.from("suppliers").select("total_due").eq("id", formData.supplier_id).maybeSingle();
+        if (sup) {
+          await apiDb.from("suppliers").update({ total_due: Number(sup.total_due) + due }).eq("id", formData.supplier_id);
+        }
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchases"] });
       qc.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Purchase created");
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      toast.success("Purchase created & posted to ledger");
       closeDialog();
     },
     onError: () => toast.error("Failed to create purchase"),
@@ -55,7 +109,7 @@ export default function Purchases() {
 
   const closeDialog = () => {
     setOpen(false);
-    setForm({ vendor_id: "", purchase_date: new Date().toISOString().split("T")[0], payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "" });
+    setForm({ supplier_id: "", purchase_date: new Date().toISOString().split("T")[0], paid_amount: 0, notes: "" });
     setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
   };
 
@@ -66,26 +120,27 @@ export default function Purchases() {
     (newItems[i] as any)[field] = value;
     if (field === "product_id") {
       const prod = products.find((p: any) => p.id === value);
-      if (prod) newItems[i].unit_price = prod.cost_price;
+      if (prod) newItems[i].unit_price = Number(prod.buy_price);
     }
     setItems(newItems);
   };
 
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-  const total = subtotal - form.discount + form.tax;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.vendor_id || items.some(i => !i.product_id)) {
+    if (!form.supplier_id || items.some(i => !i.product_id)) {
       toast.error("Please fill in all required fields");
       return;
     }
     create.mutate({ ...form, items });
   };
 
+  const getSupplierName = (id: string) => suppliers.find((s: any) => s.id === id)?.name || "—";
+
   const filtered = purchases.filter((p: any) =>
-    p.purchase_number?.toLowerCase().includes(search.toLowerCase()) ||
-    p.vendor?.name?.toLowerCase().includes(search.toLowerCase())
+    p.purchase_no?.toLowerCase().includes(search.toLowerCase()) ||
+    getSupplierName(p.supplier_id).toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -94,7 +149,7 @@ export default function Purchases() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Purchases</h1>
-            <p className="text-muted-foreground text-sm">Purchase products from vendors and track inventory</p>
+            <p className="text-muted-foreground text-sm">Purchase products from suppliers and track inventory</p>
           </div>
           <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Purchase</Button></DialogTrigger>
@@ -102,10 +157,10 @@ export default function Purchases() {
               <DialogHeader><DialogTitle>Create Purchase</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Vendor *</Label>
-                    <Select value={form.vendor_id} onValueChange={v => setForm({...form, vendor_id: v})}>
-                      <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
-                      <SelectContent>{vendors.map((v: any) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                  <div><Label>Supplier *</Label>
+                    <Select value={form.supplier_id} onValueChange={v => setForm({...form, supplier_id: v})}>
+                      <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                      <SelectContent>{suppliers.map((v: any) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div><Label>Date</Label><Input type="date" value={form.purchase_date} onChange={e => setForm({...form, purchase_date: e.target.value})} /></div>
@@ -122,7 +177,7 @@ export default function Purchases() {
                         <div className="col-span-5">
                           <Select value={item.product_id} onValueChange={v => updateItem(i, "product_id", v)}>
                             <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
-                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>)}</SelectContent>
+                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku || "N/A"})</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div className="col-span-2"><Input type="number" min={1} value={item.quantity} onChange={e => updateItem(i, "quantity", +e.target.value)} placeholder="Qty" /></div>
@@ -134,25 +189,9 @@ export default function Purchases() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label>Discount</Label><Input type="number" step="0.01" value={form.discount} onChange={e => setForm({...form, discount: +e.target.value})} /></div>
-                  <div><Label>Tax</Label><Input type="number" step="0.01" value={form.tax} onChange={e => setForm({...form, tax: +e.target.value})} /></div>
-                  <div><Label>Paid Amount</Label><Input type="number" step="0.01" value={form.paid_amount} onChange={e => setForm({...form, paid_amount: +e.target.value})} /></div>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Payment Method</Label>
-                    <Select value={form.payment_method} onValueChange={v => setForm({...form, payment_method: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank</SelectItem>
-                        <SelectItem value="bkash">bKash</SelectItem>
-                        <SelectItem value="credit">Credit</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end"><div className="text-right w-full"><p className="text-sm text-muted-foreground">Total</p><p className="text-2xl font-bold text-foreground">৳{total.toLocaleString()}</p></div></div>
+                  <div><Label>Paid Amount</Label><Input type="number" step="0.01" value={form.paid_amount} onChange={e => setForm({...form, paid_amount: +e.target.value})} /></div>
+                  <div className="flex items-end"><div className="text-right w-full"><p className="text-sm text-muted-foreground">Total</p><p className="text-2xl font-bold text-foreground">৳{subtotal.toLocaleString()}</p></div></div>
                 </div>
 
                 <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
@@ -178,7 +217,7 @@ export default function Purchases() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Purchase #</TableHead>
-                  <TableHead>Vendor</TableHead>
+                  <TableHead>Supplier</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
@@ -193,13 +232,13 @@ export default function Purchases() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No purchases found</TableCell></TableRow>
                 ) : filtered.map((p: any) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.purchase_number}</TableCell>
-                    <TableCell>{p.vendor?.name || "—"}</TableCell>
-                    <TableCell>{p.purchase_date}</TableCell>
-                    <TableCell className="text-right">৳{Number(p.total).toLocaleString()}</TableCell>
+                    <TableCell className="font-medium">{p.purchase_no}</TableCell>
+                    <TableCell>{getSupplierName(p.supplier_id)}</TableCell>
+                    <TableCell>{new Date(p.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">৳{Number(p.total_amount).toLocaleString()}</TableCell>
                     <TableCell className="text-right">৳{Number(p.paid_amount).toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-destructive">৳{Number(p.due_amount).toLocaleString()}</TableCell>
-                    <TableCell><Badge variant={p.status === "received" ? "default" : "secondary"}>{p.status}</Badge></TableCell>
+                    <TableCell className="text-right text-destructive">৳{(Number(p.total_amount) - Number(p.paid_amount)).toLocaleString()}</TableCell>
+                    <TableCell><Badge variant={p.status === "paid" ? "default" : "secondary"}>{p.status}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
