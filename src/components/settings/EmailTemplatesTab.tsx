@@ -126,10 +126,22 @@ export default function EmailTemplatesTab() {
             ))}
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Save All
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setForm((prev) => ({ ...prev, ...DEMO_TEMPLATES }));
+              toast.success("ডেমো টেমপ্লেট লোড করা হয়েছে। Save All চাপুন।");
+            }}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Load Demo
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save All
+          </Button>
+        </div>
       </div>
 
       {EMAIL_TEMPLATES.map((tpl) => (
