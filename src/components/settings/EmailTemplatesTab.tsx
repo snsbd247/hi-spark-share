@@ -17,7 +17,7 @@ const EMAIL_TEMPLATES = [
   { key: "email_tpl_account_activation", label: "Account Activation Email", desc: "Sent when account is activated" },
 ];
 
-const VARIABLE_HINTS = ["{CustomerName}", "{Amount}", "{Month}", "{PaymentDate}", "{TicketID}", "{CompanyName}"];
+const VARIABLE_HINTS = ["{CustomerName}", "{Amount}", "{Month}", "{PaymentDate}", "{TicketID}", "{CompanyName}", "{ResetLink}", "{ActivationLink}", "{PortalLink}"];
 
 const DEMO_TEMPLATES: Record<string, string> = {
   email_tpl_welcome: `প্রিয় {CustomerName},
@@ -31,9 +31,11 @@ const DEMO_TEMPLATES: Record<string, string> = {
 
   email_tpl_password_reset: `প্রিয় {CustomerName},
 
-আপনার পাসওয়ার্ড রিসেট করার অনুরোধ পাওয়া গেছে। নিচের লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন।
+আপনার পাসওয়ার্ড রিসেট করার অনুরোধ পাওয়া গেছে। নিচের লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন:
 
-আপনি যদি এই অনুরোধ না করে থাকেন, তাহলে এই ইমেইলটি উপেক্ষা করুন।
+🔗 {ResetLink}
+
+এই লিংকটি ৩০ মিনিট পর্যন্ত কার্যকর থাকবে। আপনি যদি এই অনুরোধ না করে থাকেন, তাহলে এই ইমেইলটি উপেক্ষা করুন।
 
 ধন্যবাদ,
 {CompanyName} টিম`,
