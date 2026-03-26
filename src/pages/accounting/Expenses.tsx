@@ -46,11 +46,15 @@ export default function Expenses() {
       } else {
         const { error } = await apiDb.from("expenses").insert(formData);
         if (error) throw error;
+        // Post to accounting ledger
+        await postExpenseToLedger(formData.category, formData.amount, formData.description, formData.payment_method, formData.date);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
-      toast.success(editing ? "Expense updated" : "Expense recorded");
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+      toast.success(editing ? "Expense updated" : "Expense recorded & posted to ledger");
       closeDialog();
     },
     onError: () => toast.error("Failed to save"),
