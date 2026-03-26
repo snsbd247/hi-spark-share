@@ -163,6 +163,7 @@ export default function AdminUsers() {
     try {
       const { data, error } = await supabase.functions.invoke("admin-users/delete", {
         body: { user_id: deleteUser.id },
+        headers: getAuthHeaders(),
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
