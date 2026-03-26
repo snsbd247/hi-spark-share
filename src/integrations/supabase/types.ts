@@ -749,6 +749,50 @@ export type Database = {
           },
         ]
       }
+      employee_provident_fund: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string | null
+          employee_id: string
+          employee_share: number
+          employer_share: number
+          id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id: string
+          employee_share?: number
+          employer_share?: number
+          id?: string
+          type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id?: string
+          employee_share?: number
+          employer_share?: number
+          id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_provident_fund_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_salary_structure: {
         Row: {
           basic_salary: number
@@ -789,6 +833,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "employee_salary_structure_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_savings_fund: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string | null
+          employee_id: string
+          id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id: string
+          id?: string
+          type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id?: string
+          id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_savings_fund_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
@@ -1738,6 +1820,8 @@ export type Database = {
           other_allowance: number
           paid_date: string | null
           payment_method: string
+          pf_deduction: number
+          savings_deduction: number
           status: string
         }
         Insert: {
@@ -1756,6 +1840,8 @@ export type Database = {
           other_allowance?: number
           paid_date?: string | null
           payment_method?: string
+          pf_deduction?: number
+          savings_deduction?: number
           status?: string
         }
         Update: {
@@ -1774,6 +1860,8 @@ export type Database = {
           other_allowance?: number
           paid_date?: string | null
           payment_method?: string
+          pf_deduction?: number
+          savings_deduction?: number
           status?: string
         }
         Relationships: [

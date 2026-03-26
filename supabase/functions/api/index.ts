@@ -42,6 +42,7 @@ const ALLOWED_TABLES = new Set([
   // HR
   "designations", "employees", "attendance", "loans", "salary_sheets",
   "employee_education", "employee_experience", "employee_emergency_contacts", "employee_salary_structure",
+  "employee_provident_fund", "employee_savings_fund",
   // Accounting
   "accounts", "income_heads", "expense_heads", "other_heads", "transactions",
   // Inventory / Purchases

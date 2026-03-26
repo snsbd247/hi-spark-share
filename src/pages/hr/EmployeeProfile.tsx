@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Pencil, Trash2, User, GraduationCap, Briefcase, DollarSign, Phone } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, User, GraduationCap, Briefcase, DollarSign, Phone, Shield, PiggyBank } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { apiDb } from "@/lib/apiDb";
 
@@ -58,16 +59,20 @@ export default function EmployeeProfile() {
       </div>
 
       <Tabs defaultValue="education">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="education"><GraduationCap className="h-4 w-4 mr-1" />Education</TabsTrigger>
           <TabsTrigger value="experience"><Briefcase className="h-4 w-4 mr-1" />Experience</TabsTrigger>
           <TabsTrigger value="salary"><DollarSign className="h-4 w-4 mr-1" />Salary Structure</TabsTrigger>
+          <TabsTrigger value="pf"><Shield className="h-4 w-4 mr-1" />Provident Fund</TabsTrigger>
+          <TabsTrigger value="savings"><PiggyBank className="h-4 w-4 mr-1" />Savings Fund</TabsTrigger>
           <TabsTrigger value="emergency"><Phone className="h-4 w-4 mr-1" />Emergency Contact</TabsTrigger>
         </TabsList>
 
         <TabsContent value="education"><EducationTab employeeId={id!} /></TabsContent>
         <TabsContent value="experience"><ExperienceTab employeeId={id!} /></TabsContent>
         <TabsContent value="salary"><SalaryStructureTab employeeId={id!} currentSalary={Number(employee.salary)} /></TabsContent>
+        <TabsContent value="pf"><ProvidentFundTab employeeId={id!} employeeName={employee.name} /></TabsContent>
+        <TabsContent value="savings"><SavingsFundTab employeeId={id!} employeeName={employee.name} /></TabsContent>
         <TabsContent value="emergency"><EmergencyContactTab employeeId={id!} /></TabsContent>
       </Tabs>
     </DashboardLayout>
@@ -383,6 +388,211 @@ function EmergencyContactTab({ employeeId }: { employeeId: string }) {
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No emergency contacts</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Provident Fund Tab ── */
+function ProvidentFundTab({ employeeId, employeeName }: { employeeId: string; employeeName: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const empty = { type: "contribution", amount: "", employee_share: "", employer_share: "", date: new Date().toISOString().split("T")[0], description: "" };
+  const [form, setForm] = useState(empty);
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ["employee-pf", employeeId],
+    queryFn: async () => { const { data } = await apiDb.from("employee_provident_fund").select("*").eq("employee_id", employeeId).order("date", { ascending: false }); return data || []; },
+  });
+
+  const totalBalance = rows.reduce((s: number, r: any) => {
+    if (r.type === "withdrawal") return s - Number(r.amount);
+    return s + Number(r.amount);
+  }, 0);
+  const totalEmployeeShare = rows.filter((r: any) => r.type !== "withdrawal").reduce((s: number, r: any) => s + Number(r.employee_share), 0);
+  const totalEmployerShare = rows.filter((r: any) => r.type !== "withdrawal").reduce((s: number, r: any) => s + Number(r.employer_share), 0);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload: any = {
+        type: form.type,
+        amount: Number(form.amount) || 0,
+        employee_share: Number(form.employee_share) || 0,
+        employer_share: Number(form.employer_share) || 0,
+        date: form.date,
+        description: form.description || null,
+      };
+      if (editId) await apiDb.from("employee_provident_fund").update(payload).eq("id", editId);
+      else await apiDb.from("employee_provident_fund").insert({ ...payload, employee_id: employeeId });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employee-pf"] }); toast.success("Saved"); setOpen(false); setEditId(null); setForm(empty); },
+    onError: () => toast.error("Failed"),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => { await apiDb.from("employee_provident_fund").delete().eq("id", id); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employee-pf"] }); toast.success("Deleted"); },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg">Provident Fund</CardTitle>
+          <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
+            <span>Balance: <strong className="text-foreground">৳{totalBalance.toLocaleString()}</strong></span>
+            <span>Employee: ৳{totalEmployeeShare.toLocaleString()}</span>
+            <span>Employer: ৳{totalEmployerShare.toLocaleString()}</span>
+          </div>
+        </div>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(empty); } }}>
+          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" />Add Entry</Button></DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editId ? "Edit" : "Add"} PF Entry</DialogTitle></DialogHeader>
+            <div className="grid gap-3">
+              <div><Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="contribution">Contribution</SelectItem>
+                    <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                    <SelectItem value="interest">Interest</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.type === "contribution" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label>Employee Share</Label><Input type="number" value={form.employee_share} onChange={(e) => { const v = e.target.value; setForm({ ...form, employee_share: v, amount: String(Number(v) + Number(form.employer_share)) }); }} /></div>
+                  <div><Label>Employer Share</Label><Input type="number" value={form.employer_share} onChange={(e) => { const v = e.target.value; setForm({ ...form, employer_share: v, amount: String(Number(form.employee_share) + Number(v)) }); }} /></div>
+                </div>
+              ) : (
+                <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Date</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                <div><Label>Total Amount</Label><Input value={`৳${Number(form.amount || 0).toLocaleString()}`} disabled /></div>
+              </div>
+              <div><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional note" /></div>
+            </div>
+            <Button onClick={() => save.mutate()} disabled={!Number(form.amount) || save.isPending} className="w-full mt-2">{save.isPending ? "Saving..." : "Save"}</Button>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Employee</TableHead><TableHead className="text-right">Employer</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Description</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.date}</TableCell>
+                <TableCell><Badge variant={r.type === "withdrawal" ? "destructive" : r.type === "interest" ? "secondary" : "default"}>{r.type}</Badge></TableCell>
+                <TableCell className="text-right">৳{Number(r.employee_share).toLocaleString()}</TableCell>
+                <TableCell className="text-right">৳{Number(r.employer_share).toLocaleString()}</TableCell>
+                <TableCell className="text-right font-semibold">{r.type === "withdrawal" ? "-" : ""}৳{Number(r.amount).toLocaleString()}</TableCell>
+                <TableCell className="max-w-[150px] truncate">{r.description || "—"}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => { setEditId(r.id); setForm({ type: r.type, amount: String(r.amount), employee_share: String(r.employee_share), employer_share: String(r.employer_share), date: r.date, description: r.description || "" }); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="text-destructive" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No provident fund records</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Savings Fund Tab ── */
+function SavingsFundTab({ employeeId, employeeName }: { employeeId: string; employeeName: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const empty = { type: "deposit", amount: "", date: new Date().toISOString().split("T")[0], description: "" };
+  const [form, setForm] = useState(empty);
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ["employee-savings", employeeId],
+    queryFn: async () => { const { data } = await apiDb.from("employee_savings_fund").select("*").eq("employee_id", employeeId).order("date", { ascending: false }); return data || []; },
+  });
+
+  const totalBalance = rows.reduce((s: number, r: any) => {
+    if (r.type === "withdrawal") return s - Number(r.amount);
+    return s + Number(r.amount);
+  }, 0);
+  const totalDeposit = rows.filter((r: any) => r.type === "deposit").reduce((s: number, r: any) => s + Number(r.amount), 0);
+  const totalWithdrawal = rows.filter((r: any) => r.type === "withdrawal").reduce((s: number, r: any) => s + Number(r.amount), 0);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload: any = { type: form.type, amount: Number(form.amount) || 0, date: form.date, description: form.description || null };
+      if (editId) await apiDb.from("employee_savings_fund").update(payload).eq("id", editId);
+      else await apiDb.from("employee_savings_fund").insert({ ...payload, employee_id: employeeId });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employee-savings"] }); toast.success("Saved"); setOpen(false); setEditId(null); setForm(empty); },
+    onError: () => toast.error("Failed"),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => { await apiDb.from("employee_savings_fund").delete().eq("id", id); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["employee-savings"] }); toast.success("Deleted"); },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-lg">Savings Fund</CardTitle>
+          <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
+            <span>Balance: <strong className="text-foreground">৳{totalBalance.toLocaleString()}</strong></span>
+            <span>Total Deposit: ৳{totalDeposit.toLocaleString()}</span>
+            <span>Total Withdrawal: ৳{totalWithdrawal.toLocaleString()}</span>
+          </div>
+        </div>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(empty); } }}>
+          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" />Add Entry</Button></DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editId ? "Edit" : "Add"} Savings Entry</DialogTitle></DialogHeader>
+            <div className="grid gap-3">
+              <div><Label>Type</Label>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deposit">Deposit</SelectItem>
+                    <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                    <SelectItem value="interest">Interest</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+              <div><Label>Date</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+              <div><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional note" /></div>
+            </div>
+            <Button onClick={() => save.mutate()} disabled={!Number(form.amount) || save.isPending} className="w-full mt-2">{save.isPending ? "Saving..." : "Save"}</Button>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Description</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {rows.map((r: any) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.date}</TableCell>
+                <TableCell><Badge variant={r.type === "withdrawal" ? "destructive" : r.type === "interest" ? "secondary" : "default"}>{r.type}</Badge></TableCell>
+                <TableCell className="text-right font-semibold">{r.type === "withdrawal" ? "-" : ""}৳{Number(r.amount).toLocaleString()}</TableCell>
+                <TableCell className="max-w-[200px] truncate">{r.description || "—"}</TableCell>
+                <TableCell><div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => { setEditId(r.id); setForm({ type: r.type, amount: String(r.amount), date: r.date, description: r.description || "" }); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="text-destructive" onClick={() => del.mutate(r.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div></TableCell>
+              </TableRow>
+            ))}
+            {rows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No savings fund records</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
