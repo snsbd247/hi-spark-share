@@ -392,9 +392,6 @@ function EmergencyContactTab({ employeeId }: { employeeId: string }) {
 }
 
 
-  const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const empty = { type: "contribution", amount: "", employee_share: "", employer_share: "", date: new Date().toISOString().split("T")[0], description: "" };
   const [form, setForm] = useState(empty);
 
   const { data: rows = [] } = useQuery({
