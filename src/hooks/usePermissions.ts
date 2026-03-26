@@ -9,33 +9,49 @@ export interface UserPermission {
 
 export function usePermissions() {
   const { user } = useAuth();
+  const isSuperAdminFromAuth = user?.role === "super_admin";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["user-permissions", user?.id],
+    queryKey: ["user-permissions", user?.id, user?.role],
     queryFn: async () => {
-      if (!user?.id) return { permissions: [] as UserPermission[], isSuperAdmin: false, customRoleName: "" };
+      if (!user?.id) {
+        return {
+          permissions: [] as UserPermission[],
+          isSuperAdmin: isSuperAdminFromAuth,
+          customRoleName: isSuperAdminFromAuth ? "Super Admin" : "",
+        };
+      }
 
-      // Check if super_admin
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("role, custom_role_id")
         .eq("user_id", user.id);
 
-      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin") || false;
-
-      if (isSuperAdmin) {
-        return { permissions: [] as UserPermission[], isSuperAdmin: true, customRoleName: "Super Admin" };
+      if (rolesError) {
+        return {
+          permissions: [] as UserPermission[],
+          isSuperAdmin: isSuperAdminFromAuth,
+          customRoleName: isSuperAdminFromAuth ? "Super Admin" : user.role || "",
+        };
       }
 
-      // Get custom_role_id
+      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin") || isSuperAdminFromAuth;
+
+      if (isSuperAdmin) {
+        return {
+          permissions: [] as UserPermission[],
+          isSuperAdmin: true,
+          customRoleName: "Super Admin",
+        };
+      }
+
       const customRoleId = roles?.[0]?.custom_role_id;
-      let customRoleName = roles?.[0]?.role || "";
+      let customRoleName = roles?.[0]?.role || user.role || "";
 
       if (!customRoleId) {
         return { permissions: [] as UserPermission[], isSuperAdmin: false, customRoleName };
       }
 
-      // Get role name
       const { data: roleData } = await supabase
         .from("custom_roles")
         .select("name")
@@ -44,7 +60,6 @@ export function usePermissions() {
 
       if (roleData) customRoleName = roleData.name;
 
-      // Get permissions via role_permissions join
       const { data: rolePerms } = await supabase
         .from("role_permissions")
         .select("permission_id")
@@ -66,27 +81,27 @@ export function usePermissions() {
         customRoleName,
       };
     },
-    enabled: !!user?.id,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 
+  const resolvedIsSuperAdmin = data?.isSuperAdmin || isSuperAdminFromAuth;
+
   const hasPermission = (module: string, action: string): boolean => {
-    if (!data) return false;
-    if (data.isSuperAdmin) return true;
-    return data.permissions.some((p) => p.module === module && p.action === action);
+    if (resolvedIsSuperAdmin) return true;
+    return (data?.permissions || []).some((p) => p.module === module && p.action === action);
   };
 
   const hasModuleAccess = (module: string): boolean => {
-    if (!data) return false;
-    if (data.isSuperAdmin) return true;
-    return data.permissions.some((p) => p.module === module);
+    if (resolvedIsSuperAdmin) return true;
+    return (data?.permissions || []).some((p) => p.module === module);
   };
 
   return {
     hasPermission,
     hasModuleAccess,
-    isSuperAdmin: data?.isSuperAdmin || false,
-    customRoleName: data?.customRoleName || "",
+    isSuperAdmin: resolvedIsSuperAdmin,
+    customRoleName: data?.customRoleName || (resolvedIsSuperAdmin ? "Super Admin" : ""),
     permissions: data?.permissions || [],
     isLoading,
   };
