@@ -5,8 +5,8 @@ import { fetchCustomerData } from "@/hooks/useCustomerData";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
 import { safeFormat } from "@/lib/utils";
+import {
   Receipt,
   AlertCircle,
   Package,
