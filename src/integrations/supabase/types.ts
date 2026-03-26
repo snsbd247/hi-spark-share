@@ -629,6 +629,173 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_education: {
+        Row: {
+          board_university: string | null
+          created_at: string
+          degree: string
+          employee_id: string
+          id: string
+          institution: string
+          passing_year: string | null
+          result: string | null
+        }
+        Insert: {
+          board_university?: string | null
+          created_at?: string
+          degree: string
+          employee_id: string
+          id?: string
+          institution: string
+          passing_year?: string | null
+          result?: string | null
+        }
+        Update: {
+          board_university?: string | null
+          created_at?: string
+          degree?: string
+          employee_id?: string
+          id?: string
+          institution?: string
+          passing_year?: string | null
+          result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_education_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_emergency_contacts: {
+        Row: {
+          address: string | null
+          contact_name: string
+          created_at: string
+          employee_id: string
+          id: string
+          phone: string
+          relation: string
+        }
+        Insert: {
+          address?: string | null
+          contact_name: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          phone: string
+          relation: string
+        }
+        Update: {
+          address?: string | null
+          contact_name?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          phone?: string
+          relation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_emergency_contacts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_experience: {
+        Row: {
+          company_name: string
+          created_at: string
+          designation: string
+          employee_id: string
+          from_date: string | null
+          id: string
+          responsibilities: string | null
+          to_date: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          designation: string
+          employee_id: string
+          from_date?: string | null
+          id?: string
+          responsibilities?: string | null
+          to_date?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          designation?: string
+          employee_id?: string
+          from_date?: string | null
+          id?: string
+          responsibilities?: string | null
+          to_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_experience_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_salary_structure: {
+        Row: {
+          basic_salary: number
+          conveyance: number
+          created_at: string
+          effective_from: string
+          employee_id: string
+          house_rent: number
+          id: string
+          medical: number
+          other_allowance: number
+          updated_at: string
+        }
+        Insert: {
+          basic_salary?: number
+          conveyance?: number
+          created_at?: string
+          effective_from?: string
+          employee_id: string
+          house_rent?: number
+          id?: string
+          medical?: number
+          other_allowance?: number
+          updated_at?: string
+        }
+        Update: {
+          basic_salary?: number
+          conveyance?: number
+          created_at?: string
+          effective_from?: string
+          employee_id?: string
+          house_rent?: number
+          id?: string
+          medical?: number
+          other_allowance?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_salary_structure_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address: string | null
@@ -1558,40 +1725,55 @@ export type Database = {
         Row: {
           basic_salary: number
           bonus: number
+          conveyance: number
           created_at: string
           deduction: number
           employee_id: string
+          house_rent: number
           id: string
           loan_deduction: number
+          medical: number
           month: string
           net_salary: number
+          other_allowance: number
           paid_date: string | null
+          payment_method: string
           status: string
         }
         Insert: {
           basic_salary?: number
           bonus?: number
+          conveyance?: number
           created_at?: string
           deduction?: number
           employee_id: string
+          house_rent?: number
           id?: string
           loan_deduction?: number
+          medical?: number
           month: string
           net_salary?: number
+          other_allowance?: number
           paid_date?: string | null
+          payment_method?: string
           status?: string
         }
         Update: {
           basic_salary?: number
           bonus?: number
+          conveyance?: number
           created_at?: string
           deduction?: number
           employee_id?: string
+          house_rent?: number
           id?: string
           loan_deduction?: number
+          medical?: number
           month?: string
           net_salary?: number
+          other_allowance?: number
           paid_date?: string | null
+          payment_method?: string
           status?: string
         }
         Relationships: [
