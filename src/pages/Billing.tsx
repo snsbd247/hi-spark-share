@@ -63,7 +63,7 @@ export default function Billing() {
     (b) =>
       b.customers?.name?.toLowerCase().includes(search.toLowerCase()) ||
       b.customers?.customer_id?.toLowerCase().includes(search.toLowerCase()) ||
-      b.month.includes(search)
+      (b.month || "").includes(search)
   );
 
   const handleGenerate = async () => {
