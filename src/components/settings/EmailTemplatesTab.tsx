@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const EMAIL_TEMPLATES = [
@@ -18,6 +18,54 @@ const EMAIL_TEMPLATES = [
 ];
 
 const VARIABLE_HINTS = ["{CustomerName}", "{Amount}", "{Month}", "{PaymentDate}", "{TicketID}", "{CompanyName}"];
+
+const DEMO_TEMPLATES: Record<string, string> = {
+  email_tpl_welcome: `প্রিয় {CustomerName},
+
+{CompanyName}-এ আপনাকে স্বাগতম! আপনার ইন্টারনেট সংযোগ সফলভাবে চালু করা হয়েছে।
+
+আপনার একাউন্ট সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের কাস্টমার পোর্টালে লগইন করুন।
+
+ধন্যবাদ,
+{CompanyName} টিম`,
+
+  email_tpl_password_reset: `প্রিয় {CustomerName},
+
+আপনার পাসওয়ার্ড রিসেট করার অনুরোধ পাওয়া গেছে। নিচের লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন।
+
+আপনি যদি এই অনুরোধ না করে থাকেন, তাহলে এই ইমেইলটি উপেক্ষা করুন।
+
+ধন্যবাদ,
+{CompanyName} টিম`,
+
+  email_tpl_payment_confirm: `প্রিয় {CustomerName},
+
+আপনার {Month} মাসের বিলের পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে।
+
+পেমেন্টের পরিমাণ: ৳{Amount}
+পেমেন্টের তারিখ: {PaymentDate}
+
+ধন্যবাদ,
+{CompanyName} টিম`,
+
+  email_tpl_ticket_reply: `প্রিয় {CustomerName},
+
+আপনার সাপোর্ট টিকেট #{TicketID}-এ নতুন রিপ্লাই এসেছে।
+
+বিস্তারিত দেখতে কাস্টমার পোর্টালে লগইন করুন।
+
+ধন্যবাদ,
+{CompanyName} সাপোর্ট টিম`,
+
+  email_tpl_account_activation: `প্রিয় {CustomerName},
+
+আপনার একাউন্ট সফলভাবে সক্রিয় করা হয়েছে! এখন থেকে আপনি আমাদের ইন্টারনেট সেবা উপভোগ করতে পারবেন।
+
+কোনো সমস্যা হলে আমাদের সাপোর্ট টিমে যোগাযোগ করুন।
+
+ধন্যবাদ,
+{CompanyName} টিম`,
+};
 
 export default function EmailTemplatesTab() {
   const queryClient = useQueryClient();
