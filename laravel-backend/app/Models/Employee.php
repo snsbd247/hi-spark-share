@@ -39,4 +39,34 @@ class Employee extends Model
     {
         return $this->hasMany(SalarySheet::class);
     }
+
+    public function salaryStructure()
+    {
+        return $this->hasOne(EmployeeSalaryStructure::class)->latestOfMany();
+    }
+
+    public function education()
+    {
+        return $this->hasMany(EmployeeEducation::class);
+    }
+
+    public function experience()
+    {
+        return $this->hasMany(EmployeeExperience::class);
+    }
+
+    public function emergencyContacts()
+    {
+        return $this->hasMany(EmployeeEmergencyContact::class);
+    }
+
+    public function providentFund()
+    {
+        return $this->hasMany(EmployeeProvidentFund::class);
+    }
+
+    public function savingsFund()
+    {
+        return $this->hasMany(EmployeeSavingsFund::class);
+    }
 }

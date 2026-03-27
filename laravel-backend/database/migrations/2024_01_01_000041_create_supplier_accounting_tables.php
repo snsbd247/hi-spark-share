@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('suppliers', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('company')->nullable();
             $table->string('phone')->nullable();
@@ -21,7 +21,7 @@ return new class extends Migration
         });
 
         Schema::create('supplier_payments', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->uuid('supplier_id');
             $table->decimal('amount', 12, 2);
             $table->date('payment_date');
@@ -35,7 +35,7 @@ return new class extends Migration
         });
 
         Schema::create('income_heads', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('status')->default('active');
@@ -43,7 +43,7 @@ return new class extends Migration
         });
 
         Schema::create('expense_heads', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('status')->default('active');
@@ -51,7 +51,7 @@ return new class extends Migration
         });
 
         Schema::create('other_heads', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('type')->default('other'); // income, expense, other
             $table->text('description')->nullable();
