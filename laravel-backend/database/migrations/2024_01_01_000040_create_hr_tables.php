@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('designations', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('status')->default('active');
@@ -17,7 +17,7 @@ return new class extends Migration
         });
 
         Schema::create('employees', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->string('employee_id')->unique();
             $table->string('name');
             $table->string('phone')->nullable();
@@ -35,7 +35,7 @@ return new class extends Migration
         });
 
         Schema::create('attendances', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->uuid('employee_id');
             $table->date('date');
             $table->string('status')->default('present'); // present, absent, late, leave
@@ -49,7 +49,7 @@ return new class extends Migration
         });
 
         Schema::create('loans', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->uuid('employee_id');
             $table->decimal('amount', 12, 2);
             $table->decimal('paid_amount', 12, 2)->default(0);
@@ -63,7 +63,7 @@ return new class extends Migration
         });
 
         Schema::create('salary_sheets', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(UUID())'));
+            $table->uuid('id')->primary();
             $table->uuid('employee_id');
             $table->string('month'); // e.g. 2026-03
             $table->decimal('basic_salary', 12, 2)->default(0);
