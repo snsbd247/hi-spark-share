@@ -126,6 +126,7 @@ function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild,
           onViewStatement={onViewStatement}
           canEdit={canEdit}
           canDelete={canDelete}
+          isSuperAdmin={isSuperAdmin}
         />
       ))}
     </>
