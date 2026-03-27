@@ -55,7 +55,7 @@ const TYPE_COLORS: Record<string, string> = {
   equity: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
 };
 
-function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild, onViewStatement, canEdit, canDelete }: {
+function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild, onViewStatement, canEdit, canDelete, isSuperAdmin }: {
   account: Account;
   expanded: Set<string>;
   onToggle: (id: string) => void;
@@ -65,6 +65,7 @@ function AccountRow({ account, expanded, onToggle, onEdit, onDelete, onAddChild,
   onViewStatement: (a: Account) => void;
   canEdit: boolean;
   canDelete: boolean;
+  isSuperAdmin: boolean;
 }) {
   const hasChildren = account.all_children && account.all_children.length > 0;
   const isOpen = expanded.has(account.id);
