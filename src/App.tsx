@@ -51,6 +51,7 @@ import BackupRestore from "@/pages/settings/BackupRestore";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
 import AccProducts from "@/pages/accounting/Products";
+import AccVendors from "@/pages/accounting/Vendors";
 import AccSales from "@/pages/accounting/Sales";
 import AccExpenses from "@/pages/accounting/Expenses";
 import AccReports from "@/pages/accounting/Reports";
