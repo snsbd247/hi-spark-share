@@ -51,6 +51,7 @@ import BackupRestore from "@/pages/settings/BackupRestore";
 import FooterSettings from "@/pages/settings/FooterSettings";
 import NotFound from "@/pages/NotFound";
 import AccProducts from "@/pages/accounting/Products";
+import AccVendors from "@/pages/accounting/Vendors";
 import AccSales from "@/pages/accounting/Sales";
 import AccExpenses from "@/pages/accounting/Expenses";
 import AccReports from "@/pages/accounting/Reports";
@@ -125,7 +126,7 @@ function App() {
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/customers" element={<PermissionGuard module="customers"><Customers /></PermissionGuard>} />
                 <Route path="/customers/:id" element={<PermissionGuard module="customers"><CustomerProfilePage /></PermissionGuard>} />
-                <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
+                <Route path="/packages" element={<PermissionGuard module="settings"><Packages /></PermissionGuard>} />
                 <Route path="/billing" element={<PermissionGuard module="billing"><Billing /></PermissionGuard>} />
                 <Route path="/billing/cycle" element={<PermissionGuard module="billing"><BillingCycleOverview /></PermissionGuard>} />
                 <Route path="/payments" element={<PermissionGuard module="payments"><Payments /></PermissionGuard>} />
@@ -166,6 +167,7 @@ function App() {
                 <Route path="/accounting/equity-changes" element={<PermissionGuard module="accounting"><EquityChanges /></PermissionGuard>} />
                 <Route path="/accounting/daybook" element={<PermissionGuard module="accounting"><Daybook /></PermissionGuard>} />
                 <Route path="/accounting/receivable-payable" element={<PermissionGuard module="accounting"><ReceivablePayable /></PermissionGuard>} />
+                <Route path="/accounting/vendors" element={<PermissionGuard module="accounting"><AccVendors /></PermissionGuard>} />
                 <Route path="/accounting/products" element={<PermissionGuard module="accounting"><AccProducts /></PermissionGuard>} />
                 <Route path="/accounting/sales" element={<PermissionGuard module="accounting"><AccSales /></PermissionGuard>} />
                 <Route path="/accounting/expenses" element={<PermissionGuard module="accounting"><AccExpenses /></PermissionGuard>} />
