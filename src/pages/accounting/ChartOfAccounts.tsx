@@ -385,6 +385,7 @@ export default function ChartOfAccounts() {
                       onViewStatement={handleViewStatement}
                       canEdit={canEdit}
                       canDelete={canDelete}
+                      isSuperAdmin={isSuperAdmin}
                     />
                   ))
                 )}
