@@ -51,6 +51,7 @@ const hrNav: NavItem[] = [
 const accountsNav: NavItem[] = [
   { to: "/accounting/chart-of-accounts", icon: FileText, label: "Chart of Accounts", module: "accounting" },
   { to: "/accounting/all-ledgers", icon: Users, label: "All Ledgers", module: "accounting" },
+  { to: "/accounting/vendors", icon: Building2, label: "Vendors", module: "accounting" },
   { to: "/accounting/cheque-register", icon: CreditCard, label: "Cheque Register", module: "accounting" },
   { to: "/accounting/transactions", icon: Receipt, label: "All Transactions", module: "accounting" },
   { to: "/accounting/journal-entries", icon: BookOpen, label: "Journal Entries", module: "accounting" },
