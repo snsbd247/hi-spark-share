@@ -91,7 +91,6 @@ const supportNav: NavItem[] = [
 const inventoryNav: NavItem[] = [
   { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "accounting" },
   { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "accounting" },
-  { to: "/accounting/expenses", icon: DollarSign, label: "Expenses", module: "accounting" },
 ];
 
 const reportingNav: NavItem[] = [
