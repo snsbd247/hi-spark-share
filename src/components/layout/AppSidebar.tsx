@@ -64,6 +64,7 @@ const accountsNav: NavItem[] = [
   { to: "/accounting/balance-sheet", icon: Scale, label: "Balance Sheet", module: "accounting" },
   { to: "/accounting/cash-flow", icon: Wallet, label: "Cash Flow", module: "accounting" },
   { to: "/accounting/equity-changes", icon: BarChart3, label: "Changes in Equity", module: "accounting" },
+  { to: "/accounting/expenses", icon: DollarSign, label: "Expenses", module: "accounting" },
   { to: "/accounting/receivable-payable", icon: Receipt, label: "Receivable & Payable", module: "accounting" },
 ];
 
@@ -90,7 +91,6 @@ const supportNav: NavItem[] = [
 const inventoryNav: NavItem[] = [
   { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "accounting" },
   { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "accounting" },
-  { to: "/accounting/expenses", icon: DollarSign, label: "Expenses", module: "accounting" },
 ];
 
 const reportingNav: NavItem[] = [
