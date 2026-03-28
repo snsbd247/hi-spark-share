@@ -63,7 +63,8 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     installed_by: customer?.installed_by ?? "",
     box_name: customer?.box_name ?? "",
     cable_length: customer?.cable_length ?? "",
-    initial_invoice_amount: "",
+    connection_charge_amount: "",
+    first_month_bill_amount: "",
   });
 
   const { data: packages } = useQuery({
@@ -228,9 +229,12 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
         toast.success("Customer created successfully");
 
-        // Auto-generate initial invoice if amount provided
-        const initialAmount = parseFloat(form.initial_invoice_amount);
-        if (data && initialAmount > 0) {
+        // Auto-generate initial invoices if amounts provided
+        const connectionCharge = parseFloat(form.connection_charge_amount) || 0;
+        const firstMonthBill = parseFloat(form.first_month_bill_amount) || 0;
+        const totalInitial = connectionCharge + firstMonthBill;
+
+        if (data && totalInitial > 0) {
           try {
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -238,12 +242,13 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
             if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
 
+            // Create bill with total amount
             const { data: bill, error: billError } = await supabase
               .from("bills")
               .insert({
                 customer_id: data.id,
                 month: currentMonth,
-                amount: initialAmount,
+                amount: totalInitial,
                 status: "unpaid",
                 due_date: dueDate.toISOString().split("T")[0],
               })
@@ -252,30 +257,85 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
             if (billError) throw billError;
 
-            // Create ledger debit entry for the bill
             if (bill) {
-              const { data: lastEntry } = await supabase
-                .from("customer_ledger")
-                .select("balance")
-                .eq("customer_id", data.id)
-                .order("date", { ascending: false })
-                .order("created_at", { ascending: false })
-                .limit(1);
+              // Create customer ledger debit entries separately
+              let runningBalance = 0;
 
-              const prevBalance = lastEntry?.[0]?.balance ?? 0;
+              if (connectionCharge > 0) {
+                runningBalance += connectionCharge;
+                await supabase.from("customer_ledger").insert({
+                  customer_id: data.id,
+                  date: new Date().toISOString(),
+                  description: `Connection Charge`,
+                  debit: connectionCharge,
+                  credit: 0,
+                  balance: runningBalance,
+                  reference: `CONN-${bill.id.substring(0, 8)}`,
+                  type: "bill",
+                });
+              }
 
-              await supabase.from("customer_ledger").insert({
-                customer_id: data.id,
-                date: new Date().toISOString(),
-                description: `Initial Invoice - Connection Charge + First Month (${currentMonth})`,
-                debit: initialAmount,
-                credit: 0,
-                balance: prevBalance + initialAmount,
-                reference: `BILL-${bill.id.substring(0, 8)}`,
-                type: "bill",
-              });
+              if (firstMonthBill > 0) {
+                runningBalance += firstMonthBill;
+                await supabase.from("customer_ledger").insert({
+                  customer_id: data.id,
+                  date: new Date().toISOString(),
+                  description: `First Month Internet Bill (${currentMonth})`,
+                  debit: firstMonthBill,
+                  credit: 0,
+                  balance: runningBalance,
+                  reference: `BILL-${bill.id.substring(0, 8)}`,
+                  type: "bill",
+                });
+              }
 
-              toast.success(`Initial invoice of ৳${initialAmount} generated`);
+              // Create accounting transactions in configured ledgers
+              const { data: settings } = await (supabase as any)
+                .from("system_settings")
+                .select("setting_key, setting_value")
+                .in("setting_key", ["connection_charge_account_id", "monthly_bill_account_id"]);
+
+              const settingsMap: Record<string, string> = {};
+              settings?.forEach((s: any) => { settingsMap[s.setting_key] = s.setting_value; });
+
+              const createAccountingEntry = async (accountId: string, amount: number, desc: string, ref: string) => {
+                if (!accountId || accountId === "none") return;
+                await supabase.from("transactions").insert({
+                  account_id: accountId,
+                  type: "credit",
+                  amount,
+                  description: desc,
+                  date: new Date().toISOString(),
+                  reference: ref,
+                });
+                const { data: acc } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
+                if (acc) {
+                  await supabase.from("accounts").update({ balance: (acc.balance || 0) + amount }).eq("id", accountId);
+                }
+              };
+
+              if (connectionCharge > 0 && settingsMap.connection_charge_account_id) {
+                await createAccountingEntry(
+                  settingsMap.connection_charge_account_id,
+                  connectionCharge,
+                  `Connection Charge - ${data.customer_id || data.name}`,
+                  `CONN-${bill.id.substring(0, 8)}`
+                );
+              }
+
+              if (firstMonthBill > 0 && settingsMap.monthly_bill_account_id) {
+                await createAccountingEntry(
+                  settingsMap.monthly_bill_account_id,
+                  firstMonthBill,
+                  `First Month Bill - ${data.customer_id || data.name} (${currentMonth})`,
+                  `BILL-${bill.id.substring(0, 8)}`
+                );
+              }
+
+              const parts = [];
+              if (connectionCharge > 0) parts.push(`Connection: ৳${connectionCharge}`);
+              if (firstMonthBill > 0) parts.push(`Bill: ৳${firstMonthBill}`);
+              toast.success(`Invoice generated — ${parts.join(", ")} (Total: ৳${totalInitial})`);
             }
           } catch (invoiceErr: any) {
             console.error("Initial invoice error:", invoiceErr);
@@ -503,18 +563,28 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             </Select>
           </div>
           {!isEdit && (
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label>Initial Invoice Amount (Connection Charge + First Month Bill)</Label>
-              <Input
-                type="number"
-                placeholder="e.g. 1500 (leave empty to skip)"
-                value={form.initial_invoice_amount}
-                onChange={(e) => update("initial_invoice_amount", e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                এই এমাউন্ট দিলে কাস্টমার তৈরির সাথে সাথে একটি ইনভয়েস/বিল অটো জেনারেট হবে
-              </p>
-            </div>
+            <>
+              <div className="space-y-1.5">
+                <Label>Connection Charge Amount</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 1000 (leave empty to skip)"
+                  value={form.connection_charge_amount}
+                  onChange={(e) => update("connection_charge_amount", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">কানেকশন চার্জ — আলাদা লেজারে জমা হবে</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>First Month Bill Amount</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 500 (leave empty to skip)"
+                  value={form.first_month_bill_amount}
+                  onChange={(e) => update("first_month_bill_amount", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">প্রথম মাসের বিল — আলাদা লেজারে জমা হবে</p>
+              </div>
+            </>
           )}
         </div>
       </div>
