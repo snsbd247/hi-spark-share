@@ -69,20 +69,32 @@ export default function GeneralSettingsTab() {
         if (!user) throw new Error("Not authenticated");
         logo_url = await uploadCompanyLogo(user.id, logoFile);
       }
-      const { error } = await supabase
-        .from("general_settings")
-        .update({
-          site_name: form.site_name,
-          address: form.address,
-          email: form.email,
-          mobile: form.mobile,
-          logo_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", settings?.id);
+
+      const payload = {
+        site_name: form.site_name,
+        address: form.address,
+        email: form.email,
+        mobile: form.mobile,
+        logo_url,
+        updated_at: new Date().toISOString(),
+      };
+
+      let error;
+      if (settings?.id) {
+        ({ error } = await supabase
+          .from("general_settings")
+          .update(payload)
+          .eq("id", settings.id));
+      } else {
+        ({ error } = await supabase
+          .from("general_settings")
+          .insert({ ...payload, site_name: form.site_name || "Smart ISP" } as any));
+      }
+
       if (error) throw error;
       toast.success("General settings saved");
       queryClient.invalidateQueries({ queryKey: ["general-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant-branding"] });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
