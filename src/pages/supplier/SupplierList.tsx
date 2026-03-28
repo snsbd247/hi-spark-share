@@ -26,8 +26,16 @@ export default function SupplierList() {
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("suppliers").select("*").order("created_at", { ascending: false });
-      return data || [];
+      const { data: suppliers } = await (supabase as any).from("suppliers").select("*").order("created_at", { ascending: false });
+      if (!suppliers?.length) return [];
+      // Calculate due dynamically from purchases
+      const { data: purchases } = await (supabase as any).from("purchases").select("supplier_id, total_amount, paid_amount");
+      const dueMap: Record<string, number> = {};
+      (purchases || []).forEach((p: any) => {
+        const due = Number(p.total_amount || 0) - Number(p.paid_amount || 0);
+        dueMap[p.supplier_id] = (dueMap[p.supplier_id] || 0) + due;
+      });
+      return suppliers.map((s: any) => ({ ...s, calculated_due: dueMap[s.id] || 0 }));
     },
   });
 

@@ -77,7 +77,6 @@ const accountingNav: NavItem[] = [
 
 const inventoryNav: NavItem[] = [
   { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "accounting" },
-  { to: "/accounting/purchases", icon: ShoppingCart, label: "Purchases", module: "accounting" },
   { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "accounting" },
 ];
 
