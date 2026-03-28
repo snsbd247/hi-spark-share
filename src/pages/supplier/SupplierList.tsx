@@ -131,7 +131,7 @@ export default function SupplierList() {
                       <TableCell className="font-medium">{r.name}</TableCell>
                       <TableCell>{r.company || "—"}</TableCell>
                       <TableCell>{r.phone || "—"}</TableCell>
-                      <TableCell className="text-right font-semibold">৳{Number(r.total_due || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-semibold">৳{Number(r.calculated_due || 0).toLocaleString()}</TableCell>
                       <TableCell><Badge variant={r.status === "active" ? "default" : "secondary"}>{r.status}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
