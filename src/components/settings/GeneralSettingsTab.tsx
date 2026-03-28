@@ -65,9 +65,12 @@ export default function GeneralSettingsTab() {
     try {
       let logo_url = form.logo_url;
       if (logoFile) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-        logo_url = await uploadCompanyLogo(user.id, logoFile);
+        try {
+          const uploadOwner = settings?.id || `system-${Date.now()}`;
+          logo_url = await uploadCompanyLogo(uploadOwner, logoFile);
+        } catch {
+          toast.error("Logo upload failed, but other settings will still be saved");
+        }
       }
 
       const payload = {
