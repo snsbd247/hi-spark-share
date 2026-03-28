@@ -450,7 +450,7 @@ const fallbackRequest = async (config: InternalAxiosRequestConfig) => {
   }
 
   // Generic CRUD fallbacks used in accounting pages
-  const tableFallbackResources = new Set(['products', 'purchases', 'sales', 'expenses', 'vendors', 'suppliers']);
+  const tableFallbackResources = new Set(['products', 'purchases', 'sales', 'expenses', 'vendors', 'suppliers', 'general-settings']);
   if (tableFallbackResources.has(resource)) {
     return handleGenericTableFallback(config, resource, arg1);
   }
