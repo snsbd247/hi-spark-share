@@ -87,6 +87,7 @@ import DailyReport from "@/pages/reporting/DailyReport";
 import FinancialStatement from "@/pages/reporting/FinancialStatement";
 import BtrcReport from "@/pages/reporting/BtrcReport";
 import TrafficMonitor from "@/pages/reporting/TrafficMonitor";
+import ApiHealthMonitor from "@/pages/settings/ApiHealthMonitor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
