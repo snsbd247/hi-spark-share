@@ -6,7 +6,8 @@
  */
 
 import api from "@/lib/api";
-import { API_BASE_URL, API_PUBLIC_ROOT } from "@/lib/apiBaseUrl";
+import { API_BASE_URL, API_PUBLIC_ROOT, IS_LOVABLE_RUNTIME } from "@/lib/apiBaseUrl";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface UploadResult {
   publicUrl: string;
