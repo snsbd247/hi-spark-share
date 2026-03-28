@@ -26,7 +26,7 @@ export default function FooterSettingsTab() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["footer-settings-admin"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [

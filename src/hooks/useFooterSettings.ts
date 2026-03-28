@@ -23,7 +23,7 @@ export function useFooterSettings() {
   return useQuery({
     queryKey: ["footer-settings"],
     queryFn: async (): Promise<FooterSettings> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [
