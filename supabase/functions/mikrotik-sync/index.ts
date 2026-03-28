@@ -766,93 +766,195 @@ Deno.serve(async (req: Request) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ─── SYNC ALL CUSTOMERS ────────────────────────────────────
+    // ─── SYNC ALL (BI-DIRECTIONAL) ─────────────────────────────
     if (req.method === "POST" && path === "sync-all") {
       const supabase = getSupabaseAdmin();
 
-      // Get all eligible customers
-      const { data: customers, error: custErr } = await supabase
-        .from("customers")
-        .select("id, pppoe_username, pppoe_password, router_id, name, status, package_id")
-        .not("router_id", "is", null)
-        .not("pppoe_username", "is", null)
-        .neq("status", "disconnected");
+      // Get all routers
+      const { data: routers, error: routerErr } = await supabase
+        .from("mikrotik_routers")
+        .select("*")
+        .eq("status", "active");
 
-      if (custErr) {
-        return new Response(JSON.stringify({ success: false, error: custErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (routerErr || !routers?.length) {
+        // Fallback to env router
+        const envRouter = getEnvRouter();
+        if (!envRouter.ip_address) {
+          return new Response(JSON.stringify({ success: false, error: "No active routers configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
 
-      const total = customers?.length || 0;
-      let synced = 0;
+      const allRouters = routers?.length ? routers : [{ ...getEnvRouter(), id: "env-default", name: "Default Router" }];
+
+      let pushed = 0;
+      let imported = 0;
+      let updated = 0;
       let failed = 0;
       const errors: string[] = [];
 
-      // Group customers by router_id for efficiency
-      const byRouter: Record<string, any[]> = {};
-      for (const c of customers || []) {
-        const rid = c.router_id;
-        if (!byRouter[rid]) byRouter[rid] = [];
-        byRouter[rid].push(c);
-      }
+      // Get all packages for profile mapping
+      const { data: allPackages } = await supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed");
 
-      for (const [routerId, custs] of Object.entries(byRouter)) {
-        const routerConfig = await getRouterConfig(supabase, routerId);
+      for (const router of allRouters) {
+        const routerConfig = { ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port || 8728 };
+
         try {
           await withRouter(routerConfig, async (mt) => {
-            for (const c of custs) {
+            // ── Step 1: Sync PPP Profiles (packages) ──
+            try {
+              const profileRes = await mt.send(["/ppp/profile/print"]);
+              const mkProfiles = parseItems(profileRes.sentences);
+
+              // Ensure all software packages have profiles on router
+              for (const pkg of allPackages || []) {
+                if (!pkg.mikrotik_profile_name || pkg.mikrotik_profile_name === "default") continue;
+                const exists = mkProfiles.some((p: any) => p.name === pkg.mikrotik_profile_name);
+                if (!exists) {
+                  try {
+                    await mt.send(["/ppp/profile/add", `=name=${pkg.mikrotik_profile_name}`, "=local-address=10.10.10.1"]);
+                    console.log(`Created profile: ${pkg.mikrotik_profile_name}`);
+                  } catch (e) {
+                    console.error(`Profile create failed: ${pkg.mikrotik_profile_name}`, e.message);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("Profile sync failed:", e.message);
+            }
+
+            // ── Step 2: Get all PPPoE secrets from MikroTik ──
+            const secretsRes = await mt.send(["/ppp/secret/print"]);
+            const mkSecrets = parseItems(secretsRes.sentences);
+
+            // ── Step 3: Get all software customers for this router ──
+            const routerFilter = router.id !== "env-default" ? router.id : null;
+            let query = supabase.from("customers").select("id, pppoe_username, pppoe_password, router_id, name, status, package_id").neq("status", "disconnected");
+            if (routerFilter) {
+              query = query.eq("router_id", routerFilter);
+            }
+            const { data: swCustomers } = await query;
+
+            const swUsernameMap: Record<string, any> = {};
+            for (const c of swCustomers || []) {
+              if (c.pppoe_username) swUsernameMap[c.pppoe_username] = c;
+            }
+
+            // ── Step 4: Push software users → MikroTik ──
+            for (const c of swCustomers || []) {
+              if (!c.pppoe_username) continue;
               try {
-                // Get package profile name
                 let profileName = "default";
                 if (c.package_id) {
-                  const { data: pkg } = await supabase.from("packages").select("mikrotik_profile_name").eq("id", c.package_id).single();
+                  const pkg = (allPackages || []).find((p: any) => p.id === c.package_id);
                   if (pkg?.mikrotik_profile_name) profileName = pkg.mikrotik_profile_name;
                 }
 
-                await ensureProfileExists(mt, profileName);
-
-                const listRes = await mt.send(["/ppp/secret/print", `?name=${c.pppoe_username}`]);
-                const existing = parseItems(listRes.sentences);
-
-                if (existing.length > 0) {
-                  const words = ["/ppp/secret/set", `=.id=${existing[0][".id"]}`, `=profile=${profileName}`];
+                const mkUser = mkSecrets.find((s: any) => s.name === c.pppoe_username);
+                if (mkUser) {
+                  // Update existing
+                  const words = ["/ppp/secret/set", `=.id=${mkUser[".id"]}`, `=profile=${profileName}`, `=comment=${c.name || ""}`];
                   if (c.pppoe_password) words.push(`=password=${c.pppoe_password}`);
-                  words.push(`=comment=${c.name || ""}`);
-                  // Set disabled based on status
                   const shouldDisable = c.status === "inactive" || c.status === "suspended";
                   words.push(`=disabled=${shouldDisable ? "yes" : "no"}`);
                   const res = await mt.send(words);
                   if (res.trap) throw new Error(res.trap);
+                  updated++;
                 } else {
+                  // Create new on MikroTik
                   if (!c.pppoe_password) {
-                    errors.push(`${c.pppoe_username}: No password`);
+                    errors.push(`${c.pppoe_username}: No password, skipped`);
                     failed++;
                     continue;
                   }
+                  await ensureProfileExists(mt, profileName);
                   const words = ["/ppp/secret/add", `=name=${c.pppoe_username}`, `=password=${c.pppoe_password}`, `=service=pppoe`, `=profile=${profileName}`, `=comment=${c.name || ""}`];
                   const res = await mt.send(words);
                   if (res.trap) throw new Error(res.trap);
+                  pushed++;
                 }
 
                 await supabase.from("customers").update({ mikrotik_sync_status: "synced" }).eq("id", c.id);
-                synced++;
               } catch (e) {
                 failed++;
-                errors.push(`${c.pppoe_username}: ${e.message}`);
+                errors.push(`Push ${c.pppoe_username}: ${e.message}`);
                 await supabase.from("customers").update({ mikrotik_sync_status: "failed" }).eq("id", c.id);
               }
             }
+
+            // ── Step 5: Import MikroTik users → Software ──
+            for (const secret of mkSecrets) {
+              const username = secret.name;
+              if (!username || swUsernameMap[username]) continue; // Already exists in software
+
+              try {
+                // Find matching package by profile name
+                const profileName = secret.profile || "default";
+                const matchedPkg = (allPackages || []).find((p: any) => p.mikrotik_profile_name === profileName);
+
+                // Generate customer_id
+                const { data: lastCust } = await supabase
+                  .from("customers")
+                  .select("customer_id")
+                  .order("customer_id", { ascending: false })
+                  .limit(1);
+
+                let nextNum = 1;
+                if (lastCust?.length) {
+                  const match = lastCust[0].customer_id.match(/ISP-(\d+)/);
+                  if (match) nextNum = parseInt(match[1]) + 1;
+                }
+                const customerId = `ISP-${String(nextNum).padStart(5, "0")}`;
+
+                const newCustomer: any = {
+                  customer_id: customerId,
+                  name: secret.comment || username,
+                  phone: "N/A",
+                  area: "Imported from MikroTik",
+                  pppoe_username: username,
+                  pppoe_password: secret.password || null,
+                  status: secret.disabled === "true" || secret.disabled === "yes" ? "inactive" : "active",
+                  connection_status: secret.disabled === "true" || secret.disabled === "yes" ? "suspended" : "active",
+                  mikrotik_sync_status: "synced",
+                  monthly_bill: matchedPkg?.monthly_price || 0,
+                  package_id: matchedPkg?.id || null,
+                };
+
+                if (routerFilter) {
+                  newCustomer.router_id = routerFilter;
+                }
+
+                const { error: insertErr } = await supabase.from("customers").insert(newCustomer);
+                if (insertErr) {
+                  if (insertErr.message?.includes("duplicate")) {
+                    // Skip duplicates silently
+                    continue;
+                  }
+                  throw new Error(insertErr.message);
+                }
+                imported++;
+              } catch (e) {
+                failed++;
+                errors.push(`Import ${username}: ${e.message}`);
+              }
+            }
           });
-        } catch (routerErr) {
-          // Entire router failed
-          for (const c of custs) {
-            failed++;
-            errors.push(`${c.pppoe_username}: Router connection failed`);
-            await supabase.from("customers").update({ mikrotik_sync_status: "failed" }).eq("id", c.id);
-          }
+        } catch (routerErr: any) {
+          errors.push(`Router ${router.name || router.ip_address}: ${routerErr.message || "Connection failed"}`);
+          failed++;
         }
       }
 
-      return new Response(JSON.stringify({ success: true, results: { total, synced, failed, errors: errors.slice(0, 20) } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({
+        success: true,
+        results: {
+          total: pushed + imported + updated + failed,
+          pushed,
+          imported,
+          updated,
+          failed,
+          errors: errors.slice(0, 20),
+        },
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
