@@ -2,7 +2,7 @@ import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,16 +12,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2, Search, Printer, Pencil, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { generateSupplierPurchaseInvoicePDF } from "@/lib/supplierPurchasePdf";
 
 interface PurchaseItem { product_id: string; description: string; quantity: number; unit_price: number; }
 
-export default function Purchases() {
+export default function SupplierPurchases() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+
+  // Payment adjustment state
+  const [payOpen, setPayOpen] = useState(false);
+  const [payTarget, setPayTarget] = useState<any>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payNote, setPayNote] = useState("");
 
   const [form, setForm] = useState({
     supplier_id: "", date: new Date().toISOString().split("T")[0],
@@ -30,9 +38,9 @@ export default function Purchases() {
   const [items, setItems] = useState<PurchaseItem[]>([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
 
   const { data: purchases = [], isLoading } = useQuery({
-    queryKey: ["purchases"],
+    queryKey: ["supplier-purchases"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("purchases").select("*").order("date", { ascending: false });
+      const { data } = await (supabase as any).from("purchases").select("*").order("date", { ascending: false });
       return data || [];
     },
   });
@@ -40,7 +48,7 @@ export default function Purchases() {
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("suppliers").select("id, name").order("name");
+      const { data } = await (supabase as any).from("suppliers").select("id, name, company, phone").order("name");
       return data || [];
     },
   });
@@ -48,77 +56,159 @@ export default function Purchases() {
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("products").select("id, name, sku, buy_price").order("name");
+      const { data } = await (supabase as any).from("products").select("id, name, sku, buy_price").order("name");
       return data || [];
     },
   });
 
-  const supplierMap = Object.fromEntries(suppliers.map((s: any) => [s.id, s.name]));
+  const supplierMap = Object.fromEntries(suppliers.map((s: any) => [s.id, s]));
 
-  const create = useMutation({
+  // ── Create / Edit mutation ──
+  const saveMutation = useMutation({
     mutationFn: async () => {
       const total = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
-      const purchaseNo = `PO-${Date.now().toString().slice(-8)}`;
       const status = form.paid_amount >= total ? "paid" : form.paid_amount > 0 ? "partial" : "unpaid";
 
-      const { data: purchase, error } = await ( supabase as any).from("purchases").insert({
-        supplier_id: form.supplier_id,
-        purchase_no: purchaseNo,
-        date: form.date,
-        total_amount: total,
-        paid_amount: form.paid_amount,
-        status,
-        notes: form.notes || null,
-      }).select("id").single();
+      if (editId) {
+        // Update purchase
+        await (supabase as any).from("purchases").update({
+          supplier_id: form.supplier_id,
+          date: form.date,
+          total_amount: total,
+          paid_amount: form.paid_amount,
+          status,
+          notes: form.notes || null,
+        }).eq("id", editId);
 
-      if (error) throw error;
-
-      // Insert purchase items
-      const purchaseItems = items.filter(i => i.product_id || i.description).map(i => ({
-        purchase_id: purchase.id,
-        product_id: i.product_id || null,
-        description: i.description || null,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-      }));
-
-      if (purchaseItems.length > 0) {
-        await ( supabase as any).from("purchase_items").insert(purchaseItems);
-      }
-
-      // Update product stock
-      for (const item of items) {
-        if (item.product_id) {
-          const prod = products.find((p: any) => p.id === item.product_id);
-          if (prod) {
-            await ( supabase as any).from("products").update({ stock: Number(prod.stock || 0) + item.quantity }).eq("id", item.product_id);
-          }
+        // Replace items
+        await (supabase as any).from("purchase_items").delete().eq("purchase_id", editId);
+        const purchaseItems = items.filter(i => i.product_id || i.description).map(i => ({
+          purchase_id: editId,
+          product_id: i.product_id || null,
+          description: i.description || null,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        }));
+        if (purchaseItems.length > 0) {
+          await (supabase as any).from("purchase_items").insert(purchaseItems);
         }
-      }
+      } else {
+        // Create
+        const purchaseNo = `PO-${Date.now().toString().slice(-8)}`;
+        const { data: purchase, error } = await (supabase as any).from("purchases").insert({
+          supplier_id: form.supplier_id,
+          purchase_no: purchaseNo,
+          date: form.date,
+          total_amount: total,
+          paid_amount: form.paid_amount,
+          status,
+          notes: form.notes || null,
+        }).select("id").single();
+        if (error) throw error;
 
-      // Update supplier total_due
-      const due = total - form.paid_amount;
-      if (due > 0) {
-        const supplier = await ( supabase as any).from("suppliers").select("total_due").eq("id", form.supplier_id).single();
-        if (supplier.data) {
-          await ( supabase as any).from("suppliers").update({ total_due: Number(supplier.data.total_due || 0) + due }).eq("id", form.supplier_id);
+        const purchaseItems = items.filter(i => i.product_id || i.description).map(i => ({
+          purchase_id: purchase.id,
+          product_id: i.product_id || null,
+          description: i.description || null,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        }));
+        if (purchaseItems.length > 0) {
+          await (supabase as any).from("purchase_items").insert(purchaseItems);
+        }
+
+        // Update product stock
+        for (const item of items) {
+          if (item.product_id) {
+            const prod = products.find((p: any) => p.id === item.product_id);
+            if (prod) {
+              await (supabase as any).from("products").update({ stock: Number(prod.stock || 0) + item.quantity }).eq("id", item.product_id);
+            }
+          }
         }
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["purchases"] });
+      qc.invalidateQueries({ queryKey: ["supplier-purchases"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["suppliers"] });
-      toast.success("Purchase created");
+      toast.success(editId ? "Purchase updated" : "Purchase created");
       closeDialog();
     },
-    onError: () => toast.error("Failed to create purchase"),
+    onError: () => toast.error("Failed"),
+  });
+
+  // ── Payment Adjustment mutation ──
+  const payMutation = useMutation({
+    mutationFn: async () => {
+      if (!payTarget) return;
+      const amount = Number(payAmount);
+      if (amount <= 0) throw new Error("Invalid amount");
+
+      const newPaid = Number(payTarget.paid_amount) + amount;
+      const total = Number(payTarget.total_amount);
+      const newStatus = newPaid >= total ? "paid" : "partial";
+
+      await (supabase as any).from("purchases").update({
+        paid_amount: newPaid,
+        status: newStatus,
+      }).eq("id", payTarget.id);
+
+      // Record supplier payment
+      await (supabase as any).from("supplier_payments").insert({
+        supplier_id: payTarget.supplier_id,
+        purchase_id: payTarget.id,
+        amount,
+        payment_method: payMethod,
+        paid_date: new Date().toISOString(),
+        notes: payNote || `Payment against ${payTarget.purchase_no}`,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["supplier-purchases"] });
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      qc.invalidateQueries({ queryKey: ["supplier-payments"] });
+      toast.success("Payment recorded");
+      setPayOpen(false);
+      setPayTarget(null);
+      setPayAmount("");
+      setPayNote("");
+    },
+    onError: (e: any) => toast.error(e.message || "Payment failed"),
   });
 
   const closeDialog = () => {
     setOpen(false);
+    setEditId(null);
     setForm({ supplier_id: "", date: new Date().toISOString().split("T")[0], paid_amount: 0, notes: "" });
     setItems([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
+  };
+
+  const openEdit = async (p: any) => {
+    setEditId(p.id);
+    setForm({ supplier_id: p.supplier_id, date: p.date?.split("T")[0] || "", paid_amount: Number(p.paid_amount), notes: p.notes || "" });
+    // Load items
+    const { data: pItems } = await (supabase as any).from("purchase_items").select("*").eq("purchase_id", p.id);
+    if (pItems?.length) {
+      setItems(pItems.map((i: any) => ({ product_id: i.product_id || "", description: i.description || "", quantity: Number(i.quantity), unit_price: Number(i.unit_price) })));
+    } else {
+      setItems([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
+    }
+    setOpen(true);
+  };
+
+  const openPayment = (p: any) => {
+    setPayTarget(p);
+    setPayAmount("");
+    setPayNote("");
+    setPayMethod("cash");
+    setPayOpen(true);
+  };
+
+  const handlePrint = async (p: any) => {
+    const { data: pItems } = await (supabase as any).from("purchase_items").select("*, products(name, sku)").eq("purchase_id", p.id);
+    const supplier = supplierMap[p.supplier_id];
+    generateSupplierPurchaseInvoicePDF(p, supplier, pItems || []);
   };
 
   const addItem = () => setItems([...items, { product_id: "", description: "", quantity: 1, unit_price: 0 }]);
@@ -137,7 +227,7 @@ export default function Purchases() {
 
   const filtered = purchases.filter((p: any) =>
     p.purchase_no?.toLowerCase().includes(search.toLowerCase()) ||
-    supplierMap[p.supplier_id]?.toLowerCase().includes(search.toLowerCase())
+    supplierMap[p.supplier_id]?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -151,8 +241,8 @@ export default function Purchases() {
           <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Purchase</Button></DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Purchase</DialogTitle></DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); if (!form.supplier_id) { toast.error("Select a supplier"); return; } create.mutate(); }} className="space-y-4">
+              <DialogHeader><DialogTitle>{editId ? "Edit Purchase" : "Create Purchase"}</DialogTitle></DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); if (!form.supplier_id) { toast.error("Select a supplier"); return; } saveMutation.mutate(); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div><Label>Supplier *</Label>
                     <Select value={form.supplier_id} onValueChange={v => setForm({ ...form, supplier_id: v })}>
@@ -198,7 +288,7 @@ export default function Purchases() {
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
-                  <Button type="submit" disabled={create.isPending}>{create.isPending ? "Creating..." : "Create Purchase"}</Button>
+                  <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Saving..." : editId ? "Update Purchase" : "Create Purchase"}</Button>
                 </div>
               </form>
             </DialogContent>
@@ -223,31 +313,107 @@ export default function Purchases() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Due</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No purchases found</TableCell></TableRow>
-                ) : filtered.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium font-mono">{p.purchase_no}</TableCell>
-                    <TableCell>{supplierMap[p.supplier_id] || "—"}</TableCell>
-                    <TableCell>{safeFormat(p.date, "dd MMM yyyy")}</TableCell>
-                    <TableCell className="text-right">৳{Number(p.total_amount).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">৳{Number(p.paid_amount).toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-destructive">৳{(Number(p.total_amount) - Number(p.paid_amount)).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={p.status === "paid" ? "default" : p.status === "partial" ? "secondary" : "destructive"}>{p.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No purchases found</TableCell></TableRow>
+                ) : filtered.map((p: any) => {
+                  const due = Number(p.total_amount) - Number(p.paid_amount);
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium font-mono">{p.purchase_no}</TableCell>
+                      <TableCell>{supplierMap[p.supplier_id]?.name || "—"}</TableCell>
+                      <TableCell>{safeFormat(p.date, "dd MMM yyyy")}</TableCell>
+                      <TableCell className="text-right">৳{Number(p.total_amount).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">৳{Number(p.paid_amount).toLocaleString()}</TableCell>
+                      <TableCell className={`text-right ${due > 0 ? "text-destructive font-semibold" : "text-success"}`}>
+                        ৳{due.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={p.status === "paid" ? "default" : p.status === "partial" ? "secondary" : "destructive"}>{p.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" title="Print Invoice" onClick={() => handlePrint(p)}>
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => openEdit(p)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {p.status !== "paid" && (
+                            <Button size="icon" variant="ghost" title="Payment Adjustment" className="text-success" onClick={() => openPayment(p)}>
+                              <Wallet className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Adjustment Dialog */}
+      <Dialog open={payOpen} onOpenChange={v => { if (!v) { setPayOpen(false); setPayTarget(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Payment Adjustment</DialogTitle></DialogHeader>
+          {payTarget && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Invoice</span>
+                  <span className="font-mono font-medium">{payTarget.purchase_no}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Amount</span>
+                  <span className="font-medium">৳{Number(payTarget.total_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Already Paid</span>
+                  <span className="font-medium text-success">৳{Number(payTarget.paid_amount).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-border pt-1 mt-1">
+                  <span className="text-muted-foreground font-semibold">Due</span>
+                  <span className="font-bold text-destructive">৳{(Number(payTarget.total_amount) - Number(payTarget.paid_amount)).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div><Label>Payment Amount *</Label>
+                  <Input type="number" step="0.01" value={payAmount} onChange={e => setPayAmount(e.target.value)}
+                    placeholder={`Max: ৳${(Number(payTarget.total_amount) - Number(payTarget.paid_amount)).toLocaleString()}`} />
+                </div>
+                <div><Label>Payment Method</Label>
+                  <Select value={payMethod} onValueChange={setPayMethod}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="bank">Bank Transfer</SelectItem>
+                      <SelectItem value="bkash">bKash</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Note</Label><Input value={payNote} onChange={e => setPayNote(e.target.value)} placeholder="Optional note" /></div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+                <Button onClick={() => payMutation.mutate()} disabled={payMutation.isPending || !payAmount}>
+                  {payMutation.isPending ? "Processing..." : "Record Payment"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
