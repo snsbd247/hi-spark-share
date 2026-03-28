@@ -492,8 +492,10 @@ class AccountingService
         $to   = $to ?? now()->endOfMonth()->toDateString();
 
         $transactions = Transaction::with(['account', 'customer', 'vendor'])
-            ->where('category', 'like', '%cheque%')
-            ->orWhere('description', 'like', '%cheque%')
+            ->where(function ($q) {
+                $q->where('category', 'like', '%cheque%')
+                  ->orWhere('description', 'like', '%cheque%');
+            })
             ->whereBetween('date', [$from, $to])
             ->orderBy('date', 'desc')
             ->get();

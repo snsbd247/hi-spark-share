@@ -349,7 +349,7 @@ class ReportController extends Controller
         $offlineCustomers = Customer::where('connection_status', 'offline')->count();
 
         // Area-wise breakdown
-        $areaBreakdown = Customer::selectRaw('area, COUNT(*) as total, SUM(CASE WHEN status = "active" THEN 1 ELSE 0 END) as active_count')
+        $areaBreakdown = Customer::selectRaw("area, COUNT(*) as total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count")
             ->groupBy('area')
             ->orderBy('total', 'desc')
             ->get();
