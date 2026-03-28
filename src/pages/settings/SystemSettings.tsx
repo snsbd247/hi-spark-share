@@ -1,13 +1,14 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, FileText, MessageSquare, Receipt, ToggleLeft, Wallet } from "lucide-react";
+import { Settings, FileText, MessageSquare, Receipt, ToggleLeft, Wallet, BookOpen } from "lucide-react";
 import GeneralSettingsTab from "@/components/settings/GeneralSettingsTab";
 import FooterSettingsTab from "@/components/settings/FooterSettingsTab";
 import InvoiceSettingsTab from "@/components/settings/InvoiceSettingsTab";
 import SmsTemplatesTab from "@/components/settings/SmsTemplatesTab";
 import ModuleSettingsTab from "@/components/settings/ModuleSettingsTab";
 import PaymentSettingsTab from "@/components/settings/PaymentSettingsTab";
+import LedgerSettingsTab from "@/components/settings/LedgerSettingsTab";
 
 export default function SystemSettings() {
   const [activeTab, setActiveTab] = useState("general");
@@ -30,6 +31,9 @@ export default function SystemSettings() {
           <TabsTrigger value="payment" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Wallet className="h-4 w-4" /> Payment
           </TabsTrigger>
+          <TabsTrigger value="ledger" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <BookOpen className="h-4 w-4" /> Ledger
+          </TabsTrigger>
           <TabsTrigger value="footer" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <FileText className="h-4 w-4" /> Footer
           </TabsTrigger>
@@ -44,6 +48,7 @@ export default function SystemSettings() {
         <TabsContent value="general"><GeneralSettingsTab /></TabsContent>
         <TabsContent value="modules"><ModuleSettingsTab /></TabsContent>
         <TabsContent value="payment"><PaymentSettingsTab /></TabsContent>
+        <TabsContent value="ledger"><LedgerSettingsTab /></TabsContent>
         <TabsContent value="footer"><FooterSettingsTab /></TabsContent>
         <TabsContent value="invoice"><InvoiceSettingsTab /></TabsContent>
         <TabsContent value="sms-templates"><SmsTemplatesTab /></TabsContent>
