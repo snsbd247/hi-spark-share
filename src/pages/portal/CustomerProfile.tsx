@@ -166,7 +166,7 @@ export default function CustomerProfile() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Monthly Bill" value={`৳${monthlyBill.toLocaleString()}`} />
               <Field label="Discount" value={`৳${discount.toLocaleString()}`} />
-              <Field label="Connectivity Fee" value={`৳${connectivityFee.toLocaleString()}`} />
+              
               <Field label="Total Amount" value={`৳${totalAmount.toLocaleString()}`} />
               <Field label="Due Date" value={p?.due_date_day ? `${p.due_date_day}th of every month` : "—"} />
             </div>

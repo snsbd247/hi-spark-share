@@ -156,7 +156,7 @@ export default function CustomerView({ customer }: CustomerViewProps) {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Field label="Monthly Bill" value={`৳${monthlyBill.toLocaleString()}`} />
           <Field label="Discount" value={`৳${discount.toLocaleString()}`} />
-          <Field label="Connectivity Fee" value={`৳${connectivityFee.toLocaleString()}`} />
+          
           <Field label="Total Amount" value={`৳${totalAmount.toLocaleString()}`} />
           <Field label="Due Date (Day)" value={customer.due_date_day ? `${customer.due_date_day}th of every month` : "—"} />
         </div>
