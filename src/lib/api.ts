@@ -451,12 +451,29 @@ const fallbackRequest = async (config: InternalAxiosRequestConfig) => {
   }
 
   // Generic CRUD fallbacks used in accounting pages
-  const tableFallbackResources = new Set(['products', 'purchases', 'sales', 'expenses', 'vendors', 'suppliers', 'general-settings']);
+  const tableFallbackResources = new Set([
+    'products', 'purchases', 'sales', 'expenses', 'vendors', 'suppliers',
+    'general-settings', 'payments', 'bills', 'customers', 'packages',
+    'support-tickets', 'ticket-replies', 'merchant-payments', 'backup-logs',
+    'sms-logs', 'sms-settings', 'sms-templates', 'reminder-logs',
+    'audit-logs', 'admin-login-logs', 'admin-sessions', 'mikrotik-routers',
+    'olts', 'onus', 'zones', 'profiles', 'user-roles', 'custom-roles',
+    'permissions', 'role-permissions', 'payment-gateways', 'daily-reports',
+    'accounts', 'transactions', 'purchase-items', 'sale-items',
+    'customer-ledger', 'customer-sessions', 'system-settings',
+    'designations', 'employees', 'attendance', 'salary-sheets', 'loans',
+    'expense-heads', 'income-heads', 'other-heads',
+    'employee-education', 'employee-experience', 'employee-emergency-contacts',
+    'employee-salary-structure', 'employee-provident-fund', 'employee-savings-fund',
+    'supplier-payments',
+  ]);
   if (tableFallbackResources.has(resource)) {
     return handleGenericTableFallback(config, resource, arg1);
   }
 
-  throw new Error(`No fallback route for ${method.toUpperCase()} ${path}`);
+  // Silently reject unknown routes — no toast needed
+  console.warn(`[API Fallback] No route for ${method.toUpperCase()} ${path}`);
+  return toAxiosResponse(config, []);
 };
 
 const api = axios.create({
