@@ -309,3 +309,137 @@ export function generateSalesInvoicePDF(sale: any) {
 
   doc.save(`invoice-${sale.invoice_number || sale.id?.substring(0, 8)}.pdf`);
 }
+
+export function generateTransactionVoucherPDF(txn: any, account?: any) {
+  const doc = new jsPDF();
+  const pw = doc.internal.pageSize.getWidth();
+  const navy = [20, 50, 120] as const;
+
+  // Header
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, pw, 40, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+
+  const voucherType = txn.type === "income" ? "Credit Voucher"
+    : txn.type === "expense" ? "Debit Voucher"
+    : txn.type === "journal" ? "Journal Voucher"
+    : "Transaction Voucher";
+  doc.text(voucherType, 14, 18);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Smart ISP", pw - 14, 14, { align: "right" });
+  doc.text("Internet Service Provider", pw - 14, 20, { align: "right" });
+
+  doc.setFontSize(10);
+  doc.text(`Voucher No: ${txn.journal_ref || txn.id?.substring(0, 8) || "—"}`, 14, 30);
+  doc.text(`Date: ${txn.date ? new Date(txn.date).toLocaleDateString("en-GB") : "—"}`, 14, 36);
+
+  let y = 55;
+  doc.setTextColor(0, 0, 0);
+
+  // Info rows
+  const infoRow = (label: string, value: string) => {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, 16, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 30, 30);
+    doc.text(value || "—", 65, y);
+    y += 8;
+  };
+
+  infoRow("Type:", (txn.type || "").toUpperCase());
+  infoRow("Category:", (txn.category || "").toUpperCase());
+  infoRow("Account:", account ? `${account.code} - ${account.name}` : "—");
+  if (txn.reference_type) infoRow("Reference:", `${txn.reference_type} / ${txn.reference_id || ""}`);
+
+  y += 5;
+
+  // Amount table
+  doc.setFillColor(...navy);
+  doc.rect(14, y, pw - 28, 9, "F");
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text("Description", 18, y + 6);
+  doc.text("Debit (৳)", pw - 60, y + 6, { align: "right" });
+  doc.text("Credit (৳)", pw - 18, y + 6, { align: "right" });
+  y += 13;
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(10);
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(14, y - 5, pw - 28, 10, "F");
+  doc.text(txn.description || "Transaction", 18, y);
+  doc.text(Number(txn.debit) > 0 ? Number(txn.debit).toLocaleString() : "—", pw - 60, y, { align: "right" });
+  doc.text(Number(txn.credit) > 0 ? Number(txn.credit).toLocaleString() : "—", pw - 18, y, { align: "right" });
+  y += 12;
+
+  // Total
+  doc.setDrawColor(100, 100, 100);
+  doc.line(14, y, pw - 14, y);
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Total Amount:", 18, y);
+  doc.text(`৳${Number(txn.amount || 0).toLocaleString()}`, pw - 18, y, { align: "right" });
+
+  // Amount in words area
+  y += 15;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(80, 80, 80);
+  doc.text("Amount (in words):", 16, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(numberToWords(Number(txn.amount || 0)) + " Taka Only", 65, y);
+
+  // Signature area
+  y = 230;
+  doc.setDrawColor(150, 150, 150);
+  doc.setLineDashPattern([2, 2], 0);
+
+  const sigX = [30, pw / 2, pw - 50];
+  const sigLabels = ["Prepared By", "Checked By", "Approved By"];
+  sigLabels.forEach((label, i) => {
+    doc.line(sigX[i] - 20, y, sigX[i] + 20, y);
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, sigX[i], y + 6, { align: "center" });
+  });
+
+  doc.setLineDashPattern([], 0);
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text("This is a computer-generated voucher. No signature required for amounts below ৳10,000.", pw / 2, 275, { align: "center" });
+  doc.text(`Generated on ${new Date().toLocaleDateString()} — Smart ISP Billing System`, pw / 2, 280, { align: "center" });
+
+  doc.save(`voucher-${txn.type}-${txn.id?.substring(0, 8) || Date.now()}.pdf`);
+}
+
+function numberToWords(num: number): string {
+  if (num === 0) return "Zero";
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+    "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+    "Seventeen", "Eighteen", "Nineteen"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+  const convert = (n: number): string => {
+    if (n < 20) return ones[n];
+    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+    if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " " + convert(n % 100) : "");
+    if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 ? " " + convert(n % 1000) : "");
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 ? " " + convert(n % 100000) : "");
+    return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 ? " " + convert(n % 10000000) : "");
+  };
+
+  const intPart = Math.floor(Math.abs(num));
+  return convert(intPart);
+}
