@@ -63,7 +63,8 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     installed_by: customer?.installed_by ?? "",
     box_name: customer?.box_name ?? "",
     cable_length: customer?.cable_length ?? "",
-    initial_invoice_amount: "",
+    connection_charge_amount: "",
+    first_month_bill_amount: "",
   });
 
   const { data: packages } = useQuery({
