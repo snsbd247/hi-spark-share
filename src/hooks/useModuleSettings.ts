@@ -52,7 +52,7 @@ export function useModuleSettings() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const enabledModules = data || ALL_MODULES.map(m => m.key);
+  const enabledModules = Array.isArray(data) ? data : ALL_MODULES.map(m => m.key);
 
   const isModuleEnabled = (moduleKey: string): boolean => {
     return enabledModules.includes(moduleKey);
