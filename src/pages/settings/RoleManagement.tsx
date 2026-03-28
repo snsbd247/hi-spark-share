@@ -37,19 +37,19 @@ const DB_ROLES = [
 ];
 
 const MODULE_LABELS: Record<string, string> = {
-  customers: "Customers",
+  customers: "Customer Management",
   billing: "Billing",
   payments: "Payments",
   merchant_payments: "Merchant Payments",
   tickets: "Support Tickets",
   sms: "SMS & Reminders",
-  accounting: "Accounting & Inventory",
-  hr: "Human Resource",
+  accounting: "Accounting",
+  hr: "Human Resource (HR)",
   supplier: "Supplier Management",
-  settings: "Settings",
+  settings: "System Settings",
   users: "User Management",
   roles: "Roles & Permissions",
-  reports: "Reports",
+  reports: "Reports & Analytics",
 };
 
 const ACTION_LABELS: Record<string, string> = {
