@@ -275,10 +275,11 @@ export default function SupplierProfile() {
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Invoice #</TableHead><TableHead>Total</TableHead>
                     <TableHead>Paid</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {purchases.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No purchases</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No purchases</TableCell></TableRow>
                     ) : purchases.map((p: any) => (
                       <TableRow key={p.id}>
                         <TableCell className="text-sm">{safeFormat(p.date, "dd MMM yyyy")}</TableCell>
@@ -290,6 +291,16 @@ export default function SupplierProfile() {
                           <Badge variant={p.status === "paid" ? "default" : p.status === "partial" ? "secondary" : "destructive"}>
                             {p.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" title="Print Invoice" onClick={() => handlePrintPurchase(p)}>
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" title="Edit" onClick={() => handleEditPurchase(p)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
