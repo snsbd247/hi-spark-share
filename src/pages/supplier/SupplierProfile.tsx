@@ -12,11 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Printer, Loader2, Phone, Mail, Building2, MapPin, Receipt, Wallet, ShoppingCart } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Plus, Printer, Loader2, Phone, Mail, MapPin, Receipt, Wallet, ShoppingCart, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { generatePaymentAdvicePDF } from "@/lib/accountingPdf";
+import { generateSupplierPurchaseInvoicePDF } from "@/lib/supplierPurchasePdf";
 
 export default function SupplierProfile() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +26,20 @@ export default function SupplierProfile() {
   const qc = useQueryClient();
   const [payOpen, setPayOpen] = useState(false);
   const [payForm, setPayForm] = useState({ amount: "", payment_method: "cash", reference: "", notes: "", purchase_id: "" });
+
+  // Edit purchase state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ date: "", paid_amount: 0, notes: "" });
+  const [editItems, setEditItems] = useState<any[]>([]);
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("products").select("id, name, sku, buy_price").order("name");
+      return data || [];
+    },
+  });
 
   const { data: supplier, isLoading } = useQuery({
     queryKey: ["supplier", id],
@@ -106,6 +122,40 @@ export default function SupplierProfile() {
       setPayForm({ amount: "", payment_method: "cash", reference: "", notes: "", purchase_id: "" });
     },
     onError: () => toast.error("Payment failed"),
+  });
+
+  // Print purchase invoice
+  const handlePrintPurchase = async (p: any) => {
+    const { data: pItems } = await (supabase as any).from("purchase_items").select("*, products(name, sku)").eq("purchase_id", p.id);
+    generateSupplierPurchaseInvoicePDF(p, supplier, pItems || []);
+  };
+
+  // Open edit purchase
+  const handleEditPurchase = async (p: any) => {
+    setEditId(p.id);
+    setEditForm({ date: p.date?.split("T")[0] || "", paid_amount: Number(p.paid_amount), notes: p.notes || "" });
+    const { data: pItems } = await (supabase as any).from("purchase_items").select("*").eq("purchase_id", p.id);
+    setEditItems(pItems?.length ? pItems.map((i: any) => ({ product_id: i.product_id || "", description: i.description || "", quantity: Number(i.quantity), unit_price: Number(i.unit_price) })) : [{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
+    setEditOpen(true);
+  };
+
+  // Save edit
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editId) return;
+      const total = editItems.reduce((s: number, i: any) => s + i.quantity * i.unit_price, 0);
+      const status = editForm.paid_amount >= total ? "paid" : editForm.paid_amount > 0 ? "partial" : "unpaid";
+      await (supabase as any).from("purchases").update({ date: editForm.date, total_amount: total, paid_amount: editForm.paid_amount, status, notes: editForm.notes || null }).eq("id", editId);
+      await (supabase as any).from("purchase_items").delete().eq("purchase_id", editId);
+      const newItems = editItems.filter((i: any) => i.product_id || i.description).map((i: any) => ({ purchase_id: editId, product_id: i.product_id || null, description: i.description || null, quantity: i.quantity, unit_price: i.unit_price }));
+      if (newItems.length) await (supabase as any).from("purchase_items").insert(newItems);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["supplier-purchases", id] });
+      toast.success("Purchase updated");
+      setEditOpen(false);
+    },
+    onError: () => toast.error("Update failed"),
   });
 
   if (isLoading) return <DashboardLayout><div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></DashboardLayout>;
@@ -225,10 +275,11 @@ export default function SupplierProfile() {
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Invoice #</TableHead><TableHead>Total</TableHead>
                     <TableHead>Paid</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {purchases.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No purchases</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No purchases</TableCell></TableRow>
                     ) : purchases.map((p: any) => (
                       <TableRow key={p.id}>
                         <TableCell className="text-sm">{safeFormat(p.date, "dd MMM yyyy")}</TableCell>
@@ -240,6 +291,16 @@ export default function SupplierProfile() {
                           <Badge variant={p.status === "paid" ? "default" : p.status === "partial" ? "secondary" : "destructive"}>
                             {p.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" title="Print Invoice" onClick={() => handlePrintPurchase(p)}>
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" title="Edit" onClick={() => handleEditPurchase(p)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -301,6 +362,53 @@ export default function SupplierProfile() {
               Record Payment & Generate Advice
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Purchase Dialog */}
+      <Dialog open={editOpen} onOpenChange={v => { if (!v) { setEditOpen(false); setEditId(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Purchase</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMutation.mutate(); }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Date</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} /></div>
+              <div><Label>Paid Amount</Label><Input type="number" step="0.01" value={editForm.paid_amount} onChange={e => setEditForm({ ...editForm, paid_amount: +e.target.value })} /></div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-base font-semibold">Items</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditItems([...editItems, { product_id: "", description: "", quantity: 1, unit_price: 0 }])}><Plus className="h-3 w-3 mr-1" />Add</Button>
+              </div>
+              <div className="space-y-2">
+                {editItems.map((item: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <Select value={item.product_id || "custom"} onValueChange={v => { const ni = [...editItems]; ni[i] = { ...ni[i], product_id: v === "custom" ? "" : v }; if (v !== "custom") { const prod = products.find((p: any) => p.id === v); if (prod) ni[i].unit_price = Number(prod.buy_price); } setEditItems(ni); }}>
+                        <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">— Custom —</SelectItem>
+                          {products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2"><Input type="number" min={1} value={item.quantity} onChange={e => { const ni = [...editItems]; ni[i] = { ...ni[i], quantity: +e.target.value }; setEditItems(ni); }} /></div>
+                    <div className="col-span-3"><Input type="number" step="0.01" value={item.unit_price} onChange={e => { const ni = [...editItems]; ni[i] = { ...ni[i], unit_price: +e.target.value }; setEditItems(ni); }} /></div>
+                    <div className="col-span-1 text-right text-sm font-medium py-2">৳{(item.quantity * item.unit_price).toLocaleString()}</div>
+                    <div className="col-span-1">{editItems.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setEditItems(editItems.filter((_: any, idx: number) => idx !== i))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-right mt-2"><span className="text-lg font-bold">Total: ৳{editItems.reduce((s: number, i: any) => s + i.quantity * i.unit_price, 0).toLocaleString()}</span></div>
+            </div>
+
+            <div><Label>Notes</Label><Textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} /></div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Saving..." : "Update Purchase"}</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
