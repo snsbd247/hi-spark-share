@@ -58,7 +58,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     router_id: customer?.router_id ?? "",
     due_date_day: customer?.due_date_day?.toString() ?? "",
     discount: customer?.discount?.toString() ?? "0",
-    connectivity_fee: customer?.connectivity_fee?.toString() ?? "0",
+    
     pop_location: customer?.pop_location ?? "",
     installed_by: customer?.installed_by ?? "",
     box_name: customer?.box_name ?? "",
