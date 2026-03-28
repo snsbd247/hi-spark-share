@@ -333,3 +333,35 @@ export async function authenticateRequest(supabase: any, authHeader: string | nu
 
   return { error: "Unauthorized" };
 }
+
+/**
+ * Create accounting transaction for merchant payment in configured receiving account.
+ */
+export async function createMerchantAccountingEntryShared(supabase: any, amount: number, transactionId: string, description: string) {
+  try {
+    const { data: setting } = await supabase
+      .from("system_settings")
+      .select("setting_value")
+      .eq("setting_key", "merchant_payment_account_id")
+      .maybeSingle();
+
+    const accountId = setting?.setting_value;
+    if (!accountId || accountId === "none") return;
+
+    await supabase.from("transactions").insert({
+      account_id: accountId,
+      type: "credit",
+      amount,
+      description: `Merchant Payment - ${description} (TrxID: ${transactionId})`,
+      date: new Date().toISOString(),
+      reference: `MERCH-${transactionId}`,
+    });
+
+    const { data: acc } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
+    if (acc) {
+      await supabase.from("accounts").update({ balance: (acc.balance || 0) + amount }).eq("id", accountId);
+    }
+  } catch (err) {
+    console.error("Merchant accounting entry failed:", err);
+  }
+}
