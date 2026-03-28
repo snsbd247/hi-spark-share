@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/apiDb";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface FooterSettings {
   footer_text: string;
@@ -23,8 +23,8 @@ export function useFooterSettings() {
   return useQuery({
     queryKey: ["footer-settings"],
     queryFn: async (): Promise<FooterSettings> => {
-      const { data, error } = await supabase
-        .from("system_settings" as any)
+      const { data, error } = await (supabase as any)
+        .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [
           "footer_text", "company_name", "footer_link",

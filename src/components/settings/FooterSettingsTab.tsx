@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/apiDb";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +26,8 @@ export default function FooterSettingsTab() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["footer-settings-admin"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("system_settings" as any)
+      const { data, error } = await (supabase as any)
+        .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [
           "footer_text", "company_name", "footer_link",
@@ -57,34 +57,18 @@ export default function FooterSettingsTab() {
     setSaving(true);
     try {
       const entries = [
-        { key: "footer_text", value: form.footer_text },
-        { key: "company_name", value: form.company_name },
-        { key: "footer_link", value: form.footer_link },
-        { key: "footer_developer", value: form.footer_developer },
-        { key: "system_version", value: form.system_version },
-        { key: "auto_update_year", value: form.auto_update_year ? "true" : "false" },
+        { setting_key: "footer_text", setting_value: form.footer_text },
+        { setting_key: "company_name", setting_value: form.company_name },
+        { setting_key: "footer_link", setting_value: form.footer_link },
+        { setting_key: "footer_developer", setting_value: form.footer_developer },
+        { setting_key: "system_version", setting_value: form.system_version },
+        { setting_key: "auto_update_year", setting_value: form.auto_update_year ? "true" : "false" },
       ];
-      for (const entry of entries) {
-        // First try to find existing record
-        const { data: existing } = await (supabase as any)
-          .from("system_settings")
-          .select("id")
-          .eq("setting_key", entry.key)
-          .maybeSingle();
 
-        if (existing?.id) {
-          const { error } = await (supabase as any)
-            .from("system_settings")
-            .update({ setting_value: entry.value, updated_at: new Date().toISOString() })
-            .eq("id", existing.id);
-          if (error) throw error;
-        } else {
-          const { error } = await (supabase as any)
-            .from("system_settings")
-            .insert({ setting_key: entry.key, setting_value: entry.value });
-          if (error) throw error;
-        }
-      }
+      const { error } = await (supabase as any)
+        .from("system_settings")
+        .upsert(entries, { onConflict: "setting_key" });
+      if (error) throw error;
       toast.success("Footer settings saved");
       queryClient.invalidateQueries({ queryKey: ["footer-settings"] });
       queryClient.invalidateQueries({ queryKey: ["footer-settings-admin"] });
