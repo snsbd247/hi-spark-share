@@ -427,6 +427,9 @@ Deno.serve(async (req: Request) => {
       if (!pName) {
         return new Response(JSON.stringify({ error: "No profile name" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+      if (pName === "default") {
+        return new Response(JSON.stringify({ success: true, message: "Skipped default profile" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       const routerConfig = await getRouterConfig(supabase, router_id);
 
