@@ -364,6 +364,53 @@ export default function SupplierProfile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Purchase Dialog */}
+      <Dialog open={editOpen} onOpenChange={v => { if (!v) { setEditOpen(false); setEditId(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Purchase</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMutation.mutate(); }} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Date</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })} /></div>
+              <div><Label>Paid Amount</Label><Input type="number" step="0.01" value={editForm.paid_amount} onChange={e => setEditForm({ ...editForm, paid_amount: +e.target.value })} /></div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-base font-semibold">Items</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditItems([...editItems, { product_id: "", description: "", quantity: 1, unit_price: 0 }])}><Plus className="h-3 w-3 mr-1" />Add</Button>
+              </div>
+              <div className="space-y-2">
+                {editItems.map((item: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <Select value={item.product_id || "custom"} onValueChange={v => { const ni = [...editItems]; ni[i] = { ...ni[i], product_id: v === "custom" ? "" : v }; if (v !== "custom") { const prod = products.find((p: any) => p.id === v); if (prod) ni[i].unit_price = Number(prod.buy_price); } setEditItems(ni); }}>
+                        <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">— Custom —</SelectItem>
+                          {products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2"><Input type="number" min={1} value={item.quantity} onChange={e => { const ni = [...editItems]; ni[i] = { ...ni[i], quantity: +e.target.value }; setEditItems(ni); }} /></div>
+                    <div className="col-span-3"><Input type="number" step="0.01" value={item.unit_price} onChange={e => { const ni = [...editItems]; ni[i] = { ...ni[i], unit_price: +e.target.value }; setEditItems(ni); }} /></div>
+                    <div className="col-span-1 text-right text-sm font-medium py-2">৳{(item.quantity * item.unit_price).toLocaleString()}</div>
+                    <div className="col-span-1">{editItems.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setEditItems(editItems.filter((_: any, idx: number) => idx !== i))}><Trash2 className="h-3 w-3 text-destructive" /></Button>}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-right mt-2"><span className="text-lg font-bold">Total: ৳{editItems.reduce((s: number, i: any) => s + i.quantity * i.unit_price, 0).toLocaleString()}</span></div>
+            </div>
+
+            <div><Label>Notes</Label><Textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} /></div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Saving..." : "Update Purchase"}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
