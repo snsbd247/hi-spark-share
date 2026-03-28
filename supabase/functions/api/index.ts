@@ -343,6 +343,9 @@ Deno.serve(async (req: Request) => {
           matched_bill_id: bill_id, notes: "Manually matched by admin",
         }).eq("id", payment_id);
 
+        // Create accounting transaction if receiving account is configured
+        await createMerchantAccountingEntry(supabase, mp.amount, mp.transaction_id, "Manual match");
+
         return jsonResponse({ success: true });
       }
     }
