@@ -228,6 +228,8 @@ export async function autoMatchMerchantPayment(supabase: any, merchantPayment: {
         bill_id: bill.id,
         status: "completed",
       });
+      // Create accounting entry in configured receiving account
+      await createMerchantAccountingEntryShared(supabase, merchantPayment.amount, merchantPayment.transaction_id, "Auto-matched");
     }
 
     return { status: "matched", matched_customer_id: customer.id, matched_bill_id: bill.id };
