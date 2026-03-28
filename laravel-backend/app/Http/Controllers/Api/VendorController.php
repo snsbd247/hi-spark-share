@@ -32,8 +32,7 @@ class VendorController extends Controller
 
     public function show(string $id)
     {
-        $vendor = Vendor::with('purchases')->findOrFail($id);
-        return response()->json($vendor);
+        return response()->json(Vendor::findOrFail($id));
     }
 
     public function store(Request $request)
@@ -47,7 +46,7 @@ class VendorController extends Controller
         ]);
 
         $vendor = Vendor::create($request->only([
-            'name', 'phone', 'email', 'company', 'address', 'notes',
+            'name', 'phone', 'email', 'company', 'address',
         ]));
 
         return response()->json($vendor, 201);
@@ -57,7 +56,7 @@ class VendorController extends Controller
     {
         $vendor = Vendor::findOrFail($id);
         $vendor->update($request->only([
-            'name', 'phone', 'email', 'company', 'address', 'status', 'notes',
+            'name', 'phone', 'email', 'company', 'address', 'status',
         ]));
 
         return response()->json($vendor);
@@ -65,11 +64,7 @@ class VendorController extends Controller
 
     public function destroy(string $id)
     {
-        $vendor = Vendor::findOrFail($id);
-        if ($vendor->purchases()->exists()) {
-            return response()->json(['error' => 'Cannot delete vendor with purchases'], 422);
-        }
-        $vendor->delete();
+        Vendor::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 }
