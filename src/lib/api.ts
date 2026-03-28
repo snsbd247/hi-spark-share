@@ -101,6 +101,13 @@ const invokeEdgeHttp = async (
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401) {
+      // Session expired — clear stale token and redirect to login
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      window.location.href = '/login';
+      throw new Error('Session expired. Please login again.');
+    }
     const error = new Error(payload?.error || payload?.message || `Edge request failed (${response.status})`) as Error & {
       status?: number;
       data?: any;
