@@ -34,8 +34,8 @@ export default function PaymentSettingsTab() {
   const { data: currentSetting, isLoading: settingLoading } = useQuery({
     queryKey: ["system-setting", SETTING_KEY],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("system_settings" as any)
+      const { data, error } = await (supabase as any)
+        .from("system_settings")
         .select("setting_value")
         .eq("setting_key", SETTING_KEY)
         .maybeSingle();
