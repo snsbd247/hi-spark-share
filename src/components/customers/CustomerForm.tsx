@@ -168,7 +168,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       router_id: form.router_id || null,
       due_date_day: form.due_date_day ? parseInt(form.due_date_day) : null,
       discount: parseFloat(form.discount) || 0,
-      connectivity_fee: parseFloat(form.connectivity_fee) || 0,
+      
       pop_location: form.pop_location || null,
       installed_by: form.installed_by || null,
       box_name: form.box_name || null,
