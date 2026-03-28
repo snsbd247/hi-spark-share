@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash2 } from "lucide-react";
 import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
-import { postSaleToLedger } from "@/lib/ledger";
+import { postSalePaymentToLedger } from "@/lib/ledger";
 import { toast } from "sonner";
 
 interface SaleItem { product_id: string; quantity: number; unit_price: number; }
