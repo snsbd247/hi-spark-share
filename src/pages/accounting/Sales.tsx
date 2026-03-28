@@ -27,9 +27,12 @@ export default function Sales() {
   const [payTarget, setPayTarget] = useState<any>(null);
   const [payAmount, setPayAmount] = useState(0);
   const [payMethod, setPayMethod] = useState("cash");
+  const [customerType, setCustomerType] = useState<"walkin" | "existing">("walkin");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerSearch, setCustomerSearch] = useState("");
 
   const [form, setForm] = useState({
-    customer_name: "", customer_phone: "", sale_date: new Date().toISOString().split("T")[0],
+    customer_name: "Walk-in Customer", customer_phone: "", sale_date: new Date().toISOString().split("T")[0],
     payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "",
   });
   const [items, setItems] = useState<SaleItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
@@ -37,7 +40,7 @@ export default function Sales() {
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ["sales"],
     queryFn: async () => {
-      const { data } = await (supabase as any).from("sales").select("*").order("sale_date", { ascending: false });
+      const { data } = await (supabase as any).from("sales").select("*, customers(name, customer_id)").order("sale_date", { ascending: false });
       return data || [];
     },
   });
@@ -49,6 +52,20 @@ export default function Sales() {
       return data || [];
     },
   });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers-list-for-sales"],
+    queryFn: async () => {
+      const { data } = await supabase.from("customers").select("id, name, phone, customer_id").order("name");
+      return data || [];
+    },
+  });
+
+  const filteredCustomers = customers.filter((c: any) =>
+    c.name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.phone?.includes(customerSearch) ||
+    c.customer_id?.toLowerCase().includes(customerSearch.toLowerCase())
+  );
 
   const create = useMutation({
     mutationFn: async (formData: any) => {
@@ -62,6 +79,7 @@ export default function Sales() {
 
       const { data: sale, error } = await (supabase as any).from("sales").insert({
         sale_no: saleNo,
+        customer_id: formData.customer_id || null,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
         sale_date: formData.sale_date,
@@ -110,6 +128,7 @@ export default function Sales() {
       const total = subtotal - formData.discount + formData.tax;
 
       await (supabase as any).from("sales").update({
+        customer_id: formData.customer_id || null,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
         sale_date: formData.sale_date,
@@ -165,15 +184,25 @@ export default function Sales() {
   const closeDialog = () => {
     setOpen(false);
     setEditSale(null);
-    setForm({ customer_name: "", customer_phone: "", sale_date: new Date().toISOString().split("T")[0], payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "" });
+    setCustomerType("walkin");
+    setSelectedCustomerId("");
+    setCustomerSearch("");
+    setForm({ customer_name: "Walk-in Customer", customer_phone: "", sale_date: new Date().toISOString().split("T")[0], payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "" });
     setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
   };
 
   const openEdit = async (s: any) => {
     const { data: sItems } = await (supabase as any).from("sale_items").select("*").eq("sale_id", s.id);
     setEditSale(s);
+    if (s.customer_id) {
+      setCustomerType("existing");
+      setSelectedCustomerId(s.customer_id);
+    } else {
+      setCustomerType("walkin");
+      setSelectedCustomerId("");
+    }
     setForm({
-      customer_name: s.customer_name || "",
+      customer_name: s.customer_name || "Walk-in Customer",
       customer_phone: s.customer_phone || "",
       sale_date: s.sale_date || "",
       payment_method: s.payment_method || "cash",
@@ -205,16 +234,29 @@ export default function Sales() {
     setItems(newItems);
   };
 
+  const handleCustomerSelect = (custId: string) => {
+    setSelectedCustomerId(custId);
+    const cust = customers.find((c: any) => c.id === custId);
+    if (cust) {
+      setForm({ ...form, customer_name: cust.name, customer_phone: cust.phone || "" });
+    }
+  };
+
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
   const total = subtotal - form.discount + form.tax;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (items.some(i => !i.product_id)) { toast.error("Select products"); return; }
+    const payload = {
+      ...form,
+      items,
+      customer_id: customerType === "existing" ? selectedCustomerId : null,
+    };
     if (editSale) {
-      updateSale.mutate({ ...form, items, editSale });
+      updateSale.mutate({ ...payload, editSale });
     } else {
-      create.mutate({ ...form, items });
+      create.mutate(payload);
     }
   };
 
@@ -236,10 +278,54 @@ export default function Sales() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editSale ? "Edit Sale" : "Create Sale"}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Customer Name</Label><Input value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} /></div>
-                  <div><Label>Phone</Label><Input value={form.customer_phone} onChange={e => setForm({...form, customer_phone: e.target.value})} /></div>
+                {/* Customer Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Customer</Label>
+                  <div className="flex gap-2">
+                    <Button type="button" variant={customerType === "walkin" ? "default" : "outline"} size="sm" onClick={() => {
+                      setCustomerType("walkin");
+                      setSelectedCustomerId("");
+                      setForm({ ...form, customer_name: "Walk-in Customer", customer_phone: "" });
+                    }}>Walk-in Customer</Button>
+                    <Button type="button" variant={customerType === "existing" ? "default" : "outline"} size="sm" onClick={() => setCustomerType("existing")}>
+                      Select Customer
+                    </Button>
+                  </div>
+                  {customerType === "existing" ? (
+                    <div className="space-y-2">
+                      <Input placeholder="Search customer by name, phone, ID..." value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} />
+                      {customerSearch && filteredCustomers.length > 0 && !selectedCustomerId && (
+                        <div className="border rounded-md max-h-40 overflow-y-auto bg-background">
+                          {filteredCustomers.slice(0, 10).map((c: any) => (
+                            <div key={c.id} className="px-3 py-2 hover:bg-muted cursor-pointer text-sm flex justify-between" onClick={() => {
+                              handleCustomerSelect(c.id);
+                              setCustomerSearch(c.name);
+                            }}>
+                              <span>{c.name}</span>
+                              <span className="text-muted-foreground">{c.customer_id} • {c.phone}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {selectedCustomerId && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{form.customer_name} ({form.customer_phone})</Badge>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => {
+                            setSelectedCustomerId("");
+                            setCustomerSearch("");
+                            setForm({ ...form, customer_name: "", customer_phone: "" });
+                          }}>Change</Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>Name</Label><Input value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} /></div>
+                      <div><Label>Phone</Label><Input value={form.customer_phone} onChange={e => setForm({...form, customer_phone: e.target.value})} /></div>
+                    </div>
+                  )}
                 </div>
+
                 <div><Label>Date</Label><Input type="date" value={form.sale_date} onChange={e => setForm({...form, sale_date: e.target.value})} /></div>
 
                 <div>
@@ -361,7 +447,10 @@ export default function Sales() {
                   return (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.sale_no}</TableCell>
-                      <TableCell>{s.customer_name || "—"}</TableCell>
+                      <TableCell>
+                        {s.customers?.name || s.customer_name || "Walk-in"}
+                        {s.customers?.customer_id && <span className="text-muted-foreground text-xs ml-1">({s.customers.customer_id})</span>}
+                      </TableCell>
                       <TableCell>{s.sale_date}</TableCell>
                       <TableCell className="text-right">৳{Number(s.total).toLocaleString()}</TableCell>
                       <TableCell className="text-right">৳{Number(s.paid_amount).toLocaleString()}</TableCell>
