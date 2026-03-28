@@ -24,7 +24,7 @@ export function useFooterSettings() {
     queryKey: ["footer-settings"],
     queryFn: async (): Promise<FooterSettings> => {
       const { data, error } = await supabase
-        .from("system_settings" as any)
+        .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [
           "footer_text", "company_name", "footer_link",
