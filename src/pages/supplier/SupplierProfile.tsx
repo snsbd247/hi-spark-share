@@ -27,6 +27,20 @@ export default function SupplierProfile() {
   const [payOpen, setPayOpen] = useState(false);
   const [payForm, setPayForm] = useState({ amount: "", payment_method: "cash", reference: "", notes: "", purchase_id: "" });
 
+  // Edit purchase state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ date: "", paid_amount: 0, notes: "" });
+  const [editItems, setEditItems] = useState<any[]>([]);
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("products").select("id, name, sku, buy_price").order("name");
+      return data || [];
+    },
+  });
+
   const { data: supplier, isLoading } = useQuery({
     queryKey: ["supplier", id],
     queryFn: async () => {
