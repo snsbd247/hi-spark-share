@@ -129,7 +129,7 @@ export default function SMSLogs() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Phone Number</Label>
+              <Label>{t.sms.phoneNumber}</Label>
               <Input
                 value={smsForm.phone}
                 onChange={(e) => setSmsForm({ ...smsForm, phone: e.target.value })}
@@ -137,16 +137,16 @@ export default function SMSLogs() {
               />
             </div>
             <div>
-              <Label>Message</Label>
+              <Label>{t.sms.message}</Label>
               <Textarea
                 value={smsForm.message}
                 onChange={(e) => setSmsForm({ ...smsForm, message: e.target.value })}
-                placeholder="Type your message..."
+                placeholder={t.sms.typeMessage}
               />
             </div>
             <Button onClick={handleSend} disabled={sending} className="w-full">
               {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-              Send SMS
+              {t.sms.sendSms}
             </Button>
           </div>
         </DialogContent>
