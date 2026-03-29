@@ -24,236 +24,227 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  const contentW = pw - margin * 2;
+  const ph = doc.internal.pageSize.getHeight();
+  const m = 12; // margin
+  const cw = pw - m * 2;
   let y = 0;
 
-  const navy = [20, 50, 120] as const;
-  const lightBg = [245, 247, 250] as const;
-  const borderGray = [200, 200, 200] as const;
+  // Colors
+  const navy: [number, number, number] = [25, 55, 109];
+  const lightBg: [number, number, number] = [244, 246, 249];
+  const border: [number, number, number] = [210, 210, 210];
+  const textDark: [number, number, number] = [30, 30, 30];
+  const textMuted: [number, number, number] = [120, 120, 120];
 
-  // ─── HEADER ───
+  // ─── HEADER (compact) ───
   doc.setFillColor(...navy);
-  doc.rect(0, 0, pw, 38, "F");
-
-  doc.setFillColor(255, 255, 255);
-  doc.circle(28, 19, 10, "F");
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...navy);
-  doc.text("ISP", 23, 22);
+  doc.rect(0, 0, pw, 28, "F");
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(settings.site_name || "Smart ISP", 45, 16);
-  doc.setFontSize(8);
+  doc.text(settings.site_name || "Smart ISP", m, 12);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text("Internet Service Provider", 45, 22);
-  if (settings.mobile) doc.text(`Hotline: ${settings.mobile}`, 45, 28);
-  if (settings.address) doc.text(settings.address, 45, 34);
+  const headerParts = [];
+  if (settings.mobile) headerParts.push(`Hotline: ${settings.mobile}`);
+  if (settings.email) headerParts.push(settings.email);
+  doc.text(headerParts.join("  |  "), m, 18);
+  if (settings.address) doc.text(settings.address, m, 23);
 
+  // Right side
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("APPLICATION FORM", pw - 20, 14, { align: "right" });
-  doc.setDrawColor(255, 255, 255);
-  doc.roundedRect(pw - 62, 6, 48, 12, 2, 2, "S");
-
-  doc.setFontSize(8);
+  doc.text("APPLICATION FORM", pw - m, 11, { align: "right" });
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text(`Form No: ${customer.customer_id || "—"}`, pw - 20, 26, { align: "right" });
-  doc.text(`Date: ${new Date().toLocaleDateString("en-GB")}`, pw - 20, 32, { align: "right" });
+  doc.text(`ID: ${customer.customer_id || "—"}  |  Date: ${new Date().toLocaleDateString("en-GB")}`, pw - m, 18, { align: "right" });
 
-  y = 44;
+  y = 32;
 
   // ─── HELPERS ───
-  const sectionHeader = (title: string) => {
+  const sectionTitle = (title: string) => {
     doc.setFillColor(...navy);
-    doc.rect(margin, y, contentW, 7, "F");
-    doc.setFontSize(9);
+    doc.rect(m, y, cw, 5.5, "F");
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
-    doc.text(title.toUpperCase(), margin + 4, y + 5);
-    y += 10;
-    doc.setTextColor(30, 30, 30);
+    doc.text(title.toUpperCase(), m + 3, y + 4);
+    y += 7;
+    doc.setTextColor(...textDark);
   };
 
-  const fieldBox = (label: string, value: string, x: number, w: number, h = 10) => {
-    doc.setDrawColor(...borderGray);
+  const field = (label: string, value: string, x: number, w: number, h = 8) => {
+    doc.setDrawColor(...border);
     doc.rect(x, y, w, h, "S");
+    // Label bg
     doc.setFillColor(...lightBg);
-    doc.rect(x, y, w, 4, "F");
-    doc.setFontSize(6);
+    doc.rect(x, y, w, 3.2, "F");
+    doc.setFontSize(5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(80, 80, 80);
-    doc.text(label, x + 2, y + 3);
-    doc.setFontSize(9);
+    doc.setTextColor(...textMuted);
+    doc.text(label, x + 1.5, y + 2.5);
+    // Value
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(20, 20, 20);
-    doc.text(value || "—", x + 2, y + 8);
+    doc.setTextColor(...textDark);
+    const truncated = value.length > Math.floor(w / 1.8) ? value.substring(0, Math.floor(w / 1.8)) + "…" : value;
+    doc.text(truncated || "—", x + 1.5, y + 6.5);
   };
 
-  const fieldRow = (fields: { label: string; value: string }[], h = 10) => {
-    const fw = contentW / fields.length;
-    fields.forEach((f, i) => fieldBox(f.label, f.value, margin + fw * i, fw, h));
-    y += h + 1;
+  const row = (fields: { label: string; value: string }[], h = 8) => {
+    const fw = cw / fields.length;
+    fields.forEach((f, i) => field(f.label, f.value, m + fw * i, fw, h));
+    y += h + 0.5;
   };
 
   // ─── CUSTOMER INFORMATION ───
-  sectionHeader("Customer Information");
+  sectionTitle("Customer Information");
 
-  const photoSize = 28;
-  const photoX = pw - margin - photoSize;
+  // Photo area (right side)
+  const photoSize = 20;
+  const photoX = pw - m - photoSize;
   const photoY = y;
-  doc.setDrawColor(...borderGray);
+  doc.setDrawColor(...border);
   doc.rect(photoX, photoY, photoSize, photoSize, "S");
   if (photoData) {
-    try {
-      doc.addImage(photoData, "JPEG", photoX + 1, photoY + 1, photoSize - 2, photoSize - 2);
-    } catch { /* skip if image fails */ }
+    try { doc.addImage(photoData, "JPEG", photoX + 0.5, photoY + 0.5, photoSize - 1, photoSize - 1); } catch {}
   } else {
-    doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(5.5);
+    doc.setTextColor(...textMuted);
     doc.text("PHOTO", photoX + photoSize / 2, photoY + photoSize / 2, { align: "center" });
-    doc.setTextColor(20, 20, 20);
+    doc.setTextColor(...textDark);
   }
 
-  const infoW = contentW - photoSize - 4;
-  fieldBox("Applicant Name", customer.name || "", margin, infoW / 2);
-  fieldBox("Father Name", customer.father_name || "", margin + infoW / 2, infoW / 2);
-  y += 11;
+  const infoW = cw - photoSize - 2;
+  const fw2 = infoW / 2;
+  const fw3 = infoW / 3;
 
-  fieldBox("Customer ID", customer.customer_id || "", margin, infoW / 3);
-  fieldBox("National ID", customer.nid || "", margin + infoW / 3, infoW / 3);
-  fieldBox("Email", customer.email || "", margin + (infoW / 3) * 2, infoW / 3);
-  y += 11;
+  // Row 1
+  field("Applicant Name", customer.name || "", m, fw2);
+  field("Father Name", customer.father_name || "", m + fw2, fw2);
+  y += 8.5;
 
-  y = Math.max(y, photoY + photoSize + 2);
-  fieldRow([
-    { label: "Mobile Number", value: customer.phone || "" },
-    { label: "Alternative Contact", value: customer.alt_phone || "" },
+  // Row 2
+  field("Customer ID", customer.customer_id || "", m, fw3);
+  field("NID", customer.nid || "", m + fw3, fw3);
+  field("Mother Name", customer.mother_name || "", m + fw3 * 2, fw3);
+  y += 8.5;
+
+  y = Math.max(y, photoY + photoSize + 1);
+
+  row([
+    { label: "Mobile", value: customer.phone || "" },
+    { label: "Alt Contact", value: customer.alt_phone || "" },
+    { label: "Email", value: customer.email || "" },
     { label: "Occupation", value: customer.occupation || "" },
-    { label: "Mother Name", value: customer.mother_name || "" },
   ]);
 
-  y += 3;
+  y += 1.5;
 
-  // ─── ADDRESS INFORMATION ───
-  sectionHeader("Address Information");
+  // ─── ADDRESS ───
+  sectionTitle("Address Information");
 
-  fieldRow([
+  row([
     { label: "Zone / Area", value: customer.area || "" },
-    { label: "Road No", value: customer.road || "" },
-    { label: "House No", value: customer.house || "" },
+    { label: "Road", value: customer.road || "" },
+    { label: "House", value: customer.house || "" },
     { label: "City", value: customer.city || "" },
   ]);
 
-  fieldRow([
+  row([
     { label: "Village", value: customer.village || "" },
     { label: "Post Office", value: customer.post_office || "" },
     { label: "District", value: customer.district || "" },
   ]);
 
-  fieldBox("Permanent Address", customer.permanent_address || "", margin, contentW, 12);
-  y += 13;
+  field("Permanent Address", customer.permanent_address || "", m, cw, 8);
+  y += 8.5;
 
-  y += 3;
+  y += 1.5;
 
   // ─── CONNECTION DETAILS ───
-  sectionHeader("Connection Details");
+  sectionTitle("Connection Details");
 
-  fieldRow([
-    { label: "Bandwidth Type", value: "Shared" },
-    { label: "Package Name", value: pkg?.name || "" },
+  row([
+    { label: "Package", value: pkg?.name || "" },
     { label: "Speed", value: pkg?.speed || "" },
+    { label: "Bandwidth", value: "Shared" },
   ]);
 
-  fieldRow([
+  row([
     { label: "PPPoE Username", value: customer.pppoe_username || "" },
     { label: "PPPoE Password", value: customer.pppoe_password || "" },
+    { label: "IP Address", value: customer.ip_address || "" },
   ]);
 
-  fieldRow([
-    { label: "IP Address", value: customer.ip_address || "" },
+  row([
     { label: "Gateway", value: customer.gateway || "" },
     { label: "Subnet", value: customer.subnet || "" },
-  ]);
-
-  fieldRow([
     { label: "ONU MAC", value: customer.onu_mac || "" },
     { label: "Router MAC", value: customer.router_mac || "" },
   ]);
 
-  y += 3;
+  y += 1.5;
 
-  // ─── BILLING INFORMATION ───
-  sectionHeader("Billing Information");
+  // ─── BILLING ───
+  sectionTitle("Billing Information");
 
   const monthlyBill = Number(customer.monthly_bill || 0);
   const discount = Number(customer.discount || 0);
-  const totalAmount = monthlyBill - discount;
+  const total = monthlyBill - discount;
 
-  fieldRow([
+  row([
     { label: "Connection Date", value: customer.installation_date || "" },
-    { label: "Monthly Bill", value: `${monthlyBill.toLocaleString()} BDT` },
-    { label: "Due Date (Day)", value: customer.due_date_day ? `${customer.due_date_day}th of every month` : "—" },
+    { label: "Monthly Bill", value: `৳${monthlyBill.toLocaleString()}` },
+    { label: "Discount", value: `৳${discount.toLocaleString()}` },
+    { label: "Net Amount", value: `৳${total.toLocaleString()}` },
+    { label: "Due Date", value: customer.due_date_day ? `${customer.due_date_day}th` : "—" },
   ]);
 
-  fieldRow([
-    { label: "Discount", value: `${discount.toLocaleString()} BDT` },
-    { label: "Total Amount", value: `${totalAmount.toLocaleString()} BDT` },
-  ]);
-
-  y += 3;
+  y += 1.5;
 
   // ─── OFFICE USE ───
-  sectionHeader("Office Use Only");
+  sectionTitle("Office Use Only");
 
-  fieldRow([
+  row([
     { label: "POP Location", value: customer.pop_location || "" },
     { label: "Installed By", value: customer.installed_by || "" },
     { label: "Box Name", value: customer.box_name || "" },
     { label: "Cable Length", value: customer.cable_length || "" },
   ]);
 
-  // Check if we need a new page for signatures
-  if (y > 240) {
-    doc.addPage();
-    y = 20;
-  }
-
-  y += 8;
+  y += 6;
 
   // ─── SIGNATURES ───
-  doc.setDrawColor(...borderGray);
-  const sigW = (contentW - 10) / 3;
-
+  const sigW = (cw - 10) / 3;
+  doc.setDrawColor(...border);
   [
-    { label: "Applicant Signature", x: margin },
-    { label: "Admin Signature", x: margin + sigW + 5 },
-    { label: "Marketing Signature", x: margin + (sigW + 5) * 2 },
+    { label: "Applicant Signature", x: m },
+    { label: "Admin Signature", x: m + sigW + 5 },
+    { label: "Marketing Signature", x: m + (sigW + 5) * 2 },
   ].forEach(({ label, x }) => {
-    doc.line(x, y + 15, x + sigW, y + 15);
-    doc.setFontSize(8);
+    doc.line(x, y + 10, x + sigW, y + 10);
+    doc.setFontSize(6.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(label, x + sigW / 2, y + 20, { align: "center" });
+    doc.setTextColor(...textMuted);
+    doc.text(label, x + sigW / 2, y + 14, { align: "center" });
   });
 
-  y += 28;
+  y += 20;
 
   // ─── TERMS ───
-  doc.setFontSize(7);
-  doc.setTextColor(120, 120, 120);
-  doc.text("I hereby declare that all the information provided above is correct to the best of my knowledge.", margin, y);
-  doc.text("The ISP reserves the right to suspend the connection in case of non-payment or violation of terms.", margin, y + 4);
+  doc.setFontSize(5.5);
+  doc.setTextColor(...textMuted);
+  doc.text("I hereby declare that all the information provided above is correct to the best of my knowledge.", m, y);
+  doc.text("The ISP reserves the right to suspend the connection in case of non-payment or violation of terms.", m, y + 3.5);
 
-  // Footer
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
+  // ─── FOOTER ───
+  doc.setFontSize(5.5);
+  doc.setTextColor(160, 160, 160);
   doc.text(
     `Generated on ${new Date().toLocaleDateString()} — ${settings.site_name || "Smart ISP"} Billing System`,
-    pw / 2, 288, { align: "center" }
+    pw / 2, ph - 5, { align: "center" }
   );
 
   return doc;

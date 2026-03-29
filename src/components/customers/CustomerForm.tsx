@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings } from "lucide-react";
 import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
@@ -20,6 +20,21 @@ interface CustomerFormProps {
 }
 
 import api from "@/lib/api";
+
+// --- Section wrapper ---
+function FormSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/40">
+        <Icon className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
+      <div className="p-4">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
   const isEdit = !!customer;
@@ -58,7 +73,6 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     router_id: customer?.router_id ?? "",
     due_date_day: customer?.due_date_day?.toString() ?? "",
     discount: customer?.discount?.toString() ?? "0",
-    
     pop_location: customer?.pop_location ?? "",
     installed_by: customer?.installed_by ?? "",
     box_name: customer?.box_name ?? "",
@@ -358,57 +372,57 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Personal Info */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Personal Information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Applicant Name *</Label>
-            <Input value={form.name} onChange={(e) => update("name", e.target.value)} required />
+    <form onSubmit={handleSubmit} className="space-y-4">
+
+      {/* ─── Personal Information ─── */}
+      <FormSection icon={User} title="Personal Information">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Applicant Name *</Label>
+            <Input value={form.name} onChange={(e) => update("name", e.target.value)} required className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Father Name</Label>
-            <Input value={form.father_name} onChange={(e) => update("father_name", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Father Name</Label>
+            <Input value={form.father_name} onChange={(e) => update("father_name", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Mother Name</Label>
-            <Input value={form.mother_name} onChange={(e) => update("mother_name", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Mother Name</Label>
+            <Input value={form.mother_name} onChange={(e) => update("mother_name", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Occupation</Label>
-            <Input value={form.occupation} onChange={(e) => update("occupation", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Mobile *</Label>
+            <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} required className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>National ID</Label>
-            <Input value={form.nid} onChange={(e) => update("nid", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Alternative Contact</Label>
+            <Input value={form.alt_phone} onChange={(e) => update("alt_phone", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Mobile *</Label>
-            <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} required />
+          <div className="space-y-1">
+            <Label className="text-xs">Email</Label>
+            <Input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Alternative Contact</Label>
-            <Input value={form.alt_phone} onChange={(e) => update("alt_phone", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">National ID</Label>
+            <Input value={form.nid} onChange={(e) => update("nid", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Email</Label>
-            <Input type="email" value={form.email} onChange={(e) => update("email", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Occupation</Label>
+            <Input value={form.occupation} onChange={(e) => update("occupation", e.target.value)} className="h-9" />
           </div>
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label>Customer Photo</Label>
-            <div className="flex items-center gap-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Photo</Label>
+            <div className="flex items-center gap-2">
               {photoPreview && (
                 <div className="relative">
-                  <img src={photoPreview} alt="Customer" className="h-20 w-20 rounded-lg object-cover border border-border" />
-                  <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
-                    <X className="h-3 w-3" />
+                  <img src={photoPreview} alt="Customer" className="h-9 w-9 rounded object-cover border border-border" />
+                  <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </div>
               )}
-              <label className="flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-background text-sm cursor-pointer hover:bg-accent transition-colors">
-                <Upload className="h-4 w-4" />
-                {photoPreview ? "Change Photo" : "Upload Photo"}
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-input bg-background text-xs cursor-pointer hover:bg-accent transition-colors h-9">
+                <Upload className="h-3.5 w-3.5" />
+                {photoPreview ? "Change" : "Upload"}
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -420,137 +434,128 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             </div>
           </div>
         </div>
-      </div>
+      </FormSection>
 
-      {/* Address */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Address Information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Zone / Area *</Label>
+      {/* ─── Address Information ─── */}
+      <FormSection icon={MapPin} title="Address Information">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Zone / Area *</Label>
             <Select value={form.area} onValueChange={(v) => update("area", v)}>
-              <SelectTrigger><SelectValue placeholder="Select zone" /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select zone" /></SelectTrigger>
               <SelectContent>
                 {zones?.map((z) => (
-                  <SelectItem key={z.id} value={z.area_name}>
-                    {z.area_name}{z.address ? ` — ${z.address}` : ""}
-                  </SelectItem>
+                  <SelectItem key={z.id} value={z.area_name}>{z.area_name}{z.address ? ` — ${z.address}` : ""}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>Road</Label>
-            <Input value={form.road} onChange={(e) => update("road", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Road</Label>
+            <Input value={form.road} onChange={(e) => update("road", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>House</Label>
-            <Input value={form.house} onChange={(e) => update("house", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">House</Label>
+            <Input value={form.house} onChange={(e) => update("house", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>City</Label>
-            <Input value={form.city} onChange={(e) => update("city", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Village</Label>
+            <Input value={form.village} onChange={(e) => update("village", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Village</Label>
-            <Input value={form.village} onChange={(e) => update("village", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Post Office</Label>
+            <Input value={form.post_office} onChange={(e) => update("post_office", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Post Office</Label>
-            <Input value={form.post_office} onChange={(e) => update("post_office", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">District</Label>
+            <Input value={form.district} onChange={(e) => update("district", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>District</Label>
-            <Input value={form.district} onChange={(e) => update("district", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">City</Label>
+            <Input value={form.city} onChange={(e) => update("city", e.target.value)} className="h-9" />
           </div>
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label>Permanent Address</Label>
-            <Input value={form.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} />
+          <div className="sm:col-span-2 space-y-1">
+            <Label className="text-xs">Permanent Address</Label>
+            <Input value={form.permanent_address} onChange={(e) => update("permanent_address", e.target.value)} className="h-9" />
           </div>
         </div>
-      </div>
+      </FormSection>
 
-      {/* Connection Details */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Connection Details</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>MikroTik Router</Label>
+      {/* ─── Connection Details ─── */}
+      <FormSection icon={Wifi} title="Connection Details">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">MikroTik Router</Label>
             <Select value={form.router_id} onValueChange={(v) => update("router_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Select router" /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select router" /></SelectTrigger>
               <SelectContent>
                 {routers?.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name} — {r.ip_address}
-                  </SelectItem>
+                  <SelectItem key={r.id} value={r.id}>{r.name} — {r.ip_address}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>Package</Label>
+          <div className="space-y-1">
+            <Label className="text-xs">Package</Label>
             <Select value={form.package_id} onValueChange={handlePackageChange}>
-              <SelectTrigger><SelectValue placeholder="Select package" /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select package" /></SelectTrigger>
               <SelectContent>
                 {packages?.map((pkg) => (
-                  <SelectItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} — {pkg.speed}
-                  </SelectItem>
+                  <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} — {pkg.speed}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>PPPoE Username</Label>
-            <Input value={form.pppoe_username} onChange={(e) => update("pppoe_username", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Connection Date</Label>
+            <Input type="date" value={form.installation_date} onChange={(e) => update("installation_date", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>PPPoE Password</Label>
-            <Input value={form.pppoe_password} onChange={(e) => update("pppoe_password", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">PPPoE Username</Label>
+            <Input value={form.pppoe_username} onChange={(e) => update("pppoe_username", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>IP Address</Label>
-            <Input value={form.ip_address} onChange={(e) => update("ip_address", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">PPPoE Password</Label>
+            <Input value={form.pppoe_password} onChange={(e) => update("pppoe_password", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Gateway</Label>
-            <Input value={form.gateway} onChange={(e) => update("gateway", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">IP Address</Label>
+            <Input value={form.ip_address} onChange={(e) => update("ip_address", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Subnet</Label>
-            <Input value={form.subnet} onChange={(e) => update("subnet", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Gateway</Label>
+            <Input value={form.gateway} onChange={(e) => update("gateway", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>ONU MAC</Label>
-            <Input value={form.onu_mac} onChange={(e) => update("onu_mac", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Subnet</Label>
+            <Input value={form.subnet} onChange={(e) => update("subnet", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Router MAC</Label>
-            <Input value={form.router_mac} onChange={(e) => update("router_mac", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">ONU MAC</Label>
+            <Input value={form.onu_mac} onChange={(e) => update("onu_mac", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Connection Date</Label>
-            <Input type="date" value={form.installation_date} onChange={(e) => update("installation_date", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Router MAC</Label>
+            <Input value={form.router_mac} onChange={(e) => update("router_mac", e.target.value)} className="h-9" />
           </div>
         </div>
-      </div>
+      </FormSection>
 
-      {/* Billing Information */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Billing Information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Monthly Bill *</Label>
-            <Input type="number" value={form.monthly_bill} onChange={(e) => update("monthly_bill", e.target.value)} required />
+      {/* ─── Billing Information ─── */}
+      <FormSection icon={Receipt} title="Billing Information">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Monthly Bill *</Label>
+            <Input type="number" value={form.monthly_bill} onChange={(e) => update("monthly_bill", e.target.value)} required className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Discount</Label>
-            <Input type="number" value={form.discount} onChange={(e) => update("discount", e.target.value)} />
+          <div className="space-y-1">
+            <Label className="text-xs">Discount</Label>
+            <Input type="number" value={form.discount} onChange={(e) => update("discount", e.target.value)} className="h-9" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Due Date (Day of Month)</Label>
+          <div className="space-y-1">
+            <Label className="text-xs">Due Date (Day)</Label>
             <Select value={form.due_date_day} onValueChange={(v) => update("due_date_day", v)}>
-              <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Select day" /></SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
                   <SelectItem key={d} value={d.toString()}>{d}</SelectItem>
@@ -560,62 +565,47 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           </div>
           {!isEdit && (
             <>
-              <div className="space-y-1.5">
-                <Label>Connection Charge Amount</Label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 1000 (leave empty to skip)"
-                  value={form.connection_charge_amount}
-                  onChange={(e) => update("connection_charge_amount", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">কানেকশন চার্জ — আলাদা লেজারে জমা হবে</p>
+              <div className="space-y-1">
+                <Label className="text-xs">Connection Charge</Label>
+                <Input type="number" placeholder="e.g. 1000" value={form.connection_charge_amount} onChange={(e) => update("connection_charge_amount", e.target.value)} className="h-9" />
               </div>
-              <div className="space-y-1.5">
-                <Label>First Month Bill Amount</Label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 500 (leave empty to skip)"
-                  value={form.first_month_bill_amount}
-                  onChange={(e) => update("first_month_bill_amount", e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">প্রথম মাসের বিল — আলাদা লেজারে জমা হবে</p>
+              <div className="space-y-1">
+                <Label className="text-xs">First Month Bill</Label>
+                <Input type="number" placeholder="e.g. 500" value={form.first_month_bill_amount} onChange={(e) => update("first_month_bill_amount", e.target.value)} className="h-9" />
               </div>
             </>
           )}
         </div>
-      </div>
+      </FormSection>
 
-      {/* Office Use */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Office Use</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>POP Location</Label>
-            <Input value={form.pop_location} onChange={(e) => update("pop_location", e.target.value)} />
+      {/* ─── Office Use + System ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormSection icon={Building} title="Office Use">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">POP Location</Label>
+              <Input value={form.pop_location} onChange={(e) => update("pop_location", e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Installed By</Label>
+              <Input value={form.installed_by} onChange={(e) => update("installed_by", e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Box Name</Label>
+              <Input value={form.box_name} onChange={(e) => update("box_name", e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Cable Length</Label>
+              <Input value={form.cable_length} onChange={(e) => update("cable_length", e.target.value)} className="h-9" />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Installed By</Label>
-            <Input value={form.installed_by} onChange={(e) => update("installed_by", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Box Name</Label>
-            <Input value={form.box_name} onChange={(e) => update("box_name", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Cable Length</Label>
-            <Input value={form.cable_length} onChange={(e) => update("cable_length", e.target.value)} />
-          </div>
-        </div>
-      </div>
+        </FormSection>
 
-      {/* System */}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">System</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Status</Label>
+        <FormSection icon={Settings} title="System">
+          <div className="space-y-1">
+            <Label className="text-xs">Status</Label>
             <Select value={form.status} onValueChange={(v) => update("status", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
@@ -623,10 +613,10 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </FormSection>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-3 pt-1">
         <Button type="submit" disabled={loading}>
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           {isEdit ? "Update Customer" : "Save Customer"}
