@@ -187,11 +187,11 @@ interface SeedSection {
 }
 
 const SECTIONS: SeedSection[] = [
-  { id: "geo", title: "Geo Data (বিভাগ/জেলা/উপজেলা)", description: "বাংলাদেশের ৮ বিভাগ, ৬৪ জেলা এবং সকল উপজেলা", icon: <MapPin className="h-5 w-5" />, count: "৮ বিভাগ, ৬৪ জেলা" },
-  { id: "coa", title: "Chart of Accounts (লেজার)", description: "ISP পরিচালনার জন্য প্রয়োজনীয় সকল লেজার অ্যাকাউন্ট", icon: <BookOpen className="h-5 w-5" />, count: "৪০+ অ্যাকাউন্ট" },
-  { id: "sms", title: "SMS Templates", description: "বিল জেনারেশন, পেমেন্ট কনফার্মেশন, রিমাইন্ডার ইত্যাদি", icon: <MessageSquare className="h-5 w-5" />, count: `${SMS_TEMPLATES.length} টেমপ্লেট` },
-  { id: "email", title: "Email Templates", description: "ওয়েলকাম, পাসওয়ার্ড রিসেট, পেমেন্ট কনফার্মেশন ইত্যাদি", icon: <Mail className="h-5 w-5" />, count: `${EMAIL_TEMPLATES_DATA.length} টেমপ্লেট` },
-  { id: "ledger", title: "Ledger Mapping + Payment Settings", description: "লেজার ম্যাপিং ও পেমেন্ট রিসিভিং সেটিংস অটো-কনফিগার", icon: <CreditCard className="h-5 w-5" />, count: "৯ সেটিংস" },
+  { id: "geo", title: "Geo Data (Divisions/Districts/Upazilas)", description: "All 8 divisions and 64 districts of Bangladesh", icon: <MapPin className="h-5 w-5" />, count: "8 Divisions, 64 Districts" },
+  { id: "coa", title: "Chart of Accounts (Ledgers)", description: "All ledger accounts required for ISP operations", icon: <BookOpen className="h-5 w-5" />, count: "40+ Accounts" },
+  { id: "sms", title: "SMS Templates", description: "Bill generation, payment confirmation, reminders etc.", icon: <MessageSquare className="h-5 w-5" />, count: `${SMS_TEMPLATES.length} Templates` },
+  { id: "email", title: "Email Templates", description: "Welcome, password reset, payment confirmation etc.", icon: <Mail className="h-5 w-5" />, count: `${EMAIL_TEMPLATES_DATA.length} Templates` },
+  { id: "ledger", title: "Ledger Mapping + Payment Settings", description: "Auto-configure ledger mapping & payment receiving settings", icon: <CreditCard className="h-5 w-5" />, count: "9 Settings" },
 ];
 
 export default function InitialDataImportTab() {
@@ -232,7 +232,7 @@ export default function InitialDataImportTab() {
         }
       }
 
-      setStatus("geo", "done", `${divCount} বিভাগ, ${distCount} জেলা যোগ হয়েছে`);
+      setStatus("geo", "done", `${divCount} divisions, ${distCount} districts added`);
       queryClient.invalidateQueries({ queryKey: ["geo-divisions-all"] });
       queryClient.invalidateQueries({ queryKey: ["geo-districts-all"] });
     } catch (e: any) {
@@ -270,7 +270,7 @@ export default function InitialDataImportTab() {
         count++;
       }
 
-      setStatus("coa", "done", `${count} লেজার অ্যাকাউন্ট তৈরি হয়েছে`);
+      setStatus("coa", "done", `${count} ledger accounts created`);
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["accounts-for-settings"] });
     } catch (e: any) {
@@ -291,7 +291,7 @@ export default function InitialDataImportTab() {
           count++;
         }
       }
-      setStatus("sms", "done", `${count} নতুন টেমপ্লেট যোগ হয়েছে`);
+      setStatus("sms", "done", `${count} new templates added`);
       queryClient.invalidateQueries({ queryKey: ["sms-templates"] });
     } catch (e: any) {
       setStatus("sms", "error", e.message);
@@ -311,7 +311,7 @@ export default function InitialDataImportTab() {
           count++;
         }
       }
-      setStatus("email", "done", `${count} ইমেইল টেমপ্লেট যোগ হয়েছে`);
+      setStatus("email", "done", `${count} email templates added`);
     } catch (e: any) {
       setStatus("email", "error", e.message);
     }
@@ -340,7 +340,7 @@ export default function InitialDataImportTab() {
         count++;
       }
 
-      setStatus("ledger", "done", `${count} সেটিংস কনফিগার হয়েছে`);
+      setStatus("ledger", "done", `${count} settings configured`);
       queryClient.invalidateQueries({ queryKey: ["ledger-settings"] });
       queryClient.invalidateQueries({ queryKey: ["system-settings-payment"] });
     } catch (e: any) {
@@ -363,12 +363,12 @@ export default function InitialDataImportTab() {
       await seedFunctions[section.id]();
     }
     setAllLoading(false);
-    toast.success("সব ইনিসিয়াল ডাটা সফলভাবে ইম্পোর্ট করা হয়েছে!");
+    toast.success("All initial data imported successfully!");
   };
 
   const handleSeedOne = async (id: string) => {
     await seedFunctions[id]();
-    toast.success("ইম্পোর্ট সম্পন্ন!");
+    toast.success("Import completed!");
   };
 
   return (
@@ -378,15 +378,15 @@ export default function InitialDataImportTab() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" /> ইনিসিয়াল ডাটা ইম্পোর্ট
+                <Database className="h-5 w-5" /> Initial Data Import
               </CardTitle>
               <CardDescription className="mt-1">
-                ISP সফটওয়্যার প্রথমবার সেটআপ করার সময় প্রয়োজনীয় সকল ডিফল্ট ডাটা একসাথে বা আলাদা আলাদা ইম্পোর্ট করুন।
+                Import all default data required for first-time ISP software setup — individually or all at once.
               </CardDescription>
             </div>
             <Button onClick={handleSeedAll} disabled={allLoading} size="lg" className="gap-2">
               {allLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
-              সব ইম্পোর্ট করুন
+              Import All
             </Button>
           </div>
         </CardHeader>
@@ -426,7 +426,7 @@ export default function InitialDataImportTab() {
                   {status === "idle" && <span />}
                   {status === "loading" && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> ইম্পোর্ট হচ্ছে...
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Importing...
                     </p>
                   )}
                   <Button
@@ -437,7 +437,7 @@ export default function InitialDataImportTab() {
                     className="shrink-0"
                   >
                     {status === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                    {status === "done" ? "পুনরায় ইম্পোর্ট" : "ইম্পোর্ট করুন"}
+                    {status === "done" ? "Re-import" : "Import"}
                   </Button>
                 </div>
               </CardContent>
