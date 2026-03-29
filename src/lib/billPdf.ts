@@ -15,6 +15,20 @@ async function getCompanySettings() {
   }
 }
 
+async function getInvoiceSettings(): Promise<Record<string, string>> {
+  try {
+    const { data } = await (supabase as any)
+      .from("system_settings")
+      .select("setting_key, setting_value")
+      .like("setting_key", "invoice_%");
+    const map: Record<string, string> = {};
+    (data || []).forEach((r: any) => { map[r.setting_key] = r.setting_value || ""; });
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 async function getPreviousBalance(customerId: string, billMonth: string): Promise<number> {
   try {
     const { data } = await supabase
@@ -32,12 +46,26 @@ async function getPreviousBalance(customerId: string, billMonth: string): Promis
 }
 
 export async function generateBillInvoicePDF(bill: any, customer: any) {
-  const settings = await getCompanySettings();
+  const [settings, invoiceSettings] = await Promise.all([
+    getCompanySettings(),
+    getInvoiceSettings(),
+  ]);
   const companyName = settings?.site_name || "Smart ISP";
   const companyAddress = settings?.address || "";
   const companyPhone = settings?.mobile || settings?.support_phone || "";
   const companyEmail = settings?.email || settings?.support_email || "";
   const previousBalance = await getPreviousBalance(customer?.id || bill.customer_id, bill.month);
+
+  // Invoice settings
+  const vatReg = invoiceSettings.invoice_vat_reg || "";
+  const chequeText = invoiceSettings.invoice_cheque_text || "";
+  let bankAccounts: { bank_name: string; account_no: string }[] = [];
+  try { bankAccounts = JSON.parse(invoiceSettings.invoice_bank_accounts || "[]"); } catch { bankAccounts = []; }
+  const bkashMerchant = invoiceSettings.invoice_bkash_merchant || "";
+  const nagadMerchant = invoiceSettings.invoice_nagad_merchant || "";
+  const rocketBillerId = invoiceSettings.invoice_rocket_biller_id || "";
+  const visaCardInfo = invoiceSettings.invoice_visa_card_info || "";
+  const techSupport = invoiceSettings.invoice_tech_support || settings?.support_phone || companyPhone || "";
 
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
@@ -76,7 +104,6 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
   doc.text("Client's Information", marginL, y);
-  // underline
   const tw = doc.getTextWidth("Client's Information");
   doc.setLineWidth(0.3);
   doc.line(marginL, y + 1, marginL + tw, y + 1);
@@ -96,11 +123,9 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   infoRow("Client ID", customer?.customer_id || "—");
   infoRow("Client Name", customer?.name || "—");
 
-  // Address - combine available fields
   const addressParts = [customer?.house, customer?.road, customer?.area, customer?.village, customer?.city, customer?.district].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : customer?.area || "—";
 
-  // Long address wrapping
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("Address:", marginL, y);
@@ -148,7 +173,6 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   // ──── Items Table ────
   y = Math.max(y, ry) + 12;
 
-  // Table columns
   const cols = [
     { label: "SL No", x: marginL, w: 14 },
     { label: "Link ID", x: marginL + 14, w: 24 },
@@ -159,7 +183,6 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
     { label: "Total Amount", x: marginL + 160, w: contentW - 160 },
   ];
 
-  // Table header
   const headerH = 8;
   doc.setFillColor(245, 245, 245);
   doc.rect(marginL, y - 5, contentW, headerH, "F");
@@ -177,25 +200,19 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
 
   y += headerH;
 
-  // Table row
   const rowH = 10;
   doc.line(marginL, y + rowH - 5, marginR, y + rowH - 5);
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
 
-  // SL No
   doc.text("1", cols[0].x + cols[0].w / 2, y + 1, { align: "center" });
-  // Link ID (Customer ID)
   doc.text(customer?.customer_id || "—", cols[1].x + cols[1].w / 2, y + 1, { align: "center" });
-  // Bill Type
   doc.text("Monthly Bill", cols[2].x + cols[2].w / 2, y + 1, { align: "center" });
-  // Package/Bandwidth
   const pkgName = customer?.packages?.name || customer?.package_name || "—";
   doc.text(pkgName, cols[3].x + cols[3].w / 2, y + 1, { align: "center" });
-  // Amount
   doc.text(String(Number(bill.amount).toLocaleString()), cols[4].x + cols[4].w / 2, y + 1, { align: "center" });
-  // Bill Duration
+
   let billDuration = "—";
   if (bill.month) {
     try {
@@ -209,13 +226,12 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   }
   const durLines = doc.splitTextToSize(billDuration, cols[5].w - 2);
   doc.text(durLines, cols[5].x + cols[5].w / 2, y - 1, { align: "center" });
-  // Total Amount
   const totalAmount = Number(bill.amount);
   doc.text(totalAmount.toFixed(2), cols[6].x + cols[6].w / 2, y + 1, { align: "center" });
 
   y += rowH;
 
-  // ──── Summary rows (right-aligned) ────
+  // ──── Summary rows ────
   y += 3;
   const summaryLabelX = marginL + 104;
   const summaryValueX = marginR;
@@ -236,22 +252,56 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   const totalPayable = totalAmount + previousBalance;
   summaryRow("Total Payable Amount / Current Balance:", totalPayable.toFixed(2), true);
 
-  // ──── Payment Info Section ────
-  y += 10;
-  if (settings) {
-    doc.setFontSize(8);
+  // ──── Payment Info Section (from invoice settings) ────
+  y += 8;
+  doc.setFontSize(8);
+  doc.setTextColor(60, 60, 60);
+
+  if (vatReg) {
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 60, 60);
+    doc.text(`${companyName} VAT Registration Number: ${vatReg}`, marginL, y);
+    y += 6;
+  }
 
-    const paymentLines: string[] = [];
-    paymentLines.push("Available Payment Method:");
-    if (companyPhone) paymentLines.push(`bKash/Nagad: ${companyPhone}`);
-    paymentLines.push("24/7 Technical Support: " + (settings.support_phone || companyPhone || "—"));
+  // Available Payment Method header
+  doc.setFont("helvetica", "bold");
+  doc.text("Available Payment Method:", marginL, y);
+  y += 4.5;
+  doc.setFont("helvetica", "normal");
 
-    paymentLines.forEach((line) => {
-      doc.text(line, marginL, y);
-      y += 4.5;
-    });
+  if (chequeText) {
+    doc.text(chequeText, marginL, y);
+    y += 4.5;
+  }
+
+  // Bank accounts
+  bankAccounts.filter(b => b.bank_name).forEach((bank) => {
+    doc.text(`${bank.bank_name}: ${bank.account_no}`, marginL, y);
+    y += 4.5;
+  });
+
+  if (bkashMerchant) {
+    doc.text(`bKash Merchant Account Number: ${bkashMerchant}`, marginL, y);
+    y += 4.5;
+  }
+  if (nagadMerchant) {
+    doc.text(`Nagad Merchant Number: ${nagadMerchant}`, marginL, y);
+    y += 4.5;
+  }
+  if (rocketBillerId) {
+    doc.text(`Rocket Biller ID: ${rocketBillerId}`, marginL, y);
+    y += 4.5;
+  }
+  if (visaCardInfo) {
+    const visaLines = doc.splitTextToSize(visaCardInfo, contentW);
+    doc.text(visaLines, marginL, y);
+    y += 4.5 * visaLines.length;
+  }
+
+  if (techSupport) {
+    y += 2;
+    doc.text(`24/7 Technical Support: ${techSupport}`, marginL, y);
+    y += 4.5;
   }
 
   // ──── Footer NB note ────
@@ -260,18 +310,16 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 100, 100);
   doc.text(
-    `NB: This Invoice has been generated by Software, its valid without any signature and seal. For any query regarding this invoice please contact ${companyPhone || "support"}`,
+    `NB: This Invoice has been generated by Software, its valid without any signature and seal. For any query regarding this invoice please contact ${techSupport || companyPhone || "support"}`,
     pw / 2,
     footerY,
     { align: "center", maxWidth: contentW }
   );
 
-  // Bottom line
   doc.setDrawColor(60, 60, 60);
   doc.setLineWidth(0.5);
   doc.line(marginL, footerY + 6, marginR, footerY + 6);
 
-  // Company address footer
   doc.setFontSize(8);
   doc.setTextColor(40, 40, 40);
   doc.setFont("helvetica", "normal");
@@ -283,7 +331,6 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
     doc.text(contactLine, pw / 2, footerY + 15, { align: "center" });
   }
 
-  // Save
   const fileName = `Invoice-${bill.month}-${customer?.customer_id || bill.id?.substring(0, 8)}.pdf`;
   doc.save(fileName);
 }
