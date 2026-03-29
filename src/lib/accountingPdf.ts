@@ -264,11 +264,11 @@ export function generateSalesInvoicePDF(sale: any) {
     doc.setFontSize(PDF_FONT.body);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...PDF_COLORS.text);
-    doc.text(value || "—", m + 40, y);
+    doc.text(value || "-", m + 40, y);
     y += 6.5;
   };
-  fieldRow("Customer", sale.customer_name || sale.customer?.name || "—");
-  fieldRow("Phone", sale.customer_phone || "—");
+  fieldRow("Customer", sale.customer_name || sale.customer?.name || "-");
+  fieldRow("Phone", sale.customer_phone || "-");
   fieldRow("Payment", (sale.payment_method || "cash").toUpperCase());
   fieldRow("Status", (sale.status || "pending").toUpperCase());
   y += 4;
