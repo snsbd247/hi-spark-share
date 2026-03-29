@@ -340,6 +340,7 @@ function SmsTab() {
           api_token: form.api_token, sender_id: form.sender_id,
           sms_on_bill_generate: form.sms_on_bill_generate, sms_on_payment: form.sms_on_payment,
           sms_on_registration: form.sms_on_registration, sms_on_suspension: form.sms_on_suspension,
+          sms_on_reminder: form.sms_on_reminder,
           whatsapp_token: form.whatsapp_token, whatsapp_phone_id: form.whatsapp_phone_id,
           whatsapp_enabled: form.whatsapp_enabled, updated_at: new Date().toISOString(),
         })
