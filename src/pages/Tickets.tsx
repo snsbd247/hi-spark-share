@@ -297,7 +297,7 @@ export default function Tickets() {
                 </div>
                 <div className="p-3 border-t flex gap-2">
                   <Textarea
-                    placeholder="Type your reply..."
+                    placeholder={t.tickets.typeReply}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     className="min-h-[60px]"
