@@ -220,7 +220,7 @@ export default function Customers() {
                   {paginatedCustomers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-muted-foreground py-12">
-                        No customers found
+                        {t.customers.noCustomersFound}
                       </TableCell>
                     </TableRow>
                   ) : (
