@@ -67,6 +67,7 @@ export default function LoginLogs() {
   });
 
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
+  const customerMap = new Map(customers?.map((c) => [c.id, c]) || []);
 
   const filtered = logs?.filter((log) => {
     if (!search) return true;
