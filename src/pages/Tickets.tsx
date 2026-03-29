@@ -219,10 +219,10 @@ export default function Tickets() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
+                       <SelectItem value="open">{t.tickets.open}</SelectItem>
+                       <SelectItem value="in_progress">{t.tickets.inProgress}</SelectItem>
+                       <SelectItem value="resolved">{t.tickets.resolved}</SelectItem>
+                       <SelectItem value="closed">{t.tickets.closed}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
