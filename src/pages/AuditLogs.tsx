@@ -71,7 +71,7 @@ export default function AuditLogs() {
               <SelectContent>
                 <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="edit">Edit</SelectItem>
-                <SelectItem value="delete">Delete</SelectItem>
+                <SelectItem value="delete">{t.common.delete}</SelectItem>
               </SelectContent>
             </Select>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />

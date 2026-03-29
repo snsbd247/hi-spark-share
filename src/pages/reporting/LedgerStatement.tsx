@@ -93,7 +93,7 @@ export default function ReportLedgerStatement() {
 
   const getVoucherType = (type: string) => {
     const map: Record<string, string> = {
-      sale: "Sales",
+      sale: t.sidebar.sales,
       purchase: "Purchase",
       expense: "Payment",
       receipt: "Receipt",
@@ -239,7 +239,7 @@ export default function ReportLedgerStatement() {
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
-                <p className="text-center py-8 text-muted-foreground">Loading...</p>
+                <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>

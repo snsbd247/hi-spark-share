@@ -68,7 +68,7 @@ export default function BalanceSheet() {
         </div>
 
         {isLoading ? (
-          <p className="text-center py-8 text-muted-foreground">Loading...</p>
+          <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>

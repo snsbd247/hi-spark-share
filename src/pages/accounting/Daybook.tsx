@@ -56,7 +56,7 @@ export default function Daybook() {
         <Card>
           <CardHeader><CardTitle>Transactions on {safeFormat(date, "dd MMMM yyyy")}</CardTitle></CardHeader>
           <CardContent className="p-0">
-            {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (
+            {isLoading ? <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p> : (
               <Table>
                 <TableHeader>
                   <TableRow>

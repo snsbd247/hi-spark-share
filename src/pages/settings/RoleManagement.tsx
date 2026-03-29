@@ -41,16 +41,16 @@ const MODULE_LABELS: Record<string, string> = {
   customers: "Customer Management",
   billing: "Billing",
   payments: "Payments",
-  merchant_payments: "Merchant Payments",
+  merchant_payments: t.sidebar.merchantPayments,
   tickets: "Support Tickets",
   sms: "SMS & Reminders",
   accounting: "Accounting",
   inventory: "Inventory & Sales",
   hr: "Human Resource (HR)",
   supplier: "Supplier Management",
-  settings: "System Settings",
+  settings: t.settings.title,
   users: "User Management",
-  roles: "Roles & Permissions",
+  roles: t.sidebar.rolesPermissions,
   reports: "Reports & Analytics",
 };
 
@@ -237,7 +237,7 @@ export default function RoleManagement() {
                 <TableHead>DB Role</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead>System</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -344,7 +344,7 @@ export default function RoleManagement() {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>{t.common.cancel}</Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editRole ? "Update Role" : "Create Role"}
@@ -362,8 +362,8 @@ export default function RoleManagement() {
             <AlertDialogDescription>Are you sure you want to delete the role "{deleteRole?.name}"? Users assigned this role will lose their permissions.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t.common.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

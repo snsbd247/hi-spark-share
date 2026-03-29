@@ -367,7 +367,7 @@ export default function ChartOfAccounts() {
                       <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+                      <Button type="button" variant="outline" onClick={resetForm}>{t.common.cancel}</Button>
                       <Button type="submit" disabled={saveMutation.isPending}>{editAccount ? "Update" : "Create"}</Button>
                     </div>
                   </form>
@@ -401,12 +401,12 @@ export default function ChartOfAccounts() {
                   <TableHead className="text-right">Total Debit</TableHead>
                   <TableHead className="text-right">Total Credit</TableHead>
                   <TableHead className="text-right">Closing Balance</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8">{t.common.loading}</TableCell></TableRow>
                 ) : accounts.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No accounts found</TableCell></TableRow>
                 ) : (

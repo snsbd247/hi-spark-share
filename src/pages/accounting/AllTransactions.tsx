@@ -99,7 +99,7 @@ export default function AllTransactions() {
       <Card>
         <CardHeader><CardTitle>Transaction Ledger ({transactions.length} entries)</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (
+          {isLoading ? <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p> : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -110,7 +110,7 @@ export default function AllTransactions() {
                   <TableHead className="text-right">Debit</TableHead>
                   <TableHead className="text-right">Credit</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="text-center">Actions</TableHead>
+                  <TableHead className="text-center">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -200,7 +200,7 @@ export default function AllTransactions() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTxn(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditTxn(null)}>{t.common.cancel}</Button>
             <Button onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}>
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>

@@ -39,7 +39,7 @@ export default function EmployeeProfile() {
     enabled: !!employee?.designation_id,
   });
 
-  if (!employee) return <DashboardLayout><p className="text-center py-12 text-muted-foreground">Loading...</p></DashboardLayout>;
+  if (!employee) return <DashboardLayout><p className="text-center py-12 text-muted-foreground">{t.common.loading}</p></DashboardLayout>;
 
   return (
     <DashboardLayout>
@@ -125,7 +125,7 @@ function EducationTab({ employeeId }: { employeeId: string }) {
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Degree</TableHead><TableHead>Institution</TableHead><TableHead>Board/University</TableHead><TableHead>Year</TableHead><TableHead>Result</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Degree</TableHead><TableHead>Institution</TableHead><TableHead>Board/University</TableHead><TableHead>Year</TableHead><TableHead>Result</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any) => (
               <TableRow key={r.id}>
@@ -201,7 +201,7 @@ function ExperienceTab({ employeeId }: { employeeId: string }) {
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Designation</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Responsibilities</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Designation</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Responsibilities</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any) => (
               <TableRow key={r.id}>
@@ -291,7 +291,7 @@ function SalaryStructureTab({ employeeId, currentSalary }: { employeeId: string;
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Effective From</TableHead><TableHead className="text-right">Basic</TableHead><TableHead className="text-right">House Rent</TableHead><TableHead className="text-right">Medical</TableHead><TableHead className="text-right">Conveyance</TableHead><TableHead className="text-right">Other</TableHead><TableHead className="text-right">Gross</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Effective From</TableHead><TableHead className="text-right">Basic</TableHead><TableHead className="text-right">House Rent</TableHead><TableHead className="text-right">Medical</TableHead><TableHead className="text-right">Conveyance</TableHead><TableHead className="text-right">Other</TableHead><TableHead className="text-right">Gross</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any, idx: number) => {
               const gross = Number(r.basic_salary) + Number(r.house_rent) + Number(r.medical) + Number(r.conveyance) + Number(r.other_allowance);
@@ -368,7 +368,7 @@ function EmergencyContactTab({ employeeId }: { employeeId: string }) {
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Relation</TableHead><TableHead>Phone</TableHead><TableHead>Address</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Relation</TableHead><TableHead>Phone</TableHead><TableHead>Address</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r: any) => (
               <TableRow key={r.id}>

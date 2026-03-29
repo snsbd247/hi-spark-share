@@ -114,7 +114,7 @@ export default function BtrcReport() {
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "BTRC Report");
+    XLSX.utils.book_append_sheet(wb, ws, t.sidebar.btrcReport);
     XLSX.writeFile(wb, `btrc-report-${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 

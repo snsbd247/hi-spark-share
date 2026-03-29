@@ -202,7 +202,7 @@ export default function MerchantPayments() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead><TableHead>Transaction ID</TableHead><TableHead>Sender Phone</TableHead><TableHead>Amount</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead>Matched Customer</TableHead><TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Date</TableHead><TableHead>Transaction ID</TableHead><TableHead>Sender Phone</TableHead><TableHead>Amount</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead>Matched Customer</TableHead><TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

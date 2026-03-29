@@ -33,7 +33,7 @@ export default function TrafficMonitor() {
       <Card>
         <CardHeader><CardTitle>Router Status</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (
+          {isLoading ? <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p> : (
             <Table>
               <TableHeader><TableRow><TableHead>Router Name</TableHead><TableHead>IP Address</TableHead><TableHead>API Port</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
               <TableBody>

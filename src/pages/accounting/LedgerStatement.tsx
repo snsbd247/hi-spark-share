@@ -168,7 +168,7 @@ export default function LedgerStatement() {
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
-              <p className="text-center py-8 text-muted-foreground">Loading...</p>
+              <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p>
             ) : (
               <Table>
                 <TableHeader>

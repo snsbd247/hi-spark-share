@@ -28,7 +28,7 @@ export default function FinancialStatement() {
         <Card key={type} className="mb-4">
           <CardHeader><CardTitle className="capitalize">{type}s (৳{sumType(type).toLocaleString()})</CardTitle></CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-center py-4 text-muted-foreground">Loading...</p> : (
+            {isLoading ? <p className="text-center py-4 text-muted-foreground">{t.common.loading}</p> : (
               <Table>
                 <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Account</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
                 <TableBody>

@@ -131,7 +131,7 @@ export default function OthersHead() {
         <CardHeader><CardTitle>Asset / Liability / Equity Ledgers ({rows.length})</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Balance</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Balance</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
             <TableBody>
               {rows.map((r: any) => (
                 <TableRow key={r.id}>

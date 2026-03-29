@@ -542,7 +542,7 @@ export default function BkashApiManagement() {
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setRefundTxn(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setRefundTxn(null)}>{t.common.cancel}</Button>
               <Button
                 variant="destructive"
                 disabled={refundMutation.isPending || !refundAmount || Number(refundAmount) <= 0}

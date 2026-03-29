@@ -92,7 +92,7 @@ export default function SupplierList() {
                 </div>
                 <div><Label>Address</Label><Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={closeDialog}>{t.common.cancel}</Button>
                   <Button type="submit" disabled={!form.name || save.isPending}>{save.isPending ? "Saving..." : "Save"}</Button>
                 </div>
               </form>
@@ -113,7 +113,7 @@ export default function SupplierList() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (
+            {isLoading ? <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p> : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -122,7 +122,7 @@ export default function SupplierList() {
                     <TableHead>Phone</TableHead>
                     <TableHead className="text-right">Total Due</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right">{t.common.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

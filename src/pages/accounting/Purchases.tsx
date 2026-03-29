@@ -302,7 +302,7 @@ export default function Purchases() {
                 <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                  <Button type="button" variant="outline" onClick={closeDialog}>{t.common.cancel}</Button>
                   <Button type="submit" disabled={create.isPending || updatePurchase.isPending}>
                     {editPurchase ? "Update Purchase" : "Create Purchase"}
                   </Button>
@@ -336,7 +336,7 @@ export default function Purchases() {
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => { setPayOpen(false); setPayTarget(null); }}>Cancel</Button>
+                  <Button variant="outline" onClick={() => { setPayOpen(false); setPayTarget(null); }}>{t.common.cancel}</Button>
                   <Button disabled={payAmount <= 0 || adjustPayment.isPending} onClick={() => adjustPayment.mutate({ purchase: payTarget, amount: payAmount, method: payMethod })}>
                     {adjustPayment.isPending ? "Processing..." : "Confirm Payment"}
                   </Button>
@@ -364,12 +364,12 @@ export default function Purchases() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Due</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t.common.loading}</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No purchases found</TableCell></TableRow>
                 ) : filtered.map((p: any) => {

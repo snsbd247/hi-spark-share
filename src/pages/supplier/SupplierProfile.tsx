@@ -277,7 +277,7 @@ export default function SupplierProfile() {
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Invoice #</TableHead><TableHead>Total</TableHead>
                     <TableHead>Paid</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right">{t.common.actions}</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {purchases.length === 0 ? (
@@ -407,7 +407,7 @@ export default function SupplierProfile() {
             <div><Label>Notes</Label><Textarea value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} /></div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>{t.common.cancel}</Button>
               <Button type="submit" disabled={editMutation.isPending}>{editMutation.isPending ? "Saving..." : "Update Purchase"}</Button>
             </div>
           </form>

@@ -184,7 +184,7 @@ export default function BillingCycleOverview() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
-                        <th className="text-left py-2 px-2 font-medium">ID</th><th className="text-left py-2 px-2 font-medium">Name</th><th className="text-left py-2 px-2 font-medium">Phone</th><th className="text-right py-2 px-2 font-medium">Bill</th><th className="text-center py-2 px-2 font-medium">Status</th><th className="text-center py-2 px-2 font-medium">Connection</th><th className="text-right py-2 px-2 font-medium">Actions</th>
+                        <th className="text-left py-2 px-2 font-medium">ID</th><th className="text-left py-2 px-2 font-medium">Name</th><th className="text-left py-2 px-2 font-medium">Phone</th><th className="text-right py-2 px-2 font-medium">Bill</th><th className="text-center py-2 px-2 font-medium">Status</th><th className="text-center py-2 px-2 font-medium">Connection</th><th className="text-right py-2 px-2 font-medium">{t.common.actions}</th>
                       </tr>
                     </thead>
                     <tbody>
