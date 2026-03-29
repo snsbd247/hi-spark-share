@@ -366,13 +366,13 @@ export function generateTransactionVoucherPDF(txn: any, account?: any) {
     doc.text(label, m + 4, y);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...PDF_COLORS.text);
-    doc.text(value || "—", m + 50, y);
+    doc.text(value || "-", m + 50, y);
     y += 7;
   };
 
   infoRow("Type:", (txn.type || "").toUpperCase());
   infoRow("Category:", (txn.category || "").toUpperCase());
-  infoRow("Account:", account ? `${account.code} - ${account.name}` : "—");
+  infoRow("Account:", account ? `${account.code} - ${account.name}` : "-");
   if (txn.reference_type) infoRow("Reference:", `${txn.reference_type} / ${txn.reference_id || ""}`);
   y += 6;
 
