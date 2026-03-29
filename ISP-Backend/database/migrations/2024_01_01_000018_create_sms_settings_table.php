@@ -19,6 +19,7 @@ return new class extends Migration {
             $table->boolean('whatsapp_enabled')->default(false);
             $table->string('whatsapp_token')->nullable();
             $table->string('whatsapp_phone_id')->nullable();
+            $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->useCurrent();
         });
     }
