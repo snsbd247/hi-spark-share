@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('vendor_id')->references('id')->on('vendors')->cascadeOnDelete();
-            $table->foreign('created_by')->references('id')->on('profiles')->nullOnDelete();
+            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
 
             $table->index('purchase_date');
             $table->index('status');

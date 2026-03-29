@@ -13,8 +13,8 @@ class UpdateAdminUserRequest extends FormRequest
         $userId = $this->route('id');
         return [
             'full_name' => 'sometimes|string|max:255',
-            'email' => "nullable|email|max:255|unique:profiles,email,{$userId}",
-            'username' => "sometimes|string|max:100|unique:profiles,username,{$userId}",
+            'email' => "nullable|email|max:255|unique:users,email,{$userId}",
+            'username' => "sometimes|string|max:100|unique:users,username,{$userId}",
             'password' => 'nullable|string|min:6|max:255',
             'role' => 'sometimes|string|in:super_admin,admin,staff,manager,operator,technician,accountant',
             'mobile' => 'nullable|string|max:20',

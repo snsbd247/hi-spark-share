@@ -9,6 +9,8 @@ class Profile extends Model
 {
     use HasUuid;
 
+    protected $table = 'users';
+
     protected $fillable = [
         'id', 'full_name', 'email', 'username', 'mobile', 'address',
         'avatar_url', 'password_hash', 'staff_id', 'status', 'language',

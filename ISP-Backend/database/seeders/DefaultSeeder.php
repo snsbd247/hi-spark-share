@@ -6,7 +6,7 @@ use App\Models\Account;
 use App\Models\GeneralSetting;
 use App\Models\Package;
 use App\Models\Permission;
-use App\Models\Profile;
+use App\Models\Profile as User;
 use App\Models\SmsSetting;
 use App\Models\UserRole;
 use Illuminate\Database\Seeder;
@@ -19,7 +19,7 @@ class DefaultSeeder extends Seeder
     {
         // ── Super Admin ──────────────────────────────────
         $adminId = Str::uuid()->toString();
-        Profile::firstOrCreate(
+        User::firstOrCreate(
             ['username' => 'admin'],
             [
                 'id' => $adminId,
@@ -29,7 +29,7 @@ class DefaultSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-        $admin = Profile::where('username', 'admin')->first();
+        $admin = User::where('username', 'admin')->first();
         UserRole::firstOrCreate(
             ['user_id' => $admin->id],
             ['role' => 'super_admin']
@@ -37,7 +37,7 @@ class DefaultSeeder extends Seeder
 
         // Admin User: ismail
         $ismailId = Str::uuid()->toString();
-        Profile::firstOrCreate(
+        User::firstOrCreate(
             ['username' => 'ismail'],
             [
                 'id' => $ismailId,
@@ -47,7 +47,7 @@ class DefaultSeeder extends Seeder
                 'status' => 'active',
             ]
         );
-        $ismail = Profile::where('username', 'ismail')->first();
+        $ismail = User::where('username', 'ismail')->first();
         UserRole::firstOrCreate(
             ['user_id' => $ismail->id],
             ['role' => 'super_admin']

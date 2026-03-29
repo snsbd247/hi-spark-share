@@ -28,7 +28,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('customer_id')->references('id')->on('customers')->nullOnDelete();
-            $table->foreign('created_by')->references('id')->on('profiles')->nullOnDelete();
+            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
 
             $table->index('sale_date');
             $table->index('status');

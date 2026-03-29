@@ -29,7 +29,7 @@ return new class extends Migration
             $table->foreign('account_id')->references('id')->on('accounts')->nullOnDelete();
             $table->foreign('customer_id')->references('id')->on('customers')->nullOnDelete();
             $table->foreign('vendor_id')->references('id')->on('vendors')->nullOnDelete();
-            $table->foreign('created_by')->references('id')->on('profiles')->nullOnDelete();
+            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
 
             $table->index('type');
             $table->index('category');

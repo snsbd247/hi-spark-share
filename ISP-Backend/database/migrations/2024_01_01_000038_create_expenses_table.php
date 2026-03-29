@@ -26,8 +26,8 @@ return new class extends Migration
 
             $table->foreign('account_id')->references('id')->on('accounts')->nullOnDelete();
             $table->foreign('vendor_id')->references('id')->on('vendors')->nullOnDelete();
-            $table->foreign('created_by')->references('id')->on('profiles')->nullOnDelete();
-            $table->foreign('approved_by')->references('id')->on('profiles')->nullOnDelete();
+            $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('approved_by')->references('id')->on('users')->nullOnDelete();
 
             $table->index('category');
             $table->index('expense_date');

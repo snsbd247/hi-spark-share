@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->string('device_name')->default('');
             $table->string('status')->default('active');
             $table->timestamps();
-            $table->foreign('admin_id')->references('id')->on('profiles')->onDelete('cascade');
+            $table->foreign('admin_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

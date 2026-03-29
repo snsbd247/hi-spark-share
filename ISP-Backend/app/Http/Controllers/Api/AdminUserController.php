@@ -34,7 +34,7 @@ class AdminUserController extends Controller
     {
         $request->validate([
             'full_name' => 'required|string',
-            'email' => 'required|email|unique:profiles,email',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|string',
         ]);
