@@ -73,6 +73,82 @@ const DISTRICTS_BY_DIVISION: Record<string, { name: string; bn_name: string }[]>
   ],
 };
 
+const UPAZILAS_BY_DISTRICT: Record<string, string[]> = {
+  // Barishal Division
+  Barguna: ["Amtali", "Bamna", "Barguna Sadar", "Betagi", "Patharghata", "Taltali"],
+  Barishal: ["Agailjhara", "Babuganj", "Bakerganj", "Banaripara", "Barishal Sadar", "Gaurnadi", "Hizla", "Mehendiganj", "Muladi", "Wazirpur"],
+  Bhola: ["Bhola Sadar", "Burhanuddin", "Char Fasson", "Daulatkhan", "Lalmohan", "Manpura", "Tazumuddin"],
+  Jhalokati: ["Jhalokati Sadar", "Kathalia", "Nalchity", "Rajapur"],
+  Patuakhali: ["Bauphal", "Dashmina", "Dumki", "Galachipa", "Kalapara", "Mirzaganj", "Patuakhali Sadar", "Rangabali"],
+  Pirojpur: ["Bhandaria", "Kawkhali", "Mathbaria", "Nazirpur", "Nesarabad", "Pirojpur Sadar", "Zianagar"],
+  // Chattogram Division
+  Bandarban: ["Ali Kadam", "Bandarban Sadar", "Lama", "Naikhongchhari", "Rowangchhari", "Ruma", "Thanchi"],
+  Brahmanbaria: ["Akhaura", "Bancharampur", "Brahmanbaria Sadar", "Kasba", "Nabinagar", "Nasirnagar", "Sarail", "Ashuganj", "Bijoynagar"],
+  Chandpur: ["Chandpur Sadar", "Faridganj", "Haimchar", "Haziganj", "Kachua", "Matlab Dakshin", "Matlab Uttar", "Shahrasti"],
+  Chattogram: ["Anwara", "Banshkhali", "Boalkhali", "Chandanaish", "Fatikchhari", "Hathazari", "Karnaphuli", "Lohagara", "Mirsharai", "Patiya", "Rangunia", "Raozan", "Sandwip", "Satkania", "Sitakunda"],
+  Comilla: ["Barura", "Brahmanpara", "Burichang", "Chandina", "Chauddagram", "Comilla Adarsha Sadar", "Comilla Sadar Dakshin", "Daudkandi", "Debidwar", "Homna", "Laksam", "Manoharganj", "Meghna", "Muradnagar", "Nangalkot", "Titas"],
+  "Cox's Bazar": ["Chakaria", "Cox's Bazar Sadar", "Kutubdia", "Maheshkhali", "Pekua", "Ramu", "Teknaf", "Ukhia"],
+  Feni: ["Chhagalnaiya", "Daganbhuiyan", "Feni Sadar", "Fulgazi", "Parshuram", "Sonagazi"],
+  Khagrachhari: ["Dighinala", "Guimara", "Khagrachhari Sadar", "Lakshmichhari", "Mahalchhari", "Manikchhari", "Matiranga", "Panchhari", "Ramgarh"],
+  Lakshmipur: ["Kamalnagar", "Lakshmipur Sadar", "Raipur", "Ramganj", "Ramgati"],
+  Noakhali: ["Begumganj", "Chatkhil", "Companiganj", "Hatiya", "Kabirhat", "Noakhali Sadar", "Senbagh", "Sonaimuri", "Subarnachar"],
+  Rangamati: ["Baghaichhari", "Barkal", "Belaichhari", "Juraichhari", "Kaptai", "Kawkhali", "Langadu", "Naniarchar", "Rajasthali", "Rangamati Sadar"],
+  // Dhaka Division
+  Dhaka: ["Dhamrai", "Dohar", "Keraniganj", "Nawabganj", "Savar"],
+  Faridpur: ["Alfadanga", "Bhanga", "Boalmari", "Charbhadrasan", "Faridpur Sadar", "Madhukhali", "Nagarkanda", "Sadarpur", "Saltha"],
+  Gazipur: ["Gazipur Sadar", "Kaliakair", "Kaliganj", "Kapasia", "Sreepur"],
+  Gopalganj: ["Gopalganj Sadar", "Kashiani", "Kotalipara", "Muksudpur", "Tungipara"],
+  Kishoreganj: ["Austagram", "Bajitpur", "Bhairab", "Hossainpur", "Itna", "Karimganj", "Katiadi", "Kishoreganj Sadar", "Kuliarchar", "Mithamoin", "Nikli", "Pakundia", "Tarail"],
+  Madaripur: ["Kalkini", "Madaripur Sadar", "Rajoir", "Shibchar"],
+  Manikganj: ["Daulatpur", "Ghior", "Harirampur", "Manikganj Sadar", "Saturia", "Shivalaya", "Singair"],
+  Munshiganj: ["Gazaria", "Lohajang", "Munshiganj Sadar", "Sirajdikhan", "Sreenagar", "Tongibari"],
+  Narayanganj: ["Araihazar", "Bandar", "Narayanganj Sadar", "Rupganj", "Sonargaon"],
+  Narsingdi: ["Belabo", "Monohardi", "Narsingdi Sadar", "Palash", "Raipura", "Shibpur"],
+  Rajbari: ["Baliakandi", "Goalandaghat", "Kalukhali", "Pangsha", "Rajbari Sadar"],
+  Shariatpur: ["Bhedarganj", "Damudya", "Gosairhat", "Naria", "Shariatpur Sadar", "Zanjira"],
+  Tangail: ["Basail", "Bhuapur", "Delduar", "Dhanbari", "Ghatail", "Gopalpur", "Kalihati", "Madhupur", "Mirzapur", "Nagarpur", "Sakhipur", "Tangail Sadar"],
+  // Khulna Division
+  Bagerhat: ["Bagerhat Sadar", "Chitalmari", "Fakirhat", "Kachua", "Mollahat", "Mongla", "Morrelganj", "Rampal", "Sarankhola"],
+  Chuadanga: ["Alamdanga", "Chuadanga Sadar", "Damurhuda", "Jibannagar"],
+  Jessore: ["Abhaynagar", "Bagherpara", "Chaugachha", "Jessore Sadar", "Jhikargachha", "Keshabpur", "Manirampur", "Sharsha"],
+  Jhenaidah: ["Harinakunda", "Jhenaidah Sadar", "Kaliganj", "Kotchandpur", "Maheshpur", "Shailkupa"],
+  Khulna: ["Batiaghata", "Dacope", "Dighalia", "Dumuria", "Koyra", "Paikgachha", "Phultala", "Rupsa", "Terokhada"],
+  Kushtia: ["Bheramara", "Daulatpur", "Khoksa", "Kumarkhali", "Kushtia Sadar", "Mirpur"],
+  Magura: ["Magura Sadar", "Mohammadpur", "Shalikha", "Sreepur"],
+  Meherpur: ["Gangni", "Meherpur Sadar", "Mujibnagar"],
+  Narail: ["Kalia", "Lohagara", "Narail Sadar"],
+  Satkhira: ["Assasuni", "Debhata", "Kalaroa", "Kaliganj", "Satkhira Sadar", "Shyamnagar", "Tala"],
+  // Mymensingh Division
+  Jamalpur: ["Bakshiganj", "Dewanganj", "Islampur", "Jamalpur Sadar", "Madarganj", "Melandaha", "Sarishabari"],
+  Mymensingh: ["Bhaluka", "Dhobaura", "Fulbaria", "Gaffargaon", "Gauripur", "Haluaghat", "Ishwarganj", "Mymensingh Sadar", "Muktagachha", "Nandail", "Phulpur", "Trishal", "Tarakanda"],
+  Netrokona: ["Atpara", "Barhatta", "Durgapur", "Kalmakanda", "Kendua", "Khaliajuri", "Madan", "Mohanganj", "Netrokona Sadar", "Purbadhala"],
+  Sherpur: ["Jhenaigati", "Nakla", "Nalitabari", "Sherpur Sadar", "Sreebardi"],
+  // Rajshahi Division
+  Bogura: ["Adamdighi", "Bogura Sadar", "Dhunat", "Dhupchanchia", "Gabtali", "Kahaloo", "Nandigram", "Sariakandi", "Shajahanpur", "Sherpur", "Shibganj", "Sonatola"],
+  Chapainawabganj: ["Bholahat", "Chapainawabganj Sadar", "Gomastapur", "Nachole", "Shibganj"],
+  Joypurhat: ["Akkelpur", "Joypurhat Sadar", "Kalai", "Khetlal", "Panchbibi"],
+  Naogaon: ["Atrai", "Badalgachhi", "Dhamoirhat", "Manda", "Mahadebpur", "Naogaon Sadar", "Niamatpur", "Patnitala", "Porsha", "Raninagar", "Sapahar"],
+  Natore: ["Bagatipara", "Baraigram", "Gurudaspur", "Lalpur", "Natore Sadar", "Singra"],
+  Nawabganj: ["Bholahat", "Gomastapur", "Nachole", "Nawabganj Sadar", "Shibganj"],
+  Pabna: ["Atgharia", "Bera", "Bhangura", "Chatmohar", "Faridpur", "Ishwardi", "Pabna Sadar", "Santhia", "Sujanagar"],
+  Rajshahi: ["Bagha", "Bagmara", "Charghat", "Durgapur", "Godagari", "Mohanpur", "Paba", "Puthia", "Tanore"],
+  Sirajganj: ["Belkuchi", "Chauhali", "Kamarkhanda", "Kazipur", "Raiganj", "Shahzadpur", "Sirajganj Sadar", "Tarash", "Ullahpara"],
+  // Rangpur Division
+  Dinajpur: ["Birampur", "Birganj", "Biral", "Bochaganj", "Chirirbandar", "Dinajpur Sadar", "Fulbari", "Ghoraghat", "Hakimpur", "Kaharole", "Khansama", "Nawabganj", "Parbatipur"],
+  Gaibandha: ["Fulchhari", "Gaibandha Sadar", "Gobindaganj", "Palashbari", "Sadullapur", "Saghata", "Sundarganj"],
+  Kurigram: ["Bhurungamari", "Char Rajibpur", "Chilmari", "Kurigram Sadar", "Nageshwari", "Phulbari", "Rajarhat", "Raumari", "Ulipur"],
+  Lalmonirhat: ["Aditmari", "Hatibandha", "Kaliganj", "Lalmonirhat Sadar", "Patgram"],
+  Nilphamari: ["Dimla", "Domar", "Jaldhaka", "Kishoreganj", "Nilphamari Sadar", "Saidpur"],
+  Panchagarh: ["Atwari", "Boda", "Debiganj", "Panchagarh Sadar", "Tetulia"],
+  Rangpur: ["Badarganj", "Gangachara", "Kaunia", "Mithapukur", "Pirgachha", "Pirganj", "Rangpur Sadar", "Taraganj"],
+  Thakurgaon: ["Baliadangi", "Haripur", "Pirganj", "Ranisankail", "Thakurgaon Sadar"],
+  // Sylhet Division
+  Habiganj: ["Ajmiriganj", "Bahubal", "Baniyachong", "Chunarughat", "Habiganj Sadar", "Lakhai", "Madhabpur", "Nabiganj", "Sayestaganj"],
+  Moulvibazar: ["Barlekha", "Juri", "Kamalganj", "Kulaura", "Moulvibazar Sadar", "Rajnagar", "Sreemangal"],
+  Sunamganj: ["Bishwamvarpur", "Chhatak", "Derai", "Dharampasha", "Dowarabazar", "Jagannathpur", "Jamalganj", "Sulla", "Sunamganj Sadar", "Tahirpur"],
+  Sylhet: ["Balaganj", "Beanibazar", "Bishwanath", "Companiganj", "Fenchuganj", "Golapganj", "Gowainghat", "Jaintiapur", "Kanaighat", "Osmani Nagar", "South Surma", "Sylhet Sadar", "Zakiganj"],
+};
+
 // ─── Chart of Accounts (ISP) ─────────────────────────────────────
 const COA_DATA = [
   // Assets (1000)
@@ -206,7 +282,7 @@ interface SeedSection {
 }
 
 const SECTIONS: SeedSection[] = [
-  { id: "geo", title: "Geo Data (Divisions/Districts/Upazilas)", description: "All 8 divisions and 64 districts of Bangladesh", icon: <MapPin className="h-5 w-5" />, count: "8 Divisions, 64 Districts" },
+  { id: "geo", title: "Geo Data (Divisions/Districts/Upazilas)", description: "All 8 divisions, 64 districts and 495+ upazilas of Bangladesh", icon: <MapPin className="h-5 w-5" />, count: "8 Divisions, 64 Districts, 495+ Upazilas" },
   { id: "coa", title: "Chart of Accounts (Ledgers)", description: "All ledger accounts including Customer, Vendor, Employee accounts", icon: <BookOpen className="h-5 w-5" />, count: "50+ Accounts" },
   { id: "sms", title: "SMS Templates", description: "Bill generation, payment confirmation, reminders etc.", icon: <MessageSquare className="h-5 w-5" />, count: `${SMS_TEMPLATES.length} Templates` },
   { id: "email", title: "Email Templates", description: "Welcome, password reset, payment confirmation etc.", icon: <Mail className="h-5 w-5" />, count: `${EMAIL_TEMPLATES_DATA.length} Templates` },
@@ -229,7 +305,7 @@ export default function InitialDataImportTab() {
   const seedGeoData = async () => {
     setStatus("geo", "loading");
     try {
-      let divCount = 0, distCount = 0;
+      let divCount = 0, distCount = 0, upaCount = 0;
 
       for (const div of DIVISIONS) {
         const { data: existing } = await (supabase as any).from("geo_divisions").select("id").eq("name", div.name).maybeSingle();
@@ -244,17 +320,31 @@ export default function InitialDataImportTab() {
         const districts = DISTRICTS_BY_DIVISION[div.name] || [];
         for (const dist of districts) {
           const { data: dExist } = await (supabase as any).from("geo_districts").select("id").eq("name", dist.name).eq("division_id", divId).maybeSingle();
-          if (!dExist) {
-            const { error } = await (supabase as any).from("geo_districts").insert({ name: dist.name, bn_name: dist.bn_name, division_id: divId, status: "active" });
+          let distId = dExist?.id;
+          if (!distId) {
+            const { data, error } = await (supabase as any).from("geo_districts").insert({ name: dist.name, bn_name: dist.bn_name, division_id: divId, status: "active" }).select("id").single();
             if (error) throw error;
+            distId = data.id;
             distCount++;
+          }
+
+          // Import upazilas for this district
+          const upazilas = UPAZILAS_BY_DISTRICT[dist.name] || [];
+          for (const upaName of upazilas) {
+            const { data: uExist } = await (supabase as any).from("geo_upazilas").select("id").eq("name", upaName).eq("district_id", distId).maybeSingle();
+            if (!uExist) {
+              const { error } = await (supabase as any).from("geo_upazilas").insert({ name: upaName, district_id: distId, status: "active" });
+              if (error) throw error;
+              upaCount++;
+            }
           }
         }
       }
 
-      setStatus("geo", "done", `${divCount} divisions, ${distCount} districts added`);
+      setStatus("geo", "done", `${divCount} divisions, ${distCount} districts, ${upaCount} upazilas added`);
       queryClient.invalidateQueries({ queryKey: ["geo-divisions-all"] });
       queryClient.invalidateQueries({ queryKey: ["geo-districts-all"] });
+      queryClient.invalidateQueries({ queryKey: ["geo-upazilas"] });
     } catch (e: any) {
       setStatus("geo", "error", e.message);
     }
