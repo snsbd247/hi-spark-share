@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadCustomerPhoto } from "@/lib/storage";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
+import { DIVISIONS, DISTRICTS, UPAZILAS } from "@/lib/bangladeshGeo";
 
 interface CustomerFormProps {
   customer?: any;
