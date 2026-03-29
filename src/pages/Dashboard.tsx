@@ -315,7 +315,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className={`h-4 w-4 ${collectionRate < 50 && targetAmount > 0 ? "text-destructive" : "text-primary"}`} />
-              Collection Target — {format(new Date(), "MMM yyyy")}
+              {t.dashboard.collectionTarget} — {format(new Date(), "MMM yyyy")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
