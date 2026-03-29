@@ -265,6 +265,13 @@ const en = {
     nagad: "Nagad",
     bank: "Bank",
     online: "Online",
+    searchPlaceholder: "Search customer or TrxID...",
+    allMethods: "All Methods",
+    paymentUpdated: "Payment updated successfully",
+    paymentDeleted: "Payment deleted successfully",
+    noPaymentsFound: "No payments found",
+    editPayment: "Edit Payment",
+    bkashMerchant: "bKash Merchant",
   },
 
   // ── HR ──
