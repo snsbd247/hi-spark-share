@@ -304,7 +304,7 @@ async function handleRefund(body: any): Promise<Response> {
     if (data.transactionStatus === "Completed" || data.statusCode === "0000") {
       const { data: payment } = await supabase
         .from("payments")
-        .select("customer_id")
+        .select("customer_id, bill_id, amount")
         .eq("bkash_payment_id", paymentID)
         .single();
 
@@ -314,6 +314,48 @@ async function handleRefund(body: any): Promise<Response> {
         .eq("bkash_payment_id", paymentID);
 
       if (payment?.customer_id) {
+        // Reverse ledger: add debit entry to cancel the original credit
+        try {
+          const refundAmount = Number(amount);
+          const { data: lastEntry } = await supabase
+            .from("customer_ledger")
+            .select("balance")
+            .eq("customer_id", payment.customer_id)
+            .order("date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          const prevBalance = lastEntry?.[0]?.balance ?? 0;
+
+          await supabase.from("customer_ledger").insert({
+            customer_id: payment.customer_id,
+            date: new Date().toISOString(),
+            description: `Payment Refunded (bKash - TrxID: ${trxID})`,
+            debit: refundAmount,
+            credit: 0,
+            balance: prevBalance + refundAmount,
+            reference: `REFUND-${trxID}`,
+            type: "refund",
+          });
+
+          console.log("[bKash Refund] Ledger debit entry created for customer:", payment.customer_id);
+        } catch (e) {
+          console.error("[bKash Refund] Ledger reversal failed:", e);
+        }
+
+        // Mark bill as unpaid again
+        if (payment.bill_id) {
+          try {
+            await supabase
+              .from("bills")
+              .update({ status: "unpaid", paid_date: null })
+              .eq("id", payment.bill_id);
+            console.log("[bKash Refund] Bill marked unpaid:", payment.bill_id);
+          } catch (e) {
+            console.error("[bKash Refund] Bill status update failed:", e);
+          }
+        }
+
         await sendRefundSms(payment.customer_id, Number(amount), trxID);
       }
     }
