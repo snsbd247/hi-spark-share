@@ -7,7 +7,9 @@ use App\Http\Requests\StorePaymentRequest;
 use App\Models\Payment;
 use App\Models\Bill;
 use App\Models\Customer;
+use App\Models\CustomerLedger;
 use App\Models\SmsTemplate;
+use App\Models\Transaction;
 use App\Services\BillingService;
 use App\Services\LedgerService;
 use App\Services\SmsService;
@@ -97,7 +99,37 @@ class PaymentController extends Controller
 
     public function destroy(string $id)
     {
-        Payment::findOrFail($id)->delete();
+        $payment = Payment::findOrFail($id);
+
+        // 1. Remove customer ledger entries for this payment
+        CustomerLedger::where('customer_id', $payment->customer_id)
+            ->where('type', 'payment')
+            ->where('reference', $payment->id)
+            ->delete();
+
+        // 2. Remove accounting transactions for this payment
+        $ref = $payment->transaction_id ?: "payment-{$payment->payment_method}";
+        Transaction::where('reference', $ref)
+            ->where('type', 'receipt')
+            ->delete();
+
+        // 3. Revert bill status to unpaid if linked
+        if ($payment->bill_id) {
+            $bill = Bill::find($payment->bill_id);
+            if ($bill && $bill->status === 'paid') {
+                $bill->update([
+                    'status' => 'unpaid',
+                    'paid_date' => null,
+                ]);
+            }
+        }
+
+        // 4. Recalculate customer ledger running balance
+        $this->ledgerService->recalculateCustomerBalance($payment->customer_id);
+
+        // 5. Delete the payment
+        $payment->delete();
+
         return response()->json(['success' => true]);
     }
 }
