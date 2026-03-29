@@ -149,16 +149,16 @@ export default function Customers() {
   };
 
   const pageTitle = useMemo(() => {
-    if (statusFilter === "new") return "New Customers";
-    if (statusFilter === "active") return "Active Customers";
-    if (statusFilter === "inactive") return "Inactive Customers";
-    if (statusFilter === "free") return "Free Customers";
-    if (statusFilter === "left") return "Left Customers";
-    if (connectionFilter === "online") return "Online Customers";
-    if (connectionFilter === "offline") return "Offline Customers";
-    if (miscFilter === "due") return "Due Customers";
-    return "Customers";
-  }, [statusFilter, connectionFilter, miscFilter]);
+    if (statusFilter === "new") return t.sidebar.newCustomers;
+    if (statusFilter === "active") return t.sidebar.activeCustomers;
+    if (statusFilter === "inactive") return t.sidebar.inactiveCustomers;
+    if (statusFilter === "free") return t.sidebar.freeCustomers;
+    if (statusFilter === "left") return t.sidebar.leftCustomers;
+    if (connectionFilter === "online") return t.sidebar.onlineCustomers;
+    if (connectionFilter === "offline") return t.sidebar.offlineCustomers;
+    if (miscFilter === "due") return t.sidebar.dueList;
+    return t.customers.title;
+  }, [statusFilter, connectionFilter, miscFilter, t]);
 
   return (
     <DashboardLayout>
