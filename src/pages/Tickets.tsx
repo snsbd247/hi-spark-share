@@ -152,7 +152,7 @@ export default function Tickets() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Ticket className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No tickets found</p>
+              <p className="text-muted-foreground">{t.tickets.noTicketsFound}</p>
             </CardContent>
           </Card>
         ) : (
