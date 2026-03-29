@@ -314,18 +314,23 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
               const createAccountingEntry = async (accountId: string, amount: number, desc: string, ref: string) => {
                 if (!accountId || accountId === "none") return;
+                // Determine if account is debit-normal (asset/expense) or credit-normal (income/liability/equity)
+                const { data: accInfo } = await supabase.from("accounts").select("balance, type").eq("id", accountId).single();
+                if (!accInfo) return;
+                const isDebitNormal = ["asset", "expense"].includes(accInfo.type);
+                // Income: Credit the income account
                 await supabase.from("transactions").insert({
                   account_id: accountId,
-                  type: "credit",
-                  amount,
+                  type: "receipt",
+                  debit: isDebitNormal ? amount : 0,
+                  credit: isDebitNormal ? 0 : amount,
                   description: desc,
                   date: new Date().toISOString(),
                   reference: ref,
-                });
-                const { data: acc } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
-                if (acc) {
-                  await supabase.from("accounts").update({ balance: (acc.balance || 0) + amount }).eq("id", accountId);
-                }
+                } as any);
+                // Update account balance
+                const netChange = isDebitNormal ? amount : amount;
+                await supabase.from("accounts").update({ balance: (accInfo.balance || 0) + netChange }).eq("id", accountId);
               };
 
               if (connectionCharge > 0 && settingsMap.connection_charge_account_id) {

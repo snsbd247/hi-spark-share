@@ -348,18 +348,23 @@ export async function createMerchantAccountingEntryShared(supabase: any, amount:
     const accountId = setting?.setting_value;
     if (!accountId || accountId === "none") return;
 
+    // Get account type for correct debit/credit
+    const { data: accInfo } = await supabase.from("accounts").select("balance, type").eq("id", accountId).single();
+    const isDebitNormal = accInfo && ["asset", "expense"].includes(accInfo.type);
+
     await supabase.from("transactions").insert({
       account_id: accountId,
-      type: "credit",
-      amount,
+      type: "receipt",
+      debit: isDebitNormal ? amount : 0,
+      credit: isDebitNormal ? 0 : amount,
       description: `Merchant Payment - ${description} (TrxID: ${transactionId})`,
       date: new Date().toISOString(),
       reference: `MERCH-${transactionId}`,
     });
 
-    const { data: acc } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
-    if (acc) {
-      await supabase.from("accounts").update({ balance: (acc.balance || 0) + amount }).eq("id", accountId);
+    const balanceChange = isDebitNormal ? amount : amount;
+    if (accInfo) {
+      await supabase.from("accounts").update({ balance: (accInfo.balance || 0) + balanceChange }).eq("id", accountId);
     }
   } catch (err) {
     console.error("Merchant accounting entry failed:", err);
