@@ -95,6 +95,7 @@ class HrController extends Controller
         $employee = Employee::with([
             'designation',
             'salaryStructure',
+            'allSalaryStructures',
             'education',
             'experience',
             'emergencyContacts',
@@ -237,9 +238,6 @@ class HrController extends Controller
         $generated = 0;
 
         foreach ($employees as $emp) {
-            $existing = SalarySheet::where('employee_id', $emp->id)->where('month', $month)->first();
-            if ($existing) continue;
-
             // Get salary structure if available
             $structure = EmployeeSalaryStructure::where('employee_id', $emp->id)
                 ->orderByDesc('effective_from')
@@ -253,30 +251,46 @@ class HrController extends Controller
 
             $grossSalary = $basicSalary + $houseRent + $medical + $conveyance + $otherAllowance;
 
-            // Loan deduction
-            $activeLoan = Loan::where('employee_id', $emp->id)->where('status', 'active')->first();
-            $loanDeduction = $activeLoan ? $activeLoan->monthly_deduction : 0;
+            // Loan deductions (all active loans)
+            $loanDeduction = Loan::where('employee_id', $emp->id)
+                ->where('status', 'active')
+                ->sum('monthly_deduction');
 
-            SalarySheet::create([
-                'employee_id'    => $emp->id,
-                'month'          => $month,
-                'basic_salary'   => $basicSalary,
-                'house_rent'     => $houseRent,
-                'medical'        => $medical,
-                'conveyance'     => $conveyance,
-                'other_allowance'=> $otherAllowance,
-                'bonus'          => 0,
-                'deduction'      => 0,
-                'loan_deduction' => $loanDeduction,
-                'pf_deduction'   => 0,
+            $payload = [
+                'employee_id'     => $emp->id,
+                'month'           => $month,
+                'basic_salary'    => $basicSalary,
+                'house_rent'      => $houseRent,
+                'medical'         => $medical,
+                'conveyance'      => $conveyance,
+                'other_allowance' => $otherAllowance,
+                'bonus'           => 0,
+                'deduction'       => 0,
+                'loan_deduction'  => $loanDeduction,
+                'pf_deduction'    => 0,
                 'savings_deduction' => 0,
-                'net_salary'     => $grossSalary - $loanDeduction,
-                'status'         => 'pending',
-            ]);
-            $generated++;
+                'net_salary'      => $grossSalary - $loanDeduction,
+                'status'          => 'pending',
+            ];
+
+            // Upsert — update if already exists for this month
+            $existing = SalarySheet::where('employee_id', $emp->id)
+                ->where('month', $month)
+                ->first();
+
+            if ($existing) {
+                $existing->update($payload);
+            } else {
+                SalarySheet::create($payload);
+                $generated++;
+            }
         }
 
-        return response()->json(['message' => "$generated salary sheets generated"]);
+        return response()->json([
+            'message' => $generated > 0
+                ? "$generated salary sheets generated"
+                : "All salary sheets regenerated from salary structure",
+        ]);
     }
 
     public function updateSalarySheet(Request $request, string $id)
@@ -304,14 +318,17 @@ class HrController extends Controller
             'payment_method' => $request->get('payment_method', 'cash'),
         ]);
 
-        // Update loan if applicable
-        $activeLoan = Loan::where('employee_id', $sheet->employee_id)->where('status', 'active')->first();
-        if ($activeLoan && $sheet->loan_deduction > 0) {
-            $activeLoan->paid_amount += $sheet->loan_deduction;
-            if ($activeLoan->paid_amount >= $activeLoan->amount) {
-                $activeLoan->status = 'paid';
+        // Update all active loans for this employee
+        $activeLoans = Loan::where('employee_id', $sheet->employee_id)
+            ->where('status', 'active')
+            ->get();
+
+        foreach ($activeLoans as $loan) {
+            $loan->paid_amount += $loan->monthly_deduction;
+            if ($loan->paid_amount >= $loan->amount) {
+                $loan->status = 'paid';
             }
-            $activeLoan->save();
+            $loan->save();
         }
 
         return response()->json($sheet->load('employee'));

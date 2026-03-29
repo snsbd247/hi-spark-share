@@ -29,7 +29,16 @@ class SupplierController2 extends Controller
 
     public function show(string $id)
     {
-        $supplier = Supplier::with('payments')->findOrFail($id);
+        $supplier = Supplier::with(['payments', 'purchases.items.product'])->findOrFail($id);
+
+        // Calculate summary
+        $totalPurchases = $supplier->purchases->sum('total_amount');
+        $totalPaid = $supplier->payments->sum('amount');
+
+        $supplier->total_purchases = $totalPurchases;
+        $supplier->total_paid = $totalPaid;
+        $supplier->calculated_due = $totalPurchases - $totalPaid;
+
         return response()->json($supplier);
     }
 
@@ -76,8 +85,13 @@ class SupplierController2 extends Controller
 
         // Update supplier balance
         $supplier = Supplier::find($request->supplier_id);
-        $supplier->balance -= $request->amount;
-        $supplier->save();
+        if ($supplier) {
+            $supplier->balance -= $request->amount;
+            if ($supplier->total_due !== null) {
+                $supplier->total_due = max(0, $supplier->total_due - $request->amount);
+            }
+            $supplier->save();
+        }
 
         return response()->json($payment->load('supplier'), 201);
     }
@@ -88,6 +102,9 @@ class SupplierController2 extends Controller
         $supplier = Supplier::find($payment->supplier_id);
         if ($supplier) {
             $supplier->balance += $payment->amount;
+            if ($supplier->total_due !== null) {
+                $supplier->total_due += $payment->amount;
+            }
             $supplier->save();
         }
         $payment->delete();

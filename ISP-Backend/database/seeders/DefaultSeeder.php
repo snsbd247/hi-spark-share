@@ -118,7 +118,7 @@ class DefaultSeeder extends Seeder
             Account::create(['name' => 'Retained Earnings', 'type' => 'equity', 'code' => '3002', 'parent_id' => $equity->id, 'level' => 1]);
         }
 
-        // ── Default Permissions ──────────────────────────
+        // ── Default Permissions (matching frontend modules) ──
         $modules = [
             'customers'         => ['view', 'create', 'edit', 'delete'],
             'billing'           => ['view', 'create', 'edit', 'delete'],
@@ -149,6 +149,6 @@ class DefaultSeeder extends Seeder
         $this->command->info('Admin #1 → username: admin / password: admin123');
         $this->command->info('Admin #2 → username: ismail / password: Admin@123');
         $this->command->info('Chart of Accounts with hierarchy created (5 root + children).');
-        $this->command->info('All module permissions seeded.');
+        $this->command->info('All module permissions seeded (14 modules × 4 actions = 56 permissions).');
     }
 }

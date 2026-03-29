@@ -11,14 +11,14 @@ class Loan extends Model
 
     protected $fillable = [
         'id', 'employee_id', 'amount', 'paid_amount',
-        'monthly_deduction', 'loan_date', 'status', 'note',
+        'monthly_deduction', 'approved_date', 'reason', 'status',
     ];
 
     protected $casts = [
         'amount'            => 'decimal:2',
         'paid_amount'       => 'decimal:2',
         'monthly_deduction' => 'decimal:2',
-        'loan_date'         => 'date',
+        'approved_date'     => 'date',
     ];
 
     public function employee()

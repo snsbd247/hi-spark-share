@@ -11,8 +11,7 @@ class Employee extends Model
 
     protected $fillable = [
         'id', 'employee_id', 'name', 'phone', 'email', 'nid',
-        'designation_id', 'joining_date', 'salary', 'address',
-        'photo_url', 'status',
+        'designation_id', 'joining_date', 'salary', 'address', 'status',
     ];
 
     protected $casts = [
@@ -43,6 +42,11 @@ class Employee extends Model
     public function salaryStructure()
     {
         return $this->hasOne(EmployeeSalaryStructure::class)->latestOfMany();
+    }
+
+    public function allSalaryStructures()
+    {
+        return $this->hasMany(EmployeeSalaryStructure::class);
     }
 
     public function education()
