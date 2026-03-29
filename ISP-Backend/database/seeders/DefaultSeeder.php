@@ -6,7 +6,7 @@ use App\Models\Account;
 use App\Models\GeneralSetting;
 use App\Models\Package;
 use App\Models\Permission;
-use App\Models\Profile as User;
+use App\Models\User;
 use App\Models\SmsSetting;
 use App\Models\UserRole;
 use Illuminate\Database\Seeder;

@@ -25,15 +25,15 @@ class AdminAuth
             return response()->json(['error' => 'Invalid or expired session'], 401);
         }
 
-        $profile = $session->profile;
-        if (!$profile || $profile->status !== 'active') {
+        $user = $session->user;
+        if (!$user || $user->status !== 'active') {
             return response()->json(['error' => 'Account disabled'], 403);
         }
 
         // Touch session updated_at to extend activity
         $session->touch();
 
-        $request->merge(['admin_user' => $profile, 'admin_session' => $session]);
+        $request->merge(['admin_user' => $user, 'admin_session' => $session]);
 
         return $next($request);
     }

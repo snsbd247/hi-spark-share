@@ -2,23 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Model;
 
-class User extends Authenticatable
+class User extends Model
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasUuid;
 
-    protected $fillable = ['name', 'email', 'password'];
-    protected $hidden = ['password', 'remember_token'];
+    protected $table = 'users';
 
-    protected function casts(): array
+    protected $fillable = [
+        'id', 'full_name', 'email', 'username', 'mobile', 'address',
+        'avatar_url', 'password_hash', 'staff_id', 'status', 'language',
+    ];
+
+    protected $hidden = ['password_hash'];
+
+    public function roles()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(UserRole::class, 'user_id');
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(AdminSession::class, 'admin_id');
     }
 }

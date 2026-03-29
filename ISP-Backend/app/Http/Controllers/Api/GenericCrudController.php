@@ -9,7 +9,7 @@ class GenericCrudController extends Controller
 {
     protected array $tableModelMap = [
         'users' => \App\Models\Profile::class,
-        'profiles' => \App\Models\Profile::class,
+        'profiles' => \App\Models\User::class,
         'customers' => \App\Models\Customer::class,
         'bills' => \App\Models\Bill::class,
         'payments' => \App\Models\Payment::class,
