@@ -9,7 +9,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings } from "lucide-react";
+import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
