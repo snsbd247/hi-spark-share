@@ -23,6 +23,8 @@ import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash
 import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
 import { postSalePaymentToLedger } from "@/lib/ledger";
 import { toast } from "sonner";
+import { paymentsApi } from "@/lib/api";
+import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
 
 interface SaleItem { product_id: string; quantity: number; unit_price: number; }
 
