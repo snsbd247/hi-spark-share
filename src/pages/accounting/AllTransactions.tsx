@@ -240,6 +240,15 @@ export default function AllTransactions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
+        title="Delete Transaction"
+        description="এই ট্রানজাকশন ডিলিট করলে সংশ্লিষ্ট অ্যাকাউন্টের ব্যালেন্সও আপডেট হবে। আপনি কি নিশ্চিত?"
+        loading={deleteMutation.isPending}
+      />
     </DashboardLayout>
   );
 }
