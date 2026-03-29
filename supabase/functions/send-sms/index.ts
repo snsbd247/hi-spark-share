@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     // Load SMS config from sms_settings table or env var
     const { data: settings } = await supabase.from("sms_settings").select("*").limit(1).single();
-    const token = settings?.api_token || Deno.env.get("GREENWEB_SMS_TOKEN") || "";
+    const token = settings?.api_token || "";
     const senderId = settings?.sender_id || "";
     const gatewayUrl = "http://api.greenweb.com.bd/api.php";
 
