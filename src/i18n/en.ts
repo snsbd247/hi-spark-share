@@ -223,6 +223,11 @@ const en = {
     discount: "Discount",
     connectivityFee: "Connectivity Fee",
     dueDate: "Due Date",
+    noCustomersFound: "No customers found",
+    customersFound: "customers found",
+    syncAll: "Sync All to MikroTik",
+    perPage: "per page",
+    page: "Page",
   },
 
   // ── Billing ──
