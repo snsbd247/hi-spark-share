@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { PDF_COLORS, PDF_FONT, PDF_SPACING } from "./pdfTheme";
 
 interface Settings {
   site_name: string;
@@ -19,24 +20,23 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(blob);
       });
-    } catch { /* skip photo if fetch fails */ }
+    } catch { /* skip */ }
   }
 
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
-  const m = 12; // margin
+  const m = PDF_SPACING.margin;
   const cw = pw - m * 2;
   let y = 0;
 
-  // Colors
-  const navy: [number, number, number] = [25, 55, 109];
-  const lightBg: [number, number, number] = [244, 246, 249];
-  const border: [number, number, number] = [210, 210, 210];
-  const textDark: [number, number, number] = [30, 30, 30];
-  const textMuted: [number, number, number] = [120, 120, 120];
+  const navy = PDF_COLORS.navy;
+  const bgLight = PDF_COLORS.bgLight;
+  const border = PDF_COLORS.border;
+  const textDark = PDF_COLORS.text;
+  const textMuted = PDF_COLORS.textMuted;
 
-  // ─── HEADER (compact) ───
+  // ─── HEADER ───
   doc.setFillColor(...navy);
   doc.rect(0, 0, pw, 28, "F");
 
@@ -44,7 +44,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text(settings.site_name || "Smart ISP", m, 12);
-  doc.setFontSize(7);
+  doc.setFontSize(PDF_FONT.tiny);
   doc.setFont("helvetica", "normal");
   const headerParts = [];
   if (settings.mobile) headerParts.push(`Hotline: ${settings.mobile}`);
@@ -52,11 +52,10 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   doc.text(headerParts.join("  |  "), m, 18);
   if (settings.address) doc.text(settings.address, m, 23);
 
-  // Right side
-  doc.setFontSize(9);
+  doc.setFontSize(PDF_FONT.body);
   doc.setFont("helvetica", "bold");
   doc.text("APPLICATION FORM", pw - m, 11, { align: "right" });
-  doc.setFontSize(7);
+  doc.setFontSize(PDF_FONT.tiny);
   doc.setFont("helvetica", "normal");
   doc.text(`ID: ${customer.customer_id || "—"}  |  Date: ${new Date().toLocaleDateString("en-GB")}`, pw - m, 18, { align: "right" });
 
@@ -66,7 +65,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const sectionTitle = (title: string) => {
     doc.setFillColor(...navy);
     doc.rect(m, y, cw, 5.5, "F");
-    doc.setFontSize(7);
+    doc.setFontSize(PDF_FONT.tiny);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
     doc.text(title.toUpperCase(), m + 3, y + 4);
@@ -77,14 +76,12 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const field = (label: string, value: string, x: number, w: number, h = 8) => {
     doc.setDrawColor(...border);
     doc.rect(x, y, w, h, "S");
-    // Label bg
-    doc.setFillColor(...lightBg);
+    doc.setFillColor(...bgLight);
     doc.rect(x, y, w, 3.2, "F");
     doc.setFontSize(5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...textMuted);
     doc.text(label, x + 1.5, y + 2.5);
-    // Value
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...textDark);
@@ -101,7 +98,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   // ─── CUSTOMER INFORMATION ───
   sectionTitle("Customer Information");
 
-  // Photo area (right side)
   const photoSize = 20;
   const photoX = pw - m - photoSize;
   const photoY = y;
@@ -120,12 +116,10 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const fw2 = infoW / 2;
   const fw3 = infoW / 3;
 
-  // Row 1
   field("Applicant Name", customer.name || "", m, fw2);
   field("Father Name", customer.father_name || "", m + fw2, fw2);
   y += 8.5;
 
-  // Row 2
   field("Customer ID", customer.customer_id || "", m, fw3);
   field("NID", customer.nid || "", m + fw3, fw3);
   field("Mother Name", customer.mother_name || "", m + fw3 * 2, fw3);
@@ -160,7 +154,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   field("Permanent Address", customer.permanent_address || "", m, cw, 8);
   y += 8.5;
-
   y += 1.5;
 
   // ─── CONNECTION DETAILS ───
@@ -225,7 +218,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     { label: "Marketing Signature", x: m + (sigW + 5) * 2 },
   ].forEach(({ label, x }) => {
     doc.line(x, y + 10, x + sigW, y + 10);
-    doc.setFontSize(6.5);
+    doc.setFontSize(PDF_FONT.micro);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...textMuted);
     doc.text(label, x + sigW / 2, y + 14, { align: "center" });
@@ -241,7 +234,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   // ─── FOOTER ───
   doc.setFontSize(5.5);
-  doc.setTextColor(160, 160, 160);
+  doc.setTextColor(...PDF_COLORS.textLight);
   doc.text(
     `Generated on ${new Date().toLocaleDateString()} — ${settings.site_name || "Smart ISP"} Billing System`,
     pw / 2, ph - 5, { align: "center" }
