@@ -61,7 +61,7 @@ export default function EmployeeList() {
               <Input placeholder={t.hr.salary} type="number" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} />
               <Input placeholder={t.common.address} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
-            <Button onClick={() => save.mutate()} disabled={!form.name || !form.employee_id || save.isPending} className="w-full mt-2">{save.isPending ? "Saving..." : "Save"}</Button>
+            <Button onClick={() => save.mutate()} disabled={!form.name || !form.employee_id || save.isPending} className="w-full mt-2">{save.isPending ? t.common.loading : t.common.save}</Button>
           </DialogContent>
         </Dialog>
       </div>
