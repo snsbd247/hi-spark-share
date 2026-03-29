@@ -10,8 +10,7 @@ import { FileText, CheckCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import jsPDF from "jspdf";
-import { safeFormat } from "@/lib/utils";
+import { generatePaySlipPdf } from "@/lib/salaryPaySlipPdf";
 
 export default function SalarySheet() {
   const qc = useQueryClient();
