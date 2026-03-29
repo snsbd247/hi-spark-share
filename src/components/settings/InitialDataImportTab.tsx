@@ -232,7 +232,7 @@ export default function InitialDataImportTab() {
         }
       }
 
-      setStatus("geo", "done", `${divCount} বিভাগ, ${distCount} জেলা যোগ হয়েছে`);
+      setStatus("geo", "done", `${divCount} divisions, ${distCount} districts added`);
       queryClient.invalidateQueries({ queryKey: ["geo-divisions-all"] });
       queryClient.invalidateQueries({ queryKey: ["geo-districts-all"] });
     } catch (e: any) {
