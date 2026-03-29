@@ -93,7 +93,7 @@ export default function Login() {
             )}
             <div>
               <h1 className="text-2xl font-bold text-foreground">{branding.site_name}</h1>
-              <p className="text-xs text-muted-foreground">Admin Panel</p>
+              <p className="text-xs text-muted-foreground">{t.sidebar.adminPanel}</p>
             </div>
           </div>
 
