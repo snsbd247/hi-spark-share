@@ -118,7 +118,23 @@ export default function Billing() {
 
   const handleMarkPaid = async (bill: any) => {
     try {
-      await billsApi.markPaid(bill.id);
+      const { error } = await supabase
+        .from("bills")
+        .update({ status: "paid", paid_date: new Date().toISOString() })
+        .eq("id", bill.id);
+      if (error) throw error;
+
+      // Also create a payment record
+      await supabase.from("payments").insert({
+        customer_id: bill.customer_id,
+        bill_id: bill.id,
+        amount: Number(bill.amount),
+        month: bill.month,
+        payment_method: "cash",
+        paid_at: new Date().toISOString(),
+        status: "completed",
+      });
+
       const customerName = bill.customers?.name || "Customer";
       await postPaymentToLedger(customerName, Number(bill.amount), "cash", undefined, new Date().toISOString());
       toast.success("Bill marked as paid & posted to ledger");
