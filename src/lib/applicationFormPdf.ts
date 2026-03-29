@@ -236,7 +236,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   doc.setFontSize(5.5);
   doc.setTextColor(...PDF_COLORS.textLight);
   doc.text(
-    `Generated on ${new Date().toLocaleDateString()} — ${settings.site_name || "Smart ISP"} Billing System`,
+    `Generated on ${new Date().toLocaleDateString()} - ${settings.site_name || "Smart ISP"} Billing System`,
     pw / 2, ph - 5, { align: "center" }
   );
 
