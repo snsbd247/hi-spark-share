@@ -320,7 +320,7 @@ export default function Billing() {
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-success">{stats.paid}</p>
-                  <p className="text-xs text-muted-foreground">Paid</p>
+                  <p className="text-xs text-muted-foreground">{t.common.paid}</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-destructive">{stats.unpaid}</p>
