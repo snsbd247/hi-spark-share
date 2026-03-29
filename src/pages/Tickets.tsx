@@ -255,7 +255,7 @@ export default function Tickets() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">{t.tickets.unassigned}</SelectItem>
                       {profiles.map((p: any) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.full_name}
