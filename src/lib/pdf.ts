@@ -199,7 +199,7 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   doc.text("APPLICATION FORM", pw - m, 14, { align: "right" });
   doc.setFontSize(PDF_FONT.small);
   doc.setFont("helvetica", "normal");
-  doc.text(`Form No: ${customer.customer_id || "—"}`, pw - m, 22, { align: "right" });
+  doc.text(`Form No: ${customer.customer_id || "-"}`, pw - m, 22, { align: "right" });
   doc.text(`Date: ${new Date().toLocaleDateString("en-GB")}`, pw - m, 28, { align: "right" });
 
   y = 42;
