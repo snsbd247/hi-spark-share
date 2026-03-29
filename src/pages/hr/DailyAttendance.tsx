@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 export default function DailyAttendance() {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [records, setRecords] = useState<Record<string, { status: string; check_in: string; check_out: string }>>({});
