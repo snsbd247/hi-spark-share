@@ -206,10 +206,10 @@ interface SeedSection {
 
 const SECTIONS: SeedSection[] = [
   { id: "geo", title: "Geo Data (Divisions/Districts/Upazilas)", description: "All 8 divisions and 64 districts of Bangladesh", icon: <MapPin className="h-5 w-5" />, count: "8 Divisions, 64 Districts" },
-  { id: "coa", title: "Chart of Accounts (Ledgers)", description: "All ledger accounts required for ISP operations", icon: <BookOpen className="h-5 w-5" />, count: "40+ Accounts" },
+  { id: "coa", title: "Chart of Accounts (Ledgers)", description: "All ledger accounts including Customer, Vendor, Employee accounts", icon: <BookOpen className="h-5 w-5" />, count: "50+ Accounts" },
   { id: "sms", title: "SMS Templates", description: "Bill generation, payment confirmation, reminders etc.", icon: <MessageSquare className="h-5 w-5" />, count: `${SMS_TEMPLATES.length} Templates` },
   { id: "email", title: "Email Templates", description: "Welcome, password reset, payment confirmation etc.", icon: <Mail className="h-5 w-5" />, count: `${EMAIL_TEMPLATES_DATA.length} Templates` },
-  { id: "ledger", title: "Ledger Mapping + Payment Settings", description: "Auto-configure ledger mapping & payment receiving settings", icon: <CreditCard className="h-5 w-5" />, count: "9 Settings" },
+  { id: "ledger", title: "Ledger Mapping + Payment Settings", description: "Auto-configure all ledger mappings including salary, PF, vendor & customer", icon: <CreditCard className="h-5 w-5" />, count: `${LEDGER_MAPPING_DEFAULTS.length + PAYMENT_SETTINGS_DEFAULTS.length} Settings` },
 ];
 
 export default function InitialDataImportTab() {

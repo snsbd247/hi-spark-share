@@ -22,6 +22,15 @@ export default function LedgerSettingsTab() {
     { key: "purchase_cash_account", label: t.settings.purchaseCashAccount, description: t.settings.purchaseCashDesc, type: "asset" },
     { key: "service_income_account", label: t.settings.serviceIncomeAccount, description: t.settings.serviceIncomeDesc, type: "income" },
     { key: "expense_cash_account", label: t.settings.expenseCashAccount, description: t.settings.expenseCashDesc, type: "asset" },
+    { key: "salary_expense_account", label: "Salary Expense Account", description: "Expense account debited when salary is paid", type: "expense" },
+    { key: "salary_payable_account", label: "Salary Payable Account", description: "Liability account for accrued salaries", type: "liability" },
+    { key: "salary_cash_account", label: "Salary Payment Cash Account", description: "Cash/bank account used to pay salaries", type: "asset" },
+    { key: "pf_expense_account", label: "PF Employer Expense", description: "Expense account for employer PF contribution", type: "expense" },
+    { key: "pf_payable_account", label: "Provident Fund Payable", description: "Liability account for PF obligations", type: "liability" },
+    { key: "savings_fund_payable_account", label: "Savings Fund Payable", description: "Liability account for employee savings fund", type: "liability" },
+    { key: "customer_receivable_account", label: "Customer Receivable", description: "Asset account for customer dues/receivables", type: "asset" },
+    { key: "vendor_payable_account", label: "Vendor/Supplier Payable", description: "Liability account for vendor/supplier dues", type: "liability" },
+    { key: "employee_advance_account", label: "Employee Advance/Receivable", description: "Asset account for employee advances & loans", type: "asset" },
   ];
 
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
