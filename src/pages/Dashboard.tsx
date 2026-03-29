@@ -550,9 +550,9 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead className="text-right">Stock</TableHead>
+                      <TableHead>{t.dashboard.product}</TableHead>
+                      <TableHead>{t.dashboard.sku}</TableHead>
+                      <TableHead className="text-right">{t.dashboard.stock}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
