@@ -71,6 +71,7 @@ class AuthController extends Controller
                 'custom_role_id' => $role->custom_role_id ?? null,
                 'avatar_url' => $profile->avatar_url,
                 'mobile' => $profile->mobile,
+                'language' => $profile->language ?? 'en',
                 'permissions' => $permissions,
             ],
             'token' => $sessionToken,
@@ -123,6 +124,7 @@ class AuthController extends Controller
             'mobile' => $admin->mobile,
             'staff_id' => $admin->staff_id,
             'address' => $admin->address,
+            'language' => $admin->language ?? 'en',
             'permissions' => $permissions,
         ]);
     }
@@ -131,7 +133,7 @@ class AuthController extends Controller
     {
         $admin = $request->get('admin_user');
 
-        $data = $request->only(['full_name', 'mobile', 'address', 'avatar_url']);
+        $data = $request->only(['full_name', 'mobile', 'address', 'avatar_url', 'language']);
 
         if ($request->has('current_password') && $request->has('new_password')) {
             if (!Hash::check($request->current_password, $admin->password_hash)) {
@@ -149,6 +151,7 @@ class AuthController extends Controller
                 'email' => $admin->email,
                 'name' => $admin->full_name,
                 'avatar_url' => $admin->avatar_url,
+                'language' => $admin->language ?? 'en',
             ],
         ]);
     }

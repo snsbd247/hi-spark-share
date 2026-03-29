@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\SaleItem;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -84,19 +85,32 @@ class DashboardController extends Controller
         $totalRouters = MikrotikRouter::count();
         $activeRouters = MikrotikRouter::where('status', 'active')->count();
 
-        // ── Sales & Purchase Stats (using actual DB columns) ──
+        // ── Sales & Purchase Stats ──────────────────────
         $totalSales = (float) Sale::whereBetween('sale_date', [$monthStart, $monthEnd])
             ->where('status', '!=', 'cancelled')
             ->sum('total');
         $totalPurchases = (float) Purchase::whereBetween('date', [$monthStart, $monthEnd])
             ->sum('total_amount');
 
-        // ── Expense Stats (using actual DB column: date) ──
+        // ── Sales Profit ────────────────────────────────
+        $salesProfit = 0;
+        $saleItems = SaleItem::with('product')
+            ->whereHas('sale', function ($q) use ($monthStart, $monthEnd) {
+                $q->whereBetween('sale_date', [$monthStart, $monthEnd])
+                  ->where('status', '!=', 'cancelled');
+            })->get();
+        foreach ($saleItems as $item) {
+            if ($item->product) {
+                $salesProfit += ($item->unit_price - ($item->product->buy_price ?? 0)) * $item->quantity;
+            }
+        }
+
+        // ── Expense Stats ───────────────────────────────
         $totalExpenses = (float) Expense::where('status', 'active')
             ->whereBetween('date', [$monthStart, $monthEnd])
             ->sum('amount');
 
-        // ── Low Stock (using actual DB column: stock) ──
+        // ── Low Stock ───────────────────────────────────
         $lowStockCount = Product::where('status', 'active')
             ->where('stock', '<=', 5)
             ->count();
@@ -110,17 +124,40 @@ class DashboardController extends Controller
             $m = now()->subMonths($i);
             $month = $m->format('Y-m');
             $label = $m->format('M Y');
+
             $collection = (float) Payment::where('status', 'completed')
                 ->whereMonth('paid_at', $m->month)
                 ->whereYear('paid_at', $m->year)
                 ->sum('amount');
             $billed = (float) Bill::where('month', $month)->sum('amount');
+
+            $mStart = $m->copy()->startOfMonth()->toDateString();
+            $mEnd = $m->copy()->endOfMonth()->toDateString();
+
+            $monthSales = (float) Sale::whereBetween('sale_date', [$mStart, $mEnd])
+                ->where('status', '!=', 'cancelled')
+                ->sum('total');
+            $monthExpenses = (float) Expense::where('status', 'active')
+                ->whereBetween('date', [$mStart, $mEnd])
+                ->sum('amount');
+            $monthPurchases = (float) Purchase::whereBetween('date', [$mStart, $mEnd])
+                ->sum('total_amount');
+
             $revenueTrend[] = [
                 'month' => $label,
                 'collection' => $collection,
                 'billed' => $billed,
+                'income' => $collection + $monthSales,
+                'expense' => $monthExpenses + $monthPurchases,
             ];
         }
+
+        // ── Income vs Expense (last 6 months) ───────────
+        $incomeExpenseTrend = collect($revenueTrend)->map(fn($r) => [
+            'month' => $r['month'],
+            'income' => $r['income'],
+            'expense' => $r['expense'],
+        ])->values();
 
         return response()->json([
             'total_customers' => $totalCustomers,
@@ -148,10 +185,11 @@ class DashboardController extends Controller
             'active_routers' => $activeRouters,
             'total_sales' => $totalSales,
             'total_purchases' => $totalPurchases,
-            'sales_profit' => 0,
+            'sales_profit' => (float) $salesProfit,
             'total_expenses' => $totalExpenses,
             'low_stock_count' => $lowStockCount,
             'revenue_trend' => $revenueTrend,
+            'income_expense_trend' => $incomeExpenseTrend,
             'current_month' => $currentMonth,
         ]);
     }

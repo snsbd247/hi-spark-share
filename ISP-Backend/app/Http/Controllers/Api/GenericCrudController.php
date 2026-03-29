@@ -51,6 +51,7 @@ class GenericCrudController extends Controller
         // HR
         'designations' => \App\Models\Designation::class,
         'employees' => \App\Models\Employee::class,
+        'attendance' => \App\Models\Attendance::class,
         'attendances' => \App\Models\Attendance::class,
         'loans' => \App\Models\Loan::class,
         'salary_sheets' => \App\Models\SalarySheet::class,
@@ -85,9 +86,23 @@ class GenericCrudController extends Controller
         $query = $model->newQuery();
 
         // Support filtering: ?column=value
-        foreach ($request->except(['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit']) as $key => $value) {
+        foreach ($request->except(['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit', 'with']) as $key => $value) {
             if (in_array($key, $model->getFillable())) {
-                $query->where($key, $value);
+                if ($value === 'null') {
+                    $query->whereNull($key);
+                } elseif (str_starts_with($value, 'not:')) {
+                    $query->where($key, '!=', substr($value, 4));
+                } elseif (str_starts_with($value, 'gte:')) {
+                    $query->where($key, '>=', substr($value, 4));
+                } elseif (str_starts_with($value, 'lte:')) {
+                    $query->where($key, '<=', substr($value, 4));
+                } elseif (str_starts_with($value, 'like:')) {
+                    $query->where($key, 'like', '%' . substr($value, 5) . '%');
+                } elseif (str_contains($value, ',')) {
+                    $query->whereIn($key, explode(',', $value));
+                } else {
+                    $query->where($key, $value);
+                }
             }
         }
 
@@ -102,10 +117,20 @@ class GenericCrudController extends Controller
             $query->select($columns);
         }
 
+        // Support eager loading
+        if ($request->has('with')) {
+            $relations = explode(',', $request->get('with'));
+            $query->with($relations);
+        }
+
         // Support search
         if ($request->has('search') && method_exists($model, 'getFillable')) {
             $search = $request->get('search');
-            $searchable = array_intersect($model->getFillable(), ['name', 'phone', 'email', 'customer_id', 'area', 'subject', 'ticket_id']);
+            $searchable = array_intersect($model->getFillable(), [
+                'name', 'phone', 'email', 'customer_id', 'area', 'subject',
+                'ticket_id', 'employee_id', 'full_name', 'username', 'mobile',
+                'transaction_id', 'sender_phone', 'description', 'reference',
+            ]);
             if (!empty($searchable)) {
                 $query->where(function ($q) use ($searchable, $search) {
                     foreach ($searchable as $col) {
@@ -127,7 +152,14 @@ class GenericCrudController extends Controller
     public function show(Request $request, string $table, string $id)
     {
         $model = $this->getModel($table);
-        $record = $model->findOrFail($id);
+        $query = $model->newQuery();
+
+        if ($request->has('with')) {
+            $relations = explode(',', $request->get('with'));
+            $query->with($relations);
+        }
+
+        $record = $query->findOrFail($id);
         return response()->json($record);
     }
 

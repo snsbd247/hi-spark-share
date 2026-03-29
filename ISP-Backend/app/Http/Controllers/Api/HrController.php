@@ -9,6 +9,8 @@ use App\Models\Attendance;
 use App\Models\Loan;
 use App\Models\SalarySheet;
 use App\Models\EmployeeSalaryStructure;
+use App\Models\EmployeeProvidentFund;
+use App\Models\EmployeeSavingsFund;
 use Illuminate\Http\Request;
 
 class HrController extends Controller
@@ -57,8 +59,12 @@ class HrController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('name', 'like', "%$s%")
                   ->orWhere('employee_id', 'like', "%$s%")
-                  ->orWhere('phone', 'like', "%$s%");
+                  ->orWhere('phone', 'like', "%$s%")
+                  ->orWhere('email', 'like', "%$s%");
             });
+        }
+        if ($request->has('designation_id')) {
+            $query->where('designation_id', $request->designation_id);
         }
         return response()->json($query->get());
     }
@@ -104,7 +110,20 @@ class HrController extends Controller
             'loans',
         ])->findOrFail($id);
 
-        return response()->json($employee);
+        // Calculate PF and savings balances
+        $pfBalance = EmployeeProvidentFund::where('employee_id', $id)
+            ->selectRaw("SUM(CASE WHEN type = 'deposit' THEN amount ELSE -amount END) as balance")
+            ->value('balance') ?? 0;
+
+        $savingsBalance = EmployeeSavingsFund::where('employee_id', $id)
+            ->selectRaw("SUM(CASE WHEN type = 'deposit' THEN amount ELSE -amount END) as balance")
+            ->value('balance') ?? 0;
+
+        $response = $employee->toArray();
+        $response['pf_balance'] = (float) $pfBalance;
+        $response['savings_balance'] = (float) $savingsBalance;
+
+        return response()->json($response);
     }
 
     // ── Attendance ────────────────────────────────────────
@@ -115,7 +134,23 @@ class HrController extends Controller
         $attendances = Attendance::with('employee.designation')
             ->where('date', $date)
             ->get();
-        return response()->json($attendances);
+
+        // Also return employees without attendance for that day
+        $attendedIds = $attendances->pluck('employee_id')->toArray();
+        $absentEmployees = Employee::where('status', 'active')
+            ->whereNotIn('id', $attendedIds)
+            ->with('designation')
+            ->get();
+
+        return response()->json([
+            'date' => $date,
+            'attendance' => $attendances,
+            'absent_employees' => $absentEmployees,
+            'total_present' => $attendances->where('status', 'present')->count(),
+            'total_absent' => $absentEmployees->count() + $attendances->where('status', 'absent')->count(),
+            'total_late' => $attendances->where('status', 'late')->count(),
+            'total_leave' => $attendances->where('status', 'leave')->count(),
+        ]);
     }
 
     public function monthlyAttendance(Request $request)
@@ -238,7 +273,6 @@ class HrController extends Controller
         $generated = 0;
 
         foreach ($employees as $emp) {
-            // Get salary structure if available
             $structure = EmployeeSalaryStructure::where('employee_id', $emp->id)
                 ->orderByDesc('effective_from')
                 ->first();
@@ -251,29 +285,50 @@ class HrController extends Controller
 
             $grossSalary = $basicSalary + $houseRent + $medical + $conveyance + $otherAllowance;
 
-            // Loan deductions (all active loans)
+            // Loan deductions
             $loanDeduction = Loan::where('employee_id', $emp->id)
                 ->where('status', 'active')
                 ->sum('monthly_deduction');
 
+            // PF deduction (if applicable — check latest PF contribution)
+            $pfDeduction = 0;
+            $lastPf = EmployeeProvidentFund::where('employee_id', $emp->id)
+                ->where('type', 'deposit')
+                ->orderByDesc('date')
+                ->first();
+            if ($lastPf) {
+                $pfDeduction = $lastPf->employee_share ?? 0;
+            }
+
+            // Savings deduction
+            $savingsDeduction = 0;
+            $lastSavings = EmployeeSavingsFund::where('employee_id', $emp->id)
+                ->where('type', 'deposit')
+                ->orderByDesc('date')
+                ->first();
+            if ($lastSavings) {
+                $savingsDeduction = $lastSavings->amount ?? 0;
+            }
+
+            $totalDeductions = $loanDeduction + $pfDeduction + $savingsDeduction;
+
             $payload = [
-                'employee_id'     => $emp->id,
-                'month'           => $month,
-                'basic_salary'    => $basicSalary,
-                'house_rent'      => $houseRent,
-                'medical'         => $medical,
-                'conveyance'      => $conveyance,
-                'other_allowance' => $otherAllowance,
-                'bonus'           => 0,
-                'deduction'       => 0,
-                'loan_deduction'  => $loanDeduction,
-                'pf_deduction'    => 0,
-                'savings_deduction' => 0,
-                'net_salary'      => $grossSalary - $loanDeduction,
-                'status'          => 'pending',
+                'employee_id'       => $emp->id,
+                'month'             => $month,
+                'basic_salary'      => $basicSalary,
+                'house_rent'        => $houseRent,
+                'medical'           => $medical,
+                'conveyance'        => $conveyance,
+                'other_allowance'   => $otherAllowance,
+                'bonus'             => 0,
+                'deduction'         => 0,
+                'loan_deduction'    => $loanDeduction,
+                'pf_deduction'      => $pfDeduction,
+                'savings_deduction' => $savingsDeduction,
+                'net_salary'        => $grossSalary - $totalDeductions,
+                'status'            => 'pending',
             ];
 
-            // Upsert — update if already exists for this month
             $existing = SalarySheet::where('employee_id', $emp->id)
                 ->where('month', $month)
                 ->first();
@@ -329,6 +384,30 @@ class HrController extends Controller
                 $loan->status = 'paid';
             }
             $loan->save();
+        }
+
+        // Record PF contribution if deducted
+        if ($sheet->pf_deduction > 0) {
+            EmployeeProvidentFund::create([
+                'employee_id' => $sheet->employee_id,
+                'date' => now()->toDateString(),
+                'type' => 'deposit',
+                'employee_share' => $sheet->pf_deduction,
+                'employer_share' => $sheet->pf_deduction, // Matching contribution
+                'amount' => $sheet->pf_deduction * 2,
+                'description' => "PF contribution - {$sheet->month}",
+            ]);
+        }
+
+        // Record savings fund if deducted
+        if ($sheet->savings_deduction > 0) {
+            EmployeeSavingsFund::create([
+                'employee_id' => $sheet->employee_id,
+                'date' => now()->toDateString(),
+                'type' => 'deposit',
+                'amount' => $sheet->savings_deduction,
+                'description' => "Savings fund - {$sheet->month}",
+            ]);
         }
 
         return response()->json($sheet->load('employee'));

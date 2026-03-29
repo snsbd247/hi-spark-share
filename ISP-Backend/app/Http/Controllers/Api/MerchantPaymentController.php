@@ -7,6 +7,7 @@ use App\Http\Requests\StoreMerchantPaymentRequest;
 use App\Http\Requests\MatchMerchantPaymentRequest;
 use App\Models\MerchantPayment;
 use App\Models\Bill;
+use App\Models\Customer;
 use App\Models\Payment;
 use App\Services\BillingService;
 use App\Services\LedgerService;
@@ -30,7 +31,6 @@ class MerchantPaymentController extends Controller
 
     /**
      * POST /api/merchant-payments/import
-     * Bulk import merchant payments from parsed data.
      */
     public function import(Request $request)
     {
@@ -91,11 +91,13 @@ class MerchantPaymentController extends Controller
             'matched_bill_id' => $request->bill_id,
         ]);
 
+        // Mark bill as paid
         $bill = Bill::find($request->bill_id);
         if ($bill) {
             $this->billingService->markBillPaid($bill);
         }
 
+        // Customer ledger credit
         $this->ledgerService->addCredit(
             $request->customer_id,
             $mp->amount,
@@ -103,12 +105,30 @@ class MerchantPaymentController extends Controller
             $payment->id
         );
 
+        // Post to accounting ledger (merchant account)
+        $customer = Customer::find($request->customer_id);
+        $customerName = $customer ? $customer->name : 'Unknown';
+        $this->ledgerService->postMerchantPayment(
+            $mp->amount,
+            "Merchant Payment - {$customerName} (TrxID: {$mp->transaction_id})",
+            $payment->id
+        );
+
+        // Check if customer should be reactivated
+        if ($customer && $customer->status === 'suspended') {
+            $totalDue = Bill::where('customer_id', $customer->id)
+                ->where('status', 'unpaid')
+                ->sum('amount');
+            if ($totalDue <= 0) {
+                $customer->update(['status' => 'pending_reactivation']);
+            }
+        }
+
         return response()->json(['success' => true, 'payment' => $payment]);
     }
 
     /**
      * GET /api/merchant-payments/reports
-     * Merchant payment analytics.
      */
     public function reports(Request $request)
     {

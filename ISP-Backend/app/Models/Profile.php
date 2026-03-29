@@ -11,7 +11,7 @@ class Profile extends Model
 
     protected $fillable = [
         'id', 'full_name', 'email', 'username', 'mobile', 'address',
-        'avatar_url', 'password_hash', 'staff_id', 'status',
+        'avatar_url', 'password_hash', 'staff_id', 'status', 'language',
     ];
 
     protected $hidden = ['password_hash'];

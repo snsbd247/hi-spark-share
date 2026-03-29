@@ -36,13 +36,15 @@ class CustomerAuthController extends Controller
         CustomerSession::where('customer_id', $customer->id)->delete();
 
         $sessionToken = Str::uuid()->toString();
-        $expiresAt = now()->addHours(8);
+        $expiresAt = now()->addHours(24);
 
         CustomerSession::create([
             'customer_id' => $customer->id,
             'session_token' => $sessionToken,
             'expires_at' => $expiresAt,
         ]);
+
+        $customer->load('package');
 
         return response()->json([
             'customer' => [
@@ -55,6 +57,12 @@ class CustomerAuthController extends Controller
                 'monthly_bill' => $customer->monthly_bill,
                 'package_id' => $customer->package_id,
                 'photo_url' => $customer->photo_url,
+                'connection_status' => $customer->connection_status,
+                'pppoe_username' => $customer->pppoe_username,
+                'package' => $customer->package ? [
+                    'name' => $customer->package->name,
+                    'speed' => $customer->package->speed,
+                ] : null,
             ],
             'session_token' => $sessionToken,
             'expires_at' => $expiresAt->toISOString(),
@@ -73,6 +81,8 @@ class CustomerAuthController extends Controller
     public function verify(Request $request)
     {
         $customer = $request->get('portal_customer');
+        $customer->load('package');
+
         return response()->json([
             'valid' => true,
             'customer' => [
@@ -85,6 +95,12 @@ class CustomerAuthController extends Controller
                 'monthly_bill' => $customer->monthly_bill,
                 'package_id' => $customer->package_id,
                 'photo_url' => $customer->photo_url,
+                'connection_status' => $customer->connection_status,
+                'pppoe_username' => $customer->pppoe_username,
+                'package' => $customer->package ? [
+                    'name' => $customer->package->name,
+                    'speed' => $customer->package->speed,
+                ] : null,
             ],
         ]);
     }

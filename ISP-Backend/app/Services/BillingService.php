@@ -41,7 +41,7 @@ class BillingService
                 'payment_link_token' => Str::random(32),
             ]);
 
-            // Ledger debit
+            // Customer ledger debit
             $this->ledgerService->addDebit(
                 $customer->id,
                 $bill->amount,
