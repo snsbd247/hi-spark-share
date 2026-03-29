@@ -324,6 +324,7 @@ function SalaryStructureTab({ employeeId, currentSalary }: { employeeId: string;
 
 /* ── Emergency Contact Tab ── */
 function EmergencyContactTab({ employeeId }: { employeeId: string }) {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
