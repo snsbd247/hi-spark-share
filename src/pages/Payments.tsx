@@ -150,7 +150,7 @@ export default function Payments() {
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">No payments found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">{t.payments.noPaymentsFound}</TableCell></TableRow>
                 ) : (
                   filtered?.map((payment) => (
                     <TableRow key={payment.id}>
