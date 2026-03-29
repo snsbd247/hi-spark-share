@@ -45,6 +45,7 @@ export default function SMSSettings() {
           sms_on_payment: form.sms_on_payment,
           sms_on_registration: form.sms_on_registration,
           sms_on_suspension: form.sms_on_suspension,
+          sms_on_new_customer_bill: form.sms_on_new_customer_bill,
           whatsapp_token: form.whatsapp_token,
           whatsapp_phone_id: form.whatsapp_phone_id,
           whatsapp_enabled: form.whatsapp_enabled,

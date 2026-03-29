@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: false, reason: "SMS disabled for suspension" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (sms_type === "new_customer_bill" && settings?.sms_on_new_customer_bill === false) {
+      return new Response(JSON.stringify({ success: false, reason: "SMS disabled for new customer bill" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     if (["bill_reminder", "due_date", "overdue"].includes(sms_type) && settings?.sms_on_reminder === false) {
       return new Response(JSON.stringify({ success: false, reason: "SMS disabled for bill reminders" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } });

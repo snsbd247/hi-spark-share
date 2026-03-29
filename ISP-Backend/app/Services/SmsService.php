@@ -24,6 +24,7 @@ class SmsService
             'payment' => 'sms_on_payment',
             'registration' => 'sms_on_registration',
             'suspension' => 'sms_on_suspension',
+            'new_customer_bill' => 'sms_on_new_customer_bill',
         ];
 
         if (isset($typeFlags[$smsType]) && $settings && !$settings->{$typeFlags[$smsType]}) {

@@ -141,6 +141,38 @@ export default function Billing() {
       await postPaymentToLedger(customerName, Number(bill.amount), "cash", undefined, new Date().toISOString());
       // Update customer ledger (credit)
       await postCustomerLedgerCredit(bill.customer_id, Number(bill.amount), `Payment - Cash`, bill.id);
+
+      // Send Payment Confirmation SMS
+      if (bill.customers?.phone) {
+        try {
+          const { data: tpl } = await supabase
+            .from("sms_templates")
+            .select("message")
+            .eq("name", "Payment Confirmation")
+            .limit(1)
+            .single();
+
+          const templateMsg = tpl?.message || "Dear {CustomerName}, we received your payment of {Amount} BDT on {PaymentDate}. Thank you!";
+          const smsMessage = templateMsg
+            .replace(/\{CustomerName\}/g, customerName)
+            .replace(/\{Amount\}/g, String(Number(bill.amount)))
+            .replace(/\{PaymentDate\}/g, new Date().toLocaleDateString("en-GB"))
+            .replace(/\{Month\}/g, bill.month || "")
+            .replace(/\{CustomerID\}/g, bill.customers?.customer_id || "");
+
+          await supabase.functions.invoke("send-sms", {
+            body: {
+              to: bill.customers.phone,
+              message: smsMessage,
+              sms_type: "payment",
+              customer_id: bill.customer_id,
+            },
+          });
+        } catch (smsErr) {
+          console.warn("[PaymentSMS] Failed:", smsErr);
+        }
+      }
+
       toast.success("Bill marked as paid & posted to ledger");
       queryClient.invalidateQueries({ queryKey: ["bills"] });
       queryClient.invalidateQueries({ queryKey: ["bills-stats"] });

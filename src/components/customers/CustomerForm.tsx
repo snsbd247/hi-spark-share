@@ -352,9 +352,41 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
               }
 
               const parts = [];
-              if (connectionCharge > 0) parts.push(`Connection: ৳${connectionCharge}`);
-              if (firstMonthBill > 0) parts.push(`Bill: ৳${firstMonthBill}`);
-              toast.success(`Invoice generated — ${parts.join(", ")} (Total: ৳${totalInitial})`);
+              if (connectionCharge > 0) parts.push(`Connection: Tk ${connectionCharge}`);
+              if (firstMonthBill > 0) parts.push(`Bill: Tk ${firstMonthBill}`);
+              toast.success(`Invoice generated — ${parts.join(", ")} (Total: Tk ${totalInitial})`);
+
+              // Send Bill Generation SMS for new customer
+              if (data.phone) {
+                try {
+                  const { data: billTpl } = await supabase
+                    .from("sms_templates")
+                    .select("message")
+                    .eq("name", "Bill Generated")
+                    .limit(1)
+                    .single();
+
+                  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+                  const billTemplateMsg = billTpl?.message || "Dear {CustomerName}, your bill for {Month} is {Amount} BDT. Due date: {DueDate}.";
+                  const billSmsMessage = billTemplateMsg
+                    .replace(/\{CustomerName\}/g, data.name || "")
+                    .replace(/\{Month\}/g, currentMonth)
+                    .replace(/\{Amount\}/g, String(totalInitial))
+                    .replace(/\{DueDate\}/g, bill.due_date || "")
+                    .replace(/\{CustomerID\}/g, data.customer_id || "");
+
+                  await supabase.functions.invoke("send-sms", {
+                    body: {
+                      to: data.phone,
+                      message: billSmsMessage,
+                      sms_type: "new_customer_bill",
+                      customer_id: data.id,
+                    },
+                  });
+                } catch (billSmsErr) {
+                  console.warn("[NewCustomerBillSMS] Failed:", billSmsErr);
+                }
+              }
             }
           } catch (invoiceErr: any) {
             console.error("Initial invoice error:", invoiceErr);
