@@ -77,6 +77,7 @@ export default function EmployeeProfile() {
 
 /* ── Education Tab ── */
 function EducationTab({ employeeId }: { employeeId: string }) {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
