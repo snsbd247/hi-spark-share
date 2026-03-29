@@ -166,7 +166,7 @@ export default function Customers() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
           <p className="text-muted-foreground mt-1">
-            {totalItems} customer{totalItems !== 1 ? "s" : ""} found
+            {totalItems} {t.customers.customersFound}
           </p>
         </div>
         <div className="flex gap-2">
