@@ -257,6 +257,7 @@ export default function CustomerProfilePage() {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="ledger">Ledger</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices ({customerBills.length})</TabsTrigger>
             <TabsTrigger value="sales">Sales History ({customerSales.length})</TabsTrigger>
           </TabsList>
 
