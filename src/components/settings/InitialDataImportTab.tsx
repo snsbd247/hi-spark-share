@@ -363,7 +363,7 @@ export default function InitialDataImportTab() {
       await seedFunctions[section.id]();
     }
     setAllLoading(false);
-    toast.success("সব ইনিসিয়াল ডাটা সফলভাবে ইম্পোর্ট করা হয়েছে!");
+    toast.success("All initial data imported successfully!");
   };
 
   const handleSeedOne = async (id: string) => {
