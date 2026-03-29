@@ -231,7 +231,7 @@ export default function Billing() {
           )}
           {!selectedMonth && canCreateBill && (
             <>
-              <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> {t.billing.uploadExcel}</Button>
               <Button onClick={() => setGenerateOpen(true)}><FileText className="h-4 w-4 mr-2" /> {t.billing.generateBills}</Button>
             </>
           )}
