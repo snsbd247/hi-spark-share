@@ -340,7 +340,7 @@ export default function InitialDataImportTab() {
         count++;
       }
 
-      setStatus("ledger", "done", `${count} সেটিংস কনফিগার হয়েছে`);
+      setStatus("ledger", "done", `${count} settings configured`);
       queryClient.invalidateQueries({ queryKey: ["ledger-settings"] });
       queryClient.invalidateQueries({ queryKey: ["system-settings-payment"] });
     } catch (e: any) {
