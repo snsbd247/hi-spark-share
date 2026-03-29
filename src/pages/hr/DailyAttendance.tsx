@@ -51,7 +51,7 @@ export default function DailyAttendance() {
         <h1 className="text-2xl font-bold">{t.sidebar.dailyAttendance}</h1>
         <div className="flex gap-3 items-center">
           <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-44" />
-          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}><Save className="h-4 w-4 mr-2" />{saveMut.isPending ? "Saving..." : "Save"}</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}><Save className="h-4 w-4 mr-2" />{saveMut.isPending ? t.common.loading : t.common.save}</Button>
         </div>
       </div>
       <Card>
