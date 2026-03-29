@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import api from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +29,19 @@ export default function Vendors() {
 
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => api.get("/vendors").then(r => r.data?.data || r.data || []),
+    queryFn: async () => { const { data } = await (supabase as any).from("vendors").select("*").order("created_at", { ascending: false }); return (data || []) as Vendor[]; },
   });
 
   const save = useMutation({
-    mutationFn: (data: any) =>
-      editing ? api.put(`/vendors/${editing.id}`, data) : api.post("/vendors", data),
+    mutationFn: async (formData: any) => {
+      if (editing) {
+        const { error } = await (supabase as any).from("vendors").update(formData).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any).from("vendors").insert(formData);
+        if (error) throw error;
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
       toast.success(editing ? "Vendor updated" : "Vendor created");
@@ -44,7 +51,10 @@ export default function Vendors() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => api.delete(`/vendors/${id}`),
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("vendors").delete().eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); toast.success("Vendor deleted"); },
   });
 

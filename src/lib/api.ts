@@ -590,54 +590,177 @@ api.interceptors.response.use(
 
 export default api;
 
-// ─── Bills API ──────────────────────────────────────────────────
+// ─── Bills API (Direct Supabase) ────────────────────────────────
 export const billsApi = {
-  create: (bill: { customer_id: string; month: string; amount: number; due_date?: string }) =>
-    api.post('/bills', bill).then(r => r.data),
-  generate: (month: string) =>
-    api.post('/bills/generate', { month }).then(r => r.data),
-  update: (id: string, updates: Record<string, any>) =>
-    api.put(`/bills/${id}`, updates).then(r => r.data),
-  delete: (id: string) =>
-    api.delete(`/bills/${id}`).then(r => r.data),
-  markPaid: (id: string) =>
-    api.put(`/bills/${id}`, { status: 'paid' }).then(r => r.data),
+  create: async (bill: { customer_id: string; month: string; amount: number; due_date?: string }) => {
+    const { data, error } = await supabaseClient.from("bills").insert(bill).select().single();
+    if (error) throw error;
+    return data;
+  },
+  generate: async (month: string) => {
+    // Get all active customers who don't have a bill for this month
+    const { data: customers } = await supabaseClient
+      .from("customers")
+      .select("id, monthly_bill, discount, due_date_day")
+      .eq("status", "active");
+    if (!customers || customers.length === 0) return { generated: 0 };
+
+    const { data: existingBills } = await supabaseClient
+      .from("bills")
+      .select("customer_id")
+      .eq("month", month);
+    const existingIds = new Set((existingBills || []).map(b => b.customer_id));
+
+    const newBills = customers
+      .filter(c => !existingIds.has(c.id))
+      .map(c => {
+        const amount = Number(c.monthly_bill || 0) - Number(c.discount || 0);
+        const [yr, mn] = month.split("-").map(Number);
+        const dueDay = c.due_date_day || 15;
+        const dueDate = `${yr}-${String(mn).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+        return { customer_id: c.id, month, amount, due_date: dueDate, status: "unpaid" };
+      });
+
+    if (newBills.length > 0) {
+      const { error } = await supabaseClient.from("bills").insert(newBills);
+      if (error) throw error;
+    }
+    return { generated: newBills.length };
+  },
+  update: async (id: string, updates: Record<string, any>) => {
+    const { data, error } = await supabaseClient.from("bills").update(updates).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  },
+  delete: async (id: string) => {
+    // Clean up related records first
+    await supabaseClient.from("merchant_payments").update({ matched_bill_id: null, matched_customer_id: null, status: "unmatched" }).eq("matched_bill_id", id);
+    await supabaseClient.from("customer_ledger").delete().eq("reference", `BILL-${id.substring(0, 8)}`);
+    const { error } = await supabaseClient.from("bills").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  },
+  markPaid: async (id: string) => {
+    const { data, error } = await supabaseClient.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  },
 };
 
-// ─── Payments API ───────────────────────────────────────────────
+// ─── Payments API (Direct Supabase) ─────────────────────────────
 export const paymentsApi = {
-  create: (payment: {
+  create: async (payment: {
     customer_id: string; amount: number; payment_method: string;
     bill_id?: string; transaction_id?: string; month?: string; status?: string;
-  }) => api.post('/payments', payment).then(r => r.data),
-  update: (id: string, updates: Record<string, any>) =>
-    api.put(`/payments/${id}`, updates).then(r => r.data),
-  delete: (id: string) =>
-    api.delete(`/payments/${id}`).then(r => r.data),
+  }) => {
+    const { data, error } = await supabaseClient.from("payments").insert(payment).select().single();
+    if (error) throw error;
+    return data;
+  },
+  update: async (id: string, updates: Record<string, any>) => {
+    const { data, error } = await supabaseClient.from("payments").update(updates).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  },
+  delete: async (id: string) => {
+    const { error } = await supabaseClient.from("payments").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  },
 };
 
-// ─── Merchant Payments API ──────────────────────────────────────
+// ─── Merchant Payments API (Direct Supabase) ────────────────────
 export const merchantPaymentsApi = {
-  create: (payment: {
+  create: async (payment: {
     transaction_id: string; sender_phone: string; amount: number;
     reference?: string; payment_date?: string;
-  }) => api.post('/merchant-payments', payment).then(r => r.data),
-  match: (payment_id: string, bill_id: string, customer_id: string) =>
-    api.post(`/merchant-payments/${payment_id}/match`, { bill_id, customer_id }).then(r => r.data),
+  }) => {
+    const { data, error } = await supabaseClient.from("merchant_payments").insert(payment).select().single();
+    if (error) throw error;
+    // Auto-match: find customer by phone
+    if (data) {
+      const { data: customer } = await supabaseClient
+        .from("customers")
+        .select("id")
+        .or(`phone.eq.${payment.sender_phone},alt_phone.eq.${payment.sender_phone}`)
+        .limit(1)
+        .maybeSingle();
+      if (customer) {
+        const { data: unpaidBill } = await supabaseClient
+          .from("bills")
+          .select("id")
+          .eq("customer_id", customer.id)
+          .eq("status", "unpaid")
+          .order("month", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (unpaidBill) {
+          await supabaseClient.from("merchant_payments").update({
+            matched_customer_id: customer.id,
+            matched_bill_id: unpaidBill.id,
+            status: "matched",
+          }).eq("id", data.id);
+        }
+      }
+    }
+    return data;
+  },
+  match: async (payment_id: string, bill_id: string, customer_id: string) => {
+    const { error: mpError } = await supabaseClient.from("merchant_payments").update({
+      matched_bill_id: bill_id,
+      matched_customer_id: customer_id,
+      status: "matched",
+    }).eq("id", payment_id);
+    if (mpError) throw mpError;
+
+    // Mark bill as paid
+    await supabaseClient.from("bills").update({ status: "paid", paid_date: new Date().toISOString() }).eq("id", bill_id);
+
+    // Get payment amount for creating payment record
+    const { data: mp } = await supabaseClient.from("merchant_payments").select("amount, transaction_id").eq("id", payment_id).single();
+    if (mp) {
+      await supabaseClient.from("payments").insert({
+        customer_id, bill_id, amount: mp.amount,
+        payment_method: "merchant", transaction_id: mp.transaction_id,
+        status: "completed",
+      });
+    }
+    return { success: true };
+  },
 };
 
-// ─── Customers API ──────────────────────────────────────────────
+// ─── Customers API (Direct Supabase) ────────────────────────────
 export const customersApi = {
-  create: (customer: Record<string, any>) =>
-    api.post('/customers', customer).then(r => r.data),
+  create: async (customer: Record<string, any>) => {
+    const { data, error } = await supabaseClient.from("customers").insert(customer as any).select().single();
+    if (error) throw error;
+    return { customer: data };
+  },
 };
 
-// ─── Tickets API ────────────────────────────────────────────────
+// ─── Tickets API (Direct Supabase) ──────────────────────────────
 export const ticketsApi = {
-  create: (ticket: {
+  create: async (ticket: {
     customer_id: string; subject: string; category?: string;
     priority?: string; message?: string; sender_type?: string; sender_name?: string;
-  }) => api.post('/tickets', ticket).then(r => r.data),
+  }) => {
+    const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
+    const { message, sender_type, sender_name, ...ticketData } = ticket;
+    const { data, error } = await supabaseClient.from("support_tickets").insert({
+      ...ticketData, ticket_id: ticketId,
+    }).select().single();
+    if (error) throw error;
+    // Create first reply from the message
+    if (data && message) {
+      await supabaseClient.from("ticket_replies").insert({
+        ticket_id: data.id,
+        sender_type: sender_type || "customer",
+        sender_name: sender_name || "Customer",
+        message,
+      });
+    }
+    return data;
+  },
 };
 
 // Customer portal API (uses session token)
