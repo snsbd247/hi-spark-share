@@ -341,7 +341,7 @@ export default function Billing() {
           <div className="p-4 border-b border-border">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by name, ID, or phone..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t.common.search + "..."} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
 
