@@ -34,7 +34,12 @@ Deno.serve(async (req) => {
 
     const url = `http://api.greenweb.com.bd/g_api.php?token=${token}&balance&expiry&rate&json`;
     const res = await fetch(url);
-    const data = await res.json();
+    const rawData = await res.json();
+
+    // Strip token from response for security
+    const data = Array.isArray(rawData)
+      ? rawData.map(({ token: _t, ...rest }: any) => rest)
+      : rawData;
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
