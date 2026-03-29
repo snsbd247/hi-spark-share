@@ -26,7 +26,7 @@ export function generateSupplierPurchaseInvoicePDF(purchase: any, supplier: any,
   doc.setTextColor(...PDF_COLORS.text);
   doc.text("Supplier:", m + 4, y + 4);
   doc.setFont("helvetica", "normal");
-  doc.text(supplier?.name || "—", m + 30, y + 4);
+  doc.text(supplier?.name || "-", m + 30, y + 4);
   if (supplier?.company) { doc.setFontSize(PDF_FONT.body); doc.text(`Company: ${supplier.company}`, m + 4, y + 11); }
   if (supplier?.phone) { doc.setFontSize(PDF_FONT.body); doc.text(`Phone: ${supplier.phone}`, m + 4, y + 17); }
   y += 28;

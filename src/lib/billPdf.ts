@@ -161,12 +161,12 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
   doc.setTextColor(...PDF_COLORS.text);
 
   doc.text("1", cols[0].x + cols[0].w / 2, y, { align: "center" });
-  doc.text(customer?.customer_id || "—", cols[1].x + cols[1].w / 2, y, { align: "center" });
+  doc.text(customer?.customer_id || "-", cols[1].x + cols[1].w / 2, y, { align: "center" });
   doc.text("Monthly Bill", cols[2].x + cols[2].w / 2, y, { align: "center" });
-  doc.text(customer?.packages?.name || customer?.package_name || "—", cols[3].x + cols[3].w / 2, y, { align: "center" });
+  doc.text(customer?.packages?.name || customer?.package_name || "-", cols[3].x + cols[3].w / 2, y, { align: "center" });
   doc.text(String(Number(bill.amount).toLocaleString()), cols[4].x + cols[4].w / 2, y, { align: "center" });
 
-  let billDuration = "—";
+  let billDuration = "-";
   if (bill.month) {
     try {
       const [yr, mn] = bill.month.split("-").map(Number);

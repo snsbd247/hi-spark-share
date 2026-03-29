@@ -147,7 +147,7 @@ export async function generatePaymentReceiptPDF(payment: any, customer: any, inv
   drawRow("Payment Mode", "Prepaid");
   drawRow("Payment Method", fmtMethod(payment.payment_method));
   drawRow("Paid Amount", `${Number(payment.amount).toFixed(2)} BDT`);
-  drawRow("Transaction ID", payment.transaction_id || payment.bkash_trx_id || "—");
+  drawRow("Transaction ID", payment.transaction_id || payment.bkash_trx_id || "-");
 
   y += 12;
 

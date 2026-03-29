@@ -32,7 +32,7 @@ export function generatePaySlipPdf({ employee, sheet, companyName, companyAddres
 
   const infoRows = [
     [{ l: "Employee ID", v: employee.employee_id }, { l: "Name", v: employee.name }],
-    [{ l: "Phone", v: employee.phone || "—" }, { l: "Email", v: employee.email || "—" }],
+    [{ l: "Phone", v: employee.phone || "-" }, { l: "Email", v: employee.email || "-" }],
   ];
 
   doc.setFontSize(PDF_FONT.body);
