@@ -9,11 +9,15 @@ use App\Http\Requests\UpdateBillRequest;
 use App\Models\Bill;
 use App\Models\Customer;
 use App\Services\BillingService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 
 class BillController extends Controller
 {
-    public function __construct(protected BillingService $billingService) {}
+    public function __construct(
+        protected BillingService $billingService,
+        protected SmsService $smsService
+    ) {}
 
     public function generate(GenerateBillsRequest $request)
     {
@@ -29,6 +33,18 @@ class BillController extends Controller
             $request->amount,
             $request->due_date
         );
+
+        // Send new customer bill SMS if applicable
+        if ($request->get('send_sms', false)) {
+            $customer = Customer::find($request->customer_id);
+            if ($customer && $customer->phone) {
+                try {
+                    $this->billingService->sendNewCustomerBillSms($customer, $bill);
+                } catch (\Exception $e) {
+                    // SMS failure should not block bill creation
+                }
+            }
+        }
 
         return response()->json($bill, 201);
     }

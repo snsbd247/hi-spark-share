@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
         Commands\AutoSuspend::class,
         Commands\CleanupSessions::class,
         Commands\CalculateDailyProfit::class,
+        Commands\SendBillReminders::class,
     ];
 
     /**
@@ -28,6 +29,9 @@ class Kernel extends ConsoleKernel
 
         // Auto-suspend customers with overdue bills (7+ days) every day at 2 AM
         $schedule->command('customers:auto-suspend --days=7')->dailyAt('02:00');
+
+        // Send bill reminders daily at 9 AM
+        $schedule->command('bills:send-reminders')->dailyAt('09:00');
 
         // ── Sessions ─────────────────────────────────────
         // Cleanup expired sessions every hour

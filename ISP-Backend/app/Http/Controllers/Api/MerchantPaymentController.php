@@ -9,15 +9,18 @@ use App\Models\MerchantPayment;
 use App\Models\Bill;
 use App\Models\Customer;
 use App\Models\Payment;
+use App\Models\SmsTemplate;
 use App\Services\BillingService;
 use App\Services\LedgerService;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 
 class MerchantPaymentController extends Controller
 {
     public function __construct(
         protected BillingService $billingService,
-        protected LedgerService $ledgerService
+        protected LedgerService $ledgerService,
+        protected SmsService $smsService
     ) {}
 
     public function store(StoreMerchantPaymentRequest $request)
@@ -113,6 +116,22 @@ class MerchantPaymentController extends Controller
             "Merchant Payment - {$customerName} (TrxID: {$mp->transaction_id})",
             $payment->id
         );
+
+        // Send Payment Confirmation SMS
+        if ($customer && $customer->phone) {
+            try {
+                $tpl = SmsTemplate::where('name', 'Payment Confirmation')->first();
+                $templateMsg = $tpl->message ?? 'Dear {CustomerName}, we received your payment of {Amount} BDT on {PaymentDate}. Thank you!';
+                $smsMessage = str_replace(
+                    ['{CustomerName}', '{Amount}', '{PaymentDate}', '{Month}', '{CustomerID}'],
+                    [$customer->name, $mp->amount, now()->format('d/m/Y'), $bill->month ?? '', $customer->customer_id],
+                    $templateMsg
+                );
+                $this->smsService->send($customer->phone, $smsMessage, 'payment', $customer->id);
+            } catch (\Exception $e) {
+                // SMS failure should not block payment matching
+            }
+        }
 
         // Check if customer should be reactivated
         if ($customer && $customer->status === 'suspended') {
