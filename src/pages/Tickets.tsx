@@ -128,7 +128,7 @@ export default function Tickets() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t.tickets.title}</h1>
-            <p className="text-muted-foreground">{t.tickets.title}</p>
+            <p className="text-muted-foreground">{t.portal.supportTicketsDesc}</p>
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-full sm:w-40">
