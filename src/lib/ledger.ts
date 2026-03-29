@@ -425,3 +425,40 @@ export async function postExpenseToLedger(
     });
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOMER LEDGER (per-customer balance tracking)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Add a CREDIT entry to the customer_ledger when payment is received.
+ * Balance = previous balance - credit (credit reduces what customer owes).
+ */
+export async function postCustomerLedgerCredit(
+  customerId: string, amount: number, description: string, reference?: string
+) {
+  // Get last balance
+  const { data: lastEntry } = await (supabase as any)
+    .from("customer_ledger")
+    .select("balance")
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const prevBalance = lastEntry ? Number(lastEntry.balance) : 0;
+  const newBalance = prevBalance - amount;
+
+  const { error } = await (supabase as any).from("customer_ledger").insert({
+    customer_id: customerId,
+    date: new Date().toISOString(),
+    type: "payment",
+    description,
+    debit: 0,
+    credit: amount,
+    balance: newBalance,
+    reference: reference || null,
+  });
+
+  if (error) console.error("Customer ledger credit error:", error);
+}
