@@ -1593,6 +1593,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          language: string
           mobile: string | null
           password_hash: string | null
           staff_id: string | null
@@ -1607,6 +1608,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id: string
+          language?: string
           mobile?: string | null
           password_hash?: string | null
           staff_id?: string | null
@@ -1621,6 +1623,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          language?: string
           mobile?: string | null
           password_hash?: string | null
           staff_id?: string | null
