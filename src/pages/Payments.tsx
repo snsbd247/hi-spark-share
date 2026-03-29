@@ -132,8 +132,8 @@ export default function Payments() {
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             <Select value={methodFilter} onValueChange={setMethodFilter}>
-              <SelectTrigger><SelectValue placeholder="Payment method" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">All Methods</SelectItem><SelectItem value="bkash">bKash</SelectItem><SelectItem value="nagad">Nagad</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="cash">Cash</SelectItem></SelectContent>
+               <SelectTrigger><SelectValue placeholder={t.payments.paymentMethod} /></SelectTrigger>
+               <SelectContent><SelectItem value="all">{t.payments.allMethods}</SelectItem><SelectItem value="bkash">{t.payments.bkash}</SelectItem><SelectItem value="nagad">{t.payments.nagad}</SelectItem><SelectItem value="bank">{t.payments.bank}</SelectItem><SelectItem value="cash">{t.payments.cash}</SelectItem></SelectContent>
             </Select>
           </div>
         </div>
