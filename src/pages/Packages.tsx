@@ -226,7 +226,7 @@ export default function Packages() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={bulkSyncPackages} disabled={bulkSyncing}>
             {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Sync All to MikroTik
+            {t.customers.syncAll}
           </Button>
           <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Package</Button>
         </div>
