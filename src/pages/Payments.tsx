@@ -88,7 +88,81 @@ export default function Payments() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
     try {
+      // 1. Reverse customer ledger entries for this payment
+      if (deleteTarget.customer_id) {
+        await supabase.from("customer_ledger").delete()
+          .eq("customer_id", deleteTarget.customer_id)
+          .eq("type", "payment")
+          .eq("reference", deleteTarget.id);
+      }
+
+      // 2. Reverse accounting ledger (transactions) entries
+      const paymentRef = deleteTarget.transaction_id || `payment-${deleteTarget.payment_method}`;
+      await supabase.from("transactions").delete()
+        .eq("reference", paymentRef)
+        .eq("type", "receipt");
+
+      // 3. Update account balances: reverse debit on cash, reverse credit on income
+      // Re-fetch to update balances correctly
+      const { data: relatedTxns } = await supabase.from("transactions")
+        .select("account_id, debit, credit")
+        .eq("reference", paymentRef)
+        .eq("type", "receipt");
+      
+      // If transactions were already deleted above, we need to reverse balances manually
+      // We'll reverse the known amounts on the cash and income accounts
+      if (deleteTarget.amount > 0) {
+        const amount = Number(deleteTarget.amount);
+        
+        // Find and reverse cash account balance (was debited)
+        const cashAccounts: Record<string, string> = {
+          bkash: "1103", nagad: "1104", bank: "1102", cash: "1101",
+        };
+        const cashCode = cashAccounts[deleteTarget.payment_method] || "1101";
+        const { data: cashAcc } = await supabase.from("accounts")
+          .select("id, balance, type").eq("code", cashCode).maybeSingle();
+        if (cashAcc) {
+          await supabase.from("accounts").update({
+            balance: Number(cashAcc.balance) - amount,
+          }).eq("id", cashAcc.id);
+        }
+
+        // Find and reverse service income account balance (was credited)
+        const { data: incomeAcc } = await supabase.from("accounts")
+          .select("id, balance, type").eq("code", "4201").maybeSingle();
+        if (incomeAcc) {
+          await supabase.from("accounts").update({
+            balance: Number(incomeAcc.balance) - amount,
+          }).eq("id", incomeAcc.id);
+        }
+      }
+
+      // 4. Revert bill status to unpaid if linked
+      if (deleteTarget.bill_id) {
+        await supabase.from("bills").update({
+          status: "unpaid", paid_date: null,
+        }).eq("id", deleteTarget.bill_id);
+      }
+
+      // 5. Recalculate customer ledger balance
+      if (deleteTarget.customer_id) {
+        const { data: ledgerEntries } = await supabase.from("customer_ledger")
+          .select("id, debit, credit")
+          .eq("customer_id", deleteTarget.customer_id)
+          .order("created_at", { ascending: true });
+        
+        if (ledgerEntries) {
+          let runningBalance = 0;
+          for (const entry of ledgerEntries) {
+            runningBalance += Number(entry.debit) - Number(entry.credit);
+            await supabase.from("customer_ledger").update({ balance: runningBalance }).eq("id", entry.id);
+          }
+        }
+      }
+
+      // 6. Delete the payment record itself
       await paymentsApi.delete(deleteTarget.id);
+
       if (userId) await logAudit({ adminId: userId, adminName, action: "delete", tableName: "payments", recordId: deleteTarget.id, oldData: { amount: deleteTarget.amount, payment_method: deleteTarget.payment_method, customer: deleteTarget.customers?.name } });
       toast.success("Payment deleted successfully");
       setDeleteTarget(null);

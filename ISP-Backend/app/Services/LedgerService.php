@@ -242,4 +242,61 @@ class LedgerService
             }
         });
     }
+
+    /**
+     * Recalculate customer ledger running balance after deletion.
+     */
+    public function recalculateCustomerBalance(string $customerId): void
+    {
+        $entries = CustomerLedger::where('customer_id', $customerId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $runningBalance = 0;
+        foreach ($entries as $entry) {
+            $runningBalance += (float) $entry->debit - (float) $entry->credit;
+            if ((float) $entry->balance !== $runningBalance) {
+                $entry->update(['balance' => $runningBalance]);
+            }
+        }
+    }
+
+    /**
+     * Reverse accounting entries for a payment deletion.
+     * Reverses the account balances that were affected.
+     */
+    public function reverseServiceIncome(float $amount, ?string $reference = null): void
+    {
+        $cashAccountId = $this->getSettingValue('monthly_bill_account_id')
+            ?: $this->getSettingValue('sales_cash_account');
+        $incomeAccountId = $this->getSettingValue('service_income_account');
+
+        // Delete the transaction records
+        if ($reference) {
+            Transaction::where('reference', $reference)->where('type', 'income')->delete();
+        }
+
+        // Reverse account balances
+        if ($cashAccountId) {
+            $cashAccount = Account::find($cashAccountId);
+            if ($cashAccount) {
+                if (in_array($cashAccount->type, ['asset', 'expense'])) {
+                    $cashAccount->decrement('balance', $amount);
+                } else {
+                    $cashAccount->increment('balance', $amount);
+                }
+            }
+        }
+
+        if ($incomeAccountId) {
+            $incomeAccount = Account::find($incomeAccountId);
+            if ($incomeAccount) {
+                if (in_array($incomeAccount->type, ['asset', 'expense'])) {
+                    $incomeAccount->increment('balance', $amount);
+                } else {
+                    $incomeAccount->decrement('balance', $amount);
+                }
+            }
+        }
+    }
 }
