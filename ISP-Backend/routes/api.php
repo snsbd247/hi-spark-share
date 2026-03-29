@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GenericCrudController;
 use App\Http\Controllers\Api\HrController;
+use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\MerchantPaymentController;
 use App\Http\Controllers\Api\MikrotikBillControlController;
 use App\Http\Controllers\Api\MikrotikController;
@@ -22,10 +23,12 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SalesController;
+use App\Http\Controllers\Api\SmsBalanceController;
 use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SupplierController2;
 use App\Http\Controllers\Api\VendorController;
+use App\Http\Controllers\Api\WhatsappController;
 use Illuminate\Support\Facades\Route;
 
 /*
