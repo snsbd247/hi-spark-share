@@ -151,6 +151,7 @@ function EducationTab({ employeeId }: { employeeId: string }) {
 
 /* ── Experience Tab ── */
 function ExperienceTab({ employeeId }: { employeeId: string }) {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
