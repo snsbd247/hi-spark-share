@@ -352,8 +352,8 @@ export function generateTransactionVoucherPDF(txn: any, account?: any) {
     subtitle: "Internet Service Provider",
     docTitle: voucherType.toUpperCase(),
     docMeta: [
-      `Voucher No: ${txn.journal_ref || txn.id?.substring(0, 8) || "—"}`,
-      `Date: ${txn.date ? new Date(txn.date).toLocaleDateString("en-GB") : "—"}`,
+      `Voucher No: ${txn.journal_ref || txn.id?.substring(0, 8) || "-"}`,
+      `Date: ${txn.date ? new Date(txn.date).toLocaleDateString("en-GB") : "-"}`,
     ],
     style: "banner",
   });
