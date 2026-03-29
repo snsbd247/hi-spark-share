@@ -365,6 +365,37 @@ class AccountingService
         ];
     }
 
+    /**
+     * Recalculate all account balances from transactions.
+     */
+    public function recalculateAllBalances(): array
+    {
+        $accounts = Account::all();
+        $updated = 0;
+
+        DB::transaction(function () use ($accounts, &$updated) {
+            foreach ($accounts as $account) {
+                $totalDebit = (float) Transaction::where('account_id', $account->id)->sum('debit');
+                $totalCredit = (float) Transaction::where('account_id', $account->id)->sum('credit');
+
+                $newBalance = in_array($account->type, ['asset', 'expense'])
+                    ? $totalDebit - $totalCredit
+                    : $totalCredit - $totalDebit;
+
+                if (abs($account->balance - $newBalance) > 0.001) {
+                    $account->update(['balance' => round($newBalance, 2)]);
+                    $updated++;
+                }
+            }
+        });
+
+        return [
+            'success' => true,
+            'total_accounts' => $accounts->count(),
+            'updated_accounts' => $updated,
+        ];
+    }
+
     public function getAllLedgers(): array
     {
         return Account::where('is_active', true)

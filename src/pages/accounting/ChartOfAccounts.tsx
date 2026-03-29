@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, BookOpen } from "lucide-react";
+import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, BookOpen, RefreshCw } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -317,6 +317,36 @@ export default function ChartOfAccounts() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={expandAll}>Expand All</Button>
             <Button variant="outline" size="sm" onClick={() => setExpanded(new Set())}>Collapse All</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  // Recalculate balances in DB from transactions
+                  const accounts = flatAccounts as any[];
+                  const txns = transactions as any[];
+                  let updated = 0;
+                  for (const acc of accounts) {
+                    const accTxns = txns.filter((t: any) => t.account_id === acc.id);
+                    const totalDebit = accTxns.reduce((s: number, t: any) => s + Number(t.debit || 0), 0);
+                    const totalCredit = accTxns.reduce((s: number, t: any) => s + Number(t.credit || 0), 0);
+                    const isDebitNormal = ["asset", "expense"].includes(acc.type);
+                    const newBalance = isDebitNormal ? totalDebit - totalCredit : totalCredit - totalDebit;
+                    if (Math.abs(acc.balance - newBalance) > 0.001) {
+                      await (supabase as any).from("accounts").update({ balance: Math.round(newBalance * 100) / 100 }).eq("id", acc.id);
+                      updated++;
+                    }
+                  }
+                  queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
+                  queryClient.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+                  toast.success(`Balances recalculated! ${updated} account(s) updated.`);
+                } catch (err: any) {
+                  toast.error("Failed to recalculate: " + (err.message || "Unknown error"));
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-1" /> Recalculate Balances
+            </Button>
             {canCreate && (
               <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
                 <DialogTrigger asChild>

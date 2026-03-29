@@ -228,6 +228,7 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
         Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
         Route::put('/accounting/accounts/{id}', [AccountingController::class, 'updateAccount']);
         Route::put('/accounting/transactions/{id}', [AccountingController::class, 'updateTransaction']);
+        Route::post('/accounting/recalculate-balances', [AccountingController::class, 'recalculateBalances']);
     });
     Route::middleware('check.permission:accounting,delete')->group(function () {
         Route::delete('/vendors/{id}', [VendorController::class, 'destroy']);

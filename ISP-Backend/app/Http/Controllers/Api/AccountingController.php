@@ -243,4 +243,9 @@ class AccountingController extends Controller
     {
         return response()->json($this->accountingService->getAllLedgers());
     }
+
+    public function recalculateBalances()
+    {
+        return response()->json($this->accountingService->recalculateAllBalances());
+    }
 }
