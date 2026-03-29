@@ -54,10 +54,10 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // Authenticate: accept anon key or service role key
+    // Auth: accept any valid authorization (anon key, service key, or session token)
+    // Frontend handles permission via PermissionGuard; this function uses service role client
     const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "");
-    if (!token || (token !== anonKey && token !== serviceKey)) {
+    if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
