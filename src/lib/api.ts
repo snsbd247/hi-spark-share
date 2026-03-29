@@ -735,6 +735,23 @@ export const merchantPaymentsApi = {
 // ─── Customers API (Direct Supabase) ────────────────────────────
 export const customersApi = {
   create: async (customer: Record<string, any>) => {
+    // Auto-generate customer_id (ISP-00001 format) if not provided
+    if (!customer.customer_id) {
+      const { data: lastCustomer } = await supabaseClient
+        .from("customers")
+        .select("customer_id")
+        .like("customer_id", "ISP-%")
+        .order("customer_id", { ascending: false })
+        .limit(1);
+
+      let nextNum = 1;
+      if (lastCustomer?.length) {
+        const match = lastCustomer[0].customer_id.match(/ISP-(\d+)/);
+        if (match) nextNum = parseInt(match[1]) + 1;
+      }
+      customer.customer_id = `ISP-${String(nextNum).padStart(5, "0")}`;
+    }
+
     const { data, error } = await supabaseClient.from("customers").insert(customer as any).select().single();
     if (error) throw error;
     return { customer: data };
