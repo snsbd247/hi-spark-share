@@ -267,7 +267,7 @@ export default function Customers() {
             {/* Pagination Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-t border-border gap-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                <span>Showing {totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, totalItems)} of {totalItems}</span>
+                <span>{t.table.showing} {totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, totalItems)} {t.table.of} {totalItems}</span>
                 <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
                   <SelectTrigger className="h-8 w-[70px]">
                     <SelectValue />
