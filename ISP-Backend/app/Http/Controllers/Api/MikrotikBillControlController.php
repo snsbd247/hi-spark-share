@@ -121,4 +121,41 @@ class MikrotikBillControlController extends Controller
     {
         return response()->json($this->mikrotikService->getRouterStats($routerId));
     }
+
+    /**
+     * POST /api/mikrotik/router-stats — Aggregated stats for all routers
+     */
+    public function allRouterStats()
+    {
+        $routers = \App\Models\MikrotikRouter::all();
+        $totalOnline = 0;
+        $totalSuspended = 0;
+        $routerList = [];
+
+        foreach ($routers as $router) {
+            $stats = $this->mikrotikService->getRouterStats($router->id);
+            if ($stats['success']) {
+                $online = (int) ($stats['data']['active_connections'] ?? 0);
+                $totalOnline += $online;
+                $routerList[] = [
+                    'name' => $router->name,
+                    'online' => $online,
+                    'suspended' => 0,
+                ];
+            } else {
+                $routerList[] = [
+                    'name' => $router->name,
+                    'online' => 0,
+                    'suspended' => 0,
+                    'error' => $stats['error'] ?? 'Connection failed',
+                ];
+            }
+        }
+
+        return response()->json([
+            'total_online' => $totalOnline,
+            'total_suspended' => $totalSuspended,
+            'routers' => $routerList,
+        ]);
+    }
 }

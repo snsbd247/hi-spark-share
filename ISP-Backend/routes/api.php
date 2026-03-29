@@ -167,6 +167,7 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
         Route::post('/mikrotik/sync-profile', [MikrotikBillControlController::class, 'syncProfile']);
         Route::post('/mikrotik/remove-profile', [MikrotikBillControlController::class, 'removeProfile']);
         Route::post('/mikrotik/bulk-sync-packages', [MikrotikBillControlController::class, 'bulkSyncPackages']);
+        Route::post('/mikrotik/router-stats', [MikrotikBillControlController::class, 'allRouterStats']);
         Route::get('/mikrotik/router-stats/{routerId}', [MikrotikBillControlController::class, 'routerStats']);
     });
 
