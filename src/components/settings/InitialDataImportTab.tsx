@@ -177,6 +177,15 @@ const LEDGER_MAPPING_DEFAULTS = [
   { key: "purchase_cash_account", label: "Purchase Cash → Cash in Hand", target_code: "1001" },
   { key: "service_income_account", label: "Service Income → Monthly Subscription", target_code: "4001" },
   { key: "expense_cash_account", label: "Expense Cash → Cash in Hand", target_code: "1001" },
+  { key: "salary_expense_account", label: "Salary Expense → Salary & Wages", target_code: "5002" },
+  { key: "salary_payable_account", label: "Salary Payable → Salary Payable", target_code: "2003A" },
+  { key: "salary_cash_account", label: "Salary Cash → Cash in Hand", target_code: "1001" },
+  { key: "pf_expense_account", label: "PF Employer Expense → PF Expense (Employer)", target_code: "5011" },
+  { key: "pf_payable_account", label: "PF Payable → Provident Fund Payable", target_code: "2011" },
+  { key: "savings_fund_payable_account", label: "Savings Fund → Savings Fund Payable", target_code: "2012" },
+  { key: "customer_receivable_account", label: "Customer Receivable → Customer Receivable", target_code: "1011" },
+  { key: "vendor_payable_account", label: "Vendor Payable → Vendor/Supplier Payable", target_code: "2001A" },
+  { key: "employee_advance_account", label: "Employee Advance → Employee Advance/Receivable", target_code: "1012" },
 ];
 
 const PAYMENT_SETTINGS_DEFAULTS = [
