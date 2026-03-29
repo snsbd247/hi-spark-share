@@ -376,15 +376,28 @@ async function handleExecute(body: any): Promise<Response> {
   const data = await res.json();
   const supabase = getSupabaseAdmin();
 
+  console.log("[bKash Execute] paymentID:", paymentID, "response:", JSON.stringify(data));
+
   if (data.statusCode === "0000" && data.transactionStatus === "Completed") {
     const { data: payment } = await supabase
       .from("payments")
-      .select("bill_id, customer_id, amount")
+      .select("id, bill_id, customer_id, amount")
       .eq("bkash_payment_id", paymentID)
       .single();
 
+    console.log("[bKash Execute] Found payment record:", payment ? "yes" : "no");
+
+    if (!payment) {
+      // Payment record wasn't created during create step - log and return error
+      console.error("[bKash Execute] No payment record found for paymentID:", paymentID);
+      await logRequest("execute", "error", `No payment record for ${paymentID}`);
+      return new Response(JSON.stringify({ error: "Payment record not found. Please contact support.", trxID: data.trxID }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const bkashAmount = parseFloat(data.amount);
-    if (payment && Math.abs(bkashAmount - Number(payment.amount)) > 0.01) {
+    if (Math.abs(bkashAmount - Number(payment.amount)) > 0.01) {
       await supabase
         .from("payments")
         .update({ status: "failed", bkash_trx_id: data.trxID })
@@ -395,6 +408,7 @@ async function handleExecute(body: any): Promise<Response> {
       });
     }
 
+    // Update payment to completed
     await supabase
       .from("payments")
       .update({
@@ -405,7 +419,8 @@ async function handleExecute(body: any): Promise<Response> {
       })
       .eq("bkash_payment_id", paymentID);
 
-    if (payment?.bill_id) {
+    // Mark bill as paid and create ledger entry
+    if (payment.bill_id) {
       const { data: bill } = await supabase
         .from("bills")
         .select("month")
@@ -425,6 +440,62 @@ async function handleExecute(body: any): Promise<Response> {
       }
     }
 
+    // Create ledger entry (credit)
+    try {
+      const { data: lastEntry } = await supabase
+        .from("customer_ledger")
+        .select("balance")
+        .eq("customer_id", payment.customer_id)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const prevBalance = lastEntry?.[0]?.balance ?? 0;
+
+      await supabase.from("customer_ledger").insert({
+        customer_id: payment.customer_id,
+        date: new Date().toISOString(),
+        description: `Payment Received (bKash - TrxID: ${data.trxID})`,
+        debit: 0,
+        credit: Number(payment.amount),
+        balance: prevBalance - Number(payment.amount),
+        reference: `TXN-${data.trxID}`,
+        type: "payment",
+      });
+    } catch (e) {
+      console.error("[bKash] Ledger entry failed:", e);
+    }
+
+    // Check for reactivation
+    try {
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("id, connection_status")
+        .eq("id", payment.customer_id)
+        .single();
+
+      if (customer?.connection_status === "suspended") {
+        const today = new Date().toISOString().split("T")[0];
+        const { count } = await supabase
+          .from("bills")
+          .select("id", { count: "exact", head: true })
+          .eq("customer_id", payment.customer_id)
+          .eq("status", "unpaid")
+          .lt("due_date", today);
+
+        if ((count ?? 0) === 0) {
+          await supabase
+            .from("customers")
+            .update({ connection_status: "pending_reactivation", status: "active" })
+            .eq("id", payment.customer_id);
+        }
+      }
+    } catch (e) {
+      console.error("[bKash] Reactivation check failed:", e);
+    }
+
+    await logRequest("execute", "success", `TrxID: ${data.trxID}`);
+
     return new Response(JSON.stringify({ success: true, trxID: data.trxID }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -434,6 +505,8 @@ async function handleExecute(body: any): Promise<Response> {
     .from("payments")
     .update({ status: "failed" })
     .eq("bkash_payment_id", paymentID);
+
+  await logRequest("execute", "failed", data.statusMessage || "Unknown error");
 
   return new Response(JSON.stringify({ error: data.statusMessage || "Payment failed" }), {
     status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
