@@ -76,10 +76,7 @@ export default function LedgerSettingsTab() {
   };
 
   const getFilteredAccounts = (type: string) => {
-    if (type === "income") return accounts.filter((a: any) => a.type === "income");
-    if (type === "expense") return accounts.filter((a: any) => a.type === "expense");
-    if (type === "asset") return accounts.filter((a: any) => a.type === "asset");
-    return accounts;
+    return accounts.filter((a: any) => a.type === type);
   };
 
   if (isLoading || loadingAccounts) {
