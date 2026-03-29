@@ -93,108 +93,12 @@ export default function SalarySheet() {
   const generatePaySlip = (sheet: any) => {
     const emp = employees.find((e: any) => e.id === sheet.employee_id);
     if (!emp) return;
-    const doc = new jsPDF();
-    const companyName = settings?.site_name || "Company";
-    const companyAddress = settings?.address || "";
-
-    // Header
-    doc.setFontSize(18);
-    doc.text(companyName, 105, 20, { align: "center" });
-    doc.setFontSize(10);
-    if (companyAddress) doc.text(companyAddress, 105, 27, { align: "center" });
-    doc.setFontSize(14);
-    doc.text("Pay Slip", 105, 36, { align: "center" });
-    doc.setFontSize(10);
-    doc.text(`Month: ${sheet.month}`, 105, 43, { align: "center" });
-
-    doc.line(15, 48, 195, 48);
-
-    // Employee Info
-    let y = 56;
-    doc.setFontSize(11);
-    doc.text("Employee ID:", 20, y); doc.text(emp.employee_id, 70, y);
-    doc.text("Name:", 120, y); doc.text(emp.name, 145, y);
-    y += 8;
-    doc.text("Phone:", 20, y); doc.text(emp.phone || "—", 70, y);
-    doc.text("Email:", 120, y); doc.text(emp.email || "—", 145, y);
-
-    doc.line(15, y + 6, 195, y + 6);
-    y += 14;
-
-    // Earnings
-    doc.setFontSize(12);
-    doc.text("Earnings", 20, y);
-    doc.text("Amount (BDT)", 170, y, { align: "right" });
-    y += 8;
-    doc.setFontSize(10);
-    const earnings = [
-      ["Basic Salary", Number(sheet.basic_salary)],
-      ["House Rent", Number(sheet.house_rent || 0)],
-      ["Medical Allowance", Number(sheet.medical || 0)],
-      ["Conveyance", Number(sheet.conveyance || 0)],
-      ["Other Allowance", Number(sheet.other_allowance || 0)],
-      ["Bonus", Number(sheet.bonus)],
-    ];
-    for (const [label, amount] of earnings) {
-      if (amount as number > 0) {
-        doc.text(label as string, 25, y);
-        doc.text(`${(amount as number).toLocaleString()}`, 170, y, { align: "right" });
-        y += 7;
-      }
-    }
-
-    const grossTotal = earnings.reduce((s, [, a]) => s + (a as number), 0);
-    doc.line(20, y, 190, y);
-    y += 6;
-    doc.setFontSize(11);
-    doc.text("Gross Salary", 25, y);
-    doc.text(`${grossTotal.toLocaleString()}`, 170, y, { align: "right" });
-    y += 12;
-
-    // Deductions
-    doc.setFontSize(12);
-    doc.text("Deductions", 20, y);
-    y += 8;
-    doc.setFontSize(10);
-    const deductions = [
-      ["Loan Deduction", Number(sheet.loan_deduction)],
-      ["Other Deduction", Number(sheet.deduction)],
-    ];
-    for (const [label, amount] of deductions) {
-      if (amount as number > 0) {
-        doc.text(label as string, 25, y);
-        doc.text(`${(amount as number).toLocaleString()}`, 170, y, { align: "right" });
-        y += 7;
-      }
-    }
-    const totalDeductions = deductions.reduce((s, [, a]) => s + (a as number), 0);
-    doc.line(20, y, 190, y);
-    y += 6;
-    doc.text("Total Deductions", 25, y);
-    doc.text(`${totalDeductions.toLocaleString()}`, 170, y, { align: "right" });
-    y += 12;
-
-    // Net Pay
-    doc.setFontSize(14);
-    doc.text("Net Pay:", 25, y);
-    doc.text(`BDT ${Number(sheet.net_salary).toLocaleString()}`, 170, y, { align: "right" });
-    y += 8;
-    doc.line(15, y, 195, y);
-    y += 10;
-
-    doc.setFontSize(9);
-    doc.text("Status: " + sheet.status.toUpperCase(), 20, y);
-    if (sheet.paid_date) doc.text("Paid Date: " + safeFormat(sheet.paid_date, "dd MMM yyyy"), 120, y);
-
-    y += 20;
-    doc.line(20, y, 80, y);
-    doc.line(130, y, 190, y);
-    y += 5;
-    doc.setFontSize(9);
-    doc.text("Employee Signature", 30, y);
-    doc.text("Authorized Signature", 140, y);
-
-    doc.save(`PaySlip-${emp.employee_id}-${sheet.month}.pdf`);
+    generatePaySlipPdf({
+      employee: emp,
+      sheet,
+      companyName: settings?.site_name || "Company",
+      companyAddress: settings?.address || "",
+    });
     toast.success("Pay Slip downloaded");
   };
 
