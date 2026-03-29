@@ -12,20 +12,24 @@ import { Search, Shield, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 const actionColors: Record<string, string> = {
+  login: "default",
   login_success: "default",
   login_requested: "secondary",
   login_approved: "default",
   login_approved_completed: "default",
   login_rejected: "destructive",
+  customer_login: "default",
   logout: "outline",
 };
 
 const actionLabels: Record<string, string> = {
+  login: "Admin Login",
   login_success: "Login Success",
   login_requested: "Login Requested",
   login_approved: "Approved",
   login_approved_completed: "Approved (Complete)",
   login_rejected: "Rejected",
+  customer_login: "Customer Login",
   logout: "Logout",
 };
 
