@@ -13,9 +13,9 @@ class UserRole extends Model
 
     protected $fillable = ['id', 'user_id', 'role', 'custom_role_id'];
 
-    public function profile()
+    public function user()
     {
-        return $this->belongsTo(Profile::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function customRole()

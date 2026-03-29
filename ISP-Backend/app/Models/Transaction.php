@@ -27,6 +27,6 @@ class Transaction extends Model
 
     public function createdBy()
     {
-        return $this->belongsTo(Profile::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

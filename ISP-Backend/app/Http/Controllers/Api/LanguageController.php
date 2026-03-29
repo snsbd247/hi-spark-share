@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Profile;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class LanguageController extends Controller
@@ -20,7 +20,7 @@ class LanguageController extends Controller
         $admin = $request->get('admin_user');
 
         if ($admin) {
-            Profile::where('id', $admin->id)->update([
+            User::where('id', $admin->id)->update([
                 'language' => $request->language,
             ]);
         }
@@ -37,10 +37,10 @@ class LanguageController extends Controller
     public function show(Request $request)
     {
         $admin = $request->get('admin_user');
-        $profile = $admin ? Profile::find($admin->id) : null;
+        $user = $admin ? User::find($admin->id) : null;
 
         return response()->json([
-            'language' => $profile->language ?? 'en',
+            'language' => $user->language ?? 'en',
         ]);
     }
 }

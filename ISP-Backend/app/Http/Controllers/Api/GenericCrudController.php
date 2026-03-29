@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 class GenericCrudController extends Controller
 {
     protected array $tableModelMap = [
-        'users' => \App\Models\Profile::class,
-        'profiles' => \App\Models\Profile::class,
+        'users' => \App\Models\User::class,
+        'profiles' => \App\Models\User::class, // backward compat
         'customers' => \App\Models\Customer::class,
         'bills' => \App\Models\Bill::class,
         'payments' => \App\Models\Payment::class,

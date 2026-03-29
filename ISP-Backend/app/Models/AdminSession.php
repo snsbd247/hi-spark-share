@@ -14,8 +14,8 @@ class AdminSession extends Model
         'browser', 'device_name', 'status',
     ];
 
-    public function profile()
+    public function user()
     {
-        return $this->belongsTo(Profile::class, 'admin_id');
+        return $this->belongsTo(User::class, 'admin_id');
     }
 }

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\AdminLoginRequest;
 use App\Models\AdminLoginLog;
 use App\Models\AdminSession;
-use App\Models\Profile;
+use App\Models\User;
 use App\Models\UserRole;
 use App\Models\RolePermission;
 use App\Models\CustomRole;
@@ -18,19 +18,19 @@ class AuthController extends Controller
 {
     public function login(AdminLoginRequest $request)
     {
-        $profile = Profile::where('email', $request->email)
+        $user = User::where('email', $request->email)
             ->orWhere('username', $request->email)
             ->first();
 
-        if (!$profile || !$profile->password_hash || !Hash::check($request->password, $profile->password_hash)) {
+        if (!$user || !$user->password_hash || !Hash::check($request->password, $user->password_hash)) {
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        if ($profile->status !== 'active') {
+        if ($user->status !== 'active') {
             return response()->json(['error' => 'Account is disabled'], 403);
         }
 
-        $role = UserRole::where('user_id', $profile->id)->first();
+        $role = UserRole::where('user_id', $user->id)->first();
 
         // Get permissions for custom role
         $permissions = [];
@@ -46,7 +46,7 @@ class AuthController extends Controller
 
         $sessionToken = Str::uuid()->toString();
         $session = AdminSession::create([
-            'admin_id' => $profile->id,
+            'admin_id' => $user->id,
             'session_token' => $sessionToken,
             'ip_address' => $request->ip(),
             'browser' => $request->header('User-Agent', ''),
@@ -54,7 +54,7 @@ class AuthController extends Controller
         ]);
 
         AdminLoginLog::create([
-            'admin_id' => $profile->id,
+            'admin_id' => $user->id,
             'action' => 'login',
             'ip_address' => $request->ip(),
             'browser' => $request->header('User-Agent', ''),
@@ -63,15 +63,15 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => [
-                'id' => $profile->id,
-                'email' => $profile->email,
-                'name' => $profile->full_name,
-                'username' => $profile->username,
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->full_name,
+                'username' => $user->username,
                 'role' => $role->role ?? 'staff',
                 'custom_role_id' => $role->custom_role_id ?? null,
-                'avatar_url' => $profile->avatar_url,
-                'mobile' => $profile->mobile,
-                'language' => $profile->language ?? 'en',
+                'avatar_url' => $user->avatar_url,
+                'mobile' => $user->mobile,
+                'language' => $user->language ?? 'en',
                 'permissions' => $permissions,
             ],
             'token' => $sessionToken,
