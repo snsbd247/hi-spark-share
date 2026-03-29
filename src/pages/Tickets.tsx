@@ -269,7 +269,7 @@ export default function Tickets() {
               {/* Replies Thread */}
               <div className="border rounded-lg">
                 <div className="p-3 border-b bg-muted/50">
-                  <h4 className="font-medium text-sm">Conversation</h4>
+                  <h4 className="font-medium text-sm">{t.tickets.conversation}</h4>
                 </div>
                 <div className="p-3 space-y-3 max-h-60 overflow-y-auto">
                   {replies.length === 0 ? (
