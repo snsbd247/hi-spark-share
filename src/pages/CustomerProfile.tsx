@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash2, Printer } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash2, Printer, Receipt } from "lucide-react";
 import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
 import { postSalePaymentToLedger } from "@/lib/ledger";
 import { toast } from "sonner";
@@ -97,6 +97,15 @@ export default function CustomerProfilePage() {
     queryKey: ["customer-bills", id],
     queryFn: async () => {
       const { data } = await supabase.from("bills").select("*").eq("customer_id", id!).order("month", { ascending: false });
+      return data || [];
+    },
+    enabled: !!id,
+  });
+
+  const { data: customerPayments = [] } = useQuery({
+    queryKey: ["customer-payments", id],
+    queryFn: async () => {
+      const { data } = await supabase.from("payments").select("*").eq("customer_id", id!).order("paid_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
@@ -259,6 +268,7 @@ export default function CustomerProfilePage() {
             <TabsTrigger value="ledger">Ledger</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({customerBills.length})</TabsTrigger>
             <TabsTrigger value="sales">Sales History ({customerSales.length})</TabsTrigger>
+            <TabsTrigger value="payments">Payment History ({customerPayments.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details">
@@ -374,6 +384,45 @@ export default function CustomerProfilePage() {
                           </TableRow>
                         );
                       })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="payments">
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> Payment History</CardTitle></CardHeader>
+              <CardContent>
+                {customerPayments.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">No payment history found for this customer</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Serial</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Month</TableHead>
+                        <TableHead>Payment Method</TableHead>
+                        <TableHead>Transaction ID</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customerPayments.map((payment: any, idx: number) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium text-primary">PMT#{payment.id?.substring(0, 6).toUpperCase()}</TableCell>
+                          <TableCell>{payment.paid_at ? new Date(payment.paid_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                          <TableCell>{payment.month || "—"}</TableCell>
+                          <TableCell className="capitalize">{payment.payment_method || "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{payment.transaction_id || payment.bkash_trx_id || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant={payment.status === "completed" ? "default" : "secondary"}>{payment.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">৳{Number(payment.amount).toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 )}
