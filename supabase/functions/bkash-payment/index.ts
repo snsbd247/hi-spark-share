@@ -546,6 +546,16 @@ async function handleExecute(body: any): Promise<Response> {
       console.error("[bKash] Reactivation check failed:", e);
     }
 
+    // Send payment confirmation SMS to customer
+    try {
+      const billMonth = payment.bill_id
+        ? (await supabase.from("bills").select("month").eq("id", payment.bill_id).single())?.data?.month
+        : null;
+      await sendPaymentConfirmationSms(payment.customer_id, Number(payment.amount), data.trxID, billMonth);
+    } catch (e) {
+      console.error("[bKash] Payment confirmation SMS failed:", e);
+    }
+
     await logRequest("execute", "success", `TrxID: ${data.trxID}`);
 
     return new Response(JSON.stringify({ success: true, trxID: data.trxID }), {
