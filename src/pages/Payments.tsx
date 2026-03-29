@@ -145,7 +145,7 @@ export default function Payments() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer ID</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Transaction ID</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.customers.customerId}</TableHead><TableHead>{t.common.name}</TableHead><TableHead>{t.common.amount}</TableHead><TableHead>{t.payments.paymentMethod}</TableHead><TableHead>{t.payments.transactionId}</TableHead><TableHead>{t.common.status}</TableHead><TableHead>{t.common.date}</TableHead><TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
