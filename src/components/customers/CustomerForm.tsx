@@ -592,22 +592,27 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           <div className="space-y-1">
             <Label className="text-xs">Division</Label>
             <Select value={form.perm_division} onValueChange={(v) => {
+              const div = geoDivisions?.find(d => d.name === v);
+              setPermDivisionId(div?.id || "");
+              setPermDistrictId("");
               setForm(prev => ({ ...prev, perm_division: v, perm_district: "", perm_upazila: "" }));
             }}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select division" /></SelectTrigger>
               <SelectContent>
-                {DIVISIONS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                {geoDivisions?.map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">District</Label>
             <Select value={form.perm_district} onValueChange={(v) => {
+              const dist = permGeoDistricts?.find(d => d.name === v);
+              setPermDistrictId(dist?.id || "");
               setForm(prev => ({ ...prev, perm_district: v, perm_upazila: "" }));
             }} disabled={!form.perm_division}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select district" /></SelectTrigger>
               <SelectContent>
-                {(DISTRICTS[form.perm_division] || []).map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                {(permGeoDistricts || []).map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -616,7 +621,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Select value={form.perm_upazila} onValueChange={(v) => update("perm_upazila", v)} disabled={!form.perm_district}>
               <SelectTrigger className="h-9"><SelectValue placeholder="Select upazila" /></SelectTrigger>
               <SelectContent>
-                {(UPAZILAS[form.perm_district] || []).map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                {(permGeoUpazilas || []).map((u) => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
