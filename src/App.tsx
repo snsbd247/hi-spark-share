@@ -223,6 +223,7 @@ function App() {
               </Routes>
               </BrandingProvider>
             </CustomerAuthProvider>
+            </LanguageProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
