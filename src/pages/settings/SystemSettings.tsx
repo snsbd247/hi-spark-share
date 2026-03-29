@@ -50,6 +50,9 @@ export default function SystemSettings() {
           <TabsTrigger value="sms-templates" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <MessageSquare className="h-4 w-4" /> {t.settings.smsTemplates}
           </TabsTrigger>
+          <TabsTrigger value="initial-import" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Database className="h-4 w-4" /> ইনিসিয়াল ডাটা ইম্পোর্ট
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general"><GeneralSettingsTab /></TabsContent>
