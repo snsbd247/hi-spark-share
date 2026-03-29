@@ -342,7 +342,6 @@ async function handleCreate(body: any): Promise<Response> {
       bkash_payment_id: data.paymentID,
       month: null,
       transaction_id: invoiceNumber,
-      tenant_id: tenant_id || null,
     });
 
     return new Response(JSON.stringify({ bkashURL: data.bkashURL, paymentID: data.paymentID }), {
