@@ -1,159 +1,129 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
+import { PDF_COLORS, PDF_FONT, PDF_SPACING, drawCompanyHeader, drawSectionHeader, drawFooter, fmtCurrency } from "./pdfTheme";
 
 export function generateSupplierPurchaseInvoicePDF(purchase: any, supplier: any, items: any[]) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
-  const navy = [20, 50, 120] as const;
+  const m = PDF_SPACING.margin;
 
-  // Header
-  doc.setFillColor(...navy);
-  doc.rect(0, 0, pw, 42, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.text("Purchase Invoice", 14, 20);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text("Smart ISP", pw - 14, 16, { align: "right" });
-  doc.text("Internet Service Provider", pw - 14, 23, { align: "right" });
-
-  // Invoice number & date
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(purchase.purchase_no || "", 14, 34);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  const dateStr = purchase.date ? format(new Date(purchase.date), "dd MMM yyyy") : "";
-  doc.text(`Date: ${dateStr}`, pw - 14, 34, { align: "right" });
-
-  doc.setTextColor(0, 0, 0);
-  let y = 55;
+  let y = drawCompanyHeader(doc, {
+    companyName: "Smart ISP",
+    subtitle: "Internet Service Provider",
+    docTitle: "PURCHASE INVOICE",
+    docMeta: [
+      purchase.purchase_no || "",
+      `Date: ${purchase.date ? format(new Date(purchase.date), "dd MMM yyyy") : "—"}`,
+    ],
+    style: "banner",
+  });
 
   // Supplier info
-  doc.setFillColor(245, 247, 250);
-  doc.roundedRect(14, y - 5, pw - 28, 28, 2, 2, "F");
-  doc.setFontSize(10);
+  doc.setFillColor(...PDF_COLORS.bgLight);
+  doc.roundedRect(m, y - 2, pw - m * 2, 24, 2, 2, "F");
+  doc.setFontSize(PDF_FONT.heading);
   doc.setFont("helvetica", "bold");
-  doc.text("Supplier:", 18, y + 2);
+  doc.setTextColor(...PDF_COLORS.text);
+  doc.text("Supplier:", m + 4, y + 4);
   doc.setFont("helvetica", "normal");
-  doc.text(supplier?.name || "—", 50, y + 2);
-  if (supplier?.company) { doc.text(`Company: ${supplier.company}`, 18, y + 9); }
-  if (supplier?.phone) { doc.text(`Phone: ${supplier.phone}`, 18, y + 16); }
-
-  y += 32;
+  doc.text(supplier?.name || "—", m + 30, y + 4);
+  if (supplier?.company) { doc.setFontSize(PDF_FONT.body); doc.text(`Company: ${supplier.company}`, m + 4, y + 11); }
+  if (supplier?.phone) { doc.setFontSize(PDF_FONT.body); doc.text(`Phone: ${supplier.phone}`, m + 4, y + 17); }
+  y += 28;
 
   // Status badge
   const status = purchase.status?.toUpperCase() || "UNPAID";
   const isPaid = purchase.status === "paid";
-  doc.setFillColor(isPaid ? 34 : 239, isPaid ? 197 : 68, isPaid ? 94 : 68);
-  doc.roundedRect(pw - 50, y - 6, 36, 10, 2, 2, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
+  doc.setFillColor(isPaid ? PDF_COLORS.success[0] : PDF_COLORS.danger[0], isPaid ? PDF_COLORS.success[1] : PDF_COLORS.danger[1], isPaid ? PDF_COLORS.success[2] : PDF_COLORS.danger[2]);
+  doc.roundedRect(pw - m - 36, y - 8, 36, 10, 2, 2, "F");
+  doc.setTextColor(...PDF_COLORS.white);
+  doc.setFontSize(PDF_FONT.small);
   doc.setFont("helvetica", "bold");
-  doc.text(status, pw - 32, y + 1, { align: "center" });
-  doc.setTextColor(0, 0, 0);
+  doc.text(status, pw - m - 18, y - 1, { align: "center" });
+  y += 8;
 
+  // Table
+  doc.setFillColor(...PDF_COLORS.navy);
+  doc.rect(m, y, pw - m * 2, 9, "F");
+  doc.setTextColor(...PDF_COLORS.white);
+  doc.setFontSize(PDF_FONT.body);
+  doc.setFont("helvetica", "bold");
+  doc.text("#", m + 4, y + 6);
+  doc.text("Item", m + 14, y + 6);
+  doc.text("Qty", pw - m - 66, y + 6, { align: "right" });
+  doc.text("Unit Price", pw - m - 36, y + 6, { align: "right" });
+  doc.text("Total", pw - m - 4, y + 6, { align: "right" });
   y += 12;
 
-  // Table header
-  doc.setFillColor(...navy);
-  doc.rect(14, y, pw - 28, 9, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.text("#", 18, y + 6);
-  doc.text("Item", 28, y + 6);
-  doc.text("Qty", pw - 80, y + 6, { align: "right" });
-  doc.text("Unit Price", pw - 50, y + 6, { align: "right" });
-  doc.text("Total", pw - 18, y + 6, { align: "right" });
-  y += 13;
-
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(...PDF_COLORS.text);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(PDF_FONT.body);
 
   items.forEach((item, i) => {
-    if (y > 260) {
-      doc.addPage();
-      y = 20;
-    }
+    if (y > 255) { doc.addPage(); y = 20; }
     const name = item.products?.name || item.description || "Item";
     const qty = Number(item.quantity);
     const price = Number(item.unit_price);
     const total = qty * price;
 
-    if (i % 2 === 0) {
-      doc.setFillColor(250, 250, 252);
-      doc.rect(14, y - 4, pw - 28, 8, "F");
-    }
+    if (i % 2 === 0) { doc.setFillColor(...PDF_COLORS.bgRow); doc.rect(m, y - 4, pw - m * 2, 8, "F"); }
 
-    doc.text(`${i + 1}`, 18, y);
-    doc.text(name.substring(0, 40), 28, y);
-    doc.text(`${qty}`, pw - 80, y, { align: "right" });
-    doc.text(`৳${price.toLocaleString()}`, pw - 50, y, { align: "right" });
-    doc.text(`৳${total.toLocaleString()}`, pw - 18, y, { align: "right" });
+    doc.text(`${i + 1}`, m + 4, y);
+    doc.text(name.substring(0, 40), m + 14, y);
+    doc.text(`${qty}`, pw - m - 66, y, { align: "right" });
+    doc.text(fmtCurrency(price), pw - m - 36, y, { align: "right" });
+    doc.text(fmtCurrency(total), pw - m - 4, y, { align: "right" });
     y += 8;
   });
 
-  y += 5;
-  doc.line(14, y, pw - 14, y);
-  y += 8;
+  y += 4;
+  doc.setDrawColor(...PDF_COLORS.border);
+  doc.line(m, y, pw - m, y);
+  y += 7;
 
-  // Totals
   const total = Number(purchase.total_amount);
   const paid = Number(purchase.paid_amount);
   const due = total - paid;
 
   const addTotalRow = (label: string, value: string, bold = false) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(10);
-    doc.text(label, pw - 80, y);
-    doc.text(value, pw - 18, y, { align: "right" });
+    doc.setFontSize(PDF_FONT.heading);
+    doc.setTextColor(...PDF_COLORS.text);
+    doc.text(label, pw - m - 66, y);
+    doc.text(value, pw - m - 4, y, { align: "right" });
     y += 7;
   };
 
-  addTotalRow("Subtotal", `৳${total.toLocaleString()}`);
-  addTotalRow("Paid Amount", `৳${paid.toLocaleString()}`);
-  
+  addTotalRow("Subtotal", fmtCurrency(total));
+  addTotalRow("Paid Amount", fmtCurrency(paid));
   if (due > 0) {
-    doc.setTextColor(239, 68, 68);
-    addTotalRow("Due Amount", `৳${due.toLocaleString()}`, true);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...PDF_COLORS.danger);
+    addTotalRow("Due Amount", fmtCurrency(due), true);
   } else {
-    doc.setTextColor(34, 197, 94);
-    addTotalRow("Due Amount", "৳0", true);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...PDF_COLORS.success);
+    addTotalRow("Due Amount", "৳0.00", true);
   }
 
   // Grand total box
   y += 3;
-  doc.setFillColor(...navy);
-  doc.roundedRect(pw / 2, y, pw / 2 - 14, 16, 2, 2, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFillColor(...PDF_COLORS.navy);
+  doc.roundedRect(pw / 2, y, pw / 2 - m, 14, 2, 2, "F");
+  doc.setTextColor(...PDF_COLORS.white);
+  doc.setFontSize(PDF_FONT.heading);
   doc.setFont("helvetica", "normal");
-  doc.text("Grand Total", pw / 2 + 6, y + 7);
-  doc.setFontSize(14);
+  doc.text("Grand Total", pw / 2 + 6, y + 6);
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
-  doc.text(`৳${total.toLocaleString()}`, pw - 18, y + 11, { align: "right" });
+  doc.text(fmtCurrency(total), pw - m - 4, y + 10, { align: "right" });
 
-  // Notes
   if (purchase.notes) {
-    y += 25;
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(9);
+    y += 22;
+    doc.setTextColor(...PDF_COLORS.textMuted);
+    doc.setFontSize(PDF_FONT.body);
     doc.setFont("helvetica", "italic");
-    doc.text(`Notes: ${purchase.notes}`, 14, y);
+    doc.text(`Notes: ${purchase.notes}`, m, y);
   }
 
-  // Footer
-  y = doc.internal.pageSize.getHeight() - 20;
-  doc.setTextColor(150, 150, 150);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("This is a computer-generated invoice. No signature required.", pw / 2, y, { align: "center" });
-  doc.text(`Generated: ${format(new Date(), "dd MMM yyyy, hh:mm a")}`, pw / 2, y + 5, { align: "center" });
-
+  drawFooter(doc, { noteText: "This is a computer-generated invoice. No signature required." });
   doc.save(`${purchase.purchase_no || "purchase"}-invoice.pdf`);
 }
