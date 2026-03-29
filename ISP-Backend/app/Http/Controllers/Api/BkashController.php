@@ -32,4 +32,38 @@ class BkashController extends Controller
 
         return response()->json($result);
     }
+
+    public function refund(Request $request)
+    {
+        $request->validate([
+            'paymentID' => 'required|string',
+            'trxID' => 'required|string',
+            'amount' => 'required|numeric|min:1',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $result = $this->bkashService->refundPayment(
+            $request->paymentID,
+            $request->trxID,
+            (float) $request->amount,
+            $request->reason
+        );
+
+        return response()->json($result);
+    }
+
+    public function queryTransaction(Request $request)
+    {
+        $request->validate(['paymentID' => 'required|string']);
+
+        $result = $this->bkashService->queryTransaction($request->paymentID);
+
+        return response()->json($result);
+    }
+
+    public function testConnection()
+    {
+        $result = $this->bkashService->testConnection();
+        return response()->json($result);
+    }
 }
