@@ -146,7 +146,7 @@ export default function Login() {
 
             <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Sign In
+              {t.auth.signIn}
             </Button>
           </form>
 
