@@ -2030,6 +2030,7 @@ export type Database = {
           sms_on_bill_generate: boolean | null
           sms_on_payment: boolean | null
           sms_on_registration: boolean | null
+          sms_on_reminder: boolean | null
           sms_on_suspension: boolean | null
           updated_at: string
           whatsapp_enabled: boolean | null
@@ -2043,6 +2044,7 @@ export type Database = {
           sms_on_bill_generate?: boolean | null
           sms_on_payment?: boolean | null
           sms_on_registration?: boolean | null
+          sms_on_reminder?: boolean | null
           sms_on_suspension?: boolean | null
           updated_at?: string
           whatsapp_enabled?: boolean | null
@@ -2056,6 +2058,7 @@ export type Database = {
           sms_on_bill_generate?: boolean | null
           sms_on_payment?: boolean | null
           sms_on_registration?: boolean | null
+          sms_on_reminder?: boolean | null
           sms_on_suspension?: boolean | null
           updated_at?: string
           whatsapp_enabled?: boolean | null

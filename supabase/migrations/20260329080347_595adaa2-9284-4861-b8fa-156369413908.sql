@@ -1,0 +1,1 @@
+ALTER TABLE sms_settings ADD COLUMN IF NOT EXISTS sms_on_reminder boolean DEFAULT true;
