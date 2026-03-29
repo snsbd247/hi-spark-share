@@ -289,15 +289,15 @@ export default function Billing() {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="p-2 rounded-lg bg-success/10">
                         <p className="text-lg font-bold text-success">{stats.paid}</p>
-                        <p className="text-[10px] text-success/80">Paid</p>
+                        <p className="text-[10px] text-success/80">{t.common.paid}</p>
                       </div>
                       <div className="p-2 rounded-lg bg-destructive/10">
                         <p className="text-lg font-bold text-destructive">{stats.unpaid}</p>
-                        <p className="text-[10px] text-destructive/80">Unpaid</p>
+                        <p className="text-[10px] text-destructive/80">{t.common.unpaid}</p>
                       </div>
                       <div className="p-2 rounded-lg bg-muted">
                         <p className="text-lg font-bold text-foreground">৳{(stats.totalAmount / 1000).toFixed(1)}k</p>
-                        <p className="text-[10px] text-muted-foreground">Total</p>
+                        <p className="text-[10px] text-muted-foreground">{t.common.total}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -316,23 +316,23 @@ export default function Billing() {
               <div className="p-4 border-b border-border grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total Bills</p>
+                  <p className="text-xs text-muted-foreground">{t.common.total}</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-success">{stats.paid}</p>
-                  <p className="text-xs text-muted-foreground">Paid</p>
+                  <p className="text-xs text-muted-foreground">{t.common.paid}</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-destructive">{stats.unpaid}</p>
-                  <p className="text-xs text-muted-foreground">Unpaid</p>
+                  <p className="text-xs text-muted-foreground">{t.common.unpaid}</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-foreground">৳{stats.totalAmount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Total Billed</p>
+                  <p className="text-xs text-muted-foreground">{t.dashboard.totalBilled}</p>
                 </div>
                 <div className="text-center p-2">
                   <p className="text-2xl font-bold text-success">৳{stats.paidAmount.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Collected</p>
+                  <p className="text-xs text-muted-foreground">{t.dashboard.totalCollection}</p>
                 </div>
               </div>
             );
@@ -341,7 +341,7 @@ export default function Billing() {
           <div className="p-4 border-b border-border">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by name, ID, or phone..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t.common.search + "..."} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
           </div>
 
@@ -349,14 +349,14 @@ export default function Billing() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                   <TableHead>{t.customers.customerId}</TableHead>
+                   <TableHead>{t.common.name}</TableHead>
+                   <TableHead>{t.common.phone}</TableHead>
+                   <TableHead>{t.customers.area}</TableHead>
+                   <TableHead>{t.common.amount}</TableHead>
+                   <TableHead>{t.common.status}</TableHead>
+                   <TableHead>{t.customers.dueDate}</TableHead>
+                   <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

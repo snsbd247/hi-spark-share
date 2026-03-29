@@ -315,17 +315,17 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className={`h-4 w-4 ${collectionRate < 50 && targetAmount > 0 ? "text-destructive" : "text-primary"}`} />
-              Collection Target — {format(new Date(), "MMM yyyy")}
+              {t.dashboard.collectionTarget} — {format(new Date(), "MMM yyyy")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Collected</p>
+                <p className="text-xs text-muted-foreground">{t.dashboard.totalCollection}</p>
                 <p className={`text-2xl font-bold ${collectionRate < 50 && targetAmount > 0 ? "text-destructive" : "text-success"}`}>৳{collectedAmount.toLocaleString()}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Target</p>
+                <p className="text-xs text-muted-foreground">{t.dashboard.collectionTarget}</p>
                 <p className="text-2xl font-bold text-foreground">৳{targetAmount.toLocaleString()}</p>
               </div>
             </div>
@@ -339,15 +339,15 @@ export default function Dashboard() {
             <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
               <div className="text-center">
                 <p className="text-lg font-bold text-success">{bills?.filter(b => b.month === currentMonth && b.status === "paid").length ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground">Paid</p>
+                <p className="text-[10px] text-muted-foreground">{t.common.paid}</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-warning">{bills?.filter(b => b.month === currentMonth && b.status === "unpaid").length ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground">Unpaid</p>
+                <p className="text-[10px] text-muted-foreground">{t.common.unpaid}</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-foreground">{active}</p>
-                <p className="text-[10px] text-muted-foreground">Active</p>
+                <p className="text-[10px] text-muted-foreground">{t.common.active}</p>
               </div>
             </div>
           </CardContent>
@@ -358,7 +358,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Revenue Trend (6 Months)
+              {t.dashboard.revenueOverview}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -430,7 +430,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Router className="h-4 w-4 text-primary" />
-                Router Health
+                {t.dashboard.routerStatus}
               </CardTitle>
               <span className="text-sm font-bold text-primary">
                 {loadingMikrotik ? "..." : `${mikrotikStats?.routers?.filter(r => !r.error).length ?? 0}/${mikrotikStats?.routers?.length ?? 0}`}
@@ -493,7 +493,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="border-border/50">
-            <CardHeader className="pb-2"><CardTitle className="text-base">Income vs Expense</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{t.accounting.income} vs {t.accounting.expense}</CardTitle></CardHeader>
             <CardContent>
               {accMonthlyData.length > 0 ? (
                 <div className="h-[240px]">
@@ -515,7 +515,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="border-border/50">
-            <CardHeader className="pb-2"><CardTitle className="text-base">Expenses by Category</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{t.sidebar.expenses}</CardTitle></CardHeader>
             <CardContent>
               {expenseByCategory.length > 0 ? (
                 <div className="h-[240px]">

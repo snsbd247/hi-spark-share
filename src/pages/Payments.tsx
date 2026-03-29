@@ -189,18 +189,18 @@ export default function Payments() {
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.common.edit} {t.payments.title}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5"><Label>Amount</Label><Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Payment Method</Label>
+            <div className="space-y-1.5"><Label>{t.common.amount}</Label><Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{t.payments.paymentMethod}</Label>
               <Select value={editMethod} onValueChange={setEditMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bkash">bKash</SelectItem><SelectItem value="nagad">Nagad</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="bkash_merchant">bKash Merchant</SelectItem></SelectContent></Select>
             </div>
-            <div className="space-y-1.5"><Label>Transaction ID</Label><Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Status</Label>
+            <div className="space-y-1.5"><Label>{t.payments.transactionId}</Label><Input value={editTrxId} onChange={(e) => setEditTrxId(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>{t.common.status}</Label>
               <Select value={editStatus} onValueChange={setEditStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="completed">Completed</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="failed">Failed</SelectItem></SelectContent></Select>
             </div>
-            <div className="space-y-1.5"><Label>Date</Label><Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
-            <div className="flex justify-end"><Button onClick={handleEditSave}>Save Changes</Button></div>
+            <div className="space-y-1.5"><Label>{t.common.date}</Label><Input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></div>
+            <div className="flex justify-end"><Button onClick={handleEditSave}>{t.common.save}</Button></div>
           </div>
         </DialogContent>
       </Dialog>
