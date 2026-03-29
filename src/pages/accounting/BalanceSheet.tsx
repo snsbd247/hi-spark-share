@@ -10,20 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Scale } from "lucide-react";
 
 export default function BalanceSheet() {
-  const [asOf] = useState(new Date().toISOString().split("T")[0]);
+  const [asOf, setAsOf] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["accounts-balance-sheet"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("accounts").select("*").eq("is_active", true).order("code");
+      const { data } = await (supabase as any).from("accounts").select("*").eq("is_active", true).order("code");
       return data || [];
     },
   });
 
   const { data: transactions = [] } = useQuery({
-    queryKey: ["all-txn-for-bs"],
+    queryKey: ["all-txn-for-bs", asOf],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("transactions").select("account_id, debit, credit");
+      const { data } = await (supabase as any).from("transactions").select("account_id, debit, credit").lte("date", asOf + "T23:59:59");
       return data || [];
     },
   });
