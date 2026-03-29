@@ -85,11 +85,11 @@ export async function generateBillInvoicePDF(bill: any, customer: any) {
     y += 6;
   };
 
-  infoRow("Client ID", customer?.customer_id || "—");
-  infoRow("Client Name", customer?.name || "—");
+  infoRow("Client ID", customer?.customer_id || "-");
+  infoRow("Client Name", customer?.name || "-");
 
   const addressParts = [customer?.house, customer?.road, customer?.area, customer?.village, customer?.city, customer?.district].filter(Boolean);
-  const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : customer?.area || "—";
+  const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : customer?.area || "-";
   doc.setFontSize(PDF_FONT.body);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...PDF_COLORS.text);
