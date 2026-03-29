@@ -29,12 +29,19 @@ export default function Vendors() {
 
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => api.get("/vendors").then(r => r.data?.data || r.data || []),
+    queryFn: async () => { const { data } = await supabase.from("vendors").select("*").order("created_at", { ascending: false }); return data || []; },
   });
 
   const save = useMutation({
-    mutationFn: (data: any) =>
-      editing ? api.put(`/vendors/${editing.id}`, data) : api.post("/vendors", data),
+    mutationFn: async (formData: any) => {
+      if (editing) {
+        const { error } = await supabase.from("vendors").update(formData).eq("id", editing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("vendors").insert(formData);
+        if (error) throw error;
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vendors"] });
       toast.success(editing ? "Vendor updated" : "Vendor created");
@@ -44,7 +51,10 @@ export default function Vendors() {
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => api.delete(`/vendors/${id}`),
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("vendors").delete().eq("id", id);
+      if (error) throw error;
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); toast.success("Vendor deleted"); },
   });
 
