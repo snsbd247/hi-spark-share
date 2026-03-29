@@ -372,8 +372,8 @@ export default function Dashboard() {
                     <XAxis dataKey="month" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => [`৳${v.toLocaleString()}`, undefined]} />
-                    <Bar dataKey="paid" name="Collected" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="due" name="Due" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="paid" name={t.dashboard.totalCollection} fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="due" name={t.dashboard.totalDue} fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
