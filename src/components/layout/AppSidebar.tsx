@@ -376,7 +376,6 @@ export default function AppSidebar() {
           <LogOut className="h-4 w-4 shrink-0" />
           {(!collapsed || isMobile) && <span className="text-[13px]">{t.auth.signOut}</span>}
         </button>
-        </button>
       </div>
     </>
   );
