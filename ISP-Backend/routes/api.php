@@ -69,6 +69,10 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     Route::put('/admin/profile', [AuthController::class, 'updateProfile']);
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
+    // Language preference
+    Route::get('/language', [LanguageController::class, 'show']);
+    Route::put('/language', [LanguageController::class, 'update']);
+
     // ══════════════════════════════════════════════════════
     // ── ADMIN USERS — module: users ─────────────────────
     // ══════════════════════════════════════════════════════
