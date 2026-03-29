@@ -735,21 +735,25 @@ export const merchantPaymentsApi = {
 // ─── Customers API (Direct Supabase) ────────────────────────────
 export const customersApi = {
   create: async (customer: Record<string, any>) => {
-    // Auto-generate customer_id (ISP-00001 format) if not provided
+    // Auto-generate 6-digit numeric customer_id if not provided
     if (!customer.customer_id) {
       const { data: lastCustomer } = await supabaseClient
         .from("customers")
         .select("customer_id")
-        .like("customer_id", "ISP-%")
-        .order("customer_id", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1);
 
-      let nextNum = 1;
+      let nextNum = 100001;
       if (lastCustomer?.length) {
-        const match = lastCustomer[0].customer_id.match(/ISP-(\d+)/);
-        if (match) nextNum = parseInt(match[1]) + 1;
+        const lastNum = parseInt(lastCustomer[0].customer_id);
+        if (!isNaN(lastNum)) nextNum = lastNum + 1;
       }
-      customer.customer_id = `ISP-${String(nextNum).padStart(5, "0")}`;
+      customer.customer_id = String(nextNum);
+    }
+
+    // Auto-set pppoe_username to customer_id if not provided
+    if (!customer.pppoe_username) {
+      customer.pppoe_username = customer.customer_id;
     }
 
     const { data, error } = await supabaseClient.from("customers").insert(customer as any).select().single();
