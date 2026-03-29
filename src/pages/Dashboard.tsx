@@ -515,7 +515,7 @@ export default function Dashboard() {
           </Card>
 
           <Card className="border-border/50">
-            <CardHeader className="pb-2"><CardTitle className="text-base">Expenses by Category</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{t.sidebar.expenses}</CardTitle></CardHeader>
             <CardContent>
               {expenseByCategory.length > 0 ? (
                 <div className="h-[240px]">
