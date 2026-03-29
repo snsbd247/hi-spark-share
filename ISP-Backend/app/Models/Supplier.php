@@ -15,7 +15,6 @@ class Supplier extends Model
     ];
 
     protected $casts = [
-        'balance'   => 'decimal:2',
         'total_due' => 'decimal:2',
     ];
 
