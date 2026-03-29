@@ -10,20 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { Scale } from "lucide-react";
 
 export default function BalanceSheet() {
-  const [asOf] = useState(new Date().toISOString().split("T")[0]);
+  const [asOf, setAsOf] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["accounts-balance-sheet"],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("accounts").select("*").eq("is_active", true).order("code");
+      const { data } = await (supabase as any).from("accounts").select("*").eq("is_active", true).order("code");
       return data || [];
     },
   });
 
   const { data: transactions = [] } = useQuery({
-    queryKey: ["all-txn-for-bs"],
+    queryKey: ["all-txn-for-bs", asOf],
     queryFn: async () => {
-      const { data } = await ( supabase as any).from("transactions").select("account_id, debit, credit");
+      const { data } = await (supabase as any).from("transactions").select("account_id, debit, credit").lte("date", asOf + "T23:59:59");
       return data || [];
     },
   });
@@ -59,7 +59,10 @@ export default function BalanceSheet() {
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Scale className="h-6 w-6" /> Balance Sheet</h1>
             <p className="text-muted-foreground text-sm">Assets = Liabilities + Equity</p>
           </div>
-          <p className="text-sm text-muted-foreground">As of: {asOf}</p>
+          <div>
+            <Label className="text-xs">As of Date</Label>
+            <Input type="date" value={asOf} onChange={e => setAsOf(e.target.value)} className="w-44" />
+          </div>
         </div>
 
         {isLoading ? (

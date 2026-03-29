@@ -38,12 +38,25 @@ export default function LedgerStatement() {
     enabled: !!accountId,
   });
 
-  // Get all transactions for this account
+  // Get opening balance from transactions before dateFrom
+  const { data: openingData } = useQuery({
+    queryKey: ["ledger-opening", accountId, dateFrom],
+    queryFn: async () => {
+      if (!accountId || !dateFrom) return { debit: 0, credit: 0 };
+      const { data } = await (supabase as any).from("transactions").select("debit, credit").eq("account_id", accountId).lt("date", dateFrom);
+      const debit = (data || []).reduce((s: number, t: any) => s + Number(t.debit || 0), 0);
+      const credit = (data || []).reduce((s: number, t: any) => s + Number(t.credit || 0), 0);
+      return { debit, credit };
+    },
+    enabled: !!accountId,
+  });
+
+  // Get all transactions for this account in the period
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["ledger-statement", accountId, dateFrom, dateTo],
     queryFn: async () => {
       if (!accountId) return [];
-      let query = ( supabase as any).from("transactions").select("*").eq("account_id", accountId);
+      let query = (supabase as any).from("transactions").select("*").eq("account_id", accountId);
       if (dateFrom) query = query.gte("date", dateFrom);
       if (dateTo) query = query.lte("date", dateTo + "T23:59:59");
       const { data } = await query.order("date", { ascending: true }).order("created_at", { ascending: true });
@@ -52,15 +65,17 @@ export default function LedgerStatement() {
     enabled: !!accountId,
   });
 
-  // Calculate running balance
-  const openingBalance = Number(account?.balance || 0);
+  // Calculate running balance with proper opening balance
   const isDebitNormal = ["asset", "expense"].includes(account?.type || "");
+  const openingBalance = isDebitNormal
+    ? (openingData?.debit || 0) - (openingData?.credit || 0)
+    : (openingData?.credit || 0) - (openingData?.debit || 0);
 
   const totalDebit = transactions.reduce((s: number, t: any) => s + Number(t.debit || 0), 0);
   const totalCredit = transactions.reduce((s: number, t: any) => s + Number(t.credit || 0), 0);
 
-  // Build rows with running balance
-  let runningBalance = 0; // We'll compute from transactions
+  // Build rows with running balance starting from opening balance
+  let runningBalance = openingBalance;
   const rows = transactions.map((t: any) => {
     const debit = Number(t.debit || 0);
     const credit = Number(t.credit || 0);
@@ -119,7 +134,7 @@ export default function LedgerStatement() {
           <Card>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs text-muted-foreground">Opening Balance</p>
-              <p className="text-lg font-bold">{fmt(0)}</p>
+              <p className="text-lg font-bold">{fmt(openingBalance)}</p>
             </CardContent>
           </Card>
           <Card>

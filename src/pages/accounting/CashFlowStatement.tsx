@@ -28,20 +28,20 @@ export default function CashFlowStatement() {
     },
   });
 
-  // Cash/Bank account codes
-  const cashCodes = ["1101", "1102", "1103", "1104"];
+  // Dynamically detect cash/bank accounts: asset accounts with code starting "110" or "11", or names containing Cash/Bank
+  const isCashAccount = (acc: any) => {
+    if (!acc) return false;
+    if (acc.type !== "asset") return false;
+    const code = acc.code || "";
+    const name = (acc.name || "").toLowerCase();
+    return code.startsWith("110") || code.startsWith("11") || name.includes("cash") || name.includes("bank") || name.includes("bkash") || name.includes("nagad");
+  };
 
-  // Receipts: Credits to income accounts or debits to cash accounts
-  const receipts = transactions.filter((t: any) => {
-    const code = t.account?.code || "";
-    return cashCodes.includes(code) && Number(t.debit) > 0;
-  });
+  // Receipts: Debits to cash/bank accounts
+  const receipts = transactions.filter((t: any) => isCashAccount(t.account) && Number(t.debit) > 0);
 
-  // Payments: Credits from cash accounts
-  const payments = transactions.filter((t: any) => {
-    const code = t.account?.code || "";
-    return cashCodes.includes(code) && Number(t.credit) > 0;
-  });
+  // Payments: Credits from cash/bank accounts
+  const payments = transactions.filter((t: any) => isCashAccount(t.account) && Number(t.credit) > 0);
 
   const totalReceipts = receipts.reduce((s: number, t: any) => s + Number(t.debit), 0);
   const totalPayments = payments.reduce((s: number, t: any) => s + Number(t.credit), 0);

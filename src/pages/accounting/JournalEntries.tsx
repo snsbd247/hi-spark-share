@@ -45,6 +45,9 @@ export default function JournalEntries() {
         throw new Error("Debit and Credit must be equal");
       }
 
+      // Generate journal reference once for all lines
+      const journalRef = `JE-${Date.now()}`;
+
       // Post each line to ledger
       for (const entry of data.entries) {
         if (!entry.account_id) continue;
@@ -54,7 +57,7 @@ export default function JournalEntries() {
           debit: Number(entry.debit) || 0,
           credit: Number(entry.credit) || 0,
           type: "journal",
-          reference: `JE-${Date.now()}`,
+          reference: journalRef,
           date: data.date,
         });
       }

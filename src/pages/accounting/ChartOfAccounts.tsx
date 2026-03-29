@@ -177,10 +177,43 @@ export default function ChartOfAccounts() {
     return map;
   }, [transactions]);
 
-  // Enrich accounts with debit/credit/closing balance
+  // Enrich accounts with debit/credit/closing balance, aggregating children into parents
   const enrichedAccounts = useMemo(() => {
-    return flatAccounts.map((a: any) => {
+    // Step 1: Compute own totals per account
+    const ownTotals = new Map<string, { debit: number; credit: number }>();
+    flatAccounts.forEach((a: any) => {
       const totals = accountTotals.get(a.id) || { debit: 0, credit: 0 };
+      ownTotals.set(a.id, { ...totals });
+    });
+
+    // Step 2: Build parent-child map and aggregate bottom-up
+    const childrenMap = new Map<string, string[]>();
+    flatAccounts.forEach((a: any) => {
+      if (a.parent_id) {
+        const siblings = childrenMap.get(a.parent_id) || [];
+        siblings.push(a.id);
+        childrenMap.set(a.parent_id, siblings);
+      }
+    });
+
+    // Recursive function to get aggregated totals (own + all descendants)
+    const aggregated = new Map<string, { debit: number; credit: number }>();
+    const getAggregated = (id: string): { debit: number; credit: number } => {
+      if (aggregated.has(id)) return aggregated.get(id)!;
+      const own = ownTotals.get(id) || { debit: 0, credit: 0 };
+      const result = { debit: own.debit, credit: own.credit };
+      const children = childrenMap.get(id) || [];
+      for (const childId of children) {
+        const childTotals = getAggregated(childId);
+        result.debit += childTotals.debit;
+        result.credit += childTotals.credit;
+      }
+      aggregated.set(id, result);
+      return result;
+    };
+
+    return flatAccounts.map((a: any) => {
+      const totals = getAggregated(a.id);
       const isDebitNormal = ["asset", "expense"].includes(a.type);
       const closingBalance = isDebitNormal
         ? totals.debit - totals.credit

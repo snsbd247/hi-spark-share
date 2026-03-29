@@ -62,10 +62,45 @@ export default function Expenses() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await ( supabase as any).from("expenses").delete().eq("id", id);
+      // Find the expense to get its reference pattern for transaction cleanup
+      const expense = expenses.find((e: Expense) => e.id === id);
+
+      // Delete associated transactions by reference pattern
+      if (expense) {
+        const ref = `exp-${expense.category}`;
+        // Find matching transactions to reverse account balances
+        const { data: relatedTxns } = await (supabase as any).from("transactions")
+          .select("id, account_id, debit, credit")
+          .eq("reference", ref)
+          .eq("date", expense.date);
+
+        if (relatedTxns && relatedTxns.length > 0) {
+          // Reverse account balances
+          for (const txn of relatedTxns) {
+            if (txn.account_id) {
+              const { data: acc } = await (supabase as any).from("accounts").select("balance, type").eq("id", txn.account_id).maybeSingle();
+              if (acc) {
+                const isDebitNormal = ["asset", "expense"].includes(acc.type);
+                const reversal = isDebitNormal ? -(Number(txn.debit) - Number(txn.credit)) : -(Number(txn.credit) - Number(txn.debit));
+                await (supabase as any).from("accounts").update({ balance: Number(acc.balance) + reversal }).eq("id", txn.account_id);
+              }
+            }
+          }
+          // Delete the transactions
+          const txnIds = relatedTxns.map((t: any) => t.id);
+          await (supabase as any).from("transactions").delete().in("id", txnIds);
+        }
+      }
+
+      const { error } = await (supabase as any).from("expenses").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["expenses"] }); toast.success("Deleted"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+      toast.success("Expense deleted & ledger reversed");
+    },
   });
 
   const closeDialog = () => { setOpen(false); setEditing(null); setForm(emptyExpense); };
