@@ -429,6 +429,6 @@ export function generateTransactionVoucherPDF(txn: any, account?: any) {
   });
   doc.setLineDashPattern([], 0);
 
-  drawFooter(doc, { noteText: "This is a computer-generated voucher. No signature required for amounts below ৳10,000." });
+  drawFooter(doc, { noteText: "This is a computer-generated voucher. No signature required for amounts below Tk 10,000." });
   doc.save(`voucher-${txn.type}-${txn.id?.substring(0, 8) || Date.now()}.pdf`);
 }

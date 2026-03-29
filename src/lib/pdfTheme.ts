@@ -195,7 +195,7 @@ export function drawInfoRow(
   doc.setTextColor(...PDF_COLORS.text);
   doc.text(`${label}:`, x, y);
   doc.setFont("helvetica", "normal");
-  doc.text(value || "—", x + labelWidth, y);
+  doc.text(value || "-", x + labelWidth, y);
 }
 
 // ─── Footer ───

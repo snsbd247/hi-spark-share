@@ -101,7 +101,7 @@ export function generateSupplierPurchaseInvoicePDF(purchase: any, supplier: any,
     addTotalRow("Due Amount", fmtCurrency(due), true);
   } else {
     doc.setTextColor(...PDF_COLORS.success);
-    addTotalRow("Due Amount", "৳0.00", true);
+    addTotalRow("Due Amount", "Tk 0.00", true);
   }
 
   // Grand total box
