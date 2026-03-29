@@ -399,7 +399,7 @@ export default function Dashboard() {
             {loadingMerchant ? (
               <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
             ) : merchantTotal === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No merchant payments today</p>
+              <p className="text-sm text-muted-foreground text-center py-6">{t.dashboard.noMerchantPayments}</p>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
