@@ -339,7 +339,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
               <div className="text-center">
                 <p className="text-lg font-bold text-success">{bills?.filter(b => b.month === currentMonth && b.status === "paid").length ?? 0}</p>
-                <p className="text-[10px] text-muted-foreground">Paid</p>
+                <p className="text-[10px] text-muted-foreground">{t.common.paid}</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-warning">{bills?.filter(b => b.month === currentMonth && b.status === "unpaid").length ?? 0}</p>
