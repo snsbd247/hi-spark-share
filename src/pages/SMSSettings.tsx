@@ -155,6 +155,16 @@ export default function SMSSettings() {
                 onCheckedChange={(v) => setForm({ ...form, sms_on_suspension: v })}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">New Customer Bill</p>
+                <p className="text-xs text-muted-foreground">Send bill generation SMS when a new customer is added</p>
+              </div>
+              <Switch
+                checked={form.sms_on_new_customer_bill}
+                onCheckedChange={(v) => setForm({ ...form, sms_on_new_customer_bill: v })}
+              />
+            </div>
           </CardContent>
         </Card>
 
