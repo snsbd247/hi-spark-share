@@ -125,7 +125,7 @@ export default function SMSLogs() {
       <Dialog open={sendOpen} onOpenChange={setSendOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send SMS</DialogTitle>
+            <DialogTitle>{t.sms.sendSms}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
