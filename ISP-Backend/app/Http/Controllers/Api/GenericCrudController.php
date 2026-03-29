@@ -69,6 +69,10 @@ class GenericCrudController extends Controller
         'employee_emergency_contacts' => \App\Models\EmployeeEmergencyContact::class,
         'employee_provident_fund' => \App\Models\EmployeeProvidentFund::class,
         'employee_savings_fund' => \App\Models\EmployeeSavingsFund::class,
+        // Geo Location
+        'geo_divisions' => \App\Models\GeoDivision::class,
+        'geo_districts' => \App\Models\GeoDistrict::class,
+        'geo_upazilas' => \App\Models\GeoUpazila::class,
     ];
 
     protected function getModel(string $table)
