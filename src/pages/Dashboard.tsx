@@ -134,6 +134,17 @@ export default function Dashboard() {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("sms-balance");
       if (error) throw error;
+      // API returns array: [{action:"balance",response:"781.64"},{action:"expiry",response:"19-09-2026"},{action:"rate",response:"0.38"}]
+      if (Array.isArray(data)) {
+        const balanceEntry = data.find((d: any) => d.action === "balance");
+        const expiryEntry = data.find((d: any) => d.action === "expiry");
+        const rateEntry = data.find((d: any) => d.action === "rate");
+        return {
+          balance: balanceEntry?.response ? parseFloat(balanceEntry.response) : null,
+          expiry: expiryEntry?.response || null,
+          rate: rateEntry?.response ? parseFloat(rateEntry.response) : null,
+        };
+      }
       return data;
     },
     refetchInterval: 300000, // 5 min
@@ -257,7 +268,8 @@ export default function Dashboard() {
         <StatCard title="Total Revenue" value={`৳${monthlyRevenue.toLocaleString()}`} icon={<TrendingUp className="h-5 w-5" />} variant="default" />
         <StatCard
           title="SMS Balance"
-          value={smsBalance?.balance != null ? `৳${Number(smsBalance.balance).toLocaleString()}` : "—"}
+          value={smsBalance?.balance != null ? `৳${smsBalance.balance.toLocaleString()}` : "—"}
+          subtitle={smsBalance?.expiry ? `মেয়াদ: ${smsBalance.expiry} | রেট: ৳${smsBalance.rate}` : undefined}
           icon={<MessageSquare className="h-5 w-5" />}
           variant="accent"
         />
