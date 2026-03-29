@@ -86,6 +86,58 @@ async function getTokenFromGateway(gw: any): Promise<string> {
 }
 
 // ── Send SMS notification ─────────────────────────────────────────────
+async function sendPaymentConfirmationSms(customerId: string, amount: number, trxId: string, billMonth?: string) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("phone, name, customer_id")
+      .eq("id", customerId)
+      .single();
+
+    if (!customer?.phone) return;
+
+    // Check if receipt SMS is enabled
+    const { data: smsSettings } = await supabase
+      .from("sms_settings")
+      .select("api_token, sender_id, receipt_sms_enabled")
+      .limit(1)
+      .single();
+
+    if (!smsSettings?.api_token) return;
+    if (smsSettings.receipt_sms_enabled === false) return;
+
+    const monthText = billMonth ? ` (${billMonth})` : "";
+    const message = `প্রিয় ${customer.name}, আপনার bKash পেমেন্ট ৳${amount}${monthText} সফলভাবে গৃহীত হয়েছে। TrxID: ${trxId}। ধন্যবাদ - Smart ISP`;
+
+    const smsRes = await fetch("https://api.greenweb.com.bd/api.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        token: smsSettings.api_token,
+        to: customer.phone,
+        message,
+        ...(smsSettings.sender_id ? { from: smsSettings.sender_id } : {}),
+      }),
+    });
+
+    const smsResponse = await smsRes.text();
+
+    await supabase.from("sms_logs").insert({
+      phone: customer.phone,
+      message,
+      sms_type: "receipt",
+      status: smsResponse.includes("Ok") ? "sent" : "failed",
+      response: smsResponse,
+      customer_id: customerId,
+    });
+
+    console.log("[bKash] Payment confirmation SMS sent to:", customer.phone, "status:", smsResponse);
+  } catch (e) {
+    console.error("Failed to send payment confirmation SMS:", e);
+  }
+}
+
 async function sendRefundSms(customerId: string, amount: number, trxId: string) {
   try {
     const supabase = getSupabaseAdmin();
@@ -492,6 +544,16 @@ async function handleExecute(body: any): Promise<Response> {
       }
     } catch (e) {
       console.error("[bKash] Reactivation check failed:", e);
+    }
+
+    // Send payment confirmation SMS to customer
+    try {
+      const billMonth = payment.bill_id
+        ? (await supabase.from("bills").select("month").eq("id", payment.bill_id).single())?.data?.month
+        : null;
+      await sendPaymentConfirmationSms(payment.customer_id, Number(payment.amount), data.trxID, billMonth);
+    } catch (e) {
+      console.error("[bKash] Payment confirmation SMS failed:", e);
     }
 
     await logRequest("execute", "success", `TrxID: ${data.trxID}`);
