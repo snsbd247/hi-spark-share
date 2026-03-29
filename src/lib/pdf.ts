@@ -61,48 +61,48 @@ export async function generatePaymentReceiptPDF(payment: any, customer: any, inv
   const contentW = marginR - marginL;
 
   // ──── Company Logo/Name top-right ────
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(40, 40, 40);
-  doc.text(companyName, marginR, 20, { align: "right" });
+  doc.text(companyName, marginR, 22, { align: "right" });
   if (companyAddress) {
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(companyAddress, marginR, 26, { align: "right" });
+    doc.text(companyAddress, marginR, 28, { align: "right" });
   }
 
   // ──── "Payment Receipt" title centered ────
-  let y = 36;
+  let y = 40;
   doc.setDrawColor(60, 60, 60);
   doc.setLineWidth(0.5);
   doc.line(marginL, y, marginR, y);
-  y += 6;
-  doc.setFontSize(13);
+  y += 8;
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
   doc.text("Payment Receipt", pw / 2, y, { align: "center" });
-  y += 4;
+  y += 6;
   doc.line(marginL, y, marginR, y);
-  y += 10;
+  y += 14;
 
   // ──── Client Info (left) + Payment Statement (right) ────
   const leftX = marginL;
-  const rightX = pw / 2 + 10;
+  const rightX = pw / 2 + 14;
 
   // Left: Client's Information
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
   doc.text("Client's Information", leftX, y);
   doc.setLineWidth(0.3);
-  doc.line(leftX, y + 1, leftX + 42, y + 1);
-  y += 7;
+  doc.line(leftX, y + 2, leftX + 48, y + 2);
+  y += 10;
 
   const clientFields = [
     { label: "Client ID:", value: customer?.customer_id || "—" },
     { label: "Client Name:", value: customer?.name || "—" },
-    { label: "Client Billing Address:", value: [customer?.house ? `House# ${customer.house}` : "", customer?.road ? `Road# ${customer.road}` : "", customer?.area || ""].filter(Boolean).join(", ") || "—" },
+    { label: "Billing Address:", value: [customer?.house ? `House# ${customer.house}` : "", customer?.road ? `Road# ${customer.road}` : "", customer?.area || ""].filter(Boolean).join(", ") || "—" },
     { label: "Mobile No:", value: customer?.phone || "—" },
     { label: "Email:", value: customer?.email || "—" },
   ];
@@ -111,44 +111,49 @@ export async function generatePaymentReceiptPDF(payment: any, customer: any, inv
   const clientY = y;
   clientFields.forEach((f) => {
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(30, 30, 30);
+    doc.setTextColor(50, 50, 50);
     doc.text(f.label, leftX, y);
     doc.setFont("helvetica", "normal");
-    doc.text(` ${f.value}`, leftX + doc.getTextWidth(f.label) + 1, y);
-    y += 6;
+    doc.setTextColor(30, 30, 30);
+    doc.text(f.value, leftX + 38, y);
+    y += 7;
   });
 
   // Right: Payment Statement
-  let ry = clientY - 7;
-  doc.setFontSize(10);
+  let ry = clientY - 10;
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
   doc.text("Payment Statement", rightX, ry);
   doc.setLineWidth(0.3);
-  doc.line(rightX, ry + 1, rightX + 42, ry + 1);
-  ry += 7;
+  doc.line(rightX, ry + 2, rightX + 48, ry + 2);
+  ry += 10;
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(50, 50, 50);
   doc.text("Receipt No:", rightX, ry);
   doc.setFont("helvetica", "normal");
-  doc.text(`    ${receiptNo}`, rightX + doc.getTextWidth("Receipt No:"), ry);
-  ry += 6;
+  doc.setTextColor(30, 30, 30);
+  doc.text(receiptNo, rightX + 30, ry);
+  ry += 7;
 
   doc.setFont("helvetica", "bold");
+  doc.setTextColor(50, 50, 50);
   doc.text("Payment Date:", rightX, ry);
   doc.setFont("helvetica", "normal");
-  doc.text(` ${paymentDate}`, rightX + doc.getTextWidth("Payment Date:"), ry);
-  ry += 6;
+  doc.setTextColor(30, 30, 30);
+  doc.text(paymentDate, rightX + 30, ry);
+  ry += 7;
 
-  y = Math.max(y, ry) + 10;
+  y = Math.max(y, ry) + 14;
 
   // ──── Payment Details Table ────
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
   doc.text("Payment Details:", marginL, y);
-  y += 6;
+  y += 8;
 
   // Table
   const colW1 = contentW / 2;
