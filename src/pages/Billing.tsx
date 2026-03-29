@@ -143,6 +143,7 @@ export default function Billing() {
       queryClient.invalidateQueries({ queryKey: ["bills"] });
       queryClient.invalidateQueries({ queryKey: ["bills-stats"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-ledger"] });
     } catch (err: any) {
       toast.error(err.message);
     }
