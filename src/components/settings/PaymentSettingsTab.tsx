@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Save, Landmark, Plug, CreditCard } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SETTINGS_KEYS = {
   merchant: "merchant_payment_account_id",
@@ -22,6 +23,7 @@ export default function PaymentSettingsTab() {
   const [monthlyBillAccountId, setMonthlyBillAccountId] = useState("");
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
     queryKey: ["accounts-for-payment-settings"],
@@ -86,10 +88,10 @@ export default function PaymentSettingsTab() {
       await upsertSetting(SETTINGS_KEYS.merchant, merchantAccountId);
       await upsertSetting(SETTINGS_KEYS.connection, connectionAccountId);
       await upsertSetting(SETTINGS_KEYS.monthly_bill, monthlyBillAccountId);
-      toast.success("Payment settings saved");
+      toast.success(t.settings.paymentSettingsSaved);
       queryClient.invalidateQueries({ queryKey: ["system-settings-payment"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to save");
+      toast.error(err.message || t.settings.failedToSave);
     } finally {
       setSaving(false);
     }
@@ -107,10 +109,10 @@ export default function PaymentSettingsTab() {
       </div>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select account..." />
+          <SelectValue placeholder={t.settings.selectAccount} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">— No Account (Skip) —</SelectItem>
+          <SelectItem value="none">{t.settings.noAccountSkip}</SelectItem>
           {accounts?.map((acc) => (
             <SelectItem key={acc.id} value={acc.id}>
               {acc.code ? `[${acc.code}] ` : ""}{acc.name} ({acc.type})
@@ -128,10 +130,10 @@ export default function PaymentSettingsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Landmark className="h-5 w-5" />
-            Payment Receiving Ledger Settings
+            {t.settings.paymentSettingsTitle}
           </CardTitle>
           <CardDescription>
-            বিভিন্ন ধরনের পেমেন্ট কোন একাউন্ট/লেজারে জমা হবে সেটি সিলেক্ট করুন
+            {t.settings.paymentSettingsDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -145,22 +147,22 @@ export default function PaymentSettingsTab() {
                 <AccountSelect
                   value={merchantAccountId}
                   onChange={setMerchantAccountId}
-                  label="Merchant Payment Ledger"
-                  description="মার্চেন্ট পেমেন্ট (bKash, Nagad) ম্যাচ হলে এই একাউন্টে ক্রেডিট হবে"
+                  label={t.settings.merchantPaymentLedger}
+                  description={t.settings.merchantPaymentDesc}
                   icon={CreditCard}
                 />
                 <AccountSelect
                   value={connectionAccountId}
                   onChange={setConnectionAccountId}
-                  label="Connection Charge Ledger"
-                  description="নতুন কাস্টমারের কানেকশন চার্জ এই একাউন্টে জমা হবে"
+                  label={t.settings.connectionChargeLedger}
+                  description={t.settings.connectionChargeDesc}
                   icon={Plug}
                 />
                 <AccountSelect
                   value={monthlyBillAccountId}
                   onChange={setMonthlyBillAccountId}
-                  label="Monthly Bill / Internet Revenue Ledger"
-                  description="মাসিক ইন্টারনেট বিল পেমেন্ট এই একাউন্টে জমা হবে"
+                  label={t.settings.monthlyBillLedger}
+                  description={t.settings.monthlyBillDesc}
                   icon={Landmark}
                 />
               </div>
@@ -168,7 +170,7 @@ export default function PaymentSettingsTab() {
               <div className="flex justify-end pt-2">
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Settings
+                  {t.settings.saveSettings}
                 </Button>
               </div>
             </>

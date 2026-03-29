@@ -7,20 +7,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Save, BookOpen } from "lucide-react";
 import { toast } from "sonner";
-
-const LEDGER_SETTINGS = [
-  { key: "sales_income_account", label: "Sales Income Account", description: "সেল হলে যে ইনকাম অ্যাকাউন্টে ক্রেডিট হবে (Cr. Sales Income)", type: "income" },
-  { key: "sales_cash_account", label: "Sales Cash/Bank Account", description: "সেল পেমেন্ট যে ক্যাশ/ব্যাংক অ্যাকাউন্টে ডেবিট হবে (Dr. Cash)", type: "asset" },
-  { key: "purchase_expense_account", label: "Purchase/COGS Account", description: "পারচেজ হলে যে এক্সপেন্স অ্যাকাউন্টে ডেবিট হবে (Dr. COGS)", type: "expense" },
-  { key: "purchase_cash_account", label: "Purchase Cash/Bank Account", description: "পারচেজ পেমেন্ট যে ক্যাশ/ব্যাংক অ্যাকাউন্টে ক্রেডিট হবে (Cr. Cash)", type: "asset" },
-  { key: "service_income_account", label: "Service Income (ISP Bill)", description: "বিল পেমেন্ট / সার্ভিস ইনকাম যে অ্যাকাউন্টে ক্রেডিট হবে (Cr. Service Income)", type: "income" },
-  { key: "expense_cash_account", label: "Expense Cash/Bank Account", description: "খরচ হলে যে ক্যাশ/ব্যাংক অ্যাকাউন্টে ক্রেডিট হবে (Cr. Cash)", type: "asset" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LedgerSettingsTab() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const { t } = useLanguage();
+
+  const LEDGER_SETTINGS = [
+    { key: "sales_income_account", label: t.settings.salesIncomeAccount, description: t.settings.salesIncomeDesc, type: "income" },
+    { key: "sales_cash_account", label: t.settings.salesCashAccount, description: t.settings.salesCashDesc, type: "asset" },
+    { key: "purchase_expense_account", label: t.settings.purchaseExpenseAccount, description: t.settings.purchaseExpenseDesc, type: "expense" },
+    { key: "purchase_cash_account", label: t.settings.purchaseCashAccount, description: t.settings.purchaseCashDesc, type: "asset" },
+    { key: "service_income_account", label: t.settings.serviceIncomeAccount, description: t.settings.serviceIncomeDesc, type: "income" },
+    { key: "expense_cash_account", label: t.settings.expenseCashAccount, description: t.settings.expenseCashDesc, type: "asset" },
+  ];
 
   const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ["accounts-for-settings"],
@@ -56,9 +58,9 @@ export default function LedgerSettingsTab() {
         );
       }
       queryClient.invalidateQueries({ queryKey: ["ledger-settings"] });
-      toast.success("Ledger settings saved");
+      toast.success(t.settings.ledgerSettingsSaved);
     } catch {
-      toast.error("Failed to save settings");
+      toast.error(t.settings.failedToSave);
     } finally {
       setSaving(false);
     }
@@ -78,8 +80,8 @@ export default function LedgerSettingsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5" /> Ledger Account Mapping</CardTitle>
-        <CardDescription>সেলস, পারচেজ, বিল পেমেন্ট এবং খরচ কোন কোন লেজার অ্যাকাউন্টে পোস্ট হবে সেটি সেট করুন</CardDescription>
+        <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5" /> {t.settings.ledgerMappingTitle}</CardTitle>
+        <CardDescription>{t.settings.ledgerMappingDesc}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -88,7 +90,7 @@ export default function LedgerSettingsTab() {
               <Label>{setting.label}</Label>
               <Select value={values[setting.key] || ""} onValueChange={v => setValues({ ...values, [setting.key]: v })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select account..." />
+                  <SelectValue placeholder={t.settings.selectAccount} />
                 </SelectTrigger>
                 <SelectContent>
                   {getFilteredAccounts(setting.type).map((a: any) => (
@@ -105,7 +107,7 @@ export default function LedgerSettingsTab() {
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Save Ledger Settings
+            {t.settings.saveLedgerSettings}
           </Button>
         </div>
       </CardContent>
