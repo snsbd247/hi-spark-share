@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Users, Loader2, RefreshCw, Router, Target, Wallet, CreditCard,
   TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, DollarSign,
-  Wifi, WifiOff, CircleDollarSign, TicketCheck, Package,
+  Wifi, WifiOff, CircleDollarSign, TicketCheck, Package, MessageSquare,
 } from "lucide-react";
 import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
