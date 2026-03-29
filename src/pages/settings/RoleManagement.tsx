@@ -44,6 +44,7 @@ const MODULE_LABELS: Record<string, string> = {
   tickets: "Support Tickets",
   sms: "SMS & Reminders",
   accounting: "Accounting",
+  inventory: "Inventory & Sales",
   hr: "Human Resource (HR)",
   supplier: "Supplier Management",
   settings: "System Settings",

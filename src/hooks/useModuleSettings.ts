@@ -16,6 +16,7 @@ export const ALL_MODULES: ModuleConfig[] = [
   { key: "tickets", label: "Support Tickets", description: "Customer support ticket system with replies & tracking", defaultEnabled: true },
   { key: "sms", label: "SMS & Reminders", description: "SMS notifications, bill reminders & WhatsApp integration", defaultEnabled: true },
   { key: "accounting", label: "Accounting", description: "Chart of accounts, journal entries, trial balance, profit & loss, balance sheet", defaultEnabled: true },
+  { key: "inventory", label: "Inventory & Sales", description: "Product management, stock tracking, sales & invoicing", defaultEnabled: true },
   { key: "hr", label: "Human Resource (HR)", description: "Employee management, attendance, salary sheets, loans & provident fund", defaultEnabled: true },
   { key: "supplier", label: "Supplier Management", description: "Supplier profiles, purchase orders & supplier payments", defaultEnabled: true },
   { key: "reports", label: "Reports & Analytics", description: "Daily, financial, BTRC, sales & traffic reports", defaultEnabled: true },

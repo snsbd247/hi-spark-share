@@ -127,10 +127,11 @@ class DefaultSeeder extends Seeder
             'tickets'           => ['view', 'create', 'edit', 'delete'],
             'sms'               => ['view', 'create', 'edit', 'delete'],
             'accounting'        => ['view', 'create', 'edit', 'delete'],
+            'inventory'         => ['view', 'create', 'edit', 'delete'],
             'hr'                => ['view', 'create', 'edit', 'delete'],
             'supplier'          => ['view', 'create', 'edit', 'delete'],
-            'reports'           => ['view'],
-            'settings'          => ['view', 'edit'],
+            'reports'           => ['view', 'create', 'edit', 'delete'],
+            'settings'          => ['view', 'create', 'edit', 'delete'],
             'users'             => ['view', 'create', 'edit', 'delete'],
             'roles'             => ['view', 'create', 'edit', 'delete'],
         ];
