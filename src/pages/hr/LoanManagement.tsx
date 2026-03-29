@@ -32,17 +32,17 @@ export default function LoanManagement() {
   return (
     <DashboardLayout>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Loan Management</h1>
+         <h1 className="text-2xl font-bold">{t.sidebar.loans}</h1>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Loan</Button></DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />{t.common.add} {t.sidebar.loans}</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>New Loan</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t.common.add} {t.sidebar.loans}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}><SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger><SelectContent>{employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent></Select>
-              <Input placeholder="Amount" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              <Input placeholder="Monthly Deduction" type="number" value={form.monthly_deduction} onChange={(e) => setForm({ ...form, monthly_deduction: e.target.value })} />
-              <Input placeholder="Reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
-              <Button onClick={() => save.mutate()} disabled={!form.employee_id || !form.amount || save.isPending} className="w-full">{save.isPending ? "Saving..." : "Add Loan"}</Button>
+              <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}><SelectTrigger><SelectValue placeholder={t.sidebar.employees} /></SelectTrigger><SelectContent>{employees.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent></Select>
+              <Input placeholder={t.common.amount} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+              <Input placeholder={t.hr.monthlyDeduction} type="number" value={form.monthly_deduction} onChange={(e) => setForm({ ...form, monthly_deduction: e.target.value })} />
+              <Input placeholder={t.common.description} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+              <Button onClick={() => save.mutate()} disabled={!form.employee_id || !form.amount || save.isPending} className="w-full">{save.isPending ? t.common.loading : t.common.save}</Button>
             </div>
           </DialogContent>
         </Dialog>
