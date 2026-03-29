@@ -149,7 +149,7 @@ export default function SalarySheet() {
                       <TableCell><Badge variant={s.status === "paid" ? "default" : "outline"}>{s.status}</Badge></TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {s.status === "pending" && <Button size="sm" variant="outline" onClick={() => markPaid.mutate(s.id)}><CheckCircle className="h-3 w-3 mr-1" />Pay</Button>}
+                          {s.status === "pending" && <Button size="sm" variant="outline" onClick={() => markPaid.mutate(s.id)}><CheckCircle className="h-3 w-3 mr-1" />{t.hr.paySalary}</Button>}
                           <Button size="sm" variant="ghost" onClick={() => generatePaySlip(s)}><Download className="h-3 w-3 mr-1" />Slip</Button>
                         </div>
                       </TableCell>
