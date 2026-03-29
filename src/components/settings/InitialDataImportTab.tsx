@@ -368,7 +368,7 @@ export default function InitialDataImportTab() {
 
   const handleSeedOne = async (id: string) => {
     await seedFunctions[id]();
-    toast.success("ইম্পোর্ট সম্পন্ন!");
+    toast.success("Import completed!");
   };
 
   return (
