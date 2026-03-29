@@ -186,18 +186,19 @@ export default function Customers() {
             {totalItems} {t.customers.customersFound}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={bulkSyncCustomers} disabled={bulkSyncing}>
-            {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            {t.customers.syncAll}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={bulkSyncCustomers} disabled={bulkSyncing}>
+            {bulkSyncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            <span className="hidden sm:inline">{t.customers.syncAll}</span>
+            <span className="sm:hidden">Sync</span>
           </Button>
           {canCreate && (
             <>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" /> {t.billing.uploadExcel}
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t.billing.uploadExcel}</span>
               </Button>
-              <Button onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" /> {t.customers.addCustomer}
+              <Button size="sm" onClick={() => { setEditCustomer(null); setFormOpen(true); }}>
+                <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t.customers.addCustomer}</span>
               </Button>
             </>
           )}
