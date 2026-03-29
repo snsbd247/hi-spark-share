@@ -127,7 +127,7 @@ export default function Payments() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search customer or TrxID..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t.payments.searchPlaceholder} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
