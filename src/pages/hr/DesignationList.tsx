@@ -55,11 +55,11 @@ export default function DesignationList() {
         </Dialog>
       </div>
       <Card>
-        <CardHeader><CardTitle>Designations</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t.sidebar.designations}</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? <p className="text-center py-8 text-muted-foreground">Loading...</p> : (
+          {isLoading ? <p className="text-center py-8 text-muted-foreground">{t.common.loading}</p> : (
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Description</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>{t.common.name}</TableHead><TableHead>{t.common.description}</TableHead><TableHead>{t.common.status}</TableHead><TableHead>{t.common.actions}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {rows.map((d: any) => (
                   <TableRow key={d.id}>
