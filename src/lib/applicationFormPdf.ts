@@ -85,7 +85,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...textDark);
-    const truncated = value.length > Math.floor(w / 1.8) ? value.substring(0, Math.floor(w / 1.8)) + "…" : value;
+    const truncated = value.length > Math.floor(w / 1.8) ? value.substring(0, Math.floor(w / 1.8)) + ".." : value;
     doc.text(truncated || "-", x + 1.5, y + 6.5);
   };
 
