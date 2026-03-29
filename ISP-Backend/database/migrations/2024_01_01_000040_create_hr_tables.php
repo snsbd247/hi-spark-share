@@ -51,12 +51,12 @@ return new class extends Migration
         Schema::create('loans', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('employee_id');
-            $table->decimal('amount', 12, 2);
+            $table->decimal('amount', 12, 2)->default(0);
             $table->decimal('paid_amount', 12, 2)->default(0);
             $table->decimal('monthly_deduction', 12, 2)->default(0);
-            $table->date('loan_date');
+            $table->date('approved_date')->nullable();
             $table->string('status')->default('active'); // active, paid, cancelled
-            $table->text('note')->nullable();
+            $table->text('reason')->nullable();
             $table->timestamps();
 
             $table->foreign('employee_id')->references('id')->on('employees')->cascadeOnDelete();
