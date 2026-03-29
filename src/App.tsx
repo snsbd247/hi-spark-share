@@ -120,6 +120,7 @@ function App() {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <LanguageProvider>
             <CustomerAuthProvider>
               <BrandingProvider>
               <Routes>
