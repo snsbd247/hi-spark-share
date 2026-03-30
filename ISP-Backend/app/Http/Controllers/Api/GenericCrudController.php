@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class GenericCrudController extends Controller
 {
@@ -78,7 +79,7 @@ class GenericCrudController extends Controller
 
     protected function getModel(string $table)
     {
-        // Support both hyphens and underscores (frontend sends hyphens, map uses underscores)
+        // Support both hyphens and underscores
         $normalizedTable = str_replace('-', '_', $table);
         $modelClass = $this->tableModelMap[$normalizedTable] ?? $this->tableModelMap[$table] ?? null;
         if (!$modelClass) {
@@ -87,161 +88,256 @@ class GenericCrudController extends Controller
         return new $modelClass;
     }
 
+    /**
+     * Check if a column exists on the model's table (cached per request).
+     */
+    protected function tableHasColumn($model, string $column): bool
+    {
+        static $cache = [];
+        $tableName = $model->getTable();
+        if (!isset($cache[$tableName])) {
+            $cache[$tableName] = Schema::getColumnListing($tableName);
+        }
+        return in_array($column, $cache[$tableName]);
+    }
+
+    /**
+     * Get a safe default sort column for the model.
+     */
+    protected function getDefaultSortColumn($model): string
+    {
+        if ($this->tableHasColumn($model, 'created_at')) {
+            return 'created_at';
+        }
+        if ($this->tableHasColumn($model, 'name')) {
+            return 'name';
+        }
+        if ($this->tableHasColumn($model, 'id')) {
+            return 'id';
+        }
+        return $model->getKeyName();
+    }
+
     public function index(Request $request, string $table)
     {
-        $model = $this->getModel($table);
-        $query = $model->newQuery();
+        try {
+            $model = $this->getModel($table);
+            $query = $model->newQuery();
 
-        // Params to exclude from column filtering
-        $excluded = ['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit', 'with', 'paginate', 'sort_by', 'sort_dir', '_or'];
+            // Params to exclude from column filtering
+            $excluded = ['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit', 'with', 'paginate', 'sort_by', 'sort_dir', '_or'];
 
-        // Support filtering: ?column=value  or ?column__op=value
-        foreach ($request->except($excluded) as $key => $value) {
-            // Handle operator suffixes: column__gte, column__lte, column__neq, column__like, column__ilike, column__in
-            if (str_contains($key, '__')) {
-                [$col, $op] = explode('__', $key, 2);
-                if (!in_array($col, $model->getFillable())) continue;
-                switch ($op) {
-                    case 'gte': $query->where($col, '>=', $value); break;
-                    case 'lte': $query->where($col, '<=', $value); break;
-                    case 'gt': $query->where($col, '>', $value); break;
-                    case 'lt': $query->where($col, '<', $value); break;
-                    case 'neq': $query->where($col, '!=', $value); break;
-                    case 'like': $query->where($col, 'like', $value); break;
-                    case 'ilike': $query->where($col, 'like', $value); break;
-                    case 'in':
-                        $vals = is_array($value) ? $value : explode(',', $value);
-                        $query->whereIn($col, $vals);
-                        break;
+            // Support filtering: ?column=value  or ?column__op=value
+            foreach ($request->except($excluded) as $key => $value) {
+                if (str_contains($key, '__')) {
+                    [$col, $op] = explode('__', $key, 2);
+                    if (!in_array($col, $model->getFillable())) continue;
+                    switch ($op) {
+                        case 'gte': $query->where($col, '>=', $value); break;
+                        case 'lte': $query->where($col, '<=', $value); break;
+                        case 'gt': $query->where($col, '>', $value); break;
+                        case 'lt': $query->where($col, '<', $value); break;
+                        case 'neq': $query->where($col, '!=', $value); break;
+                        case 'like': $query->where($col, 'like', $value); break;
+                        case 'ilike': $query->where($col, 'like', $value); break;
+                        case 'in':
+                            $vals = is_array($value) ? $value : explode(',', $value);
+                            $query->whereIn($col, $vals);
+                            break;
+                    }
+                    continue;
                 }
-                continue;
-            }
 
-            if (in_array($key, $model->getFillable())) {
-                if ($value === 'null') {
-                    $query->whereNull($key);
-                } elseif (str_starts_with($value, 'not:')) {
-                    $query->where($key, '!=', substr($value, 4));
-                } elseif (str_starts_with($value, 'gte:')) {
-                    $query->where($key, '>=', substr($value, 4));
-                } elseif (str_starts_with($value, 'lte:')) {
-                    $query->where($key, '<=', substr($value, 4));
-                } elseif (str_starts_with($value, 'like:')) {
-                    $query->where($key, 'like', '%' . substr($value, 5) . '%');
-                } elseif (str_contains($value, ',')) {
-                    $query->whereIn($key, explode(',', $value));
-                } else {
-                    $query->where($key, $value);
-                }
-            }
-        }
-
-        // Support OR filters: ?_or=col1.eq.val1,col2.eq.val2
-        if ($request->has('_or')) {
-            $orString = $request->get('_or');
-            $query->where(function ($q) use ($orString, $model) {
-                $parts = preg_split('/,(?=[a-z_]+\.)/', $orString);
-                foreach ($parts as $part) {
-                    if (preg_match('/^([a-z_]+)\.(eq|neq|like|ilike|gte|lte|gt|lt)\.(.+)$/', $part, $m)) {
-                        $col = $m[1]; $op = $m[2]; $val = $m[3];
-                        if (!in_array($col, $model->getFillable())) continue;
-                        switch ($op) {
-                            case 'eq': $q->orWhere($col, $val); break;
-                            case 'neq': $q->orWhere($col, '!=', $val); break;
-                            case 'like': $q->orWhere($col, 'like', $val); break;
-                            case 'ilike': $q->orWhere($col, 'like', $val); break;
-                            case 'gte': $q->orWhere($col, '>=', $val); break;
-                            case 'lte': $q->orWhere($col, '<=', $val); break;
-                            case 'gt': $q->orWhere($col, '>', $val); break;
-                            case 'lt': $q->orWhere($col, '<', $val); break;
-                        }
+                if (in_array($key, $model->getFillable())) {
+                    if ($value === 'null') {
+                        $query->whereNull($key);
+                    } elseif (str_starts_with($value, 'not:')) {
+                        $query->where($key, '!=', substr($value, 4));
+                    } elseif (str_starts_with($value, 'gte:')) {
+                        $query->where($key, '>=', substr($value, 4));
+                    } elseif (str_starts_with($value, 'lte:')) {
+                        $query->where($key, '<=', substr($value, 4));
+                    } elseif (str_starts_with($value, 'like:')) {
+                        $query->where($key, 'like', '%' . substr($value, 5) . '%');
+                    } elseif (str_contains($value, ',')) {
+                        $query->whereIn($key, explode(',', $value));
+                    } else {
+                        $query->where($key, $value);
                     }
                 }
-            });
-        }
+            }
 
-        // Support ordering (both formats)
-        $sortBy = $request->get('sort_by', $request->get('order_by', 'created_at'));
-        $sortDir = $request->get('sort_dir', $request->get('order', 'desc'));
-        $query->orderBy($sortBy, $sortDir);
-
-        // Support select
-        if ($request->has('select')) {
-            $columns = explode(',', $request->get('select'));
-            $query->select(array_map('trim', $columns));
-        }
-
-        // Support eager loading
-        if ($request->has('with')) {
-            $relations = explode(',', $request->get('with'));
-            $query->with($relations);
-        }
-
-        // Support search
-        if ($request->has('search') && method_exists($model, 'getFillable')) {
-            $search = $request->get('search');
-            $searchable = array_intersect($model->getFillable(), [
-                'name', 'phone', 'email', 'customer_id', 'area', 'subject',
-                'ticket_id', 'employee_id', 'full_name', 'username', 'mobile',
-                'transaction_id', 'sender_phone', 'description', 'reference',
-            ]);
-            if (!empty($searchable)) {
-                $query->where(function ($q) use ($searchable, $search) {
-                    foreach ($searchable as $col) {
-                        $q->orWhere($col, 'like', "%{$search}%");
+            // Support OR filters
+            if ($request->has('_or')) {
+                $orString = $request->get('_or');
+                $query->where(function ($q) use ($orString, $model) {
+                    $parts = preg_split('/,(?=[a-z_]+\.)/', $orString);
+                    foreach ($parts as $part) {
+                        if (preg_match('/^([a-z_]+)\.(eq|neq|like|ilike|gte|lte|gt|lt)\.(.+)$/', $part, $m)) {
+                            $col = $m[1]; $op = $m[2]; $val = $m[3];
+                            if (!in_array($col, $model->getFillable())) continue;
+                            switch ($op) {
+                                case 'eq': $q->orWhere($col, $val); break;
+                                case 'neq': $q->orWhere($col, '!=', $val); break;
+                                case 'like': $q->orWhere($col, 'like', $val); break;
+                                case 'ilike': $q->orWhere($col, 'like', $val); break;
+                                case 'gte': $q->orWhere($col, '>=', $val); break;
+                                case 'lte': $q->orWhere($col, '<=', $val); break;
+                                case 'gt': $q->orWhere($col, '>', $val); break;
+                                case 'lt': $q->orWhere($col, '<', $val); break;
+                            }
+                        }
                     }
                 });
             }
-        }
 
-        $limit = $request->get('limit');
-        if ($limit) {
-            return response()->json($query->limit((int)$limit)->get());
-        }
+            // Support ordering — safe column detection
+            $defaultSort = $this->getDefaultSortColumn($model);
+            $sortBy = $request->get('sort_by', $request->get('order_by', $defaultSort));
+            $sortDir = $request->get('sort_dir', $request->get('order', 'desc'));
 
-        // Support non-paginated response
-        if ($request->get('paginate') === 'false' || $request->get('paginate') === '0') {
-            return response()->json($query->get());
-        }
+            // Handle comma-separated orderBy (e.g. "module, action") — chain them
+            $sortColumns = array_map('trim', explode(',', $sortBy));
+            foreach ($sortColumns as $sortCol) {
+                // Remove any '+' prefix (Supabase-style ascending)
+                $sortCol = ltrim($sortCol, '+');
+                if ($this->tableHasColumn($model, $sortCol)) {
+                    $query->orderBy($sortCol, $sortDir);
+                }
+            }
 
-        $perPage = $request->get('per_page', 50);
-        return response()->json($query->paginate($perPage));
+            // Support select — clean '+' symbols from column names
+            if ($request->has('select')) {
+                $selectStr = $request->get('select');
+                // Remove '+' symbols (Supabase-style relation hints)
+                $selectStr = str_replace('+', '', $selectStr);
+                $columns = array_map('trim', explode(',', $selectStr));
+                // Filter to only valid columns
+                $validColumns = array_filter($columns, fn($col) =>
+                    $this->tableHasColumn($model, $col) || $col === '*'
+                );
+                if (!empty($validColumns)) {
+                    $query->select($validColumns);
+                }
+            }
+
+            // Support eager loading
+            if ($request->has('with')) {
+                $relations = explode(',', $request->get('with'));
+                $validRelations = [];
+                foreach ($relations as $rel) {
+                    $rel = trim($rel);
+                    if ($rel && method_exists($model, $rel)) {
+                        $validRelations[] = $rel;
+                    }
+                }
+                if (!empty($validRelations)) {
+                    $query->with($validRelations);
+                }
+            }
+
+            // Support search
+            if ($request->has('search') && method_exists($model, 'getFillable')) {
+                $search = $request->get('search');
+                $searchable = array_intersect($model->getFillable(), [
+                    'name', 'phone', 'email', 'customer_id', 'area', 'subject',
+                    'ticket_id', 'employee_id', 'full_name', 'username', 'mobile',
+                    'transaction_id', 'sender_phone', 'description', 'reference',
+                    'setting_key', 'module', 'action', 'site_name',
+                ]);
+                if (!empty($searchable)) {
+                    $query->where(function ($q) use ($searchable, $search) {
+                        foreach ($searchable as $col) {
+                            $q->orWhere($col, 'like', "%{$search}%");
+                        }
+                    });
+                }
+            }
+
+            $limit = $request->get('limit');
+            if ($limit) {
+                return response()->json($query->limit((int)$limit)->get());
+            }
+
+            if ($request->get('paginate') === 'false' || $request->get('paginate') === '0') {
+                return response()->json($query->get());
+            }
+
+            $perPage = $request->get('per_page', 50);
+            return response()->json($query->paginate($perPage));
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("GenericCrud index error [{$table}]: " . $e->getMessage());
+            return response()->json([
+                'data' => [],
+                'message' => 'Error loading data',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal error',
+            ], 200); // Return 200 with empty data to prevent frontend crash
+        }
     }
 
     public function show(Request $request, string $table, string $id)
     {
-        $model = $this->getModel($table);
-        $query = $model->newQuery();
+        try {
+            $model = $this->getModel($table);
+            $query = $model->newQuery();
 
-        if ($request->has('with')) {
-            $relations = explode(',', $request->get('with'));
-            $query->with($relations);
+            if ($request->has('with')) {
+                $relations = explode(',', $request->get('with'));
+                $validRelations = [];
+                foreach ($relations as $rel) {
+                    $rel = trim($rel);
+                    if ($rel && method_exists($model, $rel)) {
+                        $validRelations[] = $rel;
+                    }
+                }
+                if (!empty($validRelations)) {
+                    $query->with($validRelations);
+                }
+            }
+
+            $record = $query->findOrFail($id);
+            return response()->json($record);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Record not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
         }
-
-        $record = $query->findOrFail($id);
-        return response()->json($record);
     }
 
     public function store(Request $request, string $table)
     {
-        $model = $this->getModel($table);
-        $record = $model->create($request->all());
-        return response()->json($record, 201);
+        try {
+            $model = $this->getModel($table);
+            $record = $model->create($request->all());
+            return response()->json($record, 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("GenericCrud store error [{$table}]: " . $e->getMessage());
+            return response()->json(['message' => 'Error creating record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
+        }
     }
 
     public function update(Request $request, string $table, string $id)
     {
-        $model = $this->getModel($table);
-        $record = $model->findOrFail($id);
-        $record->update($request->all());
-        return response()->json($record);
+        try {
+            $model = $this->getModel($table);
+            $record = $model->findOrFail($id);
+            $record->update($request->all());
+            return response()->json($record);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error updating record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
+        }
     }
 
     public function destroy(Request $request, string $table, string $id)
     {
-        $model = $this->getModel($table);
-        $record = $model->findOrFail($id);
-        $record->delete();
-        return response()->json(['success' => true]);
+        try {
+            $model = $this->getModel($table);
+            $record = $model->findOrFail($id);
+            $record->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error deleting record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
+        }
     }
 }

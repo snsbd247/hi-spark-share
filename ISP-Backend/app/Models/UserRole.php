@@ -9,7 +9,8 @@ class UserRole extends Model
 {
     use HasUuid;
 
-    public $timestamps = false;
+    // Enable timestamps — migration patch adds these columns
+    public $timestamps = true;
 
     protected $fillable = ['id', 'user_id', 'role', 'custom_role_id'];
 
