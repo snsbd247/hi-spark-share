@@ -158,7 +158,7 @@ class CustomerAuthController extends Controller
 
         // Include ledger if requested
         if ($request->boolean('include_ledger')) {
-            $response['ledger'] = $customer->ledger()->orderBy('date', 'desc')->get();
+            $response['ledger'] = $customer->ledgerEntries()->orderBy('date', 'desc')->get();
         }
 
         return response()->json($response);
