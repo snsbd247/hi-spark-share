@@ -209,7 +209,7 @@ export default function Packages() {
   const bulkSyncPackages = async () => {
     setBulkSyncing(true);
     try {
-      const { data } = await api.post('/mikrotik/bulk-sync-packages', {});
+      const data = await mikrotikCall('bulk-sync-packages', {});
       if (data.success) {
         const r = data.results;
         const parts = [];
