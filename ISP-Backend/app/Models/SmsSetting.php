@@ -17,7 +17,7 @@ class SmsSetting extends Model
         'updated_at',
     ];
 
-    protected $hidden = ['api_token', 'whatsapp_token'];
+    protected $hidden = ['whatsapp_token'];
 
     protected $casts = [
         'sms_on_bill_generate' => 'boolean',
