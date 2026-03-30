@@ -93,7 +93,6 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   );
 }
 
-
 export function useBranding() {
   return useContext(BrandingContext);
 }

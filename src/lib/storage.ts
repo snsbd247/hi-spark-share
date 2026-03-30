@@ -1,10 +1,6 @@
 /**
- * Storage Abstraction Layer
- * - Lovable preview → Supabase Storage
- * - cPanel / local → Laravel API storage
+ * Storage Abstraction Layer — Laravel API only
  */
-import { IS_LOVABLE } from '@/lib/environment';
-import { supabase } from '@/integrations/supabase/client';
 import api from '@/lib/api';
 import { API_PUBLIC_ROOT } from '@/lib/apiBaseUrl';
 
@@ -21,33 +17,6 @@ export interface StorageProvider {
   download(bucket: string, path: string): Promise<Blob>;
 }
 
-// ─── Supabase Storage Provider ─────────────────────────────────
-const supabaseStorage: StorageProvider = {
-  async upload(bucket, path, file, options = {}) {
-    const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: options.upsert });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-    return { publicUrl: urlData.publicUrl, path: data.path };
-  },
-  getPublicUrl(bucket, path) {
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
-  },
-  async delete(bucket, paths) {
-    await supabase.storage.from(bucket).remove(paths);
-  },
-  async list(bucket, prefix = '') {
-    const { data } = await supabase.storage.from(bucket).list(prefix);
-    return data || [];
-  },
-  async download(bucket, path) {
-    const { data, error } = await supabase.storage.from(bucket).download(path);
-    if (error) throw error;
-    return data;
-  },
-};
-
-// ─── Laravel Storage Provider ──────────────────────────────────
 const laravelStorage: StorageProvider = {
   async upload(bucket, path, file, options = {}) {
     const formData = new FormData();
@@ -80,31 +49,28 @@ const laravelStorage: StorageProvider = {
   },
 };
 
-// ─── Active Provider (auto-selected) ───────────────────────────
-const activeProvider: StorageProvider = IS_LOVABLE ? supabaseStorage : laravelStorage;
-
-// ─── Public API ─────────────────────────────────────────────────
+// Public API
 export async function uploadFile(bucket: string, path: string, file: File, options?: { upsert?: boolean }): Promise<UploadResult> {
-  return activeProvider.upload(bucket, path, file, options);
+  return laravelStorage.upload(bucket, path, file, options);
 }
 
 export function getPublicUrl(bucket: string, path: string): string {
-  return activeProvider.getPublicUrl(bucket, path);
+  return laravelStorage.getPublicUrl(bucket, path);
 }
 
 export async function deleteFiles(bucket: string, paths: string[]): Promise<void> {
-  return activeProvider.delete(bucket, paths);
+  return laravelStorage.delete(bucket, paths);
 }
 
 export async function listFiles(bucket: string, prefix?: string): Promise<{ name: string }[]> {
-  return activeProvider.list(bucket, prefix);
+  return laravelStorage.list(bucket, prefix);
 }
 
 export async function downloadFile(bucket: string, path: string): Promise<Blob> {
-  return activeProvider.download(bucket, path);
+  return laravelStorage.download(bucket, path);
 }
 
-// ─── Convenience helpers ────────────────────────────────────────
+// Convenience helpers
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${userId}/avatar.${ext}`;

@@ -1,6 +1,7 @@
 /**
  * API Base URL — Auto-detect from current domain
- * No hardcoded URL needed. Works on any domain automatically.
+ * Local dev → localhost:8000/api
+ * Production → /api/api (relative, works on any domain)
  */
 import { IS_LOCAL_DEV } from '@/lib/environment';
 

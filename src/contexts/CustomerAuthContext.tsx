@@ -1,6 +1,4 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
-import { IS_LOVABLE } from "@/lib/environment";
-import { supabase } from "@/integrations/supabase/client";
 import api from "@/lib/api";
 
 interface CustomerSession {
@@ -66,17 +64,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifySession = useCallback(async (sessionToken: string, extra: Record<string, any> = {}) => {
-    if (IS_LOVABLE) {
-      // Supabase: check customer_sessions table
-      const { data: session } = await supabase
-        .from('customer_sessions')
-        .select('*, customers(*)')
-        .eq('session_token', sessionToken)
-        .gte('expires_at', new Date().toISOString())
-        .single();
-      if (!session) throw new Error('Invalid session');
-      return { valid: true, customer: session.customers };
-    }
     const { data } = await api.post("/customer/verify", { session_token: sessionToken, ...extra });
     return data;
   }, []);
@@ -104,45 +91,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [verifySession]);
 
   const signIn = async (pppoeUsername: string, pppoePassword: string) => {
-    if (IS_LOVABLE) {
-      // Supabase: find customer by pppoe_username, verify password
-      const { data: cust, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('pppoe_username', pppoeUsername)
-        .single();
-      if (error || !cust) throw new Error('Customer not found');
-
-      // Simple password check (plaintext match for Lovable demo)
-      if (cust.pppoe_password !== pppoePassword) throw new Error('Invalid password');
-
-      const token = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await supabase.from('customer_sessions').insert({
-        customer_id: cust.id,
-        session_token: token,
-        expires_at: expiresAt,
-      });
-
-      const session: CustomerSession = {
-        id: cust.id,
-        customer_id: cust.customer_id,
-        name: cust.name,
-        phone: cust.phone,
-        area: cust.area,
-        status: cust.status,
-        monthly_bill: Number(cust.monthly_bill),
-        package_id: cust.package_id,
-        photo_url: cust.photo_url,
-        session_token: token,
-        expires_at: expiresAt,
-      };
-      setCustomer(session);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      return;
-    }
-
-    // Laravel
     const { data } = await api.post("/customer/login", {
       pppoe_username: pppoeUsername,
       pppoe_password: pppoePassword,
@@ -165,21 +113,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(async (): Promise<CustomerProfile | null> => {
     if (!customer?.session_token) return null;
     try {
-      if (IS_LOVABLE) {
-        const { data } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('id', customer.id)
-          .single();
-        return data as CustomerProfile;
-      }
       const data = await verifySession(customer.session_token, { include_profile: true });
       return data.customer as CustomerProfile;
     } catch (err: any) {
       if (err.response?.status === 401) signOut();
       return null;
     }
-  }, [customer?.session_token, customer?.id, signOut, verifySession]);
+  }, [customer?.session_token, signOut, verifySession]);
 
   return (
     <CustomerAuthContext.Provider value={{ customer, loading, signIn, signOut, fetchProfile }}>
