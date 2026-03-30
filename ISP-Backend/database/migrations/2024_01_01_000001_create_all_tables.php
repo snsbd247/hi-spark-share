@@ -561,7 +561,6 @@ return new class extends Migration {
             $table->string('email')->nullable();
             $table->string('address')->nullable();
             $table->decimal('total_due', 12, 2)->default(0);
-            $table->decimal('balance', 12, 2)->default(0);
             $table->string('status')->default('active');
             $table->timestamps();
         });
