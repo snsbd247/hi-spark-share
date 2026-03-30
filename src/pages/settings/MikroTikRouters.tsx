@@ -133,24 +133,37 @@ export default function MikroTikRouters() {
     setTesting(router.id);
     try {
       const { data, error } = await supabase.functions.invoke("mikrotik-sync/test-connection", {
-        body: {
-          ip_address: router.ip_address,
-          username: router.username,
-          password: router.password,
-          api_port: router.api_port,
-        },
+        body: { ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port },
       });
       if (error) throw error;
+      if (data?.success) toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
+      else toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
+    } catch (err: any) { toast.error(`Test failed: ${err.message}`); }
+    finally { setTesting(null); }
+  };
+
+  const importUsers = async (router: any) => {
+    setImporting(`users-${router.id}`);
+    try {
+      const { data } = await api.post('/mikrotik/import-users', { router_id: router.id });
       if (data?.success) {
-        toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
-      } else {
-        toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
-      }
-    } catch (err: any) {
-      toast.error(`Test failed: ${err.message}`);
-    } finally {
-      setTesting(null);
-    }
+        toast.success(`Imported ${data.imported} customers, skipped ${data.skipped}`);
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+      } else toast.error(data?.error || "Import failed");
+    } catch (err: any) { toast.error(`Import failed: ${err.message}`); }
+    finally { setImporting(null); }
+  };
+
+  const importPackages = async (router: any) => {
+    setImporting(`packages-${router.id}`);
+    try {
+      const { data } = await api.post('/mikrotik/import-packages', { router_id: router.id });
+      if (data?.success) {
+        toast.success(`Imported ${data.imported} packages, skipped ${data.skipped}`);
+        queryClient.invalidateQueries({ queryKey: ["packages"] });
+      } else toast.error(data?.error || "Import failed");
+    } catch (err: any) { toast.error(`Import failed: ${err.message}`); }
+    finally { setImporting(null); }
   };
 
   const testFormConnection = async () => {
