@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { IS_LOVABLE } from "@/lib/environment";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,15 @@ export default function Customers() {
   const bulkSyncCustomers = async () => {
     setBulkSyncing(true);
     try {
-      const { data } = await api.post('/mikrotik/sync-all', {});
+      let data: any;
+      if (IS_LOVABLE) {
+        const res = await supabase.functions.invoke('mikrotik-sync/sync-all', { body: {} });
+        if (res.error) throw new Error(res.error.message || 'Sync failed');
+        data = res.data;
+      } else {
+        const res = await api.post('/mikrotik/sync-all', {});
+        data = res.data;
+      }
       if (data.success) {
         const r = data.results;
         const parts = [];
