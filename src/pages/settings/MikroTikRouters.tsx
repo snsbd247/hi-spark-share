@@ -130,16 +130,24 @@ export default function MikroTikRouters() {
   };
 
   const testConnection = async (router: any) => {
+    if (!router.password) {
+      toast.error("Router password is not available. Please edit the router and re-enter the password, then test.");
+      return;
+    }
     setTesting(router.id);
     try {
-      const { data, error } = await supabase.functions.invoke("mikrotik-sync/test-connection", {
-        body: { ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port },
+      const { data: resp } = await api.post('/mikrotik/test-connection', {
+        host: router.ip_address,
+        username: router.username,
+        password: router.password,
+        port: router.api_port || 8728,
       });
-      if (error) throw error;
-      if (data?.success) toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
-      else toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
-    } catch (err: any) { toast.error(`Test failed: ${err.message}`); }
-    finally { setTesting(null); }
+      if (resp?.success) toast.success(resp.message || "Connected successfully!");
+      else toast.error(resp?.message || "Connection failed");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message;
+      toast.error(`Test failed: ${msg}`);
+    } finally { setTesting(null); }
   };
 
   const importUsers = async (router: any) => {
