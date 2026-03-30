@@ -309,7 +309,7 @@ class DefaultSeeder extends Seeder
         }
     }
 
-    // ── Permissions ──────────────────────────────────────
+    // ── Permissions & Role-Permission Mapping ───────────
     private function seedPermissions(): void
     {
         $modules = [
@@ -318,12 +318,106 @@ class DefaultSeeder extends Seeder
             'supplier', 'reports', 'settings', 'users', 'roles',
         ];
 
+        $permissionIds = [];
         foreach ($modules as $module) {
             foreach (['view', 'create', 'edit', 'delete'] as $action) {
-                Permission::firstOrCreate(
+                $perm = Permission::firstOrCreate(
                     ['module' => $module, 'action' => $action],
                     ['description' => ucfirst($action) . ' ' . str_replace('_', ' ', $module)]
                 );
+                $permissionIds["{$module}.{$action}"] = $perm->id;
+            }
+        }
+
+        // Now assign permissions to roles
+        $this->seedRolePermissions($permissionIds, $modules);
+    }
+
+    private function seedRolePermissions(array $permissionIds, array $modules): void
+    {
+        // Skip if already seeded
+        if (\App\Models\RolePermission::count() > 0) return;
+
+        $roles = CustomRole::all()->keyBy('name');
+
+        // Super Admin & Admin → all permissions
+        foreach (['Super Admin', 'Admin'] as $roleName) {
+            if (!isset($roles[$roleName])) continue;
+            foreach ($permissionIds as $permId) {
+                \App\Models\RolePermission::create([
+                    'role_id' => $roles[$roleName]->id,
+                    'permission_id' => $permId,
+                ]);
+            }
+        }
+
+        // Manager → all except users, roles, settings delete
+        if (isset($roles['Manager'])) {
+            $managerExclude = ['users.create', 'users.delete', 'roles.create', 'roles.edit', 'roles.delete', 'settings.delete'];
+            foreach ($permissionIds as $key => $permId) {
+                if (!in_array($key, $managerExclude)) {
+                    \App\Models\RolePermission::create([
+                        'role_id' => $roles['Manager']->id,
+                        'permission_id' => $permId,
+                    ]);
+                }
+            }
+        }
+
+        // Staff → view all + create/edit on core modules
+        if (isset($roles['Staff'])) {
+            $staffModules = ['customers', 'billing', 'payments', 'merchant_payments', 'tickets', 'sms'];
+            foreach ($permissionIds as $key => $permId) {
+                [$mod, $act] = explode('.', $key);
+                if ($act === 'view' || in_array($mod, $staffModules)) {
+                    \App\Models\RolePermission::create([
+                        'role_id' => $roles['Staff']->id,
+                        'permission_id' => $permId,
+                    ]);
+                }
+            }
+        }
+
+        // Operator → view all + create/edit customers, billing, payments, tickets
+        if (isset($roles['Operator'])) {
+            $opModules = ['customers', 'billing', 'payments', 'tickets'];
+            foreach ($permissionIds as $key => $permId) {
+                [$mod, $act] = explode('.', $key);
+                if ($act === 'view' || (in_array($mod, $opModules) && $act !== 'delete')) {
+                    \App\Models\RolePermission::create([
+                        'role_id' => $roles['Operator']->id,
+                        'permission_id' => $permId,
+                    ]);
+                }
+            }
+        }
+
+        // Technician → view customers, tickets + create/edit tickets
+        if (isset($roles['Technician'])) {
+            foreach ($permissionIds as $key => $permId) {
+                [$mod, $act] = explode('.', $key);
+                if (($mod === 'customers' && $act === 'view') ||
+                    ($mod === 'tickets') ||
+                    ($mod === 'reports' && $act === 'view')) {
+                    \App\Models\RolePermission::create([
+                        'role_id' => $roles['Technician']->id,
+                        'permission_id' => $permId,
+                    ]);
+                }
+            }
+        }
+
+        // Accountant → accounting, payments, billing, expenses, reports, supplier, inventory, hr
+        if (isset($roles['Accountant'])) {
+            $accModules = ['accounting', 'payments', 'billing', 'merchant_payments', 'reports', 'supplier', 'inventory', 'hr'];
+            foreach ($permissionIds as $key => $permId) {
+                [$mod, $act] = explode('.', $key);
+                if (in_array($mod, $accModules) || ($act === 'view' && in_array($mod, ['customers']))) {
+                    \App\Models\RolePermission::create([
+                        'role_id' => $roles['Accountant']->id,
+                        'permission_id' => $permId,
+                    ]);
+                }
             }
         }
     }
