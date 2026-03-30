@@ -92,8 +92,31 @@ class GenericCrudController extends Controller
         $model = $this->getModel($table);
         $query = $model->newQuery();
 
-        // Support filtering: ?column=value
-        foreach ($request->except(['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit', 'with']) as $key => $value) {
+        // Params to exclude from column filtering
+        $excluded = ['page', 'per_page', 'order', 'order_by', 'select', 'search', 'limit', 'with', 'paginate', 'sort_by', 'sort_dir', '_or'];
+
+        // Support filtering: ?column=value  or ?column__op=value
+        foreach ($request->except($excluded) as $key => $value) {
+            // Handle operator suffixes: column__gte, column__lte, column__neq, column__like, column__ilike, column__in
+            if (str_contains($key, '__')) {
+                [$col, $op] = explode('__', $key, 2);
+                if (!in_array($col, $model->getFillable())) continue;
+                switch ($op) {
+                    case 'gte': $query->where($col, '>=', $value); break;
+                    case 'lte': $query->where($col, '<=', $value); break;
+                    case 'gt': $query->where($col, '>', $value); break;
+                    case 'lt': $query->where($col, '<', $value); break;
+                    case 'neq': $query->where($col, '!=', $value); break;
+                    case 'like': $query->where($col, 'like', $value); break;
+                    case 'ilike': $query->where($col, 'like', $value); break;
+                    case 'in':
+                        $vals = is_array($value) ? $value : explode(',', $value);
+                        $query->whereIn($col, $vals);
+                        break;
+                }
+                continue;
+            }
+
             if (in_array($key, $model->getFillable())) {
                 if ($value === 'null') {
                     $query->whereNull($key);
@@ -113,15 +136,39 @@ class GenericCrudController extends Controller
             }
         }
 
-        // Support ordering
-        $orderBy = $request->get('order_by', 'created_at');
-        $order = $request->get('order', 'desc');
-        $query->orderBy($orderBy, $order);
+        // Support OR filters: ?_or=col1.eq.val1,col2.eq.val2
+        if ($request->has('_or')) {
+            $orString = $request->get('_or');
+            $query->where(function ($q) use ($orString, $model) {
+                $parts = preg_split('/,(?=[a-z_]+\.)/', $orString);
+                foreach ($parts as $part) {
+                    if (preg_match('/^([a-z_]+)\.(eq|neq|like|ilike|gte|lte|gt|lt)\.(.+)$/', $part, $m)) {
+                        $col = $m[1]; $op = $m[2]; $val = $m[3];
+                        if (!in_array($col, $model->getFillable())) continue;
+                        switch ($op) {
+                            case 'eq': $q->orWhere($col, $val); break;
+                            case 'neq': $q->orWhere($col, '!=', $val); break;
+                            case 'like': $q->orWhere($col, 'like', $val); break;
+                            case 'ilike': $q->orWhere($col, 'like', $val); break;
+                            case 'gte': $q->orWhere($col, '>=', $val); break;
+                            case 'lte': $q->orWhere($col, '<=', $val); break;
+                            case 'gt': $q->orWhere($col, '>', $val); break;
+                            case 'lt': $q->orWhere($col, '<', $val); break;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Support ordering (both formats)
+        $sortBy = $request->get('sort_by', $request->get('order_by', 'created_at'));
+        $sortDir = $request->get('sort_dir', $request->get('order', 'desc'));
+        $query->orderBy($sortBy, $sortDir);
 
         // Support select
         if ($request->has('select')) {
             $columns = explode(',', $request->get('select'));
-            $query->select($columns);
+            $query->select(array_map('trim', $columns));
         }
 
         // Support eager loading
@@ -150,6 +197,11 @@ class GenericCrudController extends Controller
         $limit = $request->get('limit');
         if ($limit) {
             return response()->json($query->limit((int)$limit)->get());
+        }
+
+        // Support non-paginated response
+        if ($request->get('paginate') === 'false' || $request->get('paginate') === '0') {
+            return response()->json($query->get());
         }
 
         $perPage = $request->get('per_page', 50);
