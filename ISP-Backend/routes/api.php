@@ -343,6 +343,13 @@ Route::middleware(['admin.auth', 'tenant'])->group(function () {
     });
 
     // ══════════════════════════════════════════════════════
+    // ── BACKUP & RESTORE — module: settings ─────────────
+    // ══════════════════════════════════════════════════════
+    Route::middleware('check.permission:settings,view')->group(function () {
+        Route::post('/backup-restore', [BackupRestoreController::class, 'handle']);
+    });
+
+    // ══════════════════════════════════════════════════════
     // ── STORAGE (no specific permission, admin only) ────
     // ══════════════════════════════════════════════════════
     Route::post('/storage/upload', [StorageController::class, 'upload']);
