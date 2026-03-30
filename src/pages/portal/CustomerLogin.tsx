@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
-import { useTenantBranding } from "@/contexts/TenantBrandingContext";
+import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ export default function CustomerLogin() {
   const [pppoePassword, setPppoePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useCustomerAuth();
-  const { branding } = useTenantBranding();
+  const { branding } = useBranding();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
