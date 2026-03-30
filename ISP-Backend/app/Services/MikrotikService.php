@@ -427,4 +427,183 @@ class MikrotikService
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    /**
+     * Import PPPoE secrets from router as customers.
+     */
+    public function importUsersFromRouter(string $routerId): array
+    {
+        $router = MikrotikRouter::findOrFail($routerId);
+        $conn = $this->connect($router);
+
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $response = $this->sendCommand($conn, ['/ppp/secret/print']);
+            $secrets = $this->parseItems($response);
+
+            $imported = 0;
+            $skipped = 0;
+            $errors = [];
+
+            foreach ($secrets as $secret) {
+                $username = $secret['name'] ?? null;
+                if (!$username) { $skipped++; continue; }
+
+                // Check if already exists
+                $existing = Customer::where('pppoe_username', $username)->first();
+                if ($existing) { $skipped++; continue; }
+
+                // Generate customer_id
+                $lastCustomer = Customer::orderBy('customer_id', 'desc')->first();
+                $nextId = $lastCustomer ? (intval($lastCustomer->customer_id) + 1) : 100001;
+                $customerId = str_pad($nextId, 6, '0', STR_PAD_LEFT);
+
+                try {
+                    Customer::create([
+                        'customer_id' => $customerId,
+                        'name' => $username,
+                        'phone' => '01000000000',
+                        'area' => 'Imported',
+                        'pppoe_username' => $username,
+                        'pppoe_password' => $secret['password'] ?? '',
+                        'ip_address' => $secret['remote-address'] ?? null,
+                        'router_id' => $routerId,
+                        'status' => ($secret['disabled'] ?? 'false') === 'true' ? 'inactive' : 'active',
+                        'connection_status' => ($secret['disabled'] ?? 'false') === 'true' ? 'disabled' : 'active',
+                        'mikrotik_sync_status' => 'synced',
+                    ]);
+                    $imported++;
+                } catch (\Exception $e) {
+                    $errors[] = "Failed to import {$username}: " . $e->getMessage();
+                }
+            }
+
+            fclose($conn->socket);
+
+            return [
+                'success' => true,
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'errors' => $errors,
+                'total' => count($secrets),
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Import PPPoE profiles from router as packages.
+     */
+    public function importPackagesFromRouter(string $routerId): array
+    {
+        $router = MikrotikRouter::findOrFail($routerId);
+        $conn = $this->connect($router);
+
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $response = $this->sendCommand($conn, ['/ppp/profile/print']);
+            $profiles = $this->parseItems($response);
+
+            $imported = 0;
+            $skipped = 0;
+
+            foreach ($profiles as $profile) {
+                $name = $profile['name'] ?? null;
+                if (!$name || $name === 'default' || $name === 'default-encryption') {
+                    $skipped++;
+                    continue;
+                }
+
+                // Check if already exists
+                $existing = Package::where('mikrotik_profile_name', $name)
+                    ->orWhere('name', $name)
+                    ->first();
+                if ($existing) { $skipped++; continue; }
+
+                // Parse rate-limit (e.g., "10M/20M" or "10000000/20000000")
+                $rateLimit = $profile['rate-limit'] ?? '';
+                $download = 0;
+                $upload = 0;
+                if (preg_match('/^(\d+)[kKmM]?\/(\d+)[kKmM]?/', $rateLimit, $m)) {
+                    $upload = $this->parseSpeed($m[1], $rateLimit);
+                    $download = $this->parseSpeed($m[2], $rateLimit);
+                }
+
+                Package::create([
+                    'name' => $name,
+                    'speed' => ($download ?: 10) . ' Mbps',
+                    'monthly_price' => 0,
+                    'download_speed' => $download ?: 10,
+                    'upload_speed' => $upload ?: 10,
+                    'mikrotik_profile_name' => $name,
+                    'router_id' => $routerId,
+                    'is_active' => true,
+                ]);
+                $imported++;
+            }
+
+            fclose($conn->socket);
+
+            return [
+                'success' => true,
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'total' => count($profiles),
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Parse MikroTik API response items into associative arrays.
+     */
+    protected function parseItems(array $response): array
+    {
+        $items = [];
+        $current = [];
+        foreach ($response as $line) {
+            if ($line === '!re') {
+                if (!empty($current)) $items[] = $current;
+                $current = [];
+            } elseif (str_starts_with($line, '=') && str_contains($line, '=')) {
+                $withoutPrefix = substr($line, 1); // remove leading =
+                $eqPos = strpos($withoutPrefix, '=');
+                if ($eqPos !== false) {
+                    $key = substr($withoutPrefix, 0, $eqPos);
+                    $val = substr($withoutPrefix, $eqPos + 1);
+                    if ($key !== '.id') $current[$key] = $val;
+                }
+            }
+        }
+        if (!empty($current)) $items[] = $current;
+        return $items;
+    }
+
+    /**
+     * Parse speed value from MikroTik rate-limit string.
+     */
+    protected function parseSpeed(string $value, string $fullRate): int
+    {
+        $num = intval($value);
+        if (stripos($fullRate, 'M') !== false || stripos($fullRate, 'm') !== false) {
+            return $num; // already in Mbps
+        }
+        if (stripos($fullRate, 'k') !== false || stripos($fullRate, 'K') !== false) {
+            return max(1, intval($num / 1000));
+        }
+        // Assume bits per second if raw number > 1000000
+        if ($num > 1000000) return intval($num / 1000000);
+        if ($num > 1000) return intval($num / 1000);
+        return $num;
+    }
 }

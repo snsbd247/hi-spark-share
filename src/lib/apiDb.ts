@@ -212,13 +212,32 @@ class QueryBuilder<T = any> {
       if (this._operation === "select") {
         const params = this._buildParams();
         const { data: response } = await api.get(`/${tablePath}`, { params });
-        let rows = response.data || response;
-        if (!Array.isArray(rows)) rows = [rows];
+        // Handle both paginated ({data: [...], total: N}) and plain array responses
+        let rows: any[];
+        if (Array.isArray(response)) {
+          rows = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          rows = response.data;
+        } else if (response?.data) {
+          rows = [response.data];
+        } else if (response && typeof response === 'object' && !Array.isArray(response)) {
+          // Single object response (not paginated, not array)
+          if (response.current_page !== undefined) {
+            // Empty paginated response
+            rows = [];
+          } else {
+            rows = [response];
+          }
+        } else {
+          rows = [];
+        }
 
-        if (this._headMode) return { data: null, error: null, count: rows.length };
+        const totalCount = response?.total ?? rows.length;
+
+        if (this._headMode) return { data: null, error: null, count: totalCount };
         if (this._singleRow) return { data: rows[0] || null, error: null };
         if (this._maybeSingleRow) return { data: rows[0] || null, error: null };
-        return { data: rows, error: null, count: rows.length };
+        return { data: rows, error: null, count: totalCount };
       }
 
       if (this._operation === "insert") {

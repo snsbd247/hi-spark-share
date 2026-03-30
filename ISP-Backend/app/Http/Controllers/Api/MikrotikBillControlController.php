@@ -158,4 +158,24 @@ class MikrotikBillControlController extends Controller
             'routers' => $routerList,
         ]);
     }
+
+    /**
+     * POST /api/mikrotik/import-users — Import PPPoE secrets as customers
+     */
+    public function importUsers(Request $request)
+    {
+        $request->validate(['router_id' => 'required|uuid|exists:mikrotik_routers,id']);
+        $result = $this->mikrotikService->importUsersFromRouter($request->router_id);
+        return response()->json($result);
+    }
+
+    /**
+     * POST /api/mikrotik/import-packages — Import PPPoE profiles as packages
+     */
+    public function importPackages(Request $request)
+    {
+        $request->validate(['router_id' => 'required|uuid|exists:mikrotik_routers,id']);
+        $result = $this->mikrotikService->importPackagesFromRouter($request->router_id);
+        return response()->json($result);
+    }
 }

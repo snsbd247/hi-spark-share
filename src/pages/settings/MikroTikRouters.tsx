@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -16,7 +17,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server, Wifi } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle, Server, Wifi, Download, Users, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -28,6 +32,7 @@ export default function MikroTikRouters() {
   const [deleteRouter, setDeleteRouter] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
+  const [importing, setImporting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", ip_address: "", username: "admin", password: "", api_port: "8728", description: "",
@@ -128,24 +133,37 @@ export default function MikroTikRouters() {
     setTesting(router.id);
     try {
       const { data, error } = await supabase.functions.invoke("mikrotik-sync/test-connection", {
-        body: {
-          ip_address: router.ip_address,
-          username: router.username,
-          password: router.password,
-          api_port: router.api_port,
-        },
+        body: { ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port },
       });
       if (error) throw error;
+      if (data?.success) toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
+      else toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
+    } catch (err: any) { toast.error(`Test failed: ${err.message}`); }
+    finally { setTesting(null); }
+  };
+
+  const importUsers = async (router: any) => {
+    setImporting(`users-${router.id}`);
+    try {
+      const { data } = await api.post('/mikrotik/import-users', { router_id: router.id });
       if (data?.success) {
-        toast.success(`Connected! Identity: ${data.identity}, Version: ${data.version}, Uptime: ${data.uptime}`);
-      } else {
-        toast.error(`Connection failed: ${data?.error || "Unknown error"}`);
-      }
-    } catch (err: any) {
-      toast.error(`Test failed: ${err.message}`);
-    } finally {
-      setTesting(null);
-    }
+        toast.success(`Imported ${data.imported} customers, skipped ${data.skipped}`);
+        queryClient.invalidateQueries({ queryKey: ["customers"] });
+      } else toast.error(data?.error || "Import failed");
+    } catch (err: any) { toast.error(`Import failed: ${err.message}`); }
+    finally { setImporting(null); }
+  };
+
+  const importPackages = async (router: any) => {
+    setImporting(`packages-${router.id}`);
+    try {
+      const { data } = await api.post('/mikrotik/import-packages', { router_id: router.id });
+      if (data?.success) {
+        toast.success(`Imported ${data.imported} packages, skipped ${data.skipped}`);
+        queryClient.invalidateQueries({ queryKey: ["packages"] });
+      } else toast.error(data?.error || "Import failed");
+    } catch (err: any) { toast.error(`Import failed: ${err.message}`); }
+    finally { setImporting(null); }
   };
 
   const testFormConnection = async () => {
@@ -230,6 +248,21 @@ export default function MikroTikRouters() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => testConnection(router)} disabled={testing === router.id}>
                         {testing === router.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!!importing}>
+                            {importing?.includes(router.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => importUsers(router)}>
+                            <Users className="h-4 w-4 mr-2" /> Import Customers
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => importPackages(router)}>
+                            <Package className="h-4 w-4 mr-2" /> Import Packages
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(router)}><Pencil className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleStatus(router)}>
                         {router.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -249,7 +282,10 @@ export default function MikroTikRouters() {
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editRouter ? "Edit Router" : "Add Router"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editRouter ? "Edit Router" : "Add Router"}</DialogTitle>
+            <DialogDescription>Configure MikroTik router connection settings</DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
