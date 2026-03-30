@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Loader2, Search, Ban, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AdminUsers() {
@@ -48,39 +47,31 @@ export default function AdminUsers() {
   const { data: customRoles } = useQuery({
     queryKey: ["custom-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("custom_roles").select("*").order("name");
-      if (error) throw error;
-      return data;
+      const { data } = await api.get("/custom-roles");
+      return Array.isArray(data) ? data : data?.data || [];
     },
   });
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("admin_token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-users/list", {
-        body: {},
-        headers: getAuthHeaders(),
-      });
-      if (error) throw error;
-      return data?.users || [];
+      const { data } = await api.get("/admin-users");
+      return Array.isArray(data) ? data : data?.data || [];
     },
     enabled: !!user,
   });
 
   const filtered = users?.filter((u: any) => {
     // Non-super_admin users cannot see super_admin users
-    if (!canViewSuperAdmins && u.roles?.includes("super_admin")) return false;
+    const userRole = u.role || u.roles?.[0] || "";
+    if (!canViewSuperAdmins && (userRole === "super_admin" || u.roles?.includes("super_admin"))) return false;
     const matchesSearch =
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.username?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.staff_id?.toLowerCase().includes(search.toLowerCase());
-    const isDisabled = u.disabled || u.banned;
+    const userStatus = u.status || "active";
+    const isDisabled = userStatus === "disabled" || userStatus === "inactive" || u.disabled || u.banned;
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && !isDisabled) ||
@@ -104,7 +95,7 @@ export default function AdminUsers() {
       mobile: u.mobile || "",
       address: u.address || "",
       staff_id: u.staff_id || "",
-      role: u.roles?.[0] || "staff",
+      role: u.role || u.roles?.[0] || "staff",
       custom_role_id: u.custom_role_id || "",
     });
     setFormOpen(true);
@@ -115,49 +106,38 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       if (editUser) {
-        const { data, error } = await supabase.functions.invoke("admin-users/update", {
-            body: {
-              user_id: editUser.id,
-              full_name: form.full_name,
-              username: form.username,
-              email: form.email,
-              password: form.password || undefined,
-              mobile: form.mobile,
-              address: form.address,
-              staff_id: form.staff_id,
-              role: form.role,
-              custom_role_id: form.custom_role_id || undefined,
-            },
-            headers: getAuthHeaders(),
+        await api.put(`/admin-users/${editUser.id}`, {
+          full_name: form.full_name,
+          username: form.username,
+          email: form.email,
+          password: form.password || undefined,
+          mobile: form.mobile,
+          address: form.address,
+          staff_id: form.staff_id,
+          role: form.role,
+          custom_role_id: form.custom_role_id || undefined,
         });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
         toast.success("User updated");
       } else {
         if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
         if (!form.username) { toast.error("Username is required"); setLoading(false); return; }
-        const { data, error } = await supabase.functions.invoke("admin-users/create", {
-            body: {
-              full_name: form.full_name,
-              username: form.username,
-              email: form.email,
-              password: form.password,
-              mobile: form.mobile,
-              address: form.address,
-              staff_id: form.staff_id,
-              role: form.role,
-              custom_role_id: form.custom_role_id || undefined,
-            },
-            headers: getAuthHeaders(),
+        await api.post("/admin-users", {
+          full_name: form.full_name,
+          username: form.username,
+          email: form.email,
+          password: form.password,
+          mobile: form.mobile,
+          address: form.address,
+          staff_id: form.staff_id,
+          role: form.role,
+          custom_role_id: form.custom_role_id || undefined,
         });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
         toast.success("User created");
       }
       setFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -166,34 +146,29 @@ export default function AdminUsers() {
   const handleDelete = async () => {
     if (!deleteUser) return;
     try {
-      const { data, error } = await supabase.functions.invoke("admin-users/delete", {
-        body: { user_id: deleteUser.id },
-        headers: getAuthHeaders(),
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      await api.delete(`/admin-users/${deleteUser.id}`);
       toast.success("User deleted");
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || err.message);
     } finally {
       setDeleteUser(null);
     }
   };
 
   const toggleDisable = async (u: any) => {
-    const newDisabled = !u.disabled && !u.banned;
+    const currentStatus = u.status || "active";
+    const newStatus = currentStatus === "active" ? "disabled" : "active";
     try {
-      const { data, error } = await supabase.functions.invoke("admin-users/update", {
-        body: { user_id: u.id, disabled: newDisabled, full_name: u.full_name, username: u.username, mobile: u.mobile, address: u.address, staff_id: u.staff_id, role: u.roles?.[0] || "staff" },
-        headers: getAuthHeaders(),
+      await api.put(`/admin-users/${u.id}`, {
+        full_name: u.full_name,
+        username: u.username,
+        status: newStatus,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(`User ${newDisabled ? "disabled" : "enabled"}`);
+      toast.success(`User ${newStatus === "disabled" ? "disabled" : "enabled"}`);
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || err.message);
     }
   };
 
@@ -214,7 +189,13 @@ export default function AdminUsers() {
       const cr = customRoles.find((r: any) => r.id === u.custom_role_id);
       if (cr) return cr.name;
     }
-    return u.roles?.[0] || "No role";
+    return u.role || u.roles?.[0] || "No role";
+  };
+
+  const getUserRole = (u: any) => u.role || u.roles?.[0] || "";
+  const isUserDisabled = (u: any) => {
+    const s = u.status || "active";
+    return s === "disabled" || s === "inactive" || u.disabled || u.banned;
   };
 
   return (
@@ -271,13 +252,13 @@ export default function AdminUsers() {
                   <TableCell>{u.mobile || "—"}</TableCell>
                   <TableCell className="font-mono text-sm">{u.staff_id || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={roleColor(u.roles?.[0] || "")}>
+                    <Badge variant="outline" className={roleColor(getUserRole(u))}>
                       {getRoleName(u)}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={u.disabled || u.banned ? "secondary" : "default"}>
-                      {u.disabled || u.banned ? "Disabled" : "Active"}
+                    <Badge variant={isUserDisabled(u) ? "secondary" : "default"}>
+                      {isUserDisabled(u) ? "Disabled" : "Active"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -289,7 +270,7 @@ export default function AdminUsers() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleDisable(u)} disabled={u.id === user?.id}>
-                        {u.disabled || u.banned ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                        {isUserDisabled(u) ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteUser(u)} disabled={u.id === user?.id}>
                         <Trash2 className="h-4 w-4" />
@@ -323,8 +304,8 @@ export default function AdminUsers() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Email *</Label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                <Label>Email</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label>{editUser ? "New Password (leave blank to keep)" : "Password *"}</Label>
@@ -348,7 +329,6 @@ export default function AdminUsers() {
             <div className="space-y-1.5">
               <Label>Role *</Label>
               <Select value={form.custom_role_id || form.role} onValueChange={(v) => {
-                // Find if it's a custom role id
                 const customRole = customRoles?.find((cr: any) => cr.id === v);
                 if (customRole) {
                   setForm({ ...form, custom_role_id: customRole.id, role: customRole.db_role });
@@ -358,15 +338,17 @@ export default function AdminUsers() {
               }}>
                 <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
-                {customRoles?.filter((cr: any) => canViewSuperAdmins || cr.db_role !== "super_admin").map((cr: any) => (
+                {customRoles && customRoles.length > 0 ? (
+                  customRoles.filter((cr: any) => canViewSuperAdmins || cr.db_role !== "super_admin").map((cr: any) => (
                     <SelectItem key={cr.id} value={cr.id}>{cr.name}</SelectItem>
-                  )) || (
-                    <>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      {canViewSuperAdmins && <SelectItem value="super_admin">Super Admin</SelectItem>}
-                    </>
-                  )}
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    {canViewSuperAdmins && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                  </>
+                )}
                 </SelectContent>
               </Select>
             </div>
