@@ -14,88 +14,90 @@ use App\Models\SmsSetting;
 use App\Models\UserRole;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class DefaultSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── Custom Roles ─────────────────────────────────
-        $superAdminRole = CustomRole::firstOrCreate(
-            ['name' => 'Super Admin'],
-            [
-                'description' => 'Full system access',
-                'db_role' => 'super_admin',
-                'is_system' => true,
-            ]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Admin'],
-            ['description' => 'Administrative access', 'db_role' => 'admin', 'is_system' => true]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Staff'],
-            ['description' => 'Standard staff access', 'db_role' => 'staff', 'is_system' => true]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Manager'],
-            ['description' => 'Manager access', 'db_role' => 'manager', 'is_system' => true]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Operator'],
-            ['description' => 'Operator access', 'db_role' => 'operator', 'is_system' => true]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Technician'],
-            ['description' => 'Technician access', 'db_role' => 'technician', 'is_system' => true]
-        );
-        CustomRole::firstOrCreate(
-            ['name' => 'Accountant'],
-            ['description' => 'Accounting access', 'db_role' => 'accountant', 'is_system' => true]
-        );
+        $this->seedRoles();
+        $this->seedAdminUsers();
+        $this->seedGeneralSettings();
+        $this->seedSystemSettings();
+        $this->seedSmsSettings();
+        $this->seedSmsTemplates();
+        $this->seedEmailTemplates();
+        $this->seedPackages();
+        $this->seedChartOfAccounts();
+        $this->seedLedgerMappings();
+        $this->seedPermissions();
 
-        // ── Super Admin ──────────────────────────────────
-        User::firstOrCreate(
-            ['username' => 'admin'],
-            [
-                'full_name' => 'Super Admin',
-                'email' => 'admin@smartisp.com',
-                'password_hash' => Hash::make('admin123'),
-                'status' => 'active',
-            ]
-        );
-        $admin = User::where('username', 'admin')->first();
-        UserRole::firstOrCreate(
-            ['user_id' => $admin->id],
-            ['role' => 'super_admin', 'custom_role_id' => $superAdminRole->id]
-        );
+        $this->command->info('Default data seeded!');
+        $this->command->info('Admin #1 → username: admin / password: admin123');
+        $this->command->info('Admin #2 → username: ismail / password: Admin@123');
+    }
 
-        // Admin User: ismail
-        User::firstOrCreate(
-            ['username' => 'ismail'],
-            [
-                'full_name' => 'Ismail',
-                'email' => 'ismail@smartisp.com',
-                'password_hash' => Hash::make('Admin@123'),
-                'status' => 'active',
-            ]
-        );
-        $ismail = User::where('username', 'ismail')->first();
-        UserRole::firstOrCreate(
-            ['user_id' => $ismail->id],
-            ['role' => 'super_admin', 'custom_role_id' => $superAdminRole->id]
-        );
+    // ── Roles ────────────────────────────────────────────
+    private function seedRoles(): void
+    {
+        $roles = [
+            ['name' => 'Super Admin', 'description' => 'Full system access', 'db_role' => 'super_admin', 'is_system' => true],
+            ['name' => 'Admin', 'description' => 'Administrative access', 'db_role' => 'admin', 'is_system' => true],
+            ['name' => 'Staff', 'description' => 'Standard staff access', 'db_role' => 'staff', 'is_system' => true],
+            ['name' => 'Manager', 'description' => 'Manager access', 'db_role' => 'manager', 'is_system' => true],
+            ['name' => 'Operator', 'description' => 'Operator access', 'db_role' => 'operator', 'is_system' => true],
+            ['name' => 'Technician', 'description' => 'Technician access', 'db_role' => 'technician', 'is_system' => true],
+            ['name' => 'Accountant', 'description' => 'Accounting access', 'db_role' => 'accountant', 'is_system' => true],
+        ];
+        foreach ($roles as $role) {
+            CustomRole::firstOrCreate(['name' => $role['name']], $role);
+        }
+    }
 
-        // ── General Settings ─────────────────────────────
+    // ── Admin Users ──────────────────────────────────────
+    private function seedAdminUsers(): void
+    {
+        $superAdminRole = CustomRole::where('name', 'Super Admin')->first();
+
+        $admins = [
+            ['username' => 'admin', 'full_name' => 'Super Admin', 'email' => 'admin@smartisp.com', 'password' => 'admin123'],
+            ['username' => 'ismail', 'full_name' => 'Ismail', 'email' => 'ismail@smartisp.com', 'password' => 'Admin@123'],
+        ];
+
+        foreach ($admins as $admin) {
+            User::firstOrCreate(
+                ['username' => $admin['username']],
+                [
+                    'full_name' => $admin['full_name'],
+                    'email' => $admin['email'],
+                    'password_hash' => Hash::make($admin['password']),
+                    'status' => 'active',
+                ]
+            );
+            $user = User::where('username', $admin['username'])->first();
+            if ($user && $superAdminRole) {
+                UserRole::firstOrCreate(
+                    ['user_id' => $user->id],
+                    ['role' => 'super_admin', 'custom_role_id' => $superAdminRole->id]
+                );
+            }
+        }
+    }
+
+    // ── General Settings ─────────────────────────────────
+    private function seedGeneralSettings(): void
+    {
         if (GeneralSetting::count() === 0) {
             GeneralSetting::create([
                 'site_name' => 'Smart ISP',
                 'primary_color' => '#3B82F6',
             ]);
         }
+    }
 
-        // ── System Settings ──────────────────────────────
-        $systemSettings = [
+    // ── System Settings ──────────────────────────────────
+    private function seedSystemSettings(): void
+    {
+        $settings = [
             'footer_text' => '© 2025-{year} ISP Billing System. All Rights Reserved.',
             'company_name' => 'ISP Billing System',
             'footer_link' => '#',
@@ -106,14 +108,14 @@ class DefaultSeeder extends Seeder
             'invoice_footer' => 'Thank you for using our internet service.',
             'ledger_type' => 'running_balance',
         ];
-        foreach ($systemSettings as $key => $value) {
-            SystemSetting::firstOrCreate(
-                ['setting_key' => $key],
-                ['setting_value' => $value]
-            );
+        foreach ($settings as $key => $value) {
+            SystemSetting::firstOrCreate(['setting_key' => $key], ['setting_value' => $value]);
         }
+    }
 
-        // ── SMS Settings ─────────────────────────────────
+    // ── SMS Settings ─────────────────────────────────────
+    private function seedSmsSettings(): void
+    {
         if (SmsSetting::count() === 0) {
             SmsSetting::create([
                 'sms_on_bill_generate' => true,
@@ -123,23 +125,44 @@ class DefaultSeeder extends Seeder
                 'sms_on_new_customer_bill' => true,
             ]);
         }
+    }
 
-        // ── SMS Templates ────────────────────────────────
-        $smsTemplates = [
-            'bill_generated' => 'Dear {customer_name}, your bill of ৳{amount} for {month} has been generated. Customer ID: {customer_id}. Please pay before {due_date}.',
-            'payment_received' => 'Dear {customer_name}, payment of ৳{amount} received. Thank you! Customer ID: {customer_id}.',
-            'registration' => 'Welcome {customer_name}! Your account has been created. Customer ID: {customer_id}, Username: {pppoe_username}.',
-            'suspension_warning' => 'Dear {customer_name}, your connection will be suspended due to unpaid bill of ৳{amount}. Please pay immediately. Customer ID: {customer_id}.',
-            'bill_reminder' => 'Reminder: Dear {customer_name}, your bill of ৳{amount} for {month} is due on {due_date}. Please pay to avoid disconnection.',
+    // ── SMS Templates ────────────────────────────────────
+    private function seedSmsTemplates(): void
+    {
+        $templates = [
+            ['name' => 'Bill Generated', 'message' => 'Dear {CustomerName}, your bill for {Month} is {Amount} BDT. Due date: {DueDate}. Customer ID: {CustomerID}.'],
+            ['name' => 'Due Reminder', 'message' => 'Dear {CustomerName}, your bill of {Amount} BDT for {Month} is due. Please pay before {DueDate}.'],
+            ['name' => 'Payment Confirmation', 'message' => 'Dear {CustomerName}, we received your payment of {Amount} BDT on {PaymentDate}. Thank you!'],
+            ['name' => 'Account Suspension', 'message' => 'Dear {CustomerName}, your internet service has been suspended due to overdue payment. Please pay your bill to restore service. Customer ID: {CustomerID}.'],
+            ['name' => 'Customer Registration', 'message' => 'Dear {CustomerName}, welcome to Smart ISP! Your Customer ID: {CustomerID}. PPPoE Username: {PPPoEUsername}, Password: {PPPoEPassword}.'],
+            ['name' => 'Bill Reminder', 'message' => 'Reminder: Your internet bill of {Amount} BDT is due tomorrow ({DueDate}). Please pay to avoid service suspension.'],
+            ['name' => 'Service Restored', 'message' => 'Dear {CustomerName}, your internet service has been restored. Thank you for your payment!'],
+            ['name' => 'Package Upgrade', 'message' => 'Dear {CustomerName}, your internet package has been upgraded. Enjoy faster speed!'],
         ];
-        foreach ($smsTemplates as $name => $message) {
-            SmsTemplate::firstOrCreate(
-                ['name' => $name],
-                ['message' => $message]
-            );
+        foreach ($templates as $tpl) {
+            SmsTemplate::firstOrCreate(['name' => $tpl['name']], ['message' => $tpl['message']]);
         }
+    }
 
-        // ── Default Packages ─────────────────────────────
+    // ── Email Templates (as system_settings) ─────────────
+    private function seedEmailTemplates(): void
+    {
+        $templates = [
+            'email_tpl_welcome' => "প্রিয় {CustomerName},\n\n{CompanyName}-এ আপনাকে স্বাগতম! আপনার ইন্টারনেট সংযোগ সফলভাবে চালু করা হয়েছে।\n\nআপনার একাউন্ট সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের কাস্টমার পোর্টালে লগইন করুন।\n\nধন্যবাদ,\n{CompanyName} টিম",
+            'email_tpl_password_reset' => "প্রিয় {CustomerName},\n\nআপনার পাসওয়ার্ড রিসেট করার অনুরোধ পাওয়া গেছে। নিচের লিংকে ক্লিক করে নতুন পাসওয়ার্ড সেট করুন:\n\n🔗 {ResetLink}\n\nএই লিংকটি ৩০ মিনিট পর্যন্ত কার্যকর থাকবে।\n\nধন্যবাদ,\n{CompanyName} টিম",
+            'email_tpl_payment_confirm' => "প্রিয় {CustomerName},\n\nআপনার {Month} মাসের বিলের পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে।\n\nপেমেন্টের পরিমাণ: ৳{Amount}\nপেমেন্টের তারিখ: {PaymentDate}\n\nধন্যবাদ,\n{CompanyName} টিম",
+            'email_tpl_ticket_reply' => "প্রিয় {CustomerName},\n\nআপনার সাপোর্ট টিকেট #{TicketID}-এ নতুন রিপ্লাই এসেছে।\n\nবিস্তারিত দেখতে কাস্টমার পোর্টালে লগইন করুন।\n\nধন্যবাদ,\n{CompanyName} সাপোর্ট টিম",
+            'email_tpl_account_activation' => "প্রিয় {CustomerName},\n\nআপনার একাউন্ট সফলভাবে সক্রিয় করা হয়েছে! এখন থেকে আপনি আমাদের ইন্টারনেট সেবা উপভোগ করতে পারবেন।\n\nধন্যবাদ,\n{CompanyName} টিম",
+        ];
+        foreach ($templates as $key => $value) {
+            SystemSetting::firstOrCreate(['setting_key' => $key], ['setting_value' => $value]);
+        }
+    }
+
+    // ── Packages ─────────────────────────────────────────
+    private function seedPackages(): void
+    {
         if (Package::count() === 0) {
             $packages = [
                 ['name' => 'Basic 10Mbps', 'speed' => '10 Mbps', 'monthly_price' => 500, 'download_speed' => 10, 'upload_speed' => 10],
@@ -151,62 +174,157 @@ class DefaultSeeder extends Seeder
                 Package::create($pkg);
             }
         }
+    }
 
-        // ── Default Chart of Accounts (with hierarchy) ────
-        if (Account::count() === 0) {
-            $assets = Account::create(['name' => 'Assets', 'type' => 'asset', 'code' => '1000', 'is_system' => true, 'level' => 0]);
-            $liabilities = Account::create(['name' => 'Liabilities', 'type' => 'liability', 'code' => '2000', 'is_system' => true, 'level' => 0]);
-            $income = Account::create(['name' => 'Income', 'type' => 'income', 'code' => '4000', 'is_system' => true, 'level' => 0]);
-            $expenses = Account::create(['name' => 'Expenses', 'type' => 'expense', 'code' => '5000', 'is_system' => true, 'level' => 0]);
-            $equity = Account::create(['name' => 'Equity', 'type' => 'equity', 'code' => '3000', 'is_system' => true, 'level' => 0]);
+    // ── Chart of Accounts (ISP-specific hierarchy) ───────
+    private function seedChartOfAccounts(): void
+    {
+        if (Account::count() > 0) return;
 
-            Account::create(['name' => 'Cash', 'type' => 'asset', 'code' => '1001', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Bank Account', 'type' => 'asset', 'code' => '1002', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'bKash', 'type' => 'asset', 'code' => '1003', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Nagad', 'type' => 'asset', 'code' => '1004', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Accounts Receivable', 'type' => 'asset', 'code' => '1100', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Inventory', 'type' => 'asset', 'code' => '1200', 'parent_id' => $assets->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Accounts Payable', 'type' => 'liability', 'code' => '2001', 'parent_id' => $liabilities->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'ISP Billing Revenue', 'type' => 'income', 'code' => '4001', 'parent_id' => $income->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Product Sales', 'type' => 'income', 'code' => '4002', 'parent_id' => $income->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Cost of Goods Sold', 'type' => 'expense', 'code' => '5001', 'parent_id' => $expenses->id, 'level' => 1, 'is_system' => true]);
-            Account::create(['name' => 'Salary Expense', 'type' => 'expense', 'code' => '5002', 'parent_id' => $expenses->id, 'level' => 1]);
-            Account::create(['name' => 'Utility Expense', 'type' => 'expense', 'code' => '5003', 'parent_id' => $expenses->id, 'level' => 1]);
-            Account::create(['name' => 'Office Expense', 'type' => 'expense', 'code' => '5004', 'parent_id' => $expenses->id, 'level' => 1]);
-            Account::create(['name' => 'Owner Equity', 'type' => 'equity', 'code' => '3001', 'parent_id' => $equity->id, 'level' => 1]);
-            Account::create(['name' => 'Retained Earnings', 'type' => 'equity', 'code' => '3002', 'parent_id' => $equity->id, 'level' => 1]);
-        }
+        $coa = [
+            // Assets (1000)
+            ['name' => 'Assets', 'code' => '1000', 'type' => 'asset', 'level' => 0, 'is_system' => true, 'parent_code' => null],
+            ['name' => 'Cash in Hand', 'code' => '1001', 'type' => 'asset', 'level' => 1, 'is_system' => false, 'parent_code' => '1000'],
+            ['name' => 'Cash at Bank', 'code' => '1002', 'type' => 'asset', 'level' => 1, 'is_system' => false, 'parent_code' => '1000'],
+            ['name' => 'bKash / Nagad Account', 'code' => '1003', 'type' => 'asset', 'level' => 1, 'is_system' => false, 'parent_code' => '1000'],
+            ['name' => 'Accounts Receivable', 'code' => '1010', 'type' => 'asset', 'level' => 1, 'is_system' => true, 'parent_code' => '1000'],
+            ['name' => 'Customer Receivable', 'code' => '1011', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1010'],
+            ['name' => 'Employee Advance / Receivable', 'code' => '1012', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1010'],
+            ['name' => 'Other Receivable', 'code' => '1019', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1010'],
+            ['name' => 'Inventory (Network Equipment)', 'code' => '1020', 'type' => 'asset', 'level' => 1, 'is_system' => false, 'parent_code' => '1000'],
+            ['name' => 'Fixed Assets', 'code' => '1100', 'type' => 'asset', 'level' => 1, 'is_system' => true, 'parent_code' => '1000'],
+            ['name' => 'Network Infrastructure', 'code' => '1101', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1100'],
+            ['name' => 'Office Equipment', 'code' => '1102', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1100'],
+            ['name' => 'Vehicles', 'code' => '1103', 'type' => 'asset', 'level' => 2, 'is_system' => false, 'parent_code' => '1100'],
 
-        // ── Default Permissions (matching frontend modules) ──
-        $modules = [
-            'customers'         => ['view', 'create', 'edit', 'delete'],
-            'billing'           => ['view', 'create', 'edit', 'delete'],
-            'payments'          => ['view', 'create', 'edit', 'delete'],
-            'merchant_payments' => ['view', 'create', 'edit', 'delete'],
-            'tickets'           => ['view', 'create', 'edit', 'delete'],
-            'sms'               => ['view', 'create', 'edit', 'delete'],
-            'accounting'        => ['view', 'create', 'edit', 'delete'],
-            'inventory'         => ['view', 'create', 'edit', 'delete'],
-            'hr'                => ['view', 'create', 'edit', 'delete'],
-            'supplier'          => ['view', 'create', 'edit', 'delete'],
-            'reports'           => ['view', 'create', 'edit', 'delete'],
-            'settings'          => ['view', 'create', 'edit', 'delete'],
-            'users'             => ['view', 'create', 'edit', 'delete'],
-            'roles'             => ['view', 'create', 'edit', 'delete'],
+            // Liabilities (2000)
+            ['name' => 'Liabilities', 'code' => '2000', 'type' => 'liability', 'level' => 0, 'is_system' => true, 'parent_code' => null],
+            ['name' => 'Accounts Payable', 'code' => '2001', 'type' => 'liability', 'level' => 1, 'is_system' => true, 'parent_code' => '2000'],
+            ['name' => 'Vendor / Supplier Payable', 'code' => '2001A', 'type' => 'liability', 'level' => 2, 'is_system' => false, 'parent_code' => '2001'],
+            ['name' => 'Other Payable', 'code' => '2001B', 'type' => 'liability', 'level' => 2, 'is_system' => false, 'parent_code' => '2001'],
+            ['name' => 'Advance from Customers', 'code' => '2002', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+            ['name' => 'Employee Payable', 'code' => '2003', 'type' => 'liability', 'level' => 1, 'is_system' => true, 'parent_code' => '2000'],
+            ['name' => 'Salary Payable', 'code' => '2003A', 'type' => 'liability', 'level' => 2, 'is_system' => false, 'parent_code' => '2003'],
+            ['name' => 'Bonus Payable', 'code' => '2003B', 'type' => 'liability', 'level' => 2, 'is_system' => false, 'parent_code' => '2003'],
+            ['name' => 'Tax Payable', 'code' => '2004', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+            ['name' => 'Loan Payable', 'code' => '2010', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+            ['name' => 'Provident Fund Payable', 'code' => '2011', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+            ['name' => 'Savings Fund Payable', 'code' => '2012', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+
+            // Equity (3000)
+            ['name' => 'Equity', 'code' => '3000', 'type' => 'equity', 'level' => 0, 'is_system' => true, 'parent_code' => null],
+            ['name' => "Owner's Capital", 'code' => '3001', 'type' => 'equity', 'level' => 1, 'is_system' => false, 'parent_code' => '3000'],
+            ['name' => 'Retained Earnings', 'code' => '3002', 'type' => 'equity', 'level' => 1, 'is_system' => false, 'parent_code' => '3000'],
+
+            // Income (4000)
+            ['name' => 'Income', 'code' => '4000', 'type' => 'income', 'level' => 0, 'is_system' => true, 'parent_code' => null],
+            ['name' => 'Monthly Subscription Income', 'code' => '4001', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+            ['name' => 'New Connection Fee', 'code' => '4002', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+            ['name' => 'Equipment Sales Income', 'code' => '4003', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+            ['name' => 'Late Payment Fee', 'code' => '4004', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+            ['name' => 'Reconnection Fee', 'code' => '4005', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+            ['name' => 'Other Income', 'code' => '4099', 'type' => 'income', 'level' => 1, 'is_system' => false, 'parent_code' => '4000'],
+
+            // Expenses (5000)
+            ['name' => 'Expenses', 'code' => '5000', 'type' => 'expense', 'level' => 0, 'is_system' => true, 'parent_code' => null],
+            ['name' => 'Bandwidth Cost (ISP/IIG)', 'code' => '5001', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Salary & Wages', 'code' => '5002', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Office Rent', 'code' => '5003', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Electricity Bill', 'code' => '5004', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Network Maintenance', 'code' => '5005', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Equipment Purchase', 'code' => '5006', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Vehicle & Transport', 'code' => '5007', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Marketing & Advertising', 'code' => '5008', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Mobile & Communication', 'code' => '5009', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Government Fees & License', 'code' => '5010', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Provident Fund Expense (Employer)', 'code' => '5011', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
+            ['name' => 'Miscellaneous Expense', 'code' => '5099', 'type' => 'expense', 'level' => 1, 'is_system' => false, 'parent_code' => '5000'],
         ];
 
-        foreach ($modules as $module => $actions) {
-            foreach ($actions as $action) {
+        // Sort by level to ensure parents are created first
+        usort($coa, fn($a, $b) => $a['level'] <=> $b['level']);
+
+        $codeToId = [];
+        foreach ($coa as $acct) {
+            $parentId = $acct['parent_code'] ? ($codeToId[$acct['parent_code']] ?? null) : null;
+            $created = Account::create([
+                'name' => $acct['name'],
+                'code' => $acct['code'],
+                'type' => $acct['type'],
+                'level' => $acct['level'],
+                'is_system' => $acct['is_system'],
+                'parent_id' => $parentId,
+            ]);
+            $codeToId[$acct['code']] = $created->id;
+        }
+
+        // Store code-to-id mapping for ledger settings
+        $this->coaCodeToId = $codeToId;
+    }
+
+    private array $coaCodeToId = [];
+
+    // ── Ledger Mappings + Payment Settings ───────────────
+    private function seedLedgerMappings(): void
+    {
+        // If COA wasn't just seeded, load existing codes
+        if (empty($this->coaCodeToId)) {
+            $accounts = Account::whereNotNull('code')->get();
+            foreach ($accounts as $acct) {
+                $this->coaCodeToId[$acct->code] = $acct->id;
+            }
+        }
+
+        if (empty($this->coaCodeToId)) return;
+
+        $mappings = [
+            'sales_income_account' => '4003',
+            'sales_cash_account' => '1001',
+            'purchase_expense_account' => '5006',
+            'purchase_cash_account' => '1001',
+            'service_income_account' => '4001',
+            'expense_cash_account' => '1001',
+            'salary_expense_account' => '5002',
+            'salary_payable_account' => '2003A',
+            'salary_cash_account' => '1001',
+            'pf_expense_account' => '5011',
+            'pf_payable_account' => '2011',
+            'savings_fund_payable_account' => '2012',
+            'customer_receivable_account' => '1011',
+            'vendor_payable_account' => '2001A',
+            'employee_advance_account' => '1012',
+            'merchant_payment_account_id' => '1003',
+            'connection_charge_account_id' => '4002',
+            'monthly_bill_account_id' => '4001',
+        ];
+
+        foreach ($mappings as $key => $code) {
+            $accountId = $this->coaCodeToId[$code] ?? null;
+            if ($accountId) {
+                SystemSetting::updateOrCreate(
+                    ['setting_key' => $key],
+                    ['setting_value' => $accountId]
+                );
+            }
+        }
+    }
+
+    // ── Permissions ──────────────────────────────────────
+    private function seedPermissions(): void
+    {
+        $modules = [
+            'customers', 'billing', 'payments', 'merchant_payments',
+            'tickets', 'sms', 'accounting', 'inventory', 'hr',
+            'supplier', 'reports', 'settings', 'users', 'roles',
+        ];
+
+        foreach ($modules as $module) {
+            foreach (['view', 'create', 'edit', 'delete'] as $action) {
                 Permission::firstOrCreate(
                     ['module' => $module, 'action' => $action],
                     ['description' => ucfirst($action) . ' ' . str_replace('_', ' ', $module)]
                 );
             }
         }
-
-        $this->command->info('Default data seeded!');
-        $this->command->info('Admin #1 → username: admin / password: admin123');
-        $this->command->info('Admin #2 → username: ismail / password: Admin@123');
-        $this->command->info('System settings, SMS templates, roles, COA seeded.');
     }
 }
