@@ -66,7 +66,7 @@ class SupplierController2 extends Controller
 
     public function payments(Request $request)
     {
-        $query = SupplierPayment::with('supplier')->orderByDesc('payment_date');
+        $query = SupplierPayment::with('supplier')->orderByDesc('paid_date');
         if ($request->has('supplier_id')) {
             $query->where('supplier_id', $request->supplier_id);
         }
@@ -78,7 +78,7 @@ class SupplierController2 extends Controller
         $request->validate([
             'supplier_id'  => 'required|uuid|exists:suppliers,id',
             'amount'       => 'required|numeric|min:0.01',
-            'payment_date' => 'required|date',
+            'paid_date'    => 'required|date',
         ]);
 
         $payment = SupplierPayment::create($request->all());
