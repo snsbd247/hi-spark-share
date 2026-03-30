@@ -1,15 +1,9 @@
 /**
- * Storage Abstraction Layer
- * 
- * Uses Supabase Storage directly in deployed/Lovable environments.
- * Falls back to Laravel API when running locally with explicit API URL.
+ * Storage Abstraction Layer — Laravel API only
  */
 
 import api from "@/lib/api";
-import { API_PUBLIC_ROOT, IS_LOVABLE_RUNTIME } from "@/lib/apiBaseUrl";
-import { supabase } from "@/integrations/supabase/client";
-
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || "";
+import { API_PUBLIC_ROOT } from "@/lib/apiBaseUrl";
 
 export interface UploadResult {
   publicUrl: string;
@@ -23,42 +17,6 @@ export interface StorageProvider {
   list(bucket: string, prefix?: string): Promise<{ name: string }[]>;
   download(bucket: string, path: string): Promise<Blob>;
 }
-
-// ─── Supabase Storage Provider ─────────────────────────────────
-const supabaseStorage: StorageProvider = {
-  async upload(bucket, path, file, options = {}) {
-    const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
-      upsert: options.upsert ?? false,
-      contentType: file.type || undefined,
-    });
-    if (error) throw error;
-    const actualPath = data?.path || path;
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(actualPath);
-    return { publicUrl: urlData.publicUrl, path: actualPath };
-  },
-
-  getPublicUrl(bucket, path) {
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
-  },
-
-  async delete(bucket, paths) {
-    const { error } = await supabase.storage.from(bucket).remove(paths);
-    if (error) throw error;
-  },
-
-  async list(bucket, prefix = '') {
-    const { data, error } = await supabase.storage.from(bucket).list(prefix || undefined);
-    if (error) throw error;
-    return data || [];
-  },
-
-  async download(bucket, path) {
-    const { data, error } = await supabase.storage.from(bucket).download(path);
-    if (error) throw error;
-    return data;
-  },
-};
 
 // ─── Laravel Storage Provider ──────────────────────────────────
 const laravelStorage: StorageProvider = {
@@ -100,8 +58,7 @@ const laravelStorage: StorageProvider = {
 };
 
 // ─── Active Provider ────────────────────────────────────────────
-// Use Supabase storage directly when in Lovable runtime (deployed without explicit Laravel API)
-let activeProvider: StorageProvider = IS_LOVABLE_RUNTIME ? supabaseStorage : laravelStorage;
+let activeProvider: StorageProvider = laravelStorage;
 
 export function setStorageProvider(provider: StorageProvider) {
   activeProvider = provider;

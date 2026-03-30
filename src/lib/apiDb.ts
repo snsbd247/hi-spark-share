@@ -4,8 +4,7 @@
  * This ensures all existing components work without modification.
  */
 import api from '@/lib/api';
-import { API_PUBLIC_ROOT, IS_LOVABLE_RUNTIME } from '@/lib/apiBaseUrl';
-import { supabaseRaw as supabaseClient } from '@/integrations/supabase/rawClient';
+import { API_PUBLIC_ROOT } from '@/lib/apiBaseUrl';
 
 // ─── Query Builder (Supabase-compatible API) ────────────────────
 type FilterOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | "is" | "in";
@@ -13,35 +12,13 @@ type FilterOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | 
 interface QueryFilter { column: string; op: FilterOp; value: any; }
 interface QueryOrder { column: string; ascending: boolean; }
 
-const isNetworkError = (err: any) => !err?.response && (err?.message === 'Network Error' || err?.code === 'ERR_NETWORK');
-const shouldUseEdgeFallback = IS_LOVABLE_RUNTIME;
-const isJwtLike = (token: string) => token.split('.').length === 3;
-
-const isJwtExpired = (token: string) => {
-  if (!isJwtLike(token)) return false;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const exp = Number(payload?.exp || 0);
-    if (!exp) return false;
-    return exp * 1000 <= Date.now();
-  } catch {
-    return false;
-  }
-};
-
 const clearLocalAdminAuth = () => {
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_user');
 };
 
-const handleAuthFailure = async () => {
+const handleAuthFailure = () => {
   clearLocalAdminAuth();
-  try {
-    await supabaseClient.auth.signOut({ scope: 'local' });
-  } catch {
-    // Ignore local sign-out errors
-  }
-
   if (typeof window !== 'undefined') {
     const onAdminLogin = window.location.pathname.startsWith('/admin/login');
     const onCustomerPortal = window.location.pathname.startsWith('/portal') || window.location.pathname.startsWith('/login');
@@ -125,84 +102,8 @@ class QueryBuilder<T = any> {
     }
     if (this._limitCount) params.per_page = this._limitCount;
     if (this._offsetCount) params.page = Math.floor(this._offsetCount / (this._limitCount || 25)) + 1;
-    params.paginate = false; // return array, not paginated
+    params.paginate = false;
     return params;
-  }
-
-  private async _executeViaEdgeProxy(): Promise<{ data: any; error: any; count?: number }> {
-    const payloadBody = {
-      table: this._table,
-      operation: this._operation,
-      select: this._selectCols,
-      filters: this._filters,
-      order: this._orders,
-      limit: this._limitCount,
-      single: this._singleRow,
-      maybeSingle: this._maybeSingleRow,
-      data: this._data,
-      returning: this._returning,
-    };
-
-    const invokeProxy = async (token?: string) => {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      };
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/data/proxy`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payloadBody),
-      });
-
-      const responseJson = await res.json().catch(() => null);
-      if (!res.ok) {
-        const message = responseJson?.error || `Edge function returned ${res.status}`;
-        const error = new Error(message) as Error & { status?: number };
-        error.status = res.status;
-        throw error;
-      }
-
-      return responseJson;
-    };
-
-    // Prioritize admin_token (Laravel session) over Supabase JWT
-    const adminToken = localStorage.getItem('admin_token') || '';
-    let accessToken = adminToken;
-
-    if (accessToken && isJwtExpired(accessToken)) {
-      localStorage.removeItem('admin_token');
-      accessToken = '';
-    }
-
-    if (!accessToken) {
-      const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-      if (sessionError?.code === 'refresh_token_not_found') {
-        await handleAuthFailure();
-      }
-      accessToken = sessionData?.session?.access_token || '';
-      if (accessToken) {
-        localStorage.setItem('admin_token', accessToken);
-      }
-    }
-
-    const response = await invokeProxy(accessToken || undefined);
-    const payload = response?.data ?? null;
-
-    if (this._operation === 'select') {
-      if (this._singleRow || this._maybeSingleRow) {
-        return { data: payload || null, error: null };
-      }
-      const rows = Array.isArray(payload) ? payload : payload ? [payload] : [];
-      if (this._headMode) return { data: null, error: null, count: rows.length };
-      return { data: rows, error: null, count: rows.length };
-    }
-
-    return { data: payload, error: null };
   }
 
   private async _execute(): Promise<{ data: any; error: any; count?: number }> {
@@ -212,7 +113,6 @@ class QueryBuilder<T = any> {
       if (this._operation === "select") {
         const params = this._buildParams();
         const { data: response } = await api.get(`/${tablePath}`, { params });
-        // Handle both paginated ({data: [...], total: N}) and plain array responses
         let rows: any[];
         if (Array.isArray(response)) {
           rows = response;
@@ -221,9 +121,7 @@ class QueryBuilder<T = any> {
         } else if (response?.data) {
           rows = [response.data];
         } else if (response && typeof response === 'object' && !Array.isArray(response)) {
-          // Single object response (not paginated, not array)
           if (response.current_page !== undefined) {
-            // Empty paginated response
             rows = [];
           } else {
             rows = [response];
@@ -242,7 +140,7 @@ class QueryBuilder<T = any> {
 
       if (this._operation === "insert") {
         const { data: response } = await api.post(`/${tablePath}`, this._data);
-        return { data: Array.isArray(this._data) ? response : response, error: null };
+        return { data: response, error: null };
       }
 
       if (this._operation === "update") {
@@ -251,7 +149,6 @@ class QueryBuilder<T = any> {
           const { data: response } = await api.put(`/${tablePath}/${idFilter.value}`, this._data);
           return { data: response, error: null };
         }
-        // Bulk update: send filters along with data
         const { data: response } = await api.put(`/${tablePath}`, {
           ...this._data,
           _filters: this._filters,
@@ -278,31 +175,9 @@ class QueryBuilder<T = any> {
 
       return { data: null, error: new Error(`Unknown operation: ${this._operation}`) };
     } catch (err: any) {
-      if (shouldUseEdgeFallback && isNetworkError(err)) {
-        try {
-          return await this._executeViaEdgeProxy();
-        } catch (edgeErr: any) {
-          if (edgeErr?.status === 401) {
-            await handleAuthFailure();
-            const emptyData = this._operation === 'select'
-              ? (this._singleRow || this._maybeSingleRow ? null : [])
-              : null;
-            return {
-              data: emptyData,
-              error: { message: 'Session expired. Please sign in again.', status: 401, kind: 'auth' },
-            };
-          }
-          console.error(`[apiDb] edge fallback ${this._operation} ${this._table} failed:`, edgeErr.message);
-          return {
-            data: null,
-            error: { message: edgeErr.message || 'Network fallback failed', status: edgeErr?.status },
-          };
-        }
-      }
-
       const status = err?.response?.status;
-      if (status === 401 && shouldUseEdgeFallback) {
-        await handleAuthFailure();
+      if (status === 401) {
+        handleAuthFailure();
       }
 
       console.error(`[apiDb] ${this._operation} ${this._table} failed:`, err.message);
@@ -318,7 +193,7 @@ class QueryBuilder<T = any> {
   }
 }
 
-// ─── Mock Auth for compatibility ─────────────────────────────────
+// ─── Auth compatibility (localStorage-based) ─────────────────────
 const authCompat = {
   getSession: async () => {
     const token = localStorage.getItem('admin_token');
@@ -335,75 +210,13 @@ const authCompat = {
         error: null,
       };
     }
-
-    if (shouldUseEdgeFallback) {
-      const { data, error } = await supabaseClient.auth.getSession();
-      return { data: { session: data.session }, error };
-    }
-
     return { data: { session: null }, error: null };
   },
   getUser: async () => {
     const user = localStorage.getItem('admin_user');
-    if (!user && shouldUseEdgeFallback) {
-      const { data, error } = await supabaseClient.auth.getUser();
-      return { data: { user: data.user }, error };
-    }
     return { data: { user: user ? JSON.parse(user) : null }, error: null };
   },
   signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
-    if (shouldUseEdgeFallback) {
-      const { data: edgeData, error: edgeError } = await supabaseClient.functions.invoke('admin-login', {
-        body: { username: email, password },
-      });
-
-      if (edgeError || !edgeData?.email || !edgeData?.user_id) {
-        return {
-          data: { user: null, session: null },
-          error: { message: edgeError?.message || edgeData?.error || 'Login failed' },
-        };
-      }
-
-      const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-        email: edgeData.email,
-        password,
-      });
-
-      if (authError || !authData.session) {
-        return { data: { user: null, session: null }, error: { message: authError?.message || 'Login failed' } };
-      }
-
-      const [{ data: roleData }, { data: profileData }] = await Promise.all([
-        supabaseClient
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', edgeData.user_id)
-          .limit(1)
-          .maybeSingle(),
-        supabaseClient
-          .from('profiles')
-          .select('full_name, avatar_url')
-          .eq('id', edgeData.user_id)
-          .maybeSingle(),
-      ]);
-
-      const userPayload = {
-        id: edgeData.user_id,
-        email: edgeData.email,
-        name: profileData?.full_name || edgeData.email,
-        role: roleData?.role || 'staff',
-        avatar_url: profileData?.avatar_url || null,
-      };
-
-      localStorage.setItem('admin_token', authData.session.access_token);
-      localStorage.setItem('admin_user', JSON.stringify(userPayload));
-
-      return {
-        data: { user: userPayload, session: { access_token: authData.session.access_token, user: userPayload } },
-        error: null,
-      };
-    }
-
     const { data } = await api.post('/admin/login', { email, password });
     localStorage.setItem('admin_token', data.token);
     localStorage.setItem('admin_user', JSON.stringify(data.user));
@@ -413,29 +226,16 @@ const authCompat = {
     };
   },
   signOut: async () => {
-    if (shouldUseEdgeFallback) {
-      await supabaseClient.auth.signOut();
-    }
     try { await api.post('/admin/logout'); } catch {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     return { error: null };
   },
   resetPasswordForEmail: async (email: string, _options?: any) => {
-    if (shouldUseEdgeFallback) {
-      return supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-    }
     await api.post('/admin/forgot-password', { email });
     return { data: {}, error: null };
   },
   updateUser: async (updates: any) => {
-    if (shouldUseEdgeFallback) {
-      const { data, error } = await supabaseClient.auth.updateUser(updates);
-      return { data: { user: data.user }, error };
-    }
-    // Map Supabase-style { password } to Laravel { new_password }
     const payload = { ...updates };
     if (payload.password) {
       payload.new_password = payload.password;
@@ -445,9 +245,6 @@ const authCompat = {
     return { data: { user: data }, error: null };
   },
   refreshSession: async () => {
-    if (shouldUseEdgeFallback) {
-      return supabaseClient.auth.refreshSession();
-    }
     const token = localStorage.getItem('admin_token');
     const user = localStorage.getItem('admin_user');
     return {
@@ -458,10 +255,6 @@ const authCompat = {
     };
   },
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
-    if (shouldUseEdgeFallback) {
-      return supabaseClient.auth.onAuthStateChange(callback);
-    }
-
     const token = localStorage.getItem('admin_token');
     const user = localStorage.getItem('admin_user');
     if (token && user) {
@@ -552,76 +345,31 @@ const functionRouteMap: Record<string, { method: 'get' | 'post'; path: string }>
   'backup-restore': { method: 'post', path: '/backup-restore' },
   'auto-bill-generate': { method: 'post', path: '/bills/generate' },
   'customer-login': { method: 'post', path: '/portal/login' },
-  'customer-verify': { method: 'post', path: '/portal/verify' },
-  'api/data/proxy': { method: 'post', path: '/data-proxy' },
-  'api/bills/generate': { method: 'post', path: '/bills/generate' },
-  'api/bills/create': { method: 'post', path: '/bills' },
-  'api/bills/update': { method: 'post', path: '/bills/update-fn' },
-  'api/bills/delete': { method: 'post', path: '/bills/delete-fn' },
-  'api/payments/create': { method: 'post', path: '/payments' },
-  'api/payments/update': { method: 'post', path: '/payments/update-fn' },
-  'api/payments/delete': { method: 'post', path: '/payments/delete-fn' },
-  'api/merchant-payments/create': { method: 'post', path: '/merchant-payments' },
-  'api/merchant-payments/match': { method: 'post', path: '/merchant-payments/match-fn' },
-  'api/customers/create': { method: 'post', path: '/customers' },
-  'api/tickets/create': { method: 'post', path: '/support-tickets' },
+  'customer-verify': { method: 'post', path: '/customer/verify' },
+  'send-email': { method: 'post', path: '/email/send' },
+  'send-whatsapp': { method: 'post', path: '/whatsapp/send' },
+  'bill-reminder': { method: 'post', path: '/bills/send-reminders' },
+  'session-expiry': { method: 'post', path: '/admin/cleanup-sessions' },
 };
 
-// ─── Mock Functions for compatibility ────────────────────────────
+// ─── Functions compatibility (maps to Laravel API) ──────────────
 const functionsCompat = {
   invoke: async (name: string, options?: { body?: any; headers?: Record<string, string> }) => {
-    const mapRoute = functionRouteMap[name];
-
-    const invokeApi = async () => {
+    try {
+      const mapRoute = functionRouteMap[name];
       if (mapRoute) {
         const { data } = mapRoute.method === 'get'
           ? await api.get(mapRoute.path, { params: options?.body, headers: options?.headers })
           : await api.post(mapRoute.path, options?.body || {}, { headers: options?.headers });
-        return data;
+        return { data, error: null };
       }
       // Fallback: try as generic endpoint
       const { data } = await api.post(`/${name.replace(/\//g, '-')}`, options?.body || {}, {
         headers: options?.headers,
       });
-      return data;
-    };
-
-    const invokeEdge = async () => {
-      const { data, error } = await supabaseClient.functions.invoke(name, {
-        body: options?.body || {},
-        headers: options?.headers,
-      });
-      if (error) throw new Error(error.message || `Failed to invoke edge function: ${name}`);
-      return data;
-    };
-
-    if (shouldUseEdgeFallback) {
-      try {
-        const data = await invokeEdge();
-        return { data, error: null };
-      } catch (edgeErr: any) {
-        try {
-          const data = await invokeApi();
-          return { data, error: null };
-        } catch (apiErr: any) {
-          return { data: null, error: { message: apiErr.response?.data?.error || edgeErr.message || apiErr.message } };
-        }
-      }
-    }
-
-    try {
-      const data = await invokeApi();
       return { data, error: null };
-    } catch (apiErr: any) {
-      if (isNetworkError(apiErr)) {
-        try {
-          const data = await invokeEdge();
-          return { data, error: null };
-        } catch (edgeErr: any) {
-          return { data: null, error: { message: edgeErr.message || apiErr.message } };
-        }
-      }
-      return { data: null, error: { message: apiErr.response?.data?.error || apiErr.message } };
+    } catch (err: any) {
+      return { data: null, error: { message: err.response?.data?.error || err.message } };
     }
   },
 };

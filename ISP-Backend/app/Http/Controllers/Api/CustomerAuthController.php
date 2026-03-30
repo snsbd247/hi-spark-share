@@ -80,10 +80,32 @@ class CustomerAuthController extends Controller
 
     public function verify(Request $request)
     {
+        // Support both middleware-injected customer and direct session_token in body
         $customer = $request->get('portal_customer');
+
+        if (!$customer) {
+            $sessionToken = $request->input('session_token');
+            if (!$sessionToken) {
+                return response()->json(['valid' => false, 'error' => 'No session token'], 401);
+            }
+
+            $session = CustomerSession::where('session_token', $sessionToken)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if (!$session) {
+                return response()->json(['valid' => false, 'error' => 'Invalid or expired session'], 401);
+            }
+
+            $customer = Customer::find($session->customer_id);
+            if (!$customer) {
+                return response()->json(['valid' => false, 'error' => 'Customer not found'], 404);
+            }
+        }
+
         $customer->load('package');
 
-        return response()->json([
+        $response = [
             'valid' => true,
             'customer' => [
                 'id' => $customer->id,
@@ -91,17 +113,54 @@ class CustomerAuthController extends Controller
                 'name' => $customer->name,
                 'phone' => $customer->phone,
                 'area' => $customer->area,
+                'road' => $customer->road,
+                'house' => $customer->house,
+                'city' => $customer->city,
+                'email' => $customer->email,
                 'status' => $customer->status,
                 'monthly_bill' => $customer->monthly_bill,
                 'package_id' => $customer->package_id,
                 'photo_url' => $customer->photo_url,
                 'connection_status' => $customer->connection_status,
                 'pppoe_username' => $customer->pppoe_username,
+                'ip_address' => $customer->ip_address,
+                'onu_mac' => $customer->onu_mac,
+                'router_mac' => $customer->router_mac,
+                'installation_date' => $customer->installation_date,
+                'username' => $customer->username,
+                'father_name' => $customer->father_name,
+                'mother_name' => $customer->mother_name,
+                'occupation' => $customer->occupation,
+                'nid' => $customer->nid,
+                'alt_phone' => $customer->alt_phone,
+                'permanent_address' => $customer->permanent_address,
+                'gateway' => $customer->gateway,
+                'subnet' => $customer->subnet,
+                'discount' => $customer->discount,
+                'connectivity_fee' => $customer->connectivity_fee,
+                'due_date_day' => $customer->due_date_day,
                 'package' => $customer->package ? [
                     'name' => $customer->package->name,
                     'speed' => $customer->package->speed,
                 ] : null,
             ],
-        ]);
+        ];
+
+        // Include bills if requested
+        if ($request->boolean('include_bills')) {
+            $response['bills'] = $customer->bills()->orderBy('month', 'desc')->get();
+        }
+
+        // Include payments if requested
+        if ($request->boolean('include_payments')) {
+            $response['payments'] = $customer->payments()->orderBy('created_at', 'desc')->get();
+        }
+
+        // Include ledger if requested
+        if ($request->boolean('include_ledger')) {
+            $response['ledger'] = $customer->ledgerEntries()->orderBy('date', 'desc')->get();
+        }
+
+        return response()->json($response);
     }
 }

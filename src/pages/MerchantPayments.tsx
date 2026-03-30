@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { API_BASE_URL } from "@/lib/apiBaseUrl";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,7 +167,7 @@ export default function MerchantPayments() {
     }
   };
 
-  const apiEndpoint = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sms-receiver`;
+  const apiEndpoint = `${API_BASE_URL.replace(/\/api$/, '')}/sms-receiver`;
   const copyEndpoint = () => { navigator.clipboard.writeText(apiEndpoint); toast.success("API endpoint copied to clipboard"); };
 
   return (

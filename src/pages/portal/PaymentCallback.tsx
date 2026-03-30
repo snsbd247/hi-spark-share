@@ -4,8 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+import api from "@/lib/api";
 
 export default function PaymentCallback() {
   const { t } = useLanguage();
@@ -31,16 +30,7 @@ export default function PaymentCallback() {
 
     const executePayment = async () => {
       try {
-        const res = await fetch(
-          `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/bkash-payment/execute`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentID }),
-          }
-        );
-
-        const data = await res.json();
+        const { data } = await api.post("/bkash/execute-payment", { paymentID });
 
         if (data.success) {
           setStatus("success");

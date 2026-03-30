@@ -39,6 +39,8 @@ use Illuminate\Support\Facades\Route;
 */
 Route::post('/admin/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/portal/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
 Route::any('/bkash/callback', [BkashController::class, 'callback']);
 Route::any('/nagad/callback', [NagadController::class, 'callback']);
 
@@ -149,10 +151,13 @@ Route::middleware(['admin.auth'])->group(function () {
     // ══════════════════════════════════════════════════════
     Route::middleware('check.permission:settings,edit')->group(function () {
         Route::post('/bkash/create-payment', [BkashController::class, 'createPayment']);
+        Route::post('/bkash/execute-payment', [BkashController::class, 'executePayment']);
         Route::post('/bkash/refund', [BkashController::class, 'refund']);
         Route::post('/bkash/query-transaction', [BkashController::class, 'queryTransaction']);
         Route::post('/bkash/test-connection', [BkashController::class, 'testConnection']);
         Route::post('/nagad/create-payment', [NagadController::class, 'createPayment']);
+        Route::post('/nagad/query-transaction', [NagadController::class, 'queryTransaction']);
+        Route::post('/nagad/refund', [NagadController::class, 'refund']);
     });
 
     // ══════════════════════════════════════════════════════

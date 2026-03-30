@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiHealth, type ApiHealthEntry } from "@/lib/apiHealth";
-import { IS_LOVABLE_RUNTIME } from "@/lib/apiBaseUrl";
+
 import { Activity, Server, Cloud, AlertTriangle, CheckCircle, XCircle, Trash2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -105,7 +105,7 @@ export default function ApiHealthMonitor() {
                 Failures: {stats.circuit.failures} / 3
               </p>
               <p className="text-xs text-muted-foreground">
-                Mode: {IS_LOVABLE_RUNTIME ? "Edge Fallback Active" : "Laravel Direct"}
+                Mode: Laravel Direct
               </p>
               {stats.circuit.isOpen && (
                 <p className="text-xs text-orange-500 mt-1">

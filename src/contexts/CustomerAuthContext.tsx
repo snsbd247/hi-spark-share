@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
-import axios from "axios";
-import { API_BASE_URL, IS_LOVABLE_RUNTIME } from "@/lib/apiBaseUrl";
-import { supabase } from "@/integrations/supabase/client";
+import api from "@/lib/api";
+import { API_BASE_URL } from "@/lib/apiBaseUrl";
 
 interface CustomerSession {
   id: string;
@@ -66,26 +65,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifyCustomerSession = useCallback(async (sessionToken: string, extra: Record<string, any> = {}) => {
-    try {
-      const { data } = await axios.post(`${API_BASE_URL}/customer/verify`, {
-        session_token: sessionToken,
-        ...extra,
-      });
-      return data;
-    } catch (err: any) {
-      const isNetworkError = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
-      if (!IS_LOVABLE_RUNTIME || !isNetworkError) throw err;
-
-      const { data, error } = await supabase.functions.invoke("customer-verify", {
-        body: {
-          session_token: sessionToken,
-          ...extra,
-        },
-      });
-
-      if (error) throw new Error(error.message || "Session verification failed");
-      return data;
-    }
+    const { data } = await api.post("/customer/verify", {
+      session_token: sessionToken,
+      ...extra,
+    });
+    return data;
   }, []);
 
   useEffect(() => {
@@ -117,33 +101,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [verifyCustomerSession]);
 
   const signIn = async (pppoeUsername: string, pppoePassword: string) => {
-    let data: any;
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/customer/login`, {
-        pppoe_username: pppoeUsername,
-        pppoe_password: pppoePassword,
-      });
-      data = response.data;
-    } catch (err: any) {
-      const isNetworkError = !err?.response && (err?.message === "Network Error" || err?.code === "ERR_NETWORK");
-      if (!IS_LOVABLE_RUNTIME || !isNetworkError) {
-        throw new Error(err?.response?.data?.error || err?.message || "Login failed");
-      }
-
-      const fallback = await supabase.functions.invoke("customer-login", {
-        body: {
-          pppoe_username: pppoeUsername,
-          pppoe_password: pppoePassword,
-        },
-      });
-
-      if (fallback.error) {
-        throw new Error(fallback.error.message || "Login failed");
-      }
-
-      data = fallback.data;
-    }
+    const { data } = await api.post("/customer/login", {
+      pppoe_username: pppoeUsername,
+      pppoe_password: pppoePassword,
+    });
 
     const session: CustomerSession = {
       ...data.customer,
@@ -154,21 +115,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
     setCustomer(session);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-
-    // Log customer login to admin_login_logs
-    try {
-      const ua = navigator.userAgent;
-      const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)[/\s](\d+)/);
-      const browser = browserMatch ? `${browserMatch[1]} ${browserMatch[2]}` : "Unknown";
-      const isMobile = /Mobile|Android|iPhone/i.test(ua);
-      await supabase.from("admin_login_logs").insert({
-        admin_id: session.id,
-        action: "customer_login",
-        browser,
-        device_name: isMobile ? "Mobile Device" : "Desktop",
-        ip_address: "client",
-      });
-    } catch {}
   };
 
   const signOut = useCallback(() => {
