@@ -31,7 +31,7 @@ class MikrotikController extends Controller
     {
         try {
             // Support existing router ID lookup
-            if ($request->has('router_id') && !$request->has('host') && !$request->has('ip_address')) {
+            if ($request->has('router_id') && !$request->has('host')) {
                 $request->validate(['router_id' => 'required|uuid']);
                 $router = \App\Models\MikrotikRouter::find($request->router_id);
                 if (!$router) {
@@ -42,14 +42,12 @@ class MikrotikController extends Controller
                 $password = $router->password;
                 $port = $router->api_port ?? 8728;
             } else {
-                // Ad-hoc test with raw credentials
                 $request->validate([
                     'host' => 'required|string',
                     'username' => 'required|string',
                     'password' => 'required|string',
                     'port' => 'required|numeric',
                 ]);
-
                 $host = $request->input('host');
                 $username = $request->input('username');
                 $password = $request->input('password');
@@ -58,7 +56,6 @@ class MikrotikController extends Controller
 
             \Log::info('MikroTik test-connection', ['host' => $host, 'username' => $username, 'port' => $port]);
 
-        try {
             $socket = @fsockopen($host, $port, $errno, $errstr, 5);
             if (!$socket) {
                 return response()->json([
@@ -88,23 +85,16 @@ class MikrotikController extends Controller
                 'success' => false,
                 'message' => 'Connection established but login failed. Check username/password.',
             ]);
-        } catch (\Exception $e) {
-            \Log::error('MikroTik test-connection error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Connection error: ' . $e->getMessage(),
-            ]);
-        }
         } catch (\Illuminate\Validation\ValidationException $ve) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed: ' . implode(', ', $ve->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('MikroTik test-connection unexpected error', ['error' => $e->getMessage()]);
+            \Log::error('MikroTik test-connection error', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
+                'message' => 'Connection error: ' . $e->getMessage(),
             ]);
         }
     }
