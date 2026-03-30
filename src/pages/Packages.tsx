@@ -147,7 +147,7 @@ export default function Packages() {
       // Remove profile from MikroTik first
       if (deletePkg.mikrotik_profile_name) {
         try {
-          await api.post('/mikrotik/remove-profile', {
+          await mikrotikCall('remove-profile', {
             package_id: deletePkg.id,
             router_id: deletePkg.router_id,
           });
