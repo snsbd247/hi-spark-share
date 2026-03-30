@@ -10,14 +10,17 @@ class Transaction extends Model
     use HasUuid;
 
     protected $fillable = [
-        'id', 'type', 'description', 'debit', 'credit',
-        'date', 'account_id', 'created_by',
+        'id', 'type', 'category', 'amount', 'debit', 'credit',
+        'date', 'description', 'reference_type', 'reference_id',
+        'account_id', 'customer_id', 'vendor_id', 'created_by',
+        'journal_ref',
     ];
 
     protected $casts = [
+        'amount' => 'decimal:2',
         'debit'  => 'decimal:2',
         'credit' => 'decimal:2',
-        'date'   => 'datetime',
+        'date'   => 'date',
     ];
 
     public function account()

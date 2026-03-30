@@ -12,7 +12,8 @@ class PaymentGateway extends Model
     protected $fillable = [
         'id', 'gateway_name', 'environment', 'status',
         'app_key', 'app_secret', 'username', 'password',
-        'merchant_number', 'base_url', 'last_connected_at',
+        'merchant_number', 'base_url', 'receiving_account_id',
+        'last_connected_at',
     ];
 
     protected $hidden = ['app_secret', 'password'];

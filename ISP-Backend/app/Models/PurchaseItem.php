@@ -10,14 +10,13 @@ class PurchaseItem extends Model
     use HasUuid;
 
     protected $fillable = [
-        'id', 'purchase_id', 'product_id',
-        'quantity', 'unit_price', 'total',
+        'id', 'purchase_id', 'product_id', 'description',
+        'quantity', 'unit_price',
     ];
 
     protected $casts = [
         'quantity'   => 'integer',
         'unit_price' => 'decimal:2',
-        'total'      => 'decimal:2',
     ];
 
     public function purchase()

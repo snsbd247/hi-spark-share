@@ -17,7 +17,7 @@ class Product extends Model
     protected $casts = [
         'buy_price'  => 'decimal:2',
         'sell_price' => 'decimal:2',
-        'stock'      => 'decimal:2',
+        'stock'      => 'integer',
     ];
 
     public function purchaseItems()

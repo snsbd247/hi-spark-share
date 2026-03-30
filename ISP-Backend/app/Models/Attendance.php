@@ -9,9 +9,11 @@ class Attendance extends Model
 {
     use HasUuid;
 
+    protected $table = 'attendance';
+
     protected $fillable = [
         'id', 'employee_id', 'date', 'status',
-        'check_in', 'check_out', 'note',
+        'check_in', 'check_out', 'notes',
     ];
 
     protected $casts = [

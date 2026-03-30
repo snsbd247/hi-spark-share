@@ -11,7 +11,7 @@ class Account extends Model
 
     protected $fillable = [
         'id', 'name', 'type', 'code', 'parent_id', 'level',
-        'balance', 'description', 'is_system', 'is_active',
+        'balance', 'description', 'is_system', 'is_active', 'status',
     ];
 
     protected $casts = [
