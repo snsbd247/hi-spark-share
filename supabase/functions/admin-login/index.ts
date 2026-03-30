@@ -26,7 +26,6 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -43,7 +42,6 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (profileError || !profile) {
-      console.log("Profile not found for:", username);
       return new Response(
         JSON.stringify({ error: "Invalid username or password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -64,17 +62,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify password
-    let passwordValid = false;
-    try {
-      passwordValid = bcryptjs.compareSync(password, profile.password_hash);
-    } catch (e: any) {
-      console.error("bcrypt compare error:", e.message);
-      passwordValid = false;
-    }
-
+    const passwordValid = bcryptjs.compareSync(password, profile.password_hash);
     if (!passwordValid) {
-      console.log("Password invalid for user:", username);
       return new Response(
         JSON.stringify({ error: "Invalid username or password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
