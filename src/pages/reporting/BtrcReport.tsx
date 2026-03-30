@@ -13,7 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function BtrcReport() {
   const { t } = useLanguage();
-  const { branding } = useTenantBranding();
+  const { branding } = useBranding();
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: customers = [], isLoading } = useQuery({

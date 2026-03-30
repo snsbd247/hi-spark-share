@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleSettings } from "@/hooks/useModuleSettings";
-import { useBranding } from "@/contexts/TenantBrandingContext";
+import { useBranding } from "@/contexts/BrandingContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Users, Receipt, CreditCard, LogOut, Wifi,

@@ -16,7 +16,7 @@ export default function CustomerLogin() {
   const [pppoePassword, setPppoePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { signIn } = useCustomerAuth();
-  const { branding } = useTenantBranding();
+  const { branding } = useBranding();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {

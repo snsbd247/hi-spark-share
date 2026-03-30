@@ -60,7 +60,7 @@ Route::get('/health', function () {
 | Admin Protected Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['admin.auth', 'tenant'])->group(function () {
+Route::middleware(['admin.auth'])->group(function () {
 
     // ══════════════════════════════════════════════════════
     // ── AUTH (no permission needed) ──────────────────────

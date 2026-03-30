@@ -93,10 +93,6 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** @deprecated Use useBranding instead */
-export function useTenantBranding() {
-  return useContext(BrandingContext);
-}
 
 export function useBranding() {
   return useContext(BrandingContext);
