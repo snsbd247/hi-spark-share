@@ -51,14 +51,8 @@ export default function Customers() {
     setBulkSyncing(true);
     try {
       let data: any;
-      if (IS_LOVABLE) {
-        const res = await supabase.functions.invoke('mikrotik-sync/sync-all', { body: {} });
-        if (res.error) throw new Error(res.error.message || 'Sync failed');
-        data = res.data;
-      } else {
-        const res = await api.post('/mikrotik/sync-all', {});
-        data = res.data;
-      }
+      const res = await api.post('/mikrotik/sync-all', {});
+      data = res.data;
       if (data.success) {
         const r = data.results;
         const parts = [];
