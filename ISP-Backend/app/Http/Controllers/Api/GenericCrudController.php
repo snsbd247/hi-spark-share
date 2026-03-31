@@ -2,8 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Account;
+use App\Models\Expense;
+use App\Models\PaymentGateway;
+use App\Models\Transaction;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class GenericCrudController extends Controller
@@ -372,6 +379,37 @@ class GenericCrudController extends Controller
 
     protected array $singletonTables = ['sms_settings', 'general_settings'];
 
+    protected function destroyAccount(string $id)
+    {
+        $account = Account::findOrFail($id);
+
+        if ($account->is_system) {
+            return response()->json(['message' => 'Cannot delete system account'], 422);
+        }
+
+        if ($account->children()->exists()) {
+            return response()->json(['message' => 'Cannot delete account with child accounts'], 422);
+        }
+
+        $usageChecks = [
+            'transactions' => Transaction::where('account_id', $id)->exists(),
+            'expenses' => Expense::where('account_id', $id)->exists(),
+            'payment gateways' => PaymentGateway::where('receiving_account_id', $id)->exists(),
+        ];
+
+        foreach ($usageChecks as $label => $inUse) {
+            if ($inUse) {
+                return response()->json([
+                    'message' => "Cannot delete account because it is used in {$label}",
+                ], 422);
+            }
+        }
+
+        $account->delete();
+
+        return response()->json(['success' => true]);
+    }
+
     public function store(Request $request, string $table)
     {
         try {
@@ -425,11 +463,26 @@ class GenericCrudController extends Controller
     public function destroy(Request $request, string $table, string $id)
     {
         try {
+            $normalizedTable = str_replace('-', '_', $table);
+
+            if ($normalizedTable === 'accounts') {
+                return $this->destroyAccount($id);
+            }
+
             $model = $this->getModel($table);
             $record = $model->findOrFail($id);
             $record->delete();
             return response()->json(['success' => true]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Record not found'], 404);
+        } catch (QueryException $e) {
+            Log::error("GenericCrud destroy query error [{$table}:{$id}]: " . $e->getMessage());
+            return response()->json([
+                'message' => 'Cannot delete record because it is referenced by other data',
+                'error' => config('app.debug') ? $e->getMessage() : 'Constraint violation',
+            ], 422);
         } catch (\Exception $e) {
+            Log::error("GenericCrud destroy error [{$table}:{$id}]: " . $e->getMessage());
             return response()->json(['message' => 'Error deleting record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
         }
     }
