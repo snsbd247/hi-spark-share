@@ -378,6 +378,10 @@ class GenericCrudController extends Controller
             $model = $this->getModel($table);
             $normalizedTable = str_replace('-', '_', $table);
 
+            // Filter input to only fillable fields
+            $fillable = $model->getFillable();
+            $input = $request->only($fillable);
+
             // Singleton upsert
             if (in_array($normalizedTable, $this->singletonTables)) {
                 $existing = $model->first();

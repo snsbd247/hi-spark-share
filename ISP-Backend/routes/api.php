@@ -53,9 +53,15 @@ Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
         'timestamp' => now()->toIso8601String(),
-        'version' => config('app.version', '1.0.0'),
+        'version' => config('app.version', '1.0.2'),
     ]);
 });
+
+// ── Public read-only settings (needed for login page branding) ──
+Route::get('/general_settings', [GenericCrudController::class, 'index'])->defaults('table', 'general_settings');
+Route::get('/general-settings', [GenericCrudController::class, 'index'])->defaults('table', 'general_settings');
+Route::get('/system_settings', [GenericCrudController::class, 'index'])->defaults('table', 'system_settings');
+Route::get('/system-settings', [GenericCrudController::class, 'index'])->defaults('table', 'system_settings');
 
 // ── HTTP Setup Routes (secured by APP_KEY token) ─────
 Route::get('/setup/status', [\App\Http\Controllers\Api\SetupController::class, 'status']);
