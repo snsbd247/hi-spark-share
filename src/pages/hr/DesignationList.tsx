@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 export default function DesignationList() {
   const { t } = useLanguage();

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 export interface FooterSettings {
   footer_text: string;

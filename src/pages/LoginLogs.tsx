@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ export default function LoginLogs() {
   const { data: logs, isLoading } = useQuery({
     queryKey: ["admin-login-logs"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("admin_login_logs")
         .select("*, admin_sessions(device_name, browser, ip_address)")
         .order("created_at", { ascending: false })

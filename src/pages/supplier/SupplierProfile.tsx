@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, Printer, Loader2, Phone, Mail, MapPin, Receipt, Wallet, ShoppingCart, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { format } from "date-fns";
 import { generatePaymentAdvicePDF } from "@/lib/accountingPdf";
 import { generateSupplierPurchaseInvoicePDF } from "@/lib/supplierPurchasePdf";

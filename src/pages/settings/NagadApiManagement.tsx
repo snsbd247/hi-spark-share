@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export default function NagadApiManagement() {
   const { data: gateway, isLoading: loadingGateway } = useQuery({
     queryKey: ["payment-gateway-nagad"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payment_gateways")
         .select("*")
         .eq("gateway_name", "nagad")
@@ -78,7 +78,7 @@ export default function NagadApiManagement() {
   const { data: transactions, isLoading: loadingTxns } = useQuery({
     queryKey: ["nagad-transactions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payments")
         .select("*, customers(customer_id, name)")
         .eq("payment_method", "nagad")
@@ -93,7 +93,7 @@ export default function NagadApiManagement() {
   const { data: refundLogs, isLoading: loadingRefunds } = useQuery({
     queryKey: ["nagad-refund-logs"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("audit_logs")
         .select("*")
         .eq("action", "nagad_refund")

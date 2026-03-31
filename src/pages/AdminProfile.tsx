@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { uploadAvatar } from "@/lib/storage";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -39,7 +39,7 @@ export default function AdminProfile() {
     queryKey: ["admin-profile", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("profiles")
         .select("*")
         .eq("id", user!.id)
@@ -64,7 +64,7 @@ export default function AdminProfile() {
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from("profiles")
         .update({
           full_name: form.full_name,
@@ -121,7 +121,7 @@ export default function AdminProfile() {
     try {
       const publicUrl = await uploadAvatar(user.id, file);
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await db
         .from("profiles")
         .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
         .eq("id", user.id);

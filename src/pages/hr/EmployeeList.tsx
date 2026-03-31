@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 export default function EmployeeList() {
   const { t } = useLanguage();

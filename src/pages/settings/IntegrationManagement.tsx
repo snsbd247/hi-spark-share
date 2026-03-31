@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,7 +213,7 @@ function SmtpEmailTemplates() {
   const { data, isLoading } = useQuery({
     queryKey: ["email-templates-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("system_settings" as any)
         .select("setting_key, setting_value")
         .in("setting_key", EMAIL_TEMPLATES.map((t) => t.key));
@@ -233,7 +233,7 @@ function SmtpEmailTemplates() {
     try {
       for (const tpl of EMAIL_TEMPLATES) {
         if (form[tpl.key] !== undefined) {
-          const { data: existing } = await supabase
+          const { data: existing } = await db
             .from("system_settings" as any)
             .select("id")
             .eq("setting_key", tpl.key)
@@ -335,7 +335,7 @@ function SmsTab() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form || !settings) return;
-      const { error } = await supabase
+      const { error } = await db
         .from("sms_settings")
         .update({
           api_token: form.api_token, sender_id: form.sender_id,

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useCustomerAuth, CustomerProfile as CustomerProfileType } from "@/contexts/CustomerAuthContext";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,7 @@ export default function CustomerProfile() {
       } catch (e) {
         // Fallback to direct query
       }
-      const { data } = await supabase
+      const { data } = await db
         .from("customers")
         .select("id, customer_id, name, phone, area, road, house, city, email, package_id, monthly_bill, ip_address, pppoe_username, onu_mac, router_mac, installation_date, status, username, father_name, mother_name, occupation, nid, alt_phone, permanent_address, gateway, subnet, discount, connectivity_fee, due_date_day, photo_url")
         .eq("id", customer!.id)
@@ -43,7 +43,7 @@ export default function CustomerProfile() {
     queryKey: ["customer-profile-package", customer?.package_id],
     queryFn: async () => {
       if (!customer?.package_id) return null;
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("packages")
         .select("*")
         .eq("id", customer.package_id)

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { postPaymentToLedger, postCustomerLedgerCredit } from "@/lib/ledger";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export default function Billing() {
   const { data: bills, isLoading } = useQuery({
     queryKey: ["bills"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("bills")
         .select("*, customers(customer_id, name, phone, area, monthly_bill, package_id)")
         .order("created_at", { ascending: false });
@@ -120,7 +120,7 @@ export default function Billing() {
 
   const handleMarkPaid = async (bill: any) => {
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from("bills")
         .update({ status: "paid", paid_date: new Date().toISOString() })
         .eq("id", bill.id);
@@ -145,7 +145,7 @@ export default function Billing() {
       // Send Payment Confirmation SMS
       if (bill.customers?.phone) {
         try {
-          const { data: tpl } = await supabase
+          const { data: tpl } = await db
             .from("sms_templates")
             .select("message")
             .eq("name", "Payment Confirmation")

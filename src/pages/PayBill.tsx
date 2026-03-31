@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ export default function PayBill() {
         return;
       }
 
-      const { data: bills, error: err } = await supabase
+      const { data: bills, error: err } = await db
         .from("bills")
         .select("*, customers(name, customer_id, phone)")
         .eq("payment_link_token", token)

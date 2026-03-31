@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { uploadCustomerPhoto } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,7 +244,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
       if (isEdit) {
         const photoUrl = await uploadPhoto(customer.id);
         if (photoUrl) payload.photo_url = photoUrl;
-        const { error } = await supabase
+        const { error } = await db
           .from("customers")
           .update(payload)
           .eq("id", customer.id);
@@ -301,7 +301,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
 
             // Create bill with total amount
-            const { data: bill, error: billError } = await supabase
+            const { data: bill, error: billError } = await db
               .from("bills")
               .insert({
                 customer_id: data.id,
@@ -403,7 +403,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
               // Send Bill Generation SMS for new customer
               if (data.phone) {
                 try {
-                  const { data: billTpl } = await supabase
+                  const { data: billTpl } = await db
                     .from("sms_templates")
                     .select("message")
                     .eq("name", "Bill Generated")

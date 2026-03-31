@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export default function BackupRestore() {
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["backup-logs"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("backup_logs")
         .select("*")
         .order("created_at", { ascending: false });
@@ -280,7 +280,7 @@ export default function BackupRestore() {
                 onClick={async () => {
                   try {
                     await createBackup.mutateAsync();
-                    const { data } = await supabase
+                    const { data } = await db
                       .from("backup_logs")
                       .select("file_name")
                       .order("created_at", { ascending: false })

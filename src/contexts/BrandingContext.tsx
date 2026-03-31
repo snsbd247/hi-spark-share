@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { HAS_BACKEND } from "@/lib/environment";
 
 interface Branding {
@@ -51,7 +51,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
     const load = async () => {
       try {
-        const { data } = await supabase
+        const { data } = await db
           .from("general_settings")
           .select("*")
           .limit(1)

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function FinancialStatement() {

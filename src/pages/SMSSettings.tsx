@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,7 @@ export default function SMSSettings() {
     if (!form || !settings) return;
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from("sms_settings")
         .update({
           api_token: form.api_token,

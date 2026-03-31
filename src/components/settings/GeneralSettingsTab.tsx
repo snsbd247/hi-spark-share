@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ export default function GeneralSettingsTab() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["general-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("general_settings")
         .select("*")
         .limit(1)
@@ -89,12 +89,12 @@ export default function GeneralSettingsTab() {
 
       let error;
       if (settings?.id) {
-        ({ error } = await supabase
+        ({ error } = await db
           .from("general_settings")
           .update(payload)
           .eq("id", settings.id));
       } else {
-        ({ error } = await supabase
+        ({ error } = await db
           .from("general_settings")
           .insert({ ...payload, site_name: form.site_name || "Smart ISP" }));
       }

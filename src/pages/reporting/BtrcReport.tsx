@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Loader2, Printer, FileSpreadsheet } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import * as XLSX from "xlsx";

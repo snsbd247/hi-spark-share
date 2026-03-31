@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, Search, Printer, Pencil, Wallet } from "lucide-react";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { generateSupplierPurchaseInvoicePDF } from "@/lib/supplierPurchasePdf";
 import { useLanguage } from "@/contexts/LanguageContext";
 

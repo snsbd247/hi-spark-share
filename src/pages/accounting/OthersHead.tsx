@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, BookOpen, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const TYPE_COLORS: Record<string, string> = {

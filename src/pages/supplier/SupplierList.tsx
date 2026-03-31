@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2, Search, Eye, Truck } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SupplierList() {

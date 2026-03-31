@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useAdminRole() {
@@ -10,7 +10,7 @@ export function useAdminRole() {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("user_roles")
         .select("role")
         .eq("user_id", user!.id)
@@ -25,7 +25,7 @@ export function useAdminRole() {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("profiles")
         .select("full_name, username")
         .eq("id", user!.id)

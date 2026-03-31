@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function MerchantPaymentReports() {
   const { data: payments, isLoading } = useQuery({
     queryKey: ["merchant-report", period, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("merchant_payments")
         .select("id, amount, status, created_at, transaction_id, sender_phone, reference")
         .gte("created_at", dateRange.from.toISOString())

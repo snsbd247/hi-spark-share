@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, Pencil, Trash2, GraduationCap, Briefcase, DollarSign, Phone } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function EmployeeProfile() {

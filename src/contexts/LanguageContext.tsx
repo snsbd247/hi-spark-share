@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { translations, type Language, type Translations } from "@/i18n";
 
@@ -21,7 +21,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Load language from DB when user is available
   useEffect(() => {
     if (!user?.id) return;
-    supabase
+    db
       .from("profiles")
       .select("language")
       .eq("id", user.id)
@@ -39,7 +39,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("app_language", lang);
 
     if (user?.id) {
-      await supabase
+      await db
         .from("profiles")
         .update({ language: lang } as any)
         .eq("id", user.id);

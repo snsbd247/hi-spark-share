@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useCallback } from "react";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -160,7 +160,7 @@ export default function BillingImport({ open, onOpenChange, onComplete }: Props)
   const handleImport = async () => {
     setImporting(true);
     try {
-      const { data: customers } = await supabase
+      const { data: customers } = await db
         .from("customers")
         .select("id, customer_id, monthly_bill, due_date_day")
         .eq("status", "active");
@@ -200,7 +200,7 @@ export default function BillingImport({ open, onOpenChange, onComplete }: Props)
           dueDateStr = new Date(md.getFullYear(), md.getMonth(), dueDay).toISOString().split("T")[0];
         }
 
-        const { data: existing } = await supabase
+        const { data: existing } = await db
           .from("bills").select("id").eq("customer_id", cust.id).eq("month", month).limit(1);
         if (existing && existing.length > 0) {
           duplicates++;

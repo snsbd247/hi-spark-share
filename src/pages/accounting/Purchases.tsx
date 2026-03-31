@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { postPurchaseToLedger, postPurchasePaymentToLedger } from "@/lib/ledger";
 import { generatePurchaseInvoicePDF } from "@/lib/accountingPdf";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

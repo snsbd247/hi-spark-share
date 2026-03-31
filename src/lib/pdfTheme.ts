@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 // ═══════════════════════════════════════════════════════════════
 // Shared PDF Design System — Consistent across ALL reports

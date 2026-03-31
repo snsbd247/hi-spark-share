@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,7 +32,7 @@ function usePaymentStats(method: string) {
     queryKey: [`${method}-dashboard-stats`],
     queryFn: async () => {
       const thirtyDaysAgo = format(subMonths(new Date(), 1), "yyyy-MM-dd");
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payments")
         .select("amount, status, paid_at, payment_method")
         .eq("payment_method", method)

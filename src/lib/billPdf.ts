@@ -6,11 +6,11 @@ import {
   getCompanySettings, getInvoiceSettings,
   drawFooter, getPaymentMethodLines, fmtAmount,
 } from "./pdfTheme";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 async function getPreviousBalance(customerId: string, billMonth: string): Promise<number> {
   try {
-    const { data } = await supabase
+    const { data } = await db
       .from("customer_ledger" as any)
       .select("balance")
       .eq("customer_id", customerId)

@@ -1,4 +1,4 @@
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 
 interface LedgerEntry {
   description: string;

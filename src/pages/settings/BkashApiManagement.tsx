@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ export default function BkashApiManagement() {
   const { data: gateway, isLoading: loadingGateway } = useQuery({
     queryKey: ["payment-gateway-bkash"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payment_gateways")
         .select("*")
         .eq("gateway_name", "bkash")
@@ -77,7 +77,7 @@ export default function BkashApiManagement() {
   const { data: transactions, isLoading: loadingTxns } = useQuery({
     queryKey: ["bkash-transactions"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payments")
         .select("*, customers(customer_id, name)")
         .or("payment_method.eq.bkash,payment_method.eq.bkash_merchant")
@@ -92,7 +92,7 @@ export default function BkashApiManagement() {
   const { data: refundLogs, isLoading: loadingRefunds } = useQuery({
     queryKey: ["bkash-refund-logs"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("audit_logs")
         .select("*")
         .eq("action", "bkash_refund")

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { uploadCompanyLogo } from "@/lib/storage";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ export default function GeneralSettings() {
       if (loginLogoFile) login_logo_url = await uploadCompanyLogo(user.id + "-login", loginLogoFile);
       if (faviconFile) favicon_url = await uploadCompanyLogo(user.id + "-favicon", faviconFile);
 
-      const { error } = await supabase
+      const { error } = await db
         .from("general_settings")
         .update({
           site_name: form.site_name,

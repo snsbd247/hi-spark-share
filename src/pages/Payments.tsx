@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { postPaymentToLedger } from "@/lib/ledger";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +54,7 @@ export default function Payments() {
   const { data: payments, isLoading } = useQuery({
     queryKey: ["admin-payments"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("payments")
         .select("*, customers(customer_id, name)")
         .order("created_at", { ascending: false });

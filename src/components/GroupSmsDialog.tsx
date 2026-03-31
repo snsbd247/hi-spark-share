@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -128,7 +128,7 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
     queryFn: async () => {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const status = group === "due" ? "unpaid" : "paid";
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("bills")
         .select("customer_id")
         .eq("month", currentMonth)

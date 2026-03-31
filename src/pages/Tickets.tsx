@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ export default function Tickets() {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["tickets"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("support_tickets")
         .select("*, customers(name, customer_id, phone)")
         .order("created_at", { ascending: false });
@@ -64,7 +64,7 @@ export default function Tickets() {
     queryKey: ["ticket-replies", viewTicket?.id],
     enabled: !!viewTicket,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("ticket_replies")
         .select("*")
         .eq("ticket_id", viewTicket.id)
@@ -105,7 +105,7 @@ export default function Tickets() {
 
   const updateTicket = async (id: string, updates: Record<string, any>) => {
     try {
-      const { error } = await supabase
+      const { error } = await db
         .from("support_tickets")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", id);

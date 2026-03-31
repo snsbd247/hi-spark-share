@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import { fetchCustomerData } from "@/hooks/useCustomerData";
 import PortalLayout from "@/components/layout/PortalLayout";
@@ -45,7 +45,7 @@ export default function CustomerDashboard() {
     queryKey: ["customer-package", customer?.package_id],
     queryFn: async () => {
       if (!customer?.package_id) return null;
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("packages")
         .select("*")
         .eq("id", customer.package_id)

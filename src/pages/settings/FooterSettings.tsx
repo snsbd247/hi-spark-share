@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ export default function FooterSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["footer-settings-admin"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("system_settings" as any)
         .select("setting_key, setting_value")
         .in("setting_key", [

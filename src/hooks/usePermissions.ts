@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface UserPermission {
@@ -24,7 +24,7 @@ export function usePermissions() {
         };
       }
 
-      const { data: roles, error: rolesError } = await supabase
+      const { data: roles, error: rolesError } = await db
         .from("user_roles")
         .select("role, custom_role_id")
         .eq("user_id", user.id);
@@ -54,7 +54,7 @@ export function usePermissions() {
         return { permissions: [] as UserPermission[], isSuperAdmin: false, customRoleName };
       }
 
-      const { data: roleData } = await supabase
+      const { data: roleData } = await db
         .from("custom_roles")
         .select("name")
         .eq("id", customRoleId)
@@ -62,7 +62,7 @@ export function usePermissions() {
 
       if (roleData) customRoleName = roleData.name;
 
-      const { data: rolePerms } = await supabase
+      const { data: rolePerms } = await db
         .from("role_permissions")
         .select("permission_id")
         .eq("role_id", customRoleId);
@@ -72,7 +72,7 @@ export function usePermissions() {
       }
 
       const permIds = rolePerms.map((rp: any) => rp.permission_id);
-      const { data: perms } = await supabase
+      const { data: perms } = await db
         .from("permissions")
         .select("module, action")
         .in("id", permIds);

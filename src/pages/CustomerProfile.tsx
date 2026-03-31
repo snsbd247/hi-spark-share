@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerInfoCard from "@/components/customers/CustomerInfoCard";
 import CustomerView from "@/components/customers/CustomerView";
@@ -54,7 +54,7 @@ export default function CustomerProfilePage() {
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer-profile", id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("customers")
         .select("*, packages(name, speed), mikrotik_routers(name)")
         .eq("id", id!)
@@ -68,7 +68,7 @@ export default function CustomerProfilePage() {
   const { data: dueAmount } = useQuery({
     queryKey: ["customer-due", id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("bills")
         .select("amount")
         .eq("customer_id", id!)
@@ -82,7 +82,7 @@ export default function CustomerProfilePage() {
   const { data: settings } = useQuery({
     queryKey: ["general-settings"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("general_settings")
         .select("*")
         .limit(1)

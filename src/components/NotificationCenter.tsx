@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,7 +14,7 @@ export default function NotificationCenter() {
   const { data: backupLogs } = useQuery({
     queryKey: ["notification-backup-logs"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("backup_logs")
         .select("*")
         .order("created_at", { ascending: false })
@@ -27,7 +27,7 @@ export default function NotificationCenter() {
 
   // Real-time subscription for backup_logs
   useEffect(() => {
-    const channel = supabase
+    const channel = db
       .channel("backup-logs-realtime")
       .on(
         "postgres_changes",

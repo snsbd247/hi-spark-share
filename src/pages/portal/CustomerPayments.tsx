@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/utils";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import { fetchCustomerData } from "@/hooks/useCustomerData";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import PortalLayout from "@/components/layout/PortalLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export default function CustomerPayments() {
       } catch (e) {
         // Fallback to direct query
       }
-      const { data } = await supabase
+      const { data } = await db
         .from("payments")
         .select("*")
         .eq("customer_id", customer!.id)
@@ -46,7 +46,7 @@ export default function CustomerPayments() {
   const { data: fullCustomer } = useQuery({
     queryKey: ["portal-customer-full-pay", customer?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("customers")
         .select("*, packages(name, speed)")
         .eq("id", customer!.id)

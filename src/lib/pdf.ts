@@ -4,7 +4,7 @@ import {
   getCompanySettings, getInvoiceSettings,
   drawFooter, getPaymentMethodLines,
 } from "./pdfTheme";
-import { db } from "@/integrations/supabase/client";
+import { db } from "@/integrations/db/client";
 import { formatAddress, formatPermanentAddress } from "./bangladeshGeo";
 
 // ─── Payment Receipt ───
