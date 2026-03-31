@@ -14,7 +14,7 @@ NC='\033[0m'
 
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════════╗"
-echo "║     Smart ISP v1.0.1 — cPanel Setup              ║"
+echo "║     Smart ISP v1.0.2 — cPanel Setup              ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
