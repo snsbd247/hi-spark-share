@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { db } from "@/integrations/supabase/client";
-import { HAS_BACKEND } from "@/lib/environment";
+import { IS_LOVABLE, HAS_BACKEND } from "@/lib/environment";
 
 interface Branding {
   site_name: string;
@@ -43,8 +43,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Skip API call if no backend is available (Lovable preview)
-    if (!HAS_BACKEND) {
+    // In Lovable preview OR production with backend, load branding
+    if (!HAS_BACKEND && !IS_LOVABLE) {
       setLoading(false);
       return;
     }
@@ -84,7 +84,6 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        // Silently use defaults if backend unreachable
         console.warn("Branding: using defaults (backend unavailable)");
       } finally {
         setLoading(false);

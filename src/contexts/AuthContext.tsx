@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import api from "@/lib/api";
+import { IS_LOVABLE } from "@/lib/environment";
 
 interface AdminUser {
   id: string;
@@ -31,16 +31,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token && savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser) as AdminUser;
-          try {
-            const { data } = await api.get("/admin/me");
-            if (data?.id && mounted) setUser(parsedUser);
-            else {
+
+          if (IS_LOVABLE) {
+            // In Lovable preview, validate session via Edge Function
+            const { supabase } = await import("@/integrations/supabase/client");
+            const { data, error } = await supabase
+              .from("admin_sessions")
+              .select("id")
+              .eq("session_token", token)
+              .eq("status", "active")
+              .maybeSingle();
+            if (data && !error && mounted) {
+              setUser(parsedUser);
+            } else {
               localStorage.removeItem("admin_token");
               localStorage.removeItem("admin_user");
             }
-          } catch {
-            localStorage.removeItem("admin_token");
-            localStorage.removeItem("admin_user");
+          } else {
+            // In production, validate via Laravel API
+            const api = (await import("@/lib/api")).default;
+            try {
+              const { data } = await api.get("/admin/me");
+              if (data?.id && mounted) setUser(parsedUser);
+              else {
+                localStorage.removeItem("admin_token");
+                localStorage.removeItem("admin_user");
+              }
+            } catch {
+              localStorage.removeItem("admin_token");
+              localStorage.removeItem("admin_user");
+            }
           }
         } catch {
           localStorage.removeItem("admin_token");
@@ -55,17 +75,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (username: string, password: string) => {
-    const { data } = await api.post("/admin/login", { email: username, password });
-    if (!data?.user || !data?.token) throw new Error(data?.error || "Login failed");
-    const adminUser: AdminUser = data.user;
-    localStorage.setItem("admin_token", data.token);
-    localStorage.setItem("admin_user", JSON.stringify(adminUser));
-    setUser(adminUser);
-    return { user: adminUser, token: data.token };
+    if (IS_LOVABLE) {
+      // Use Supabase Edge Function for login
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("admin-login", {
+        body: { username, password },
+      });
+      if (error) throw new Error(error.message || "Login failed");
+      if (!data?.user || !data?.token) throw new Error(data?.error || "Login failed");
+      const adminUser: AdminUser = data.user;
+      localStorage.setItem("admin_token", data.token);
+      localStorage.setItem("admin_user", JSON.stringify(adminUser));
+      setUser(adminUser);
+      return { user: adminUser, token: data.token };
+    } else {
+      // Use Laravel API
+      const api = (await import("@/lib/api")).default;
+      const { data } = await api.post("/admin/login", { email: username, password });
+      if (!data?.user || !data?.token) throw new Error(data?.error || "Login failed");
+      const adminUser: AdminUser = data.user;
+      localStorage.setItem("admin_token", data.token);
+      localStorage.setItem("admin_user", JSON.stringify(adminUser));
+      setUser(adminUser);
+      return { user: adminUser, token: data.token };
+    }
   };
 
   const signOut = async () => {
-    try { await api.post("/admin/logout"); } catch {}
+    if (IS_LOVABLE) {
+      // Invalidate session in Supabase
+      const token = localStorage.getItem("admin_token");
+      if (token) {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          await supabase
+            .from("admin_sessions")
+            .update({ status: "expired" })
+            .eq("session_token", token);
+        } catch {}
+      }
+    } else {
+      try {
+        const api = (await import("@/lib/api")).default;
+        await api.post("/admin/logout");
+      } catch {}
+    }
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_user");
     setUser(null);

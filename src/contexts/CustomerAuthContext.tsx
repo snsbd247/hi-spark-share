@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
-import api from "@/lib/api";
+import { IS_LOVABLE } from "@/lib/environment";
 
 interface CustomerSession {
   id: string;
@@ -64,8 +64,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const verifySession = useCallback(async (sessionToken: string, extra: Record<string, any> = {}) => {
-    const { data } = await api.post("/customer/verify", { session_token: sessionToken, ...extra });
-    return data;
+    if (IS_LOVABLE) {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("customer-verify", {
+        body: { session_token: sessionToken, ...extra },
+      });
+      if (error) throw error;
+      return data;
+    } else {
+      const api = (await import("@/lib/api")).default;
+      const { data } = await api.post("/customer/verify", { session_token: sessionToken, ...extra });
+      return data;
+    }
   }, []);
 
   useEffect(() => {
@@ -91,10 +101,22 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [verifySession]);
 
   const signIn = async (pppoeUsername: string, pppoePassword: string) => {
-    const { data } = await api.post("/customer/login", {
-      pppoe_username: pppoeUsername,
-      pppoe_password: pppoePassword,
-    });
+    let data: any;
+    if (IS_LOVABLE) {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const result = await supabase.functions.invoke("customer-login", {
+        body: { pppoe_username: pppoeUsername, pppoe_password: pppoePassword },
+      });
+      if (result.error) throw result.error;
+      data = result.data;
+    } else {
+      const api = (await import("@/lib/api")).default;
+      const res = await api.post("/customer/login", {
+        pppoe_username: pppoeUsername,
+        pppoe_password: pppoePassword,
+      });
+      data = res.data;
+    }
     const session: CustomerSession = {
       ...data.customer,
       monthly_bill: Number(data.customer.monthly_bill),
@@ -116,7 +138,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const data = await verifySession(customer.session_token, { include_profile: true });
       return data.customer as CustomerProfile;
     } catch (err: any) {
-      if (err.response?.status === 401) signOut();
+      if (err.response?.status === 401 || err?.status === 401) signOut();
       return null;
     }
   }, [customer?.session_token, signOut, verifySession]);
