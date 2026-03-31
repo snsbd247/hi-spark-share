@@ -6,6 +6,9 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Route /api requests to Laravel backend
+    RewriteRule ^api/(.*)$ api/public/index.php [L,QSA]
+
     # Redirect Trailing Slashes If Not A Folder
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
@@ -14,6 +17,7 @@
     # Handle React Router - Send all requests to index.html
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/api/
     RewriteRule ^ index.html [L]
 </IfModule>
 
