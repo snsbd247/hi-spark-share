@@ -15,6 +15,11 @@ class User extends Model
     protected $fillable = [
         'id', 'tenant_id', 'full_name', 'email', 'username', 'mobile', 'address',
         'avatar_url', 'password_hash', 'staff_id', 'status', 'language',
+        'must_change_password',
+    ];
+
+    protected $casts = [
+        'must_change_password' => 'boolean',
     ];
 
     protected $hidden = ['password_hash'];

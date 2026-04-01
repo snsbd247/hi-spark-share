@@ -72,9 +72,32 @@ class AuthController extends Controller
                 'avatar_url' => $user->avatar_url,
                 'mobile' => $user->mobile,
                 'language' => $user->language ?? 'en',
+                'must_change_password' => (bool) $user->must_change_password,
                 'permissions' => $permissions,
             ],
             'token' => $sessionToken,
+        ]);
+    }
+
+    /**
+     * Force password change endpoint.
+     */
+    public function forcePasswordChange(Request $request)
+    {
+        $request->validate([
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $user = $request->get('admin_user');
+
+        $user->update([
+            'password_hash' => Hash::make($request->new_password),
+            'must_change_password' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully.',
         ]);
     }
 
