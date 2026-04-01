@@ -304,7 +304,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/accounting/expense-heads', [AccountingHeadController::class, 'storeExpenseHead']);
         Route::post('/accounting/other-heads', [AccountingHeadController::class, 'storeOtherHead']);
     });
-    Route::middleware('check.permission:accounting,edit')->group(function () {
+    Route::middleware(['check.plan_module:accounting', 'check.permission:accounting,edit'])->group(function () {
         Route::put('/accounting/income-heads/{id}', [AccountingHeadController::class, 'updateIncomeHead']);
         Route::put('/accounting/expense-heads/{id}', [AccountingHeadController::class, 'updateExpenseHead']);
         Route::put('/accounting/other-heads/{id}', [AccountingHeadController::class, 'updateOtherHead']);
