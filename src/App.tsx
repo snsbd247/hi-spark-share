@@ -41,15 +41,13 @@ const MerchantPayments = lazy(() => import("@/pages/MerchantPayments"));
 const MerchantPaymentReports = lazy(() => import("@/pages/MerchantPaymentReports"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const SMSLogs = lazy(() => import("@/pages/SMSLogs"));
-const SMSSettings = lazy(() => import("@/pages/SMSSettings"));
+// SMSSettings removed from tenant - now Super Admin only
 const ReminderLogs = lazy(() => import("@/pages/ReminderLogs"));
 const PayBill = lazy(() => import("@/pages/PayBill"));
 const AdminProfile = lazy(() => import("@/pages/AdminProfile"));
 const GeneralSettings = lazy(() => import("@/pages/settings/GeneralSettings"));
 const SystemSettings = lazy(() => import("@/pages/settings/SystemSettings"));
-const IntegrationManagement = lazy(() => import("@/pages/settings/IntegrationManagement"));
-const BkashApiManagement = lazy(() => import("@/pages/settings/BkashApiManagement"));
-const NagadApiManagement = lazy(() => import("@/pages/settings/NagadApiManagement"));
+// IntegrationManagement, BkashApiManagement, NagadApiManagement removed from tenant - now Super Admin only
 const MikroTikRouters = lazy(() => import("@/pages/settings/MikroTikRouters"));
 const CustomerLogin = lazy(() => import("@/pages/portal/CustomerLogin"));
 const CustomerDashboard = lazy(() => import("@/pages/portal/CustomerDashboard"));
@@ -244,9 +242,7 @@ function App() {
                 <Route path="/settings/mikrotik" element={<PermissionGuard module="settings"><MikroTikRouters /></PermissionGuard>} />
                 <Route path="/settings/roles" element={<PermissionGuard module="roles"><RoleManagement /></PermissionGuard>} />
                 <Route path="/settings/footer" element={<PermissionGuard module="settings"><FooterSettings /></PermissionGuard>} />
-                <Route path="/settings/integrations" element={<PermissionGuard module="settings"><IntegrationManagement /></PermissionGuard>} />
-                <Route path="/settings/bkash" element={<PermissionGuard module="settings"><BkashApiManagement /></PermissionGuard>} />
-                <Route path="/settings/nagad" element={<PermissionGuard module="settings"><NagadApiManagement /></PermissionGuard>} />
+                {/* Integration routes moved to Super Admin only */}
                 <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
                 <Route path="/settings/api-health" element={<PermissionGuard module="settings"><ApiHealthMonitor /></PermissionGuard>} />
                 <Route path="/settings/domains" element={<PermissionGuard module="settings"><DomainManagement /></PermissionGuard>} />
