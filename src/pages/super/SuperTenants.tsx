@@ -14,6 +14,7 @@ import { Plus, Building2, Ban, CheckCircle, Trash2, Search, Loader2, Eye } from 
 import { toast } from "sonner";
 
 export default function SuperTenants() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
