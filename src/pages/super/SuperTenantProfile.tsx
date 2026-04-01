@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superAdminApi } from "@/lib/superAdminApi";
-import { runSetupStep, setupAll, type SetupResult, type FullSetupResult } from "@/lib/tenantSetupService";
+import { runSetupStep, setupAll, resetTenantBusinessData, type SetupResult, type FullSetupResult, type ResetResult } from "@/lib/tenantSetupService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -835,11 +835,15 @@ export default function SuperTenantProfile() {
     enabled: !!id,
   });
 
+  const [forceReimport, setForceReimport] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+
   const setupMut = useMutation({
     mutationFn: async (step: string) => {
       setSetupRunning(step);
       if (step === "all") {
-        const result: FullSetupResult = await setupAll();
+        const result: FullSetupResult = await setupAll(forceReimport);
         if (!result.overall) {
           const failures = [
             !result.geo.success && `Geo: ${result.geo.message}`,
@@ -856,21 +860,39 @@ export default function SuperTenantProfile() {
         });
         return result;
       } else {
-        const result: SetupResult = await runSetupStep(step);
+        const result: SetupResult = await runSetupStep(step, forceReimport);
         if (!result.success) throw new Error(result.message);
         await superAdminApi.updateTenant(id!, { [`setup_${step}`]: true });
         return result;
       }
     },
     onSuccess: (result: any, step) => {
+      const skippedNote = result?.skipped ? " (data already existed)" : "";
       const msg = step === "all"
-        ? "Full setup completed successfully!"
-        : `${step} setup completed${result?.count ? ` (${result.count} records)` : ""}!`;
+        ? "Full setup completed successfully!" + skippedNote
+        : `${step} setup completed${result?.count ? ` (${result.count} records)` : ""}!` + skippedNote;
       toast.success(msg);
       setSetupRunning(null);
       qc.invalidateQueries({ queryKey: ["super-tenant", id] });
     },
     onError: (e: any) => { toast.error(e.message || "Setup failed"); setSetupRunning(null); },
+  });
+
+  const resetMut = useMutation({
+    mutationFn: async () => {
+      const result: ResetResult = await resetTenantBusinessData();
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (result: ResetResult) => {
+      toast.success(`Reset complete! ${result.tables_cleared.length} tables cleared.`);
+      setShowResetConfirm(false);
+      setResetConfirmText("");
+      qc.invalidateQueries({ queryKey: ["super-tenant", id] });
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Reset failed");
+    },
   });
 
   const suspendMut = useMutation({
@@ -1132,14 +1154,22 @@ export default function SuperTenantProfile() {
                 {isFullySetup ? "All setup steps completed ✓" : `${completedSteps} of ${setupSteps.length} steps completed`}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              {!isFullySetup && (
-                <Button onClick={() => setupMut.mutate("all")} disabled={setupMut.isPending}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={forceReimport}
+                  onChange={(e) => setForceReimport(e.target.checked)}
+                  className="rounded border-input"
+                />
+                Force Re-import
+              </label>
+              {!isFullySetup || forceReimport ? (
+                <Button onClick={() => setupMut.mutate("all")} disabled={setupMut.isPending} size="sm">
                   {setupRunning === "all" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                  One-Click Full Setup
+                  {forceReimport ? "Re-Import All" : "One-Click Full Setup"}
                 </Button>
-              )}
-              {isFullySetup && (
+              ) : (
                 <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1.5">
                   <CheckCircle2 className="h-4 w-4 mr-1" /> Setup Complete
                 </Badge>
@@ -1174,9 +1204,9 @@ export default function SuperTenantProfile() {
                     <span className={`text-sm ${step.done ? "text-primary font-medium" : "text-foreground"}`}>{step.label}</span>
                   </div>
                 </div>
-                {!step.done ? (
+                {!step.done || forceReimport ? (
                   <Button variant="outline" size="sm" onClick={() => setupMut.mutate(step.key)} disabled={setupMut.isPending} className="h-8">
-                    {setupRunning === step.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Import"}
+                    {setupRunning === step.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (forceReimport && step.done ? "Re-Import" : "Import")}
                   </Button>
                 ) : (
                   <Badge variant="outline" className="text-primary border-primary/30">Done</Badge>
@@ -1186,6 +1216,77 @@ export default function SuperTenantProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Partial Reset Card ─────────────────────────────── */}
+      <Card className="border-destructive/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" /> Reset Business Data
+          </CardTitle>
+          <CardDescription>
+            Delete all business data (customers, bills, payments, transactions) while keeping users, roles, settings, and system configuration intact.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-1 space-y-1 text-sm text-muted-foreground">
+              <p>⚠️ This will permanently delete:</p>
+              <ul className="list-disc list-inside text-xs space-y-0.5 ml-2">
+                <li>Customers, Bills, Payments, Ledger entries</li>
+                <li>SMS/Reminder logs, Daily reports</li>
+                <li>Products, Expenses, Vendors, Suppliers</li>
+                <li>Transactions</li>
+              </ul>
+              <p className="text-xs mt-2">✅ Will NOT delete: Users, Roles, Settings, Accounts (COA), Templates, Geo data</p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowResetConfirm(true)}
+              className="shrink-0"
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Reset Tenant Data
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog open={showResetConfirm} onOpenChange={(o) => { if (!o) { setShowResetConfirm(false); setResetConfirmText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Confirm Data Reset
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm space-y-2">
+              <p className="font-semibold">⚠️ This action is irreversible!</p>
+              <p>All business data for tenant "{tenant?.name}" will be permanently deleted.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Type <span className="font-mono font-bold">RESET</span> to confirm</Label>
+              <Input
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="Type RESET here"
+                className="font-mono"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowResetConfirm(false); setResetConfirmText(""); }}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => resetMut.mutate()}
+              disabled={resetConfirmText !== "RESET" || resetMut.isPending}
+            >
+              {resetMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Confirm Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Tabs: SMS History, Users, Activity Logs, Login History ── */}
       <Tabs defaultValue="sms" className="w-full">
