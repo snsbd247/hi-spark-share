@@ -206,6 +206,8 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/nagad/create-payment', [NagadController::class, 'createPayment']);
         Route::post('/nagad/query-transaction', [NagadController::class, 'queryTransaction']);
         Route::post('/nagad/refund', [NagadController::class, 'refund']);
+        Route::post('/sslcommerz/create-payment', [SslCommerzController::class, 'createPayment']);
+        Route::post('/sslcommerz/test-connection', [SslCommerzController::class, 'testConnection']);
     });
 
     // ══════════════════════════════════════════════════════
