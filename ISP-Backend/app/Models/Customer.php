@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'customer_id', 'name', 'phone', 'alt_phone', 'email',
+        'id', 'tenant_id', 'customer_id', 'name', 'phone', 'alt_phone', 'email',
         'father_name', 'mother_name', 'occupation', 'nid',
         'area', 'division', 'district', 'upazila',
         'road', 'house', 'village', 'post_office', 'city',

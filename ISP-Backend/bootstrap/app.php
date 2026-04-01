@@ -16,7 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.auth'       => \App\Http\Middleware\AdminAuth::class,
             'customer.auth'    => \App\Http\Middleware\CustomerAuth::class,
             'check.permission' => \App\Http\Middleware\CheckPermission::class,
-            
+            'tenant.resolve'   => \App\Http\Middleware\ResolveTenant::class,
+        ]);
+
+        // Apply tenant resolution to all API requests
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ResolveTenant::class,
         ]);
 
         $middleware->api(prepend: [
