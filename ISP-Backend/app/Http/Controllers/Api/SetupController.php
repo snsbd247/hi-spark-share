@@ -238,4 +238,56 @@ class SetupController extends Controller
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }
+
+    /**
+     * POST /api/setup/tenant-setup — Run tenant setup (queue or sync)
+     */
+    public function tenantSetup(Request $request)
+    {
+        if (!$this->authorize($request)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $tenantId = $request->input('tenant_id');
+        if (!$tenantId) {
+            return response()->json(['success' => false, 'message' => 'tenant_id required'], 400);
+        }
+
+        $tenant = \App\Models\Tenant::find($tenantId);
+        if (!$tenant) {
+            return response()->json(['success' => false, 'message' => 'Tenant not found'], 404);
+        }
+
+        try {
+            $mode = $request->input('mode', 'sync'); // sync or queue
+            $step = $request->input('step'); // optional: geo, accounts, templates, ledger
+
+            $service = new \App\Services\TenantSetupService();
+
+            if ($mode === 'queue') {
+                \App\Jobs\SetupTenantJob::dispatch($tenant);
+                return response()->json(['success' => true, 'message' => 'Setup jobs dispatched to queue']);
+            }
+
+            // Sync mode
+            if ($step) {
+                $method = 'import' . ucfirst($step);
+                if (!method_exists($service, $method)) {
+                    return response()->json(['success' => false, 'message' => 'Invalid step'], 400);
+                }
+                $result = $service->$method($tenant);
+                return response()->json($result, $result['success'] ? 200 : 500);
+            }
+
+            $result = $service->setupTenant($tenant);
+            return response()->json($result, $result['success'] ? 200 : 500);
+        } catch (\Exception $e) {
+            \Log::error('[TenantSetup API] ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Setup failed. Please try again.',
+                'error_code' => 'SETUP_FAILED',
+            ], 500);
+        }
+    }
 }
