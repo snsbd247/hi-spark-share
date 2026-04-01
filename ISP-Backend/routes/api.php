@@ -346,7 +346,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::get('/hr/loans', [HrController::class, 'loans']);
         Route::get('/hr/salary', [HrController::class, 'salarySheets']);
     });
-    Route::middleware('check.permission:hr,create')->group(function () {
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,create'])->group(function () {
         Route::post('/hr/designations', [HrController::class, 'storeDesignation']);
         Route::post('/hr/employees', [HrController::class, 'storeEmployee']);
         Route::post('/hr/attendance', [HrController::class, 'storeAttendance']);
