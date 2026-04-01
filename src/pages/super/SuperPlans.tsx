@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { superAdminApi } from "@/lib/superAdminApi";
 import { db } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,27 +18,57 @@ interface ModuleItem {
   name: string;
   slug: string;
   is_core: boolean;
+  sort_order: number;
 }
 
 export default function SuperPlans() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editPlan, setEditPlan] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "", slug: "", description: "",
     price_monthly: "0", price_yearly: "0",
     max_customers: "100", max_users: "5", max_routers: "2",
     has_accounting: false, has_hr: false, has_inventory: false,
     has_sms: true, has_custom_domain: false,
-    modules: [] as string[],
+    modules: [] as string[], // module slugs
   });
 
+  // Fetch plans with their modules
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ["super-plans"],
-    queryFn: superAdminApi.getPlans,
+    queryFn: async () => {
+      const { data: plansData, error } = await db
+        .from("saas_plans")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+
+      // Fetch plan_modules for all plans
+      const planIds = (plansData || []).map((p: any) => p.id);
+      let planModulesMap: Record<string, string[]> = {};
+
+      if (planIds.length > 0) {
+        const { data: pmData } = await db
+          .from("plan_modules")
+          .select("plan_id, module_id, modules(slug, name)")
+          .in("plan_id", planIds);
+
+        (pmData || []).forEach((pm: any) => {
+          if (!planModulesMap[pm.plan_id]) planModulesMap[pm.plan_id] = [];
+          if (pm.modules?.slug) planModulesMap[pm.plan_id].push(pm.modules.slug);
+        });
+      }
+
+      return (plansData || []).map((p: any) => ({
+        ...p,
+        module_slugs: planModulesMap[p.id] || [],
+      }));
+    },
   });
 
-  // Fetch modules from Supabase directly (works in both preview & production)
+  // Fetch all modules
   const { data: allModules = [] } = useQuery<ModuleItem[]>({
     queryKey: ["super-modules"],
     queryFn: async () => {
@@ -53,26 +82,85 @@ export default function SuperPlans() {
     },
   });
 
-  const nonCoreModules = allModules.filter((m: ModuleItem) => !m.is_core);
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.slug.trim()) {
+      toast.error("Name and slug are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const planData = {
+        name: form.name,
+        slug: form.slug,
+        description: form.description || null,
+        price_monthly: Number(form.price_monthly) || 0,
+        price_yearly: Number(form.price_yearly) || 0,
+        max_customers: Number(form.max_customers) || 100,
+        max_users: Number(form.max_users) || 5,
+        max_routers: Number(form.max_routers) || 2,
+        has_accounting: form.has_accounting,
+        has_hr: form.has_hr,
+        has_inventory: form.has_inventory,
+        has_sms: form.has_sms,
+        has_custom_domain: form.has_custom_domain,
+      };
 
-  const createMut = useMutation({
-    mutationFn: (data: any) => editPlan
-      ? superAdminApi.updatePlan(editPlan.id, data)
-      : superAdminApi.createPlan(data),
-    onSuccess: () => {
+      let planId: string;
+
+      if (editPlan) {
+        const { error } = await db.from("saas_plans").update(planData).eq("id", editPlan.id);
+        if (error) throw error;
+        planId = editPlan.id;
+      } else {
+        const { data, error } = await db.from("saas_plans").insert(planData).select("id").single();
+        if (error) throw error;
+        planId = data.id;
+      }
+
+      // Sync plan modules
+      await db.from("plan_modules").delete().eq("plan_id", planId);
+
+      // Get module IDs for selected slugs (exclude core — they're always available)
+      const selectedSlugs = form.modules;
+      if (selectedSlugs.length > 0) {
+        const { data: modRows } = await db
+          .from("modules")
+          .select("id")
+          .in("slug", selectedSlugs);
+
+        if (modRows && modRows.length > 0) {
+          const inserts = modRows.map((m: any) => ({
+            plan_id: planId,
+            module_id: m.id,
+          }));
+          const { error: pmErr } = await db.from("plan_modules").insert(inserts);
+          if (pmErr) throw pmErr;
+        }
+      }
+
       toast.success(editPlan ? "Plan updated" : "Plan created");
       setShowCreate(false);
       setEditPlan(null);
       qc.invalidateQueries({ queryKey: ["super-plans"] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const deleteMut = useMutation({
-    mutationFn: superAdminApi.deletePlan,
-    onSuccess: () => { toast.success("Plan deleted"); qc.invalidateQueries({ queryKey: ["super-plans"] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this plan?")) return;
+    try {
+      const { error } = await db.from("saas_plans").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Plan deleted");
+      qc.invalidateQueries({ queryKey: ["super-plans"] });
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
 
   const openCreate = () => {
     setEditPlan(null);
@@ -101,12 +189,13 @@ export default function SuperPlans() {
       has_inventory: plan.has_inventory || false,
       has_sms: plan.has_sms !== false,
       has_custom_domain: plan.has_custom_domain || false,
-      modules: plan.module_slugs || (plan.modules || []).map((m: any) => m.slug) || [],
+      modules: plan.module_slugs || [],
     });
     setShowCreate(true);
   };
 
-  const toggleModule = (slug: string) => {
+  const toggleModule = (slug: string, isCoreModule: boolean) => {
+    if (isCoreModule) return; // Core modules can't be toggled
     setForm(prev => ({
       ...prev,
       modules: prev.modules.includes(slug)
@@ -116,11 +205,17 @@ export default function SuperPlans() {
   };
 
   const selectAllModules = () => {
-    setForm(prev => ({
-      ...prev,
-      modules: nonCoreModules.map(m => m.slug),
-    }));
+    const nonCoreSlugs = allModules.filter(m => !m.is_core).map(m => m.slug);
+    setForm(prev => ({ ...prev, modules: nonCoreSlugs }));
   };
+
+  const deselectAllModules = () => {
+    setForm(prev => ({ ...prev, modules: [] }));
+  };
+
+  const allNonCoreSelected = allModules
+    .filter(m => !m.is_core)
+    .every(m => form.modules.includes(m.slug));
 
   return (
     <div className="space-y-6">
@@ -130,7 +225,7 @@ export default function SuperPlans() {
           <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Create Plan</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editPlan ? "Edit Plan" : "Create Subscription Plan"}</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }} className="space-y-4">
+            <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Plan Name</Label>
@@ -178,30 +273,56 @@ export default function SuperPlans() {
                 ))}
               </div>
 
-              {/* Module Selection */}
+              {/* Module Selection - ALL modules shown */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Allowed Modules</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={selectAllModules}>Select All</Button>
+                  <Label className="text-base font-semibold">Module Access Control</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={allNonCoreSelected ? deselectAllModules : selectAllModules}
+                  >
+                    {allNonCoreSelected ? "Deselect All" : "Select All"}
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Core modules (Dashboard, Customers, Users, Roles, Settings) are always included. Select additional modules for this plan:
+                  Core modules are always enabled. Toggle additional modules for this plan.
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {nonCoreModules.map((mod) => (
-                    <label key={mod.slug} className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-accent/50 cursor-pointer transition-colors">
-                      <Checkbox
-                        checked={form.modules.includes(mod.slug)}
-                        onCheckedChange={() => toggleModule(mod.slug)}
-                      />
-                      <span className="text-sm">{mod.name}</span>
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {allModules.map((mod) => {
+                    const isEnabled = mod.is_core || form.modules.includes(mod.slug);
+                    return (
+                      <label
+                        key={mod.slug}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          isEnabled
+                            ? "border-primary/30 bg-primary/5"
+                            : "border-border hover:bg-accent/50"
+                        } ${mod.is_core ? "opacity-80 cursor-default" : ""}`}
+                        onClick={(e) => {
+                          if (mod.is_core) e.preventDefault();
+                        }}
+                      >
+                        <Switch
+                          checked={isEnabled}
+                          disabled={mod.is_core}
+                          onCheckedChange={() => toggleModule(mod.slug, mod.is_core)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{mod.name}</span>
+                          {mod.is_core && (
+                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">Core</Badge>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={createMut.isPending}>
-                {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <Button type="submit" className="w-full" disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 {editPlan ? "Update Plan" : "Create Plan"}
               </Button>
             </form>
@@ -219,15 +340,17 @@ export default function SuperPlans() {
                 <TableHead>Yearly</TableHead>
                 <TableHead>Limits</TableHead>
                 <TableHead>Modules</TableHead>
-                <TableHead>Subscribers</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+              ) : plans.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No plans found</TableCell></TableRow>
               ) : plans.map((p: any) => {
-                const moduleSlugs = p.module_slugs || (p.modules || []).map((m: any) => m.slug) || [];
+                const coreCount = allModules.filter(m => m.is_core).length;
+                const totalEnabled = coreCount + (p.module_slugs?.length || 0);
                 return (
                   <TableRow key={p.id}>
                     <TableCell>
@@ -239,27 +362,27 @@ export default function SuperPlans() {
                     <TableCell>৳{Number(p.price_monthly).toLocaleString()}</TableCell>
                     <TableCell>৳{Number(p.price_yearly).toLocaleString()}</TableCell>
                     <TableCell className="text-xs">
-                      {p.max_customers} customers · {p.max_users} users · {p.max_routers} routers
+                      {p.max_customers} customers · {p.max_users} users
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {moduleSlugs.length > 0 ? moduleSlugs.map((slug: string) => (
-                          <Badge key={slug} variant="secondary" className="text-xs">{slug}</Badge>
-                        )) : (
-                          <span className="text-xs text-muted-foreground">Core only</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {totalEnabled}/{allModules.length} modules
+                        </Badge>
+                        {(p.module_slugs || []).slice(0, 3).map((slug: string) => (
+                          <Badge key={slug} variant="outline" className="text-xs">{slug}</Badge>
+                        ))}
+                        {(p.module_slugs?.length || 0) > 3 && (
+                          <Badge variant="outline" className="text-xs">+{p.module_slugs.length - 3}</Badge>
                         )}
-                        {p.has_accounting && !moduleSlugs.includes('accounting') && <Badge variant="secondary" className="text-xs">Accounting</Badge>}
-                        {p.has_hr && !moduleSlugs.includes('hr') && <Badge variant="secondary" className="text-xs">HR</Badge>}
-                        {p.has_sms && !moduleSlugs.includes('sms') && <Badge variant="secondary" className="text-xs">SMS</Badge>}
                       </div>
                     </TableCell>
-                    <TableCell>{p.subscriptions_count || 0}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => { if (confirm("Delete this plan?")) deleteMut.mutate(p.id); }}>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(p.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
