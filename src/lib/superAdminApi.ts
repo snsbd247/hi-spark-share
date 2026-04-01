@@ -1,6 +1,6 @@
-import { getApiBaseUrl } from "@/lib/apiBaseUrl";
+import { API_BASE_URL } from "@/lib/apiBaseUrl";
 
-const BASE = () => `${getApiBaseUrl()}/super-admin`;
+const BASE = () => `${API_BASE_URL}/super-admin`;
 
 function getToken(): string {
   return localStorage.getItem("super_admin_token") || "";

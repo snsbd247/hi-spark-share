@@ -58,8 +58,7 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     if (token) {
-      const base = getApiBaseUrl();
-      fetch(`${base}/super-admin/logout`, {
+      fetch(`${API_BASE_URL}/super-admin/logout`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});
