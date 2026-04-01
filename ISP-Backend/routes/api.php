@@ -51,6 +51,7 @@ Route::post("/{$superAdminPath}/login", [SuperAdminAuthController::class, 'login
 Route::post('/portal/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
+Route::post('/impersonate/consume', [ImpersonationController::class, 'consume']);
 Route::any('/bkash/callback', [BkashController::class, 'callback']);
 Route::any('/nagad/callback', [NagadController::class, 'callback']);
 
