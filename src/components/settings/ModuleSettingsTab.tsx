@@ -9,7 +9,7 @@ import { Loader2, ToggleLeft, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ModuleSettingsTab() {
-  const { enabledModules, updateModules, isLoading } = useModuleSettings();
+  const { enabledModules, updateModules, isLoading, allModules } = useModuleSettings();
   const { isSuperAdmin } = usePermissions();
   const [localModules, setLocalModules] = useState<string[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
