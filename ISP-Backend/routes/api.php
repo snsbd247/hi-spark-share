@@ -496,6 +496,15 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/sms-wallets', [SuperAdminController::class, 'smsWallets']);
     Route::post('/sms-recharge', [SuperAdminController::class, 'rechargeSms']);
     Route::get('/sms-transactions', [SuperAdminController::class, 'smsTransactions']);
+
+    // Impersonation
+    Route::post('/tenants/{id}/impersonate', [ImpersonationController::class, 'generate']);
+
+    // Tenant Users, Activity Logs & Login History
+    Route::get('/tenants/{id}/users', [ActivityLogController::class, 'tenantUsers']);
+    Route::put('/tenants/{tenantId}/users/{userId}', [ActivityLogController::class, 'updateTenantUser']);
+    Route::get('/tenants/{id}/activity-logs', [ActivityLogController::class, 'tenantActivityLogs']);
+    Route::get('/tenants/{id}/login-history', [ActivityLogController::class, 'tenantLoginHistory']);
 });
 
 /*
