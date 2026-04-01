@@ -47,6 +47,8 @@ import AdminUsers from "@/pages/AdminUsers";
 import CustomerProfilePage from "@/pages/CustomerProfile";
 import LoginLogs from "@/pages/LoginLogs";
 import AuditLogs from "@/pages/AuditLogs";
+import ActivityLogs from "@/pages/ActivityLogs";
+import UserLoginHistory from "@/pages/UserLoginHistory";
 import RoleManagement from "@/pages/settings/RoleManagement";
 import BackupRestore from "@/pages/settings/BackupRestore";
 import FooterSettings from "@/pages/settings/FooterSettings";
