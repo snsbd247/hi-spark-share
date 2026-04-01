@@ -159,7 +159,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::middleware(['check.plan_module:payments', 'check.permission:payments,edit'])->group(function () {
         Route::put('/payments/{id}', [PaymentController::class, 'update']);
     });
-    Route::middleware('check.permission:payments,delete')->group(function () {
+    Route::middleware(['check.plan_module:payments', 'check.permission:payments,delete'])->group(function () {
         Route::delete('/payments/{id}', [PaymentController::class, 'destroy']);
     });
 
