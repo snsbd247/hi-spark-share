@@ -436,6 +436,13 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::get('/login-history', [ActivityLogController::class, 'loginHistory']);
 
     // ══════════════════════════════════════════════════════
+    // ── SESSION MANAGEMENT ──────────────────────────────
+    // ══════════════════════════════════════════════════════
+    Route::get('/sessions/my', [\App\Http\Controllers\Api\SessionManagementController::class, 'mySessions']);
+    Route::post('/sessions/{id}/terminate', [\App\Http\Controllers\Api\SessionManagementController::class, 'terminateSession']);
+    Route::post('/sessions/terminate-others', [\App\Http\Controllers\Api\SessionManagementController::class, 'terminateOtherSessions']);
+
+    // ══════════════════════════════════════════════════════
     // ── GENERIC CRUD — catches remaining tables ─────────
     // ══════════════════════════════════════════════════════
     Route::get('/{table}', [GenericCrudController::class, 'index']);
