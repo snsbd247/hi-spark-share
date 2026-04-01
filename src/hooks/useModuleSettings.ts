@@ -6,9 +6,13 @@ export interface ModuleConfig {
   label: string;
   description: string;
   defaultEnabled: boolean;
+  is_core?: boolean;
+  icon?: string;
 }
 
+// Hardcoded fallback (used if DB modules not yet loaded)
 export const ALL_MODULES: ModuleConfig[] = [
+  { key: "dashboard", label: "Dashboard", description: "Main dashboard & statistics", defaultEnabled: true, is_core: true },
   { key: "customers", label: "Customer Management", description: "Customer profiles, connection status, due tracking & filtering", defaultEnabled: true },
   { key: "billing", label: "Billing", description: "Monthly bill generation, billing cycles & invoice management", defaultEnabled: true },
   { key: "payments", label: "Payments", description: "Payment collection, tracking & receipts", defaultEnabled: true },
@@ -30,6 +34,33 @@ const SETTING_KEY = "enabled_modules";
 export function useModuleSettings() {
   const queryClient = useQueryClient();
 
+  // Fetch modules from DB dynamically
+  const { data: dbModules } = useQuery({
+    queryKey: ["db-modules-list"],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("modules")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) return null;
+      return data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Merge DB modules with fallback
+  const resolvedModules: ModuleConfig[] = dbModules && dbModules.length > 0
+    ? dbModules.map((m: any) => ({
+        key: m.slug,
+        label: m.name,
+        description: m.description || "",
+        defaultEnabled: true,
+        is_core: m.is_core || false,
+        icon: m.icon || undefined,
+      }))
+    : ALL_MODULES;
+
   const { data, isLoading } = useQuery({
     queryKey: ["module-settings"],
     queryFn: async () => {
@@ -40,19 +71,19 @@ export function useModuleSettings() {
         .maybeSingle();
 
       if (error || !data?.setting_value) {
-        return ALL_MODULES.map((m) => m.key);
+        return resolvedModules.map((m) => m.key);
       }
 
       try {
         return JSON.parse(data.setting_value) as string[];
       } catch {
-        return ALL_MODULES.map((m) => m.key);
+        return resolvedModules.map((m) => m.key);
       }
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const enabledModules = Array.isArray(data) ? data : ALL_MODULES.map((m) => m.key);
+  const enabledModules = Array.isArray(data) ? data : resolvedModules.map((m) => m.key);
 
   const isModuleEnabled = (moduleKey: string): boolean => {
     return enabledModules.includes(moduleKey);
@@ -83,6 +114,6 @@ export function useModuleSettings() {
     isModuleEnabled,
     updateModules,
     isLoading,
-    allModules: ALL_MODULES,
+    allModules: resolvedModules,
   };
 }
