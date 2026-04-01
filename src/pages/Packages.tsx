@@ -190,44 +190,82 @@ export default function Packages() {
   const syncToMikrotik = async (packageId: string, routerId?: string) => {
     setSyncing(packageId);
     try {
-      const data = await mikrotikCall('sync-profile', {
-        package_id: packageId,
-        router_id: routerId || undefined,
-      });
-      if (data.success) {
-        toast.success(`MikroTik profile synced: ${data.profile_name}`);
-        queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+      if (IS_LOVABLE) {
+        // Find router credentials for edge function
+        const router = routers?.find((r: any) => r.id === routerId);
+        if (!router) { toast.error("রাউটার সিলেক্ট করুন"); return; }
+        const data = await mikrotikEdge('sync-profile', {
+          package_id: packageId, router_id: routerId,
+          ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port,
+        });
+        if (data?.success) {
+          toast.success(`MikroTik profile synced: ${data.profile_name}`);
+          queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+        } else toast.error(data?.error || "MikroTik sync failed");
       } else {
-        toast.error(data.error || "MikroTik sync failed");
+        const data = await mikrotikCall('sync-profile', { package_id: packageId, router_id: routerId || undefined });
+        if (data.success) {
+          toast.success(`MikroTik profile synced: ${data.profile_name}`);
+          queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+        } else toast.error(data.error || "MikroTik sync failed");
       }
-    } catch {
-      toast.error("Could not connect to MikroTik");
-    } finally {
-      setSyncing(null);
-    }
+    } catch (err: any) {
+      const msg = err.message || "";
+      if (IS_LOVABLE && (msg.includes("Connection refused") || msg.includes("timeout"))) {
+        toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট পাবলিকলি ওপেন করুন।", { duration: 8000 });
+      } else {
+        toast.error("Could not connect to MikroTik");
+      }
+    } finally { setSyncing(null); }
   };
 
   const bulkSyncPackages = async () => {
     setBulkSyncing(true);
     try {
-      const data = await mikrotikCall('bulk-sync-packages', {});
-      if (data.success) {
-        const r = data.results;
-        const parts = [];
-        if (r.synced > 0) parts.push(`${r.synced} pushed`);
-        if (r.imported > 0) parts.push(`${r.imported} imported`);
-        if (r.failed > 0) parts.push(`${r.failed} failed`);
-        toast.success(`Sync complete: ${parts.join(", ") || "No changes"}`);
-        if (r.errors?.length > 0) toast.warning(`Errors: ${r.errors.slice(0, 3).join("; ")}`);
-        queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+      if (IS_LOVABLE) {
+        // Get first active router for credentials
+        const router = routers?.[0];
+        if (!router) { toast.error("কোনো রাউটার কনফিগার করা নেই"); setBulkSyncing(false); return; }
+        const data = await mikrotikEdge('bulk-sync-packages', {
+          router_id: router.id, ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port,
+        });
+        if (data?.success) {
+          const r = data.results || {};
+          if (r.errors?.length && !r.synced && !r.imported) {
+            const errMsg = r.errors[0] || "";
+            if (errMsg.includes("Connection refused") || errMsg.includes("timeout")) {
+              toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট Supabase সার্ভার থেকে অ্যাক্সেসযোগ্য হতে হবে।", { duration: 8000 });
+            } else toast.error(`Sync failed: ${errMsg}`);
+          } else {
+            const parts = [];
+            if (r.synced > 0) parts.push(`${r.synced} pushed`);
+            if (r.imported > 0) parts.push(`${r.imported} imported`);
+            if (r.failed > 0) parts.push(`${r.failed} failed`);
+            toast.success(`Sync complete: ${parts.join(", ") || "No changes"}`);
+            queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+          }
+        } else toast.error(data?.error || "Bulk sync failed");
       } else {
-        toast.error(data.error || "Bulk sync failed");
+        const data = await mikrotikCall('bulk-sync-packages', {});
+        if (data.success) {
+          const r = data.results;
+          const parts = [];
+          if (r.synced > 0) parts.push(`${r.synced} pushed`);
+          if (r.imported > 0) parts.push(`${r.imported} imported`);
+          if (r.failed > 0) parts.push(`${r.failed} failed`);
+          toast.success(`Sync complete: ${parts.join(", ") || "No changes"}`);
+          if (r.errors?.length > 0) toast.warning(`Errors: ${r.errors.slice(0, 3).join("; ")}`);
+          queryClient.invalidateQueries({ queryKey: ["packages-all"] });
+        } else toast.error(data.error || "Bulk sync failed");
       }
-    } catch {
-      toast.error("Could not connect to MikroTik");
-    } finally {
-      setBulkSyncing(false);
-    }
+    } catch (err: any) {
+      const msg = err.message || "";
+      if (IS_LOVABLE && (msg.includes("Connection refused") || msg.includes("timeout"))) {
+        toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট পাবলিকলি ওপেন করুন।", { duration: 8000 });
+      } else {
+        toast.error("Could not connect to MikroTik");
+      }
+    } finally { setBulkSyncing(false); }
   };
 
   return (
