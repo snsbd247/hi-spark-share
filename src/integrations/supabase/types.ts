@@ -656,6 +656,44 @@ export type Database = {
         }
         Relationships: []
       }
+      domains: {
+        Row: {
+          created_at: string | null
+          domain: string
+          id: string
+          is_primary: boolean | null
+          is_verified: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string
+          id?: string
+          is_primary?: boolean | null
+          is_verified?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_education: {
         Row: {
           board_university: string | null
@@ -1995,6 +2033,72 @@ export type Database = {
           },
         ]
       }
+      saas_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          features: Json | null
+          has_accounting: boolean | null
+          has_custom_domain: boolean | null
+          has_hr: boolean | null
+          has_inventory: boolean | null
+          has_sms: boolean | null
+          id: string
+          is_active: boolean | null
+          max_customers: number | null
+          max_routers: number | null
+          max_users: number | null
+          name: string
+          price_monthly: number | null
+          price_yearly: number | null
+          slug: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          has_accounting?: boolean | null
+          has_custom_domain?: boolean | null
+          has_hr?: boolean | null
+          has_inventory?: boolean | null
+          has_sms?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_customers?: number | null
+          max_routers?: number | null
+          max_users?: number | null
+          name: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          slug: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          features?: Json | null
+          has_accounting?: boolean | null
+          has_custom_domain?: boolean | null
+          has_hr?: boolean | null
+          has_inventory?: boolean | null
+          has_sms?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          max_customers?: number | null
+          max_routers?: number | null
+          max_users?: number | null
+          name?: string
+          price_monthly?: number | null
+          price_yearly?: number | null
+          slug?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       salary_sheets: {
         Row: {
           basic_salary: number
@@ -2349,6 +2453,69 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          amount: number | null
+          billing_cycle: string | null
+          created_at: string | null
+          end_date: string
+          id: string
+          metadata: Json | null
+          payment_method: string | null
+          plan_id: string
+          start_date: string
+          status: string | null
+          tenant_id: string
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          billing_cycle?: string | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          plan_id: string
+          start_date: string
+          status?: string | null
+          tenant_id: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          billing_cycle?: string | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          plan_id?: string
+          start_date?: string
+          status?: string | null
+          tenant_id?: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "saas_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admin_sessions: {
         Row: {
           browser: string | null
@@ -2593,6 +2760,51 @@ export type Database = {
           setting_key?: string
           setting_value?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          plan: string | null
+          settings: Json | null
+          status: string | null
+          subdomain: string | null
+          trial_ends_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          status?: string | null
+          subdomain?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          status?: string | null
+          subdomain?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
