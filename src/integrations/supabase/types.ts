@@ -2009,6 +2009,7 @@ export type Database = {
           password_hash: string | null
           staff_id: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
           username: string | null
         }
@@ -2025,6 +2026,7 @@ export type Database = {
           password_hash?: string | null
           staff_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -2041,10 +2043,19 @@ export type Database = {
           password_hash?: string | null
           staff_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_items: {
         Row: {
