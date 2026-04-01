@@ -380,7 +380,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/suppliers', [SupplierController2::class, 'store']);
         Route::post('/supplier-payments', [SupplierController2::class, 'storePayment']);
     });
-    Route::middleware('check.permission:supplier,edit')->group(function () {
+    Route::middleware(['check.plan_module:supplier', 'check.permission:supplier,edit'])->group(function () {
         Route::put('/suppliers/{id}', [SupplierController2::class, 'update']);
     });
     Route::middleware('check.permission:supplier,delete')->group(function () {
