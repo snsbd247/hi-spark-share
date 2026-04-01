@@ -30,6 +30,8 @@ use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SupplierController2;
 use App\Http\Controllers\Api\VendorController;
 use App\Http\Controllers\Api\WhatsappController;
+use App\Http\Controllers\Api\SuperAdminAuthController;
+use App\Http\Controllers\Api\SuperAdminController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -38,6 +40,11 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::post('/admin/login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+// ── Super Admin Auth (hidden URL, configurable via .env) ──
+$superAdminPath = env('SUPER_ADMIN_PATH', 'admin_login162');
+Route::post("/{$superAdminPath}/login", [SuperAdminAuthController::class, 'login'])
+    ->middleware('throttle:5,1'); // strict rate limit
 Route::post('/portal/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
