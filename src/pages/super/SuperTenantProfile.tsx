@@ -231,9 +231,13 @@ function ImpersonateButton({ tenantId, tenantName, tenantSubdomain }: { tenantId
 function TenantUsersTab({ tenantId }: { tenantId: string }) {
   const qc = useQueryClient();
   const [editUser, setEditUser] = useState<any>(null);
+  const [editMode, setEditMode] = useState<"info" | "password">("info");
   const [editData, setEditData] = useState<any>({});
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "admin" });
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", username: "", password: "", mobile: "", role: "admin", staff_id: "", address: "" });
+  const [search, setSearch] = useState("");
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["super-tenant-users", tenantId] });
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["super-tenant-users", tenantId],
@@ -241,21 +245,68 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: () => superAdminApi.updateTenantUser(tenantId, editUser.id, editData),
-    onSuccess: () => { toast.success("User updated"); setEditUser(null); qc.invalidateQueries({ queryKey: ["super-tenant-users", tenantId] }); },
+    mutationFn: (payload: any) => superAdminApi.updateTenantUser(tenantId, editUser.id, payload),
+    onSuccess: () => { toast.success("User updated"); setEditUser(null); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleStatusMut = useMutation({
+    mutationFn: ({ userId, newStatus }: { userId: string; newStatus: string }) =>
+      superAdminApi.updateTenantUser(tenantId, userId, { status: newStatus }),
+    onSuccess: (_, { newStatus }) => { toast.success(`User ${newStatus === "active" ? "activated" : "deactivated"}`); invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
 
   const createMut = useMutation({
     mutationFn: () => superAdminApi.createTenantUser(tenantId, newUser),
     onSuccess: () => {
-      toast.success("User created and credentials email sent!");
+      toast.success("User created successfully!");
       setShowAddUser(false);
-      setNewUser({ full_name: "", email: "", password: "", role: "admin" });
-      qc.invalidateQueries({ queryKey: ["super-tenant-users", tenantId] });
+      setNewUser({ full_name: "", email: "", username: "", password: "", mobile: "", role: "admin", staff_id: "", address: "" });
+      invalidate();
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const openEdit = (u: any) => {
+    setEditUser(u);
+    setEditMode("info");
+    setEditData({
+      full_name: u.full_name || "",
+      email: u.email || "",
+      username: u.username || "",
+      mobile: u.mobile || "",
+      staff_id: u.staff_id || "",
+      address: u.address || "",
+      role: u.role || "staff",
+      status: u.status || "active",
+    });
+  };
+
+  const openPasswordReset = (u: any) => {
+    setEditUser(u);
+    setEditMode("password");
+    setEditData({ password: "" });
+  };
+
+  const filtered = users.filter((u: any) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (u.full_name || "").toLowerCase().includes(s) ||
+           (u.email || "").toLowerCase().includes(s) ||
+           (u.username || "").toLowerCase().includes(s) ||
+           (u.mobile || "").toLowerCase().includes(s);
+  });
+
+  const ROLES = [
+    { value: "super_admin", label: "Owner (Full Access)" },
+    { value: "admin", label: "Admin" },
+    { value: "manager", label: "Manager" },
+    { value: "staff", label: "Staff" },
+    { value: "operator", label: "Operator" },
+    { value: "technician", label: "Technician" },
+    { value: "accountant", label: "Accountant" },
+  ];
 
   if (isLoading) return <Card><CardContent className="py-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></CardContent></Card>;
 
@@ -263,100 +314,167 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2"><Users className="h-5 w-5" /> Tenant Users ({users.length})</CardTitle>
-            <Button size="sm" onClick={() => setShowAddUser(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Add User
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2"><Users className="h-5 w-5" /> Tenant Users ({users.length})</CardTitle>
+              <CardDescription>Manage all users for this tenant</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-48 h-9" />
+              <Button size="sm" onClick={() => setShowAddUser(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Add User
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <div className="text-center py-8 space-y-3">
-              <Users className="h-10 w-10 mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">No users found for this tenant</p>
+            <div className="text-center py-10 space-y-3">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <p className="text-muted-foreground font-medium">No users found for this tenant</p>
               <p className="text-xs text-muted-foreground">Click "Add User" to create the first admin user</p>
+              <Button size="sm" onClick={() => setShowAddUser(true)}><Plus className="h-4 w-4 mr-1" /> Create First User</Button>
             </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No users match "{search}"</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u: any) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.full_name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{u.email || u.username || "—"}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs capitalize">{u.role}</Badge></TableCell>
-                    <TableCell>
-                      <Badge variant={u.status === "active" ? "default" : "destructive"} className="text-xs capitalize">{u.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditUser(u); setEditData({ full_name: u.full_name, email: u.email, status: u.status }); }}>
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditUser(u); setEditData({ password: "" }); }}>
-                          <Key className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Username</TableHead>
+                    <TableHead>Email / Mobile</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((u: any) => (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                            {(u.full_name || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{u.full_name}</p>
+                            <p className="text-xs text-muted-foreground sm:hidden">{u.username || "—"}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{u.username || "—"}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <p>{u.email || "—"}</p>
+                          {u.mobile && <p className="text-xs text-muted-foreground">{u.mobile}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs capitalize">{u.role || "staff"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={u.status === "active" ? "default" : "destructive"}
+                          className="text-xs capitalize cursor-pointer"
+                          onClick={() => toggleStatusMut.mutate({
+                            userId: u.id,
+                            newStatus: u.status === "active" ? "disabled" : "active",
+                          })}
+                        >
+                          {u.status || "active"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit user" onClick={() => openEdit(u)}>
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Reset password" onClick={() => openPasswordReset(u)}>
+                            <Key className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon" className="h-8 w-8"
+                            title={u.status === "active" ? "Deactivate" : "Activate"}
+                            onClick={() => toggleStatusMut.mutate({
+                              userId: u.id,
+                              newStatus: u.status === "active" ? "disabled" : "active",
+                            })}
+                          >
+                            {u.status === "active" ? <Ban className="h-3.5 w-3.5 text-destructive" /> : <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Add User Dialog */}
+      {/* ── Add User Dialog ── */}
       <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
+            <DialogTitle>Add New Tenant User</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Full Name</Label>
-              <Input value={newUser.full_name} onChange={(e) => setNewUser(d => ({ ...d, full_name: e.target.value }))} placeholder="John Doe" />
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Full Name <span className="text-destructive">*</span></Label>
+                <Input value={newUser.full_name} onChange={(e) => setNewUser(d => ({ ...d, full_name: e.target.value }))} placeholder="John Doe" />
+              </div>
+              <div>
+                <Label>Username <span className="text-destructive">*</span></Label>
+                <Input value={newUser.username} onChange={(e) => setNewUser(d => ({ ...d, username: e.target.value }))} placeholder="john.doe" />
+              </div>
             </div>
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={newUser.email} onChange={(e) => setNewUser(d => ({ ...d, email: e.target.value }))} placeholder="user@example.com" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Email</Label>
+                <Input type="email" value={newUser.email} onChange={(e) => setNewUser(d => ({ ...d, email: e.target.value }))} placeholder="user@example.com" />
+              </div>
+              <div>
+                <Label>Mobile</Label>
+                <Input value={newUser.mobile} onChange={(e) => setNewUser(d => ({ ...d, mobile: e.target.value }))} placeholder="01XXXXXXXXX" />
+              </div>
             </div>
-            <div>
-              <Label>Password</Label>
-              <Input type="password" value={newUser.password} onChange={(e) => setNewUser(d => ({ ...d, password: e.target.value }))} placeholder="Min 6 characters" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Password <span className="text-destructive">*</span></Label>
+                <Input type="password" value={newUser.password} onChange={(e) => setNewUser(d => ({ ...d, password: e.target.value }))} placeholder="Min 6 characters" />
+              </div>
+              <div>
+                <Label>Role <span className="text-destructive">*</span></Label>
+                <Select value={newUser.role} onValueChange={(v) => setNewUser(d => ({ ...d, role: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label>Role</Label>
-              <Select value={newUser.role} onValueChange={(v) => setNewUser(d => ({ ...d, role: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="super_admin">Owner (Full Access)</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="operator">Operator</SelectItem>
-                  <SelectItem value="technician">Technician</SelectItem>
-                  <SelectItem value="accountant">Accountant</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Staff ID</Label>
+                <Input value={newUser.staff_id} onChange={(e) => setNewUser(d => ({ ...d, staff_id: e.target.value }))} placeholder="Optional" />
+              </div>
+              <div>
+                <Label>Address</Label>
+                <Input value={newUser.address} onChange={(e) => setNewUser(d => ({ ...d, address: e.target.value }))} placeholder="Optional" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-              <p>📧 Login credentials will be sent via email automatically</p>
+            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-1">
+              <p>📧 Login credentials will be sent via email if configured</p>
               <p>🔒 User will be required to change password on first login</p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddUser(false)}>Cancel</Button>
-            <Button onClick={() => createMut.mutate()} disabled={!newUser.full_name || !newUser.email || !newUser.password || createMut.isPending}>
+            <Button onClick={() => createMut.mutate()} disabled={!newUser.full_name || !newUser.username || !newUser.password || newUser.password.length < 6 || createMut.isPending}>
               {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
               Create User
             </Button>
@@ -364,29 +482,65 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
+      {/* ── Edit / Reset Password Dialog ── */}
       <Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editData.password !== undefined ? "Reset Password" : "Edit User"}: {editUser?.full_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {editMode === "password" ? <Key className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
+              {editMode === "password" ? "Reset Password" : "Edit User"}: {editUser?.full_name}
+            </DialogTitle>
           </DialogHeader>
-          {editData.password !== undefined ? (
+          {editMode === "password" ? (
             <div className="space-y-3">
-              <Label>New Password</Label>
-              <Input type="password" value={editData.password || ""} onChange={(e) => setEditData({ password: e.target.value })} placeholder="Enter new password" />
-              <div className="p-2 rounded bg-muted/50 text-xs text-muted-foreground">
+              <div>
+                <Label>New Password</Label>
+                <Input type="password" value={editData.password || ""} onChange={(e) => setEditData({ password: e.target.value })} placeholder="Enter new password (min 6 chars)" />
+              </div>
+              <div className="p-2.5 rounded-lg bg-muted/50 text-xs text-muted-foreground">
                 🔒 User will be forced to change password on next login
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div>
-                <Label>Full Name</Label>
-                <Input value={editData.full_name || ""} onChange={(e) => setEditData((d: any) => ({ ...d, full_name: e.target.value }))} />
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Full Name</Label>
+                  <Input value={editData.full_name || ""} onChange={(e) => setEditData((d: any) => ({ ...d, full_name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Username</Label>
+                  <Input value={editData.username || ""} onChange={(e) => setEditData((d: any) => ({ ...d, username: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Email</Label>
+                  <Input value={editData.email || ""} onChange={(e) => setEditData((d: any) => ({ ...d, email: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Mobile</Label>
+                  <Input value={editData.mobile || ""} onChange={(e) => setEditData((d: any) => ({ ...d, mobile: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Staff ID</Label>
+                  <Input value={editData.staff_id || ""} onChange={(e) => setEditData((d: any) => ({ ...d, staff_id: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Role</Label>
+                  <Select value={editData.role || "staff"} onValueChange={(v) => setEditData((d: any) => ({ ...d, role: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
-                <Label>Email</Label>
-                <Input value={editData.email || ""} onChange={(e) => setEditData((d: any) => ({ ...d, email: e.target.value }))} />
+                <Label>Address</Label>
+                <Input value={editData.address || ""} onChange={(e) => setEditData((d: any) => ({ ...d, address: e.target.value }))} />
               </div>
               <div>
                 <Label>Status</Label>
@@ -394,8 +548,7 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="disabled">Disabled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -403,9 +556,17 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
-            <Button onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+            <Button
+              onClick={() => {
+                const payload = editMode === "password"
+                  ? { password: editData.password, must_change_password: true }
+                  : editData;
+                updateMut.mutate(payload);
+              }}
+              disabled={updateMut.isPending || (editMode === "password" && (!editData.password || editData.password.length < 6))}
+            >
               {updateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              Save
+              {editMode === "password" ? "Reset Password" : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

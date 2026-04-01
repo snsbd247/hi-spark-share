@@ -413,13 +413,24 @@ export const superAdminApi = {
   // Create tenant user (multi-admin)
   createTenantUser: async (tenantId: string, data: any) => {
     if (IS_LOVABLE) {
-      const user = await sbInsert("profiles", {
+      const newId = crypto.randomUUID();
+      const { data: existing } = await (supabase.from as any)("profiles").select("id").eq("username", data.username).maybeSingle();
+      if (existing) throw new Error("Username already taken");
+      await sbInsert("profiles", {
+        id: newId,
         full_name: data.full_name,
-        email: data.email,
+        username: data.username,
+        email: data.email || null,
+        mobile: data.mobile || null,
+        staff_id: data.staff_id || null,
+        address: data.address || null,
         status: "active",
         must_change_password: true,
       });
-      return { success: true, user };
+      if (data.role) {
+        await sbInsert("user_roles", { user_id: newId, role: data.role });
+      }
+      return { success: true, user_id: newId };
     }
     return request(`/tenants/${tenantId}/users`, { method: "POST", body: JSON.stringify(data) });
   },
