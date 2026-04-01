@@ -2005,6 +2005,7 @@ export type Database = {
           id: string
           language: string
           mobile: string | null
+          must_change_password: boolean | null
           password_hash: string | null
           staff_id: string | null
           status: string
@@ -2020,6 +2021,7 @@ export type Database = {
           id: string
           language?: string
           mobile?: string | null
+          must_change_password?: boolean | null
           password_hash?: string | null
           staff_id?: string | null
           status?: string
@@ -2035,6 +2037,7 @@ export type Database = {
           id?: string
           language?: string
           mobile?: string | null
+          must_change_password?: boolean | null
           password_hash?: string | null
           staff_id?: string | null
           status?: string
@@ -2633,6 +2636,48 @@ export type Database = {
           id?: string
           tenant_id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      smtp_settings: {
+        Row: {
+          created_at: string
+          encryption: string | null
+          from_email: string
+          from_name: string
+          host: string
+          id: string
+          password: string
+          port: number
+          status: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          encryption?: string | null
+          from_email?: string
+          from_name?: string
+          host?: string
+          id?: string
+          password?: string
+          port?: number
+          status?: string
+          updated_at?: string
+          username?: string
+        }
+        Update: {
+          created_at?: string
+          encryption?: string | null
+          from_email?: string
+          from_name?: string
+          host?: string
+          id?: string
+          password?: string
+          port?: number
+          status?: string
+          updated_at?: string
+          username?: string
         }
         Relationships: []
       }
