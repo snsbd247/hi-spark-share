@@ -41,7 +41,7 @@ const MerchantPayments = lazy(() => import("@/pages/MerchantPayments"));
 const MerchantPaymentReports = lazy(() => import("@/pages/MerchantPaymentReports"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const SMSLogs = lazy(() => import("@/pages/SMSLogs"));
-const SMSSettings = lazy(() => import("@/pages/SMSSettings"));
+// SMSSettings removed from tenant - now Super Admin only
 const ReminderLogs = lazy(() => import("@/pages/ReminderLogs"));
 const PayBill = lazy(() => import("@/pages/PayBill"));
 const AdminProfile = lazy(() => import("@/pages/AdminProfile"));
