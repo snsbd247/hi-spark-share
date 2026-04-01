@@ -89,8 +89,15 @@ interface MikroTikConnection {
   close: () => void;
 }
 
+async function connectWithTimeout(host: string, port: number, timeoutMs = 10000): Promise<Deno.Conn> {
+  return await Promise.race([
+    Deno.connect({ hostname: host, port, transport: "tcp" }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Connection timeout after ${timeoutMs / 1000}s - ensure MikroTik API port ${port} is open and accessible from the internet`)), timeoutMs)),
+  ]);
+}
+
 async function connectMikroTik(host: string, port: number, username: string, password: string): Promise<MikroTikConnection> {
-  const conn = await Deno.connect({ hostname: host, port, transport: "tcp" });
+  const conn = await connectWithTimeout(host, port, 10000);
   const send = async (words: string[]) => { await conn.write(encodeSentence(words)); return await readResponse(conn); };
   const loginResult = await send(["/login", `=name=${username}`, `=password=${password}`]);
   if (loginResult.trap) { conn.close(); throw new Error(`Login failed: ${loginResult.trap}`); }
