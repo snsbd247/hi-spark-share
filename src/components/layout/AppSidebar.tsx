@@ -282,7 +282,6 @@ export default function AppSidebar() {
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
     { to: "/settings/locations", icon: Globe, label: "Location Management", module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },
-    { to: "/settings/integrations", icon: Plug, label: t.sidebar.integrations, module: "settings" },
     { to: "/login-logs", icon: FileText, label: t.sidebar.loginLogs, module: "settings" },
     { to: "/audit-logs", icon: ClipboardList, label: t.sidebar.auditLogs, module: "settings" },
     { to: "/settings/backup", icon: HardDrive, label: t.sidebar.backupRestore, module: "settings" },
