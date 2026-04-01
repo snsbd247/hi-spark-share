@@ -52,7 +52,7 @@ class DomainController extends Controller
                     }
 
                     // Block reserved/central domains
-                    $blocked = array_filter(array_map('trim', explode(',', env('CENTRAL_DOMAINS', 'smartispsolution.com'))));
+                    $blocked = array_filter(array_map('trim', explode(',', env('CENTRAL_DOMAINS', 'smartispapp.com'))));
                     $blocked = array_merge($blocked, ['localhost', 'example.com', 'test.com']);
                     foreach ($blocked as $b) {
                         if ($d === $b || str_ends_with($d, ".{$b}")) {
@@ -150,7 +150,7 @@ class DomainController extends Controller
         if ($cnameRecords && count($cnameRecords) > 0) {
             $cnameTarget = $cnameRecords[0]['target'] ?? null;
             // Check if CNAME points to our subdomain or central domain
-            $centralDomains = array_filter(array_map('trim', explode(',', env('CENTRAL_DOMAINS', 'smartispsolution.com'))));
+            $centralDomains = array_filter(array_map('trim', explode(',', env('CENTRAL_DOMAINS', 'smartispapp.com'))));
             if ($cnameTarget) {
                 foreach ($centralDomains as $central) {
                     if ($cnameTarget === $central || str_ends_with($cnameTarget, ".{$central}")) {
@@ -211,8 +211,8 @@ class DomainController extends Controller
         $rootDomain = count($parts) > 2 ? implode('.', array_slice($parts, 1)) : $domain;
         $serverIp = env('SERVER_IP', 'YOUR_SERVER_IP');
         $cnameTarget = $subdomain
-            ? "{$subdomain}.smartispsolution.com"
-            : 'smartispsolution.com';
+            ? "{$subdomain}.smartispapp.com"
+            : 'smartispapp.com';
 
         return [
             'option_a' => [
