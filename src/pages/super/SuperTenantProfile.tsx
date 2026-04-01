@@ -835,11 +835,15 @@ export default function SuperTenantProfile() {
     enabled: !!id,
   });
 
+  const [forceReimport, setForceReimport] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+
   const setupMut = useMutation({
     mutationFn: async (step: string) => {
       setSetupRunning(step);
       if (step === "all") {
-        const result: FullSetupResult = await setupAll();
+        const result: FullSetupResult = await setupAll(forceReimport);
         if (!result.overall) {
           const failures = [
             !result.geo.success && `Geo: ${result.geo.message}`,
@@ -856,21 +860,39 @@ export default function SuperTenantProfile() {
         });
         return result;
       } else {
-        const result: SetupResult = await runSetupStep(step);
+        const result: SetupResult = await runSetupStep(step, forceReimport);
         if (!result.success) throw new Error(result.message);
         await superAdminApi.updateTenant(id!, { [`setup_${step}`]: true });
         return result;
       }
     },
     onSuccess: (result: any, step) => {
+      const skippedNote = result?.skipped ? " (data already existed)" : "";
       const msg = step === "all"
-        ? "Full setup completed successfully!"
-        : `${step} setup completed${result?.count ? ` (${result.count} records)` : ""}!`;
+        ? "Full setup completed successfully!" + skippedNote
+        : `${step} setup completed${result?.count ? ` (${result.count} records)` : ""}!` + skippedNote;
       toast.success(msg);
       setSetupRunning(null);
       qc.invalidateQueries({ queryKey: ["super-tenant", id] });
     },
     onError: (e: any) => { toast.error(e.message || "Setup failed"); setSetupRunning(null); },
+  });
+
+  const resetMut = useMutation({
+    mutationFn: async () => {
+      const result: ResetResult = await resetTenantBusinessData();
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (result: ResetResult) => {
+      toast.success(`Reset complete! ${result.tables_cleared.length} tables cleared.`);
+      setShowResetConfirm(false);
+      setResetConfirmText("");
+      qc.invalidateQueries({ queryKey: ["super-tenant", id] });
+    },
+    onError: (e: any) => {
+      toast.error(e.message || "Reset failed");
+    },
   });
 
   const suspendMut = useMutation({
