@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import api from "@/lib/api";
+import { IS_LOVABLE, HAS_BACKEND } from "@/lib/environment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Database, MapPin, BookOpen, MessageSquare, Mail, CreditCard, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
+import { Loader2, Database, MapPin, BookOpen, MessageSquare, Mail, CreditCard, CheckCircle2, AlertTriangle, Trash2, ShieldAlert } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // ─── Bangladesh Geo Data ─────────────────────────────────────────
@@ -295,6 +302,8 @@ export default function InitialDataImportTab() {
   const [logs, setLogs] = useState<Record<string, string>>({});
   const [allLoading, setAllLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
 
   const setStatus = (id: string, status: SeedStatus, log?: string) => {
     setStatuses(prev => ({ ...prev, [id]: status }));
@@ -495,16 +504,40 @@ export default function InitialDataImportTab() {
     "expense_heads", "income_heads", "other_heads",
     "packages", "mikrotik_routers", "payment_gateways",
     "geo_upazilas", "geo_districts", "geo_divisions",
+    "ticket_replies", "support_tickets",
+    "supplier_payments", "suppliers", "vendors",
+    "transactions", "accounts",
+    "sms_templates",
   ];
 
   const handleResetAll = async () => {
+    if (resetConfirmText !== "RESET") return;
+    setResetDialogOpen(false);
+    setResetConfirmText("");
     setResetting(true);
     try {
-      for (const table of RESET_TABLES) {
-        await (db as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (HAS_BACKEND) {
+        // Use Laravel SystemResetService via setup endpoint
+        const { data } = await api.post('/setup/reset-all', {
+          include_settings: false,
+          include_accounts: true,
+        });
+        if (!data?.success) throw new Error(data?.message || "Reset failed");
+        toast.success(`${data.message} (${(data.truncated || []).length} tables cleared)`);
+      } else {
+        // Lovable preview: delete from each table via Supabase client
+        let cleared = 0;
+        for (const table of RESET_TABLES) {
+          try {
+            await (db as any).from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+            cleared++;
+          } catch {
+            // Some tables may not exist in Supabase schema, skip
+          }
+        }
+        toast.success(`All data reset! ${cleared} tables cleared. Users, roles & permissions preserved.`);
       }
       queryClient.invalidateQueries();
-      toast.success("All data has been reset successfully! Profiles, roles, permissions, settings & accounts preserved.");
     } catch (e: any) {
       toast.error("Reset failed: " + e.message);
     } finally {
@@ -526,37 +559,16 @@ export default function InitialDataImportTab() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="lg" className="gap-2" disabled={resetting || allLoading}>
-                    {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Reset All
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to reset all data?</AlertDialogTitle>
-                    <AlertDialogDescription className="space-y-2">
-                      <p>This will permanently delete all transactional and master data including:</p>
-                      <p className="font-medium">Customers, Bills, Payments, Sales, Purchases, Employees, Attendance, SMS logs, Geo data, Packages, and more.</p>
-                      <p className="text-sm mt-2">The following will be <strong>preserved</strong>:</p>
-                      <ul className="list-disc list-inside text-sm">
-                        <li>Profiles & User accounts</li>
-                        <li>Roles & Permissions</li>
-                        <li>General Settings</li>
-                        <li>Chart of Accounts (Ledgers)</li>
-                        <li>System Settings & Ledger Mappings</li>
-                      </ul>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleResetAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Yes, Reset All Data
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="destructive"
+                size="lg"
+                className="gap-2"
+                disabled={resetting || allLoading}
+                onClick={() => setResetDialogOpen(true)}
+              >
+                {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Reset All
+              </Button>
               <Button onClick={handleSeedAll} disabled={allLoading || resetting} size="lg" className="gap-2">
                 {allLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
                 Import All
@@ -619,6 +631,61 @@ export default function InitialDataImportTab() {
           );
         })}
       </div>
+      {/* ── Reset All Confirmation Dialog ── */}
+      <Dialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setResetConfirmText(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="h-5 w-5" /> Reset All System Data
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <p>⚠️ This will permanently delete <strong>ALL business data</strong> including:</p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>Customers, Bills, Payments, Merchant Payments</li>
+                <li>Sales, Purchases, Products, Vendors, Suppliers</li>
+                <li>Employees, Attendance, Salary, Loans</li>
+                <li>Chart of Accounts, Transactions</li>
+                <li>Packages, Routers, OLTs, ONUs</li>
+                <li>SMS/Email Templates, Geo Data</li>
+                <li>All Logs (Audit, Login, SMS, Backup)</li>
+              </ul>
+              <p className="text-sm font-medium pt-1">The following will be <strong>preserved</strong>:</p>
+              <ul className="list-disc list-inside text-sm text-green-600 space-y-0.5">
+                <li>User accounts & Profiles</li>
+                <li>Roles & Permissions</li>
+                <li>General Settings</li>
+                <li>System Settings</li>
+              </ul>
+              <div className="pt-3 space-y-2">
+                <Label htmlFor="reset-confirm" className="text-sm font-medium">
+                  Type <span className="font-bold text-destructive">RESET</span> to confirm:
+                </Label>
+                <Input
+                  id="reset-confirm"
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  placeholder="Type RESET here"
+                  className="font-mono"
+                  autoComplete="off"
+                />
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setResetDialogOpen(false); setResetConfirmText(""); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={resetConfirmText !== "RESET" || resetting}
+              onClick={handleResetAll}
+            >
+              {resetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Yes, Reset Everything
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
