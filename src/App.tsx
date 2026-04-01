@@ -98,10 +98,13 @@ import SuperAdminLogin from "@/pages/super/SuperAdminLogin";
 import SuperAdminLayout from "@/components/super/SuperAdminLayout";
 import SuperDashboard from "@/pages/super/SuperDashboard";
 import SuperTenants from "@/pages/super/SuperTenants";
+import SuperTenantProfile from "@/pages/super/SuperTenantProfile";
+import SuperOnboarding from "@/pages/super/SuperOnboarding";
 import SuperPlans from "@/pages/super/SuperPlans";
 import SuperSubscriptions from "@/pages/super/SuperSubscriptions";
 import SuperDomains from "@/pages/super/SuperDomains";
 import SuperSmsManagement from "@/pages/super/SuperSmsManagement";
+import SuperAnalytics from "@/pages/super/SuperAnalytics";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -227,10 +230,13 @@ function App() {
                 <Route path="/super" element={<SuperAdminProvider><SuperAdminLayout /></SuperAdminProvider>}>
                   <Route path="dashboard" element={<SuperDashboard />} />
                   <Route path="tenants" element={<SuperTenants />} />
+                  <Route path="tenants/:id" element={<SuperTenantProfile />} />
+                  <Route path="onboarding" element={<SuperOnboarding />} />
                   <Route path="plans" element={<SuperPlans />} />
                   <Route path="subscriptions" element={<SuperSubscriptions />} />
                   <Route path="domains" element={<SuperDomains />} />
                   <Route path="sms" element={<SuperSmsManagement />} />
+                  <Route path="analytics" element={<SuperAnalytics />} />
                 </Route>
 
                 {/* Customer Portal Routes */}

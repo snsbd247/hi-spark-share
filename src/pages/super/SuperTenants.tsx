@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superAdminApi } from "@/lib/superAdminApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Building2, Ban, CheckCircle, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Building2, Ban, CheckCircle, Trash2, Search, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SuperTenants() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -171,6 +173,9 @@ export default function SuperTenants() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button variant="ghost" size="sm" onClick={() => navigate(`/super/tenants/${t.id}`)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     {t.status === "active" ? (
                       <Button variant="ghost" size="sm" onClick={() => suspendMut.mutate(t.id)}>
                         <Ban className="h-4 w-4 text-destructive" />
