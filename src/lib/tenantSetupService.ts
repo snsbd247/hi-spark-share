@@ -419,9 +419,8 @@ export async function resetTenantBusinessData(): Promise<ResetResult> {
     try {
       const { error } = await (supabase.from as any)(table)
         .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all rows
+        .neq("id", "00000000-0000-0000-0000-000000000000");
       if (error) {
-        // Table might not exist or have different schema — skip gracefully
         errors.push(`${table}: ${error.message}`);
       } else {
         cleared.push(table);
@@ -436,5 +435,170 @@ export async function resetTenantBusinessData(): Promise<ResetResult> {
     message: `Cleared ${cleared.length} tables. ${errors.length > 0 ? `${errors.length} skipped.` : ""}`,
     tables_cleared: cleared,
     errors,
+  };
+}
+
+// ─── 7. Full System Reset (Keep ONLY super_admins) ─────────────
+// Delete order: deepest FK children first, then parents
+const FULL_RESET_TABLES = [
+  // Deep children / logs
+  "admin_login_logs",
+  "admin_sessions",
+  "audit_logs",
+  "activity_logs",
+  "backup_logs",
+  "reminder_logs",
+  "sms_logs",
+  "daily_reports",
+  "login_histories",
+
+  // Customer children
+  "customer_ledger",
+  "customer_sessions",
+  "ticket_replies",
+  "support_tickets",
+  "merchant_payments",
+  "payments",
+  "bills",
+  "onus",
+
+  // Sales & Purchases
+  "sale_items",
+  "sales",
+  "purchase_items",
+  "supplier_payments",
+  "purchases",
+
+  // HR children
+  "employee_education",
+  "employee_emergency_contacts",
+  "employee_experience",
+  "employee_provident_fund",
+  "employee_salary_structure",
+  "employee_savings_fund",
+  "salary_sheets",
+  "loans",
+  "attendance",
+
+  // Master tables
+  "customers",
+  "employees",
+  "designations",
+  "products",
+  "expenses",
+  "expense_heads",
+  "income_heads",
+  "other_heads",
+  "vendors",
+  "suppliers",
+  "packages",
+  "mikrotik_routers",
+  "payment_gateways",
+  "olts",
+  "zones",
+
+  // Accounting
+  "transactions",
+  "accounts",
+
+  // Geo
+  "geo_upazilas",
+  "geo_districts",
+  "geo_divisions",
+
+  // Templates
+  "sms_templates",
+
+  // SMS system
+  "sms_transactions",
+  "sms_wallets",
+  "sms_settings",
+  "smtp_settings",
+
+  // Settings (general/system)
+  "general_settings",
+  "system_settings",
+
+  // Tenant system (profiles → user_roles → roles → impersonations → subscriptions → domains → tenants)
+  "impersonations",
+  "role_permissions",
+  "user_roles",
+  "profiles",
+  "custom_roles",
+  "permissions",
+  "subscriptions",
+  "plan_modules",
+  "domains",
+  "tenants",
+  "saas_plans",
+  "modules",
+];
+
+export interface FullResetResult {
+  success: boolean;
+  message: string;
+  tables_cleared: string[];
+  tables_skipped: string[];
+  errors: string[];
+}
+
+export async function fullSystemReset(): Promise<FullResetResult> {
+  const cleared: string[] = [];
+  const skipped: string[] = [];
+  const errors: string[] = [];
+
+  // These tables are NEVER touched
+  const PROTECTED = ["super_admins", "super_admin_sessions"];
+
+  for (const table of FULL_RESET_TABLES) {
+    if (PROTECTED.includes(table)) {
+      skipped.push(table);
+      continue;
+    }
+    try {
+      const { error } = await (supabase.from as any)(table)
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) {
+        errors.push(`${table}: ${error.message}`);
+      } else {
+        cleared.push(table);
+      }
+    } catch (e) {
+      errors.push(`${table}: ${safeError(e)}`);
+    }
+  }
+
+  return {
+    success: cleared.length > 0,
+    message: `Full reset complete. ${cleared.length} tables cleared, ${errors.length} errors.`,
+    tables_cleared: cleared,
+    tables_skipped: skipped,
+    errors,
+  };
+}
+
+// ─── 8. Full Reset + Demo Import (One-Click) ───────────────────
+export interface FullResetAndImportResult {
+  reset: FullResetResult;
+  setup: FullSetupResult | null;
+  overall: boolean;
+}
+
+export async function fullSystemResetAndImport(): Promise<FullResetAndImportResult> {
+  // Step 1: Full reset
+  const reset = await fullSystemReset();
+  
+  if (!reset.success) {
+    return { reset, setup: null, overall: false };
+  }
+
+  // Step 2: Re-import demo/default data (force = true since we just wiped)
+  const setup = await setupAll(true);
+
+  return {
+    reset,
+    setup,
+    overall: reset.success && (setup?.overall ?? false),
   };
 }
