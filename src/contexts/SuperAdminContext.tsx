@@ -40,15 +40,19 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
     let data: any;
 
     if (IS_LOVABLE) {
-      // Use Supabase Edge Function in preview mode
       const { data: fnData, error: fnError } = await supabase.functions.invoke("super-admin-login", {
         body: { email, password },
       });
-      if (fnError) throw new Error(fnError.message || "Login failed");
+      if (fnError) {
+        const msg = fnData?.error || fnError.message || "";
+        if (msg.includes("non-2xx") || msg.includes("FunctionsHttpError")) {
+          throw new Error("Invalid username or password");
+        }
+        throw new Error(msg || "Login failed");
+      }
       if (fnData?.error) throw new Error(fnData.error);
       data = fnData;
     } else {
-      // Use Laravel API in production
       const adminPath = import.meta.env.VITE_SUPER_ADMIN_PATH || "admin_login162";
       const res = await fetch(`${API_BASE_URL}/${adminPath}/login`, {
         method: "POST",
@@ -57,7 +61,10 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || "Login failed");
+        const status = res.status;
+        if (status === 401) throw new Error(errData.error || "Invalid username or password");
+        if (status === 423) throw new Error(errData.error || "Account temporarily locked. Try again later.");
+        throw new Error(errData.error || "Something went wrong. Please try again.");
       }
       data = await res.json();
     }

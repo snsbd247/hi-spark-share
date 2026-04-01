@@ -106,14 +106,29 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const result = await supabaseDirect.functions.invoke("customer-login", {
         body: { pppoe_username: pppoeUsername, pppoe_password: pppoePassword },
       });
-      if (result.error) throw result.error;
+      if (result.error) {
+        const msg = result.data?.error || result.error.message || "";
+        if (msg.includes("non-2xx") || msg.includes("FunctionsHttpError")) {
+          throw new Error("Invalid PPPoE username or password");
+        }
+        throw new Error(msg || "Login failed");
+      }
+      if (result.data?.error) throw new Error(result.data.error);
       data = result.data;
     } else {
-      const res = await api.post("/customer/login", {
-        pppoe_username: pppoeUsername,
-        pppoe_password: pppoePassword,
-      });
-      data = res.data;
+      try {
+        const res = await api.post("/customer/login", {
+          pppoe_username: pppoeUsername,
+          pppoe_password: pppoePassword,
+        });
+        data = res.data;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+        if (status === 401) throw new Error(serverMsg || "Invalid PPPoE username or password");
+        if (status === 403) throw new Error(serverMsg || "Account disconnected. Contact support.");
+        throw new Error(serverMsg || "Something went wrong. Please try again.");
+      }
     }
     const session: CustomerSession = {
       ...data.customer,

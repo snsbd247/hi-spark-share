@@ -76,25 +76,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     if (IS_LOVABLE) {
-      // Use Supabase Edge Function for login
       const { data, error } = await supabaseDirect.functions.invoke("admin-login", {
         body: { username, password },
       });
-      if (error) throw new Error(error.message || "Login failed");
-      if (!data?.user || !data?.token) throw new Error(data?.error || "Login failed");
+      // Extract user-friendly error from edge function response
+      if (error) {
+        const msg = data?.error || error.message || "";
+        if (msg.includes("non-2xx") || msg.includes("FunctionsHttpError")) {
+          throw new Error("Invalid username or password");
+        }
+        throw new Error(msg || "Login failed");
+      }
+      if (data?.error) throw new Error(data.error);
+      if (!data?.user || !data?.token) throw new Error("Invalid username or password");
       const adminUser: AdminUser = data.user;
       localStorage.setItem("admin_token", data.token);
       localStorage.setItem("admin_user", JSON.stringify(adminUser));
       setUser(adminUser);
       return { user: adminUser, token: data.token };
     } else {
-      const { data } = await api.post("/admin/login", { email: username, password });
-      if (!data?.user || !data?.token) throw new Error(data?.error || "Login failed");
-      const adminUser: AdminUser = data.user;
-      localStorage.setItem("admin_token", data.token);
-      localStorage.setItem("admin_user", JSON.stringify(adminUser));
-      setUser(adminUser);
-      return { user: adminUser, token: data.token };
+      try {
+        const { data } = await api.post("/admin/login", { email: username, password });
+        if (!data?.user || !data?.token) throw new Error(data?.error || "Invalid username or password");
+        const adminUser: AdminUser = data.user;
+        localStorage.setItem("admin_token", data.token);
+        localStorage.setItem("admin_user", JSON.stringify(adminUser));
+        setUser(adminUser);
+        return { user: adminUser, token: data.token };
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const serverMsg = err?.response?.data?.error || err?.response?.data?.message;
+        if (status === 401) throw new Error(serverMsg || "Invalid username or password");
+        if (status === 403) throw new Error(serverMsg || "Account is disabled");
+        throw new Error(serverMsg || "Something went wrong. Please try again.");
+      }
     }
   };
 

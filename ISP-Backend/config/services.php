@@ -29,4 +29,11 @@ return [
         'base_url' => env('NAGAD_BASE_URL', 'https://sandbox.mynagad.com:10061/remote-payment-gateway-1.0/api/dfs'),
     ],
 
+    // SSLCommerz Payment
+    'sslcommerz' => [
+        'store_id' => env('SSLCOMMERZ_STORE_ID'),
+        'store_password' => env('SSLCOMMERZ_STORE_PASSWORD'),
+        'base_url' => env('SSLCOMMERZ_BASE_URL', 'https://sandbox.sslcommerz.com'),
+    ],
+
 ];
