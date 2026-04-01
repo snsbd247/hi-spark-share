@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\VendorController;
 use App\Http\Controllers\Api\WhatsappController;
 use App\Http\Controllers\Api\SuperAdminAuthController;
 use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\SslCommerzController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -50,6 +51,12 @@ Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middle
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
 Route::any('/bkash/callback', [BkashController::class, 'callback']);
 Route::any('/nagad/callback', [NagadController::class, 'callback']);
+
+// SSLCommerz callbacks (public — called by SSLCommerz server)
+Route::post('/sslcommerz/success', [SslCommerzController::class, 'success']);
+Route::post('/sslcommerz/fail', [SslCommerzController::class, 'fail']);
+Route::post('/sslcommerz/cancel', [SslCommerzController::class, 'cancel']);
+Route::post('/sslcommerz/ipn', [SslCommerzController::class, 'ipn']);
 
 // bKash Pay Bill Webhooks (public — called by bKash server)
 Route::post('/bkash-paybill/inquiry', [\App\Http\Controllers\Api\BkashPayBillController::class, 'inquiry']);

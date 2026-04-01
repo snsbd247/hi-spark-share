@@ -571,6 +571,20 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* ══════ AI Insights ══════ */}
+      <div className="mb-6">
+        <AiInsights
+          customers={customers}
+          bills={bills}
+          smsBalance={smsBalance}
+          collectionRate={collectionRate}
+          totalDue={totalDue}
+          monthlyRevenue={monthlyRevenue}
+          active={active}
+          suspended={suspended}
+        />
+      </div>
+
       {/* ══════ Notification Center ══════ */}
       <NotificationCenter />
     </DashboardLayout>
