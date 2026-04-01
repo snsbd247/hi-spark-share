@@ -135,6 +135,26 @@ function getEnvRouter() {
   };
 }
 
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+  return "Unknown error";
+}
+
+function isRouterConnectivityError(message: string) {
+  return /connection refused|timeout|timed out|network is unreachable|no route to host|connection closed|os error 111/i.test(message);
+}
+
 async function withRouter(router: { ip_address: string; username: string; password: string; api_port: number }, fn: (mt: MikroTikConnection) => Promise<any>) {
   const mt = await connectMikroTik(router.ip_address, router.api_port || 8728, router.username, router.password);
   try { return await fn(mt); } finally { mt.close(); }
@@ -183,7 +203,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST" && path === "test-connection") {
       const { ip_address, username, password, api_port } = await req.json();
       if (!ip_address || !username || !password) {
-        return new Response(JSON.stringify({ error: "Missing router credentials" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return jsonResponse({ success: false, error: "Missing router credentials" }, 400);
       }
       try {
         const result = await withRouter({ ip_address, username, password, api_port: api_port || 8728 }, async (mt) => {
@@ -193,9 +213,14 @@ Deno.serve(async (req: Request) => {
           const resource = parseItems(resourceRes.sentences);
           return { identity: identity[0]?.name || "Unknown", version: resource[0]?.version || "Unknown", uptime: resource[0]?.uptime || "Unknown" };
         });
-        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return jsonResponse({ success: true, ...result });
       } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: e.message }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const message = getErrorMessage(e);
+        return jsonResponse({
+          success: false,
+          error: message,
+          error_type: isRouterConnectivityError(message) ? "router_unreachable" : "connection_failed",
+        });
       }
     }
 
@@ -676,24 +701,44 @@ Deno.serve(async (req: Request) => {
 
     // ─── BULK SYNC ALL PACKAGES ─────────────────────────────────
     if (req.method === "POST" && path === "bulk-sync-packages") {
+      const body = await req.json().catch(() => ({}));
+      const requestedRouterId = body?.router_id || null;
       const supabase = getSupabaseAdmin();
       const { data: packages } = await supabase
         .from("packages")
         .select("*")
         .eq("is_active", true);
 
+      let routersQuery = supabase.from("mikrotik_routers").select("*").eq("status", "active");
+      if (requestedRouterId) {
+        routersQuery = routersQuery.eq("id", requestedRouterId);
+      }
+
+      const { data: routers } = await routersQuery;
+
+      if (requestedRouterId && !routers?.length) {
+        return jsonResponse({
+          success: false,
+          error: "Selected router not found or inactive",
+          results: { synced: 0, imported: 0, failed: 0, errors: [] },
+        });
+      }
+
+      const candidatePackages = requestedRouterId
+        ? (packages || []).filter((pkg: any) => !pkg.router_id || pkg.router_id === requestedRouterId)
+        : (packages || []);
+
       const results = { synced: 0, imported: 0, failed: 0, errors: [] as string[] };
 
       // Get all active routers
-      const { data: routers } = await supabase.from("mikrotik_routers").select("*").eq("status", "active");
       const allRouters = routers?.length ? routers : [{ ...getEnvRouter(), id: "env-default", name: "Default Router" }];
 
       // Build a set of existing mikrotik_profile_names for dedup
-      const existingProfileNames = new Set((packages || []).map((p: any) => p.mikrotik_profile_name).filter(Boolean));
+      const existingProfileNames = new Set(candidatePackages.map((p: any) => p.mikrotik_profile_name).filter(Boolean));
 
       // Step 1: Push existing DB packages to MikroTik
       const byRouter: Record<string, any[]> = {};
-      for (const pkg of (packages || []).filter((p: any) => p.download_speed > 0 || p.upload_speed > 0)) {
+      for (const pkg of candidatePackages.filter((p: any) => p.download_speed > 0 || p.upload_speed > 0)) {
         const rid = pkg.router_id || "env";
         if (!byRouter[rid]) byRouter[rid] = [];
         byRouter[rid].push(pkg);
@@ -794,7 +839,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ success: true, results });
     }
 
     // ─── ROUTER STATS (Online + Suspended from all routers) ────
@@ -843,19 +888,35 @@ Deno.serve(async (req: Request) => {
 
     // ─── SYNC ALL (BI-DIRECTIONAL) ─────────────────────────────
     if (req.method === "POST" && path === "sync-all") {
+      const body = await req.json().catch(() => ({}));
+      const requestedRouterId = body?.router_id || null;
       const supabase = getSupabaseAdmin();
 
       // Get all routers
-      const { data: routers, error: routerErr } = await supabase
-        .from("mikrotik_routers")
-        .select("*")
-        .eq("status", "active");
+      let routersQuery = supabase.from("mikrotik_routers").select("*").eq("status", "active");
+      if (requestedRouterId) {
+        routersQuery = routersQuery.eq("id", requestedRouterId);
+      }
+
+      const { data: routers, error: routerErr } = await routersQuery;
+
+      if (requestedRouterId && !routers?.length) {
+        return jsonResponse({
+          success: false,
+          error: "Selected router not found or inactive",
+          results: { total: 0, pushed: 0, imported: 0, updated: 0, failed: 0, errors: [] },
+        });
+      }
 
       if (routerErr || !routers?.length) {
         // Fallback to env router
         const envRouter = getEnvRouter();
         if (!envRouter.ip_address) {
-          return new Response(JSON.stringify({ success: false, error: "No active routers configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return jsonResponse({
+            success: false,
+            error: "No active routers configured",
+            results: { total: 0, pushed: 0, imported: 0, updated: 0, failed: 0, errors: [] },
+          });
         }
       }
 
@@ -868,7 +929,10 @@ Deno.serve(async (req: Request) => {
       const errors: string[] = [];
 
       // Get all packages for profile mapping
-      const { data: allPackages } = await supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed");
+      const { data: packageRows } = await supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed, router_id");
+      const allPackages = requestedRouterId
+        ? (packageRows || []).filter((pkg: any) => !pkg.router_id || pkg.router_id === requestedRouterId)
+        : packageRows;
 
       for (const router of allRouters) {
         const routerConfig = { ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port || 8728 };
@@ -1019,7 +1083,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         success: true,
         results: {
           total: pushed + imported + updated + failed,
@@ -1029,12 +1093,12 @@ Deno.serve(async (req: Request) => {
           failed,
           errors: errors.slice(0, 20),
         },
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      });
     }
 
-    return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return jsonResponse({ error: "Not found" }, 404);
   } catch (err) {
     console.error("MikroTik edge function error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return jsonResponse({ error: getErrorMessage(err) || "Internal server error" }, 500);
   }
 });
