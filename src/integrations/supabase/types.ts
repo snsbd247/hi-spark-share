@@ -2765,6 +2765,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          auto_setup: boolean | null
           created_at: string | null
           email: string | null
           id: string
@@ -2773,12 +2774,18 @@ export type Database = {
           phone: string | null
           plan: string | null
           settings: Json | null
+          setup_accounts: boolean | null
+          setup_geo: boolean | null
+          setup_ledger: boolean | null
+          setup_status: string | null
+          setup_templates: boolean | null
           status: string | null
           subdomain: string | null
           trial_ends_at: string | null
           updated_at: string | null
         }
         Insert: {
+          auto_setup?: boolean | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -2787,12 +2794,18 @@ export type Database = {
           phone?: string | null
           plan?: string | null
           settings?: Json | null
+          setup_accounts?: boolean | null
+          setup_geo?: boolean | null
+          setup_ledger?: boolean | null
+          setup_status?: string | null
+          setup_templates?: boolean | null
           status?: string | null
           subdomain?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          auto_setup?: boolean | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -2801,6 +2814,11 @@ export type Database = {
           phone?: string | null
           plan?: string | null
           settings?: Json | null
+          setup_accounts?: boolean | null
+          setup_geo?: boolean | null
+          setup_ledger?: boolean | null
+          setup_status?: string | null
+          setup_templates?: boolean | null
           status?: string | null
           subdomain?: string | null
           trial_ends_at?: string | null
