@@ -275,7 +275,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/accounting/transactions', [AccountingController::class, 'storeTransaction']);
         Route::post('/accounting/journal-entries', [AccountingController::class, 'storeJournalEntry']);
     });
-    Route::middleware('check.permission:accounting,edit')->group(function () {
+    Route::middleware(['check.plan_module:accounting', 'check.permission:accounting,edit'])->group(function () {
         Route::put('/vendors/{id}', [VendorController::class, 'update']);
         Route::put('/products/{id}', [ProductController::class, 'update']);
         Route::put('/expenses/{id}', [ExpenseController::class, 'update']);
