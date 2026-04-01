@@ -402,7 +402,7 @@ function TenantUsersTab({ tenantId }: { tenantId: string }) {
                               newStatus: u.status === "active" ? "disabled" : "active",
                             })}
                           >
-                            {u.status === "active" ? <Ban className="h-3.5 w-3.5 text-destructive" /> : <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />}
+                            {u.status === "active" ? <Ban className="h-3.5 w-3.5 text-destructive" /> : <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                           </Button>
                         </div>
                       </TableCell>
