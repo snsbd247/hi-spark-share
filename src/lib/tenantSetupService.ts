@@ -1,6 +1,7 @@
 /**
  * TenantSetupService — Production-grade tenant data seeding
  * Handles: Geo Data, Chart of Accounts, SMS/Email Templates, Ledger Mappings
+ * Supports force re-import to handle "already exists" scenarios
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,7 @@ export interface SetupResult {
   message: string;
   error_code?: string;
   count?: number;
+  skipped?: boolean;
 }
 
 function safeError(e: unknown): string {
@@ -35,14 +37,27 @@ async function withErrorHandling(
   }
 }
 
+// ─── Helper: safe count ─────────────────────────────────────────
+async function tableCount(table: string): Promise<number> {
+  const { count, error } = await (supabase.from as any)(table)
+    .select("id", { count: "exact", head: true });
+  if (error) return 0;
+  return count || 0;
+}
+
 // ─── 1. Geo Data Seeder ─────────────────────────────────────────
-export async function importGeoData(): Promise<SetupResult> {
+export async function importGeoData(force = false): Promise<SetupResult> {
   return withErrorHandling("Geo Data Import", async () => {
-    // Check if already seeded
-    const { count: existingCount } = await (supabase.from as any)("geo_divisions")
-      .select("id", { count: "exact", head: true });
-    if (existingCount && existingCount > 0) {
-      return { success: true, message: "Geo data already exists, skipped", count: existingCount };
+    const existingCount = await tableCount("geo_divisions");
+    if (existingCount > 0 && !force) {
+      return { success: true, message: `Geo data already exists (${existingCount} divisions)`, count: existingCount, skipped: true };
+    }
+
+    // If force re-import, clear existing data first
+    if (force && existingCount > 0) {
+      await (supabase.from as any)("geo_upazilas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from as any)("geo_districts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await (supabase.from as any)("geo_divisions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     }
 
     let totalInserted = 0;
@@ -69,7 +84,6 @@ export async function importGeoData(): Promise<SetupResult> {
       }
     }
 
-    // Insert in batches of 50
     const insertedDistricts: any[] = [];
     for (let i = 0; i < districtRows.length; i += 50) {
       const batch = districtRows.slice(i, i + 50);
@@ -99,6 +113,12 @@ export async function importGeoData(): Promise<SetupResult> {
       if (error) throw new Error(`Upazilas batch: ${error.message}`);
     }
     totalInserted += upazilaRows.length;
+
+    // ── Verify data was actually inserted ──
+    const verifyCount = await tableCount("geo_divisions");
+    if (verifyCount === 0) {
+      return { success: false, message: "Geo data insertion failed — 0 records found after import", error_code: "VERIFY_FAILED" };
+    }
 
     return {
       success: true,
@@ -153,12 +173,16 @@ const DEFAULT_ACCOUNTS = [
   { name: "Miscellaneous Expense", type: "expense", code: "5900", level: 1, is_system: false, parent: "Expenses" },
 ];
 
-export async function importChartOfAccounts(): Promise<SetupResult> {
+export async function importChartOfAccounts(force = false): Promise<SetupResult> {
   return withErrorHandling("Chart of Accounts Import", async () => {
-    const { count: existingCount } = await (supabase.from as any)("accounts")
-      .select("id", { count: "exact", head: true });
-    if (existingCount && existingCount > 0) {
-      return { success: true, message: "Chart of Accounts already exists, skipped", count: existingCount };
+    const existingCount = await tableCount("accounts");
+    if (existingCount > 0 && !force) {
+      return { success: true, message: `Chart of Accounts already exists (${existingCount} accounts)`, count: existingCount, skipped: true };
+    }
+
+    // Force: clear existing accounts
+    if (force && existingCount > 0) {
+      await (supabase.from as any)("accounts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     }
 
     // First pass: insert root accounts (no parent)
@@ -205,6 +229,12 @@ export async function importChartOfAccounts(): Promise<SetupResult> {
       if (error) throw new Error(`Level 2 accounts: ${error.message}`);
     }
 
+    // Verify
+    const verifyCount = await tableCount("accounts");
+    if (verifyCount === 0) {
+      return { success: false, message: "Account import verification failed", error_code: "VERIFY_FAILED" };
+    }
+
     return {
       success: true,
       message: `${DEFAULT_ACCOUNTS.length} accounts imported successfully`,
@@ -230,16 +260,24 @@ const DEFAULT_TEMPLATES = [
   { name: "custom_sms", message: "{message}" },
 ];
 
-export async function importTemplates(): Promise<SetupResult> {
+export async function importTemplates(force = false): Promise<SetupResult> {
   return withErrorHandling("Templates Import", async () => {
-    const { count: existingCount } = await (supabase.from as any)("sms_templates")
-      .select("id", { count: "exact", head: true });
-    if (existingCount && existingCount > 0) {
-      return { success: true, message: "Templates already exist, skipped", count: existingCount };
+    const existingCount = await tableCount("sms_templates");
+    if (existingCount > 0 && !force) {
+      return { success: true, message: `Templates already exist (${existingCount})`, count: existingCount, skipped: true };
+    }
+
+    if (force && existingCount > 0) {
+      await (supabase.from as any)("sms_templates").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     }
 
     const { error } = await (supabase.from as any)("sms_templates").insert(DEFAULT_TEMPLATES);
     if (error) throw new Error(error.message);
+
+    const verifyCount = await tableCount("sms_templates");
+    if (verifyCount === 0) {
+      return { success: false, message: "Templates import verification failed", error_code: "VERIFY_FAILED" };
+    }
 
     return {
       success: true,
@@ -269,15 +307,18 @@ const DEFAULT_INCOME_HEADS = [
   { name: "Other Income", description: "Miscellaneous income", status: "active" },
 ];
 
-export async function importLedgerSettings(): Promise<SetupResult> {
+export async function importLedgerSettings(force = false): Promise<SetupResult> {
   return withErrorHandling("Ledger Settings Import", async () => {
-    const { count: expCount } = await (supabase.from as any)("expense_heads")
-      .select("id", { count: "exact", head: true });
-    const { count: incCount } = await (supabase.from as any)("income_heads")
-      .select("id", { count: "exact", head: true });
+    const expCount = await tableCount("expense_heads");
+    const incCount = await tableCount("income_heads");
 
-    if ((expCount && expCount > 0) || (incCount && incCount > 0)) {
-      return { success: true, message: "Ledger heads already exist, skipped", count: (expCount || 0) + (incCount || 0) };
+    if ((expCount > 0 || incCount > 0) && !force) {
+      return { success: true, message: `Ledger heads already exist (${expCount} expense, ${incCount} income)`, count: expCount + incCount, skipped: true };
+    }
+
+    if (force) {
+      if (expCount > 0) await (supabase.from as any)("expense_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (incCount > 0) await (supabase.from as any)("income_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     }
 
     const { error: expErr } = await (supabase.from as any)("expense_heads").insert(DEFAULT_EXPENSE_HEADS);
@@ -285,6 +326,13 @@ export async function importLedgerSettings(): Promise<SetupResult> {
 
     const { error: incErr } = await (supabase.from as any)("income_heads").insert(DEFAULT_INCOME_HEADS);
     if (incErr) throw new Error(`Income heads: ${incErr.message}`);
+
+    // Verify
+    const verifyExp = await tableCount("expense_heads");
+    const verifyInc = await tableCount("income_heads");
+    if (verifyExp === 0 && verifyInc === 0) {
+      return { success: false, message: "Ledger import verification failed", error_code: "VERIFY_FAILED" };
+    }
 
     return {
       success: true,
@@ -303,11 +351,11 @@ export interface FullSetupResult {
   overall: boolean;
 }
 
-export async function setupAll(): Promise<FullSetupResult> {
-  const geo = await importGeoData();
-  const accounts = await importChartOfAccounts();
-  const templates = await importTemplates();
-  const ledger = await importLedgerSettings();
+export async function setupAll(force = false): Promise<FullSetupResult> {
+  const geo = await importGeoData(force);
+  const accounts = await importChartOfAccounts(force);
+  const templates = await importTemplates(force);
+  const ledger = await importLedgerSettings(force);
 
   return {
     geo,
@@ -319,12 +367,74 @@ export async function setupAll(): Promise<FullSetupResult> {
 }
 
 // ─── Step runner (for individual steps) ─────────────────────────
-export async function runSetupStep(step: string): Promise<SetupResult> {
+export async function runSetupStep(step: string, force = false): Promise<SetupResult> {
   switch (step) {
-    case "geo": return importGeoData();
-    case "accounts": return importChartOfAccounts();
-    case "templates": return importTemplates();
-    case "ledger": return importLedgerSettings();
+    case "geo": return importGeoData(force);
+    case "accounts": return importChartOfAccounts(force);
+    case "templates": return importTemplates(force);
+    case "ledger": return importLedgerSettings(force);
     default: return { success: false, message: `Unknown setup step: ${step}`, error_code: "INVALID_STEP" };
   }
+}
+
+// ─── 6. Partial Reset (Business Data Only) ─────────────────────
+export interface ResetResult {
+  success: boolean;
+  message: string;
+  tables_cleared: string[];
+  errors: string[];
+}
+
+const BUSINESS_DATA_TABLES = [
+  // Order matters: children first to avoid FK constraints
+  "customer_ledger",
+  "customer_sessions",
+  "ticket_replies",
+  "support_tickets",
+  "merchant_payments",
+  "payments",
+  "bills",
+  "onus",
+  "sale_items",
+  "sales",
+  "purchase_items",
+  "supplier_payments",
+  "purchases",
+  "sms_logs",
+  "reminder_logs",
+  "daily_reports",
+  "transactions",
+  "customers",
+  "vendors",
+  "suppliers",
+  "products",
+  "expenses",
+];
+
+export async function resetTenantBusinessData(): Promise<ResetResult> {
+  const cleared: string[] = [];
+  const errors: string[] = [];
+
+  for (const table of BUSINESS_DATA_TABLES) {
+    try {
+      const { error } = await (supabase.from as any)(table)
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // delete all rows
+      if (error) {
+        // Table might not exist or have different schema — skip gracefully
+        errors.push(`${table}: ${error.message}`);
+      } else {
+        cleared.push(table);
+      }
+    } catch (e) {
+      errors.push(`${table}: ${safeError(e)}`);
+    }
+  }
+
+  return {
+    success: errors.length === 0 || cleared.length > 0,
+    message: `Cleared ${cleared.length} tables. ${errors.length > 0 ? `${errors.length} skipped.` : ""}`,
+    tables_cleared: cleared,
+    errors,
+  };
 }
