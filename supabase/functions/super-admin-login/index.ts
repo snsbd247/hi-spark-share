@@ -33,14 +33,27 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find super admin by email or username
-    const { data: admin, error: findErr } = await supabase
+    // Try username first, then email
+    let admin: any = null;
+    const { data: byUsername } = await supabase
       .from("super_admins")
       .select("*")
-      .or(`email.eq.${email},username.eq.${email}`)
-      .single();
+      .eq("username", email)
+      .maybeSingle();
 
-    if (findErr || !admin) {
+    if (byUsername) {
+      admin = byUsername;
+    } else {
+      const { data: byEmail } = await supabase
+        .from("super_admins")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+      admin = byEmail;
+    }
+
+    if (!admin) {
+      console.log("No admin found for:", email);
       return new Response(
         JSON.stringify({ error: "Invalid credentials" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
