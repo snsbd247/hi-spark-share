@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
 
     // Verify password
     console.log("Verifying password, hash prefix:", admin.password_hash?.substring(0, 7));
-    const valid = await compare(password, admin.password_hash);
+    const valid = bcryptjs.compareSync(password, admin.password_hash);
     console.log("Password valid:", valid);
 
     if (!valid) {
