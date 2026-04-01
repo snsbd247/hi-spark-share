@@ -47,9 +47,7 @@ const PayBill = lazy(() => import("@/pages/PayBill"));
 const AdminProfile = lazy(() => import("@/pages/AdminProfile"));
 const GeneralSettings = lazy(() => import("@/pages/settings/GeneralSettings"));
 const SystemSettings = lazy(() => import("@/pages/settings/SystemSettings"));
-const IntegrationManagement = lazy(() => import("@/pages/settings/IntegrationManagement"));
-const BkashApiManagement = lazy(() => import("@/pages/settings/BkashApiManagement"));
-const NagadApiManagement = lazy(() => import("@/pages/settings/NagadApiManagement"));
+// IntegrationManagement, BkashApiManagement, NagadApiManagement removed from tenant - now Super Admin only
 const MikroTikRouters = lazy(() => import("@/pages/settings/MikroTikRouters"));
 const CustomerLogin = lazy(() => import("@/pages/portal/CustomerLogin"));
 const CustomerDashboard = lazy(() => import("@/pages/portal/CustomerDashboard"));
