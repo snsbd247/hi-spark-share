@@ -37,7 +37,7 @@ export function usePermissions() {
         };
       }
 
-      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin") || isSuperAdminFromAuth;
+      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin" || r.role === "owner") || isSuperAdminFromAuth;
 
       if (isSuperAdmin) {
         return {

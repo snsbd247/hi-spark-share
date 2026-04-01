@@ -128,7 +128,7 @@ export const superAdminApi = {
       // Auto-create default tenant admin user
       const tenantId = Array.isArray(tenant) ? tenant[0]?.id : tenant?.id;
       if (tenantId) {
-        const defaultUserId = crypto.randomUUID();
+      const defaultUserId = crypto.randomUUID();
         const defaultUsername = (data.subdomain || data.name || "admin").toLowerCase().replace(/[^a-z0-9]/g, "") + "_admin";
         try {
           await sbInsert("profiles", {
@@ -140,8 +140,9 @@ export const superAdminApi = {
             status: "active",
             must_change_password: true,
             tenant_id: tenantId,
+            password_hash: "$2b$10$Fbzs7C/PSAlBsbZAOMbseubb/BxU90sgfSeRkptO4z0owyO5broEK",
           });
-          await sbInsert("user_roles", { user_id: defaultUserId, role: "admin" });
+          await sbInsert("user_roles", { user_id: defaultUserId, role: "owner" });
         } catch (e) {
           console.warn("Auto user creation failed:", e);
         }

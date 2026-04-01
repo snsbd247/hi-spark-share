@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", profile.id);
 
     const hasAdminRole = roles?.some(
-      (r: any) => r.role === "admin" || r.role === "super_admin" || r.role === "staff"
+      (r: any) => r.role === "admin" || r.role === "super_admin" || r.role === "staff" || r.role === "owner"
     );
 
     if (!hasAdminRole) {
