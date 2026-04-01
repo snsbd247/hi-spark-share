@@ -919,6 +919,7 @@ export default function SuperTenantProfile() {
     },
   });
 
+  const suspendMut = useMutation({
     mutationFn: () => superAdminApi.suspendTenant(id!),
     onSuccess: () => { toast.success("Tenant suspended"); invalidateAll(); },
   });
