@@ -820,15 +820,13 @@ export default function IntegrationManagement() {
         </div>
 
         <Tabs defaultValue="smtp" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-lg">
+          <TabsList className="grid grid-cols-3 w-full max-w-lg">
             <TabsTrigger value="smtp" className="gap-1.5"><Mail className="h-3.5 w-3.5" /> SMTP</TabsTrigger>
-            <TabsTrigger value="sms" className="gap-1.5"><MessageSquare className="h-3.5 w-3.5" /> SMS</TabsTrigger>
             <TabsTrigger value="bkash" className="gap-1.5"><Wallet className="h-3.5 w-3.5" /> bKash</TabsTrigger>
             <TabsTrigger value="nagad" className="gap-1.5"><CreditCard className="h-3.5 w-3.5" /> Nagad</TabsTrigger>
           </TabsList>
 
           <TabsContent value="smtp"><SmtpTab /></TabsContent>
-          <TabsContent value="sms"><SmsTab /></TabsContent>
           <TabsContent value="bkash"><BkashTab /></TabsContent>
           <TabsContent value="nagad"><NagadTab /></TabsContent>
         </Tabs>

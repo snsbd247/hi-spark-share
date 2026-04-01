@@ -280,6 +280,7 @@ export default function AppSidebar() {
   const tSettingsNav: NavItem[] = [
     { to: "/settings/system", icon: Settings, label: t.sidebar.systemSettings, module: "settings" },
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
+    { to: "/settings/integrations", icon: Plug, label: "Integrations", module: "settings" },
     { to: "/settings/locations", icon: Globe, label: "Location Management", module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },
     { to: "/login-logs", icon: FileText, label: t.sidebar.loginLogs, module: "settings" },
