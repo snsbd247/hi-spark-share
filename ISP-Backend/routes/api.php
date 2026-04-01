@@ -361,7 +361,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::put('/hr/loans/{id}', [HrController::class, 'updateLoan']);
         Route::put('/hr/salary/{id}', [HrController::class, 'updateSalarySheet']);
     });
-    Route::middleware('check.permission:hr,delete')->group(function () {
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,delete'])->group(function () {
         Route::delete('/hr/designations/{id}', [HrController::class, 'deleteDesignation']);
         Route::delete('/hr/employees/{id}', [HrController::class, 'deleteEmployee']);
         Route::delete('/hr/loans/{id}', [HrController::class, 'deleteLoan']);
