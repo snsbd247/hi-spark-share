@@ -4,7 +4,7 @@ import bcryptjs from "npm:bcryptjs@2.4.3";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req: Request) => {
@@ -14,6 +14,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { email, password } = await req.json();
+    console.log("Login attempt for:", email);
 
     if (!email || !password) {
       return new Response(
@@ -25,6 +26,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing env vars");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -33,14 +35,29 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find super admin by email or username
-    const { data: admin, error: findErr } = await supabase
+    // Try username first, then email
+    let admin: any = null;
+    const { data: byUsername, error: e1 } = await supabase
       .from("super_admins")
       .select("*")
-      .or(`email.eq.${email},username.eq.${email}`)
-      .single();
+      .eq("username", email)
+      .maybeSingle();
 
-    if (findErr || !admin) {
+    console.log("Username lookup result:", !!byUsername, "error:", e1?.message);
+
+    if (byUsername) {
+      admin = byUsername;
+    } else {
+      const { data: byEmail, error: e2 } = await supabase
+        .from("super_admins")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+      console.log("Email lookup result:", !!byEmail, "error:", e2?.message);
+      admin = byEmail;
+    }
+
+    if (!admin) {
       return new Response(
         JSON.stringify({ error: "Invalid credentials" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -57,7 +74,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Verify password
+    console.log("Verifying password, hash prefix:", admin.password_hash?.substring(0, 7));
     const valid = bcryptjs.compareSync(password, admin.password_hash);
+    console.log("Password valid:", valid);
+
     if (!valid) {
       const attempts = (admin.failed_attempts || 0) + 1;
       const updates: Record<string, unknown> = { failed_attempts: attempts };
@@ -82,13 +102,17 @@ Deno.serve(async (req: Request) => {
 
     // Create session
     const sessionToken = crypto.randomUUID();
-    await supabase.from("super_admin_sessions").insert({
+    const { error: sessErr } = await supabase.from("super_admin_sessions").insert({
       super_admin_id: admin.id,
       session_token: sessionToken,
       ip_address: req.headers.get("x-forwarded-for") || "0.0.0.0",
       browser: req.headers.get("user-agent") || "Unknown",
       status: "active",
     });
+
+    if (sessErr) {
+      console.error("Session insert error:", sessErr.message);
+    }
 
     return new Response(
       JSON.stringify({
@@ -106,7 +130,7 @@ Deno.serve(async (req: Request) => {
   } catch (err: unknown) {
     console.error("Super admin login error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error: " + String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
