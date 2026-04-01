@@ -284,7 +284,7 @@ export default function Dashboard() {
       </div>
 
       {/* ══════ Section 1: Customer & Connection Stats ══════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 stagger-children">
         <StatCard title={t.dashboard.totalCustomers} value={total} icon={<Users className="h-5 w-5" />} variant="default" />
         <StatCard title={t.common.active} value={active} icon={<Users className="h-5 w-5" />} variant="success" />
         <StatCard title={t.common.suspended} value={suspended} icon={<Users className="h-5 w-5" />} variant="destructive" />
