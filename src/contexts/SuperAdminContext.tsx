@@ -1,7 +1,8 @@
 import { useState, createContext, useContext, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "@/lib/apiBaseUrl";
-
+import { IS_LOVABLE } from "@/lib/environment";
+import { supabase } from "@/integrations/supabase/client";
 interface SuperAdminUser {
   id: string;
   name: string;
