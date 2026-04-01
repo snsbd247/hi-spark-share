@@ -76,9 +76,8 @@ Deno.serve(async (req: Request) => {
       .select("role, custom_role_id")
       .eq("user_id", profile.id);
 
-    const hasAdminRole = roles?.some(
-      (r: any) => r.role === "admin" || r.role === "super_admin" || r.role === "staff" || r.role === "owner"
-    );
+    const validRoles = ["super_admin", "admin", "owner", "staff", "manager", "operator", "technician", "accountant"];
+    const hasAdminRole = roles?.some((r: any) => validRoles.includes(r.role));
 
     if (!hasAdminRole) {
       return new Response(
