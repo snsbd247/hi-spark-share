@@ -337,7 +337,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // ══════════════════════════════════════════════════════
     // ── HUMAN RESOURCE — module: hr ─────────────────────
     // ══════════════════════════════════════════════════════
-    Route::middleware('check.permission:hr,view')->group(function () {
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,view'])->group(function () {
         Route::get('/hr/designations', [HrController::class, 'designations']);
         Route::get('/hr/employees', [HrController::class, 'employees']);
         Route::get('/hr/employees/{id}', [HrController::class, 'employeeProfile']);
