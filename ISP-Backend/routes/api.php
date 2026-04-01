@@ -309,7 +309,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::put('/accounting/expense-heads/{id}', [AccountingHeadController::class, 'updateExpenseHead']);
         Route::put('/accounting/other-heads/{id}', [AccountingHeadController::class, 'updateOtherHead']);
     });
-    Route::middleware('check.permission:accounting,delete')->group(function () {
+    Route::middleware(['check.plan_module:accounting', 'check.permission:accounting,delete'])->group(function () {
         Route::delete('/accounting/income-heads/{id}', [AccountingHeadController::class, 'deleteIncomeHead']);
         Route::delete('/accounting/expense-heads/{id}', [AccountingHeadController::class, 'deleteExpenseHead']);
         Route::delete('/accounting/other-heads/{id}', [AccountingHeadController::class, 'deleteOtherHead']);
