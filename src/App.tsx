@@ -92,6 +92,7 @@ import BtrcReport from "@/pages/reporting/BtrcReport";
 import TrafficMonitor from "@/pages/reporting/TrafficMonitor";
 import ApiHealthMonitor from "@/pages/settings/ApiHealthMonitor";
 import GeoManagement from "@/pages/settings/GeoManagement";
+import DomainManagement from "@/pages/settings/DomainManagement";
 
 const queryClient = new QueryClient({
   defaultOptions: {
