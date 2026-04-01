@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
+use App\Services\SystemResetService;
 
 /**
  * HTTP-based setup controller for cPanel environments without SSH access.
@@ -218,5 +219,23 @@ class SetupController extends Controller
         } catch (\Exception $e) {
             return -1;
         }
+    }
+
+    /**
+     * POST /api/setup/reset-all — Reset all business data
+     */
+    public function resetAll(Request $request)
+    {
+        if (!$this->authorize($request)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $service = new SystemResetService();
+        $result = $service->resetAllData(
+            includeSettings: (bool) $request->input('include_settings', false),
+            includeAccounts: (bool) $request->input('include_accounts', true),
+        );
+
+        return response()->json($result, $result['success'] ? 200 : 500);
     }
 }

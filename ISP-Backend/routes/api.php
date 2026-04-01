@@ -70,6 +70,7 @@ Route::post('/setup/seed', [\App\Http\Controllers\Api\SetupController::class, 's
 Route::post('/setup/cache-clear', [\App\Http\Controllers\Api\SetupController::class, 'cacheClear']);
 Route::post('/setup/storage-link', [\App\Http\Controllers\Api\SetupController::class, 'storageLink']);
 Route::post('/setup/full', [\App\Http\Controllers\Api\SetupController::class, 'full']);
+Route::post('/setup/reset-all', [\App\Http\Controllers\Api\SetupController::class, 'resetAll']);
 
 /*
 |--------------------------------------------------------------------------
