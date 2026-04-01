@@ -166,6 +166,8 @@ function App() {
                 <Route path="/audit-logs" element={<PermissionGuard module="settings"><AuditLogs /></PermissionGuard>} />
                 <Route path="/activity-logs" element={<PermissionGuard module="settings"><ActivityLogs /></PermissionGuard>} />
                 <Route path="/login-history" element={<PermissionGuard module="settings"><UserLoginHistory /></PermissionGuard>} />
+                <Route path="/sessions" element={<PermissionGuard module="settings"><SessionManagement /></PermissionGuard>} />
+                <Route path="/security" element={<PermissionGuard module="settings"><SecurityDashboard /></PermissionGuard>} />
 
                 {/* HR Routes */}
                 <Route path="/hr/designations" element={<PermissionGuard module="hr"><DesignationList /></PermissionGuard>} />

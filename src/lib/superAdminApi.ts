@@ -345,4 +345,20 @@ export const superAdminApi = {
     }
     return request(`/tenants/${tenantId}/login-history`);
   },
+
+  // Tenant Sessions
+  getTenantSessions: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      return sbSelect("admin_sessions");
+    }
+    return request(`/tenants/${tenantId}/sessions`);
+  },
+
+  // Force terminate session
+  forceTerminateSession: async (sessionId: string) => {
+    if (IS_LOVABLE) {
+      return sbUpdate("admin_sessions", sessionId, { status: "force_terminated" });
+    }
+    return request(`/sessions/${sessionId}/force-terminate`, { method: "POST" });
+  },
 };
