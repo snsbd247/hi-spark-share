@@ -39,9 +39,18 @@ export default function SuperPlans() {
     queryFn: superAdminApi.getPlans,
   });
 
+  // Fetch modules from Supabase directly (works in both preview & production)
   const { data: allModules = [] } = useQuery<ModuleItem[]>({
     queryKey: ["super-modules"],
-    queryFn: superAdminApi.getModules,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("modules")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []) as ModuleItem[];
+    },
   });
 
   const nonCoreModules = allModules.filter((m: ModuleItem) => !m.is_core);
