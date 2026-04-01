@@ -125,6 +125,27 @@ export const superAdminApi = {
         plan: "basic",
         status: "active",
       });
+      // Auto-create default tenant admin user
+      const tenantId = Array.isArray(tenant) ? tenant[0]?.id : tenant?.id;
+      if (tenantId) {
+        const defaultUserId = crypto.randomUUID();
+        const defaultUsername = (data.subdomain || data.name || "admin").toLowerCase().replace(/[^a-z0-9]/g, "") + "_admin";
+        try {
+          await sbInsert("profiles", {
+            id: defaultUserId,
+            full_name: data.name + " Admin",
+            username: defaultUsername,
+            email: data.email || null,
+            mobile: data.phone || null,
+            status: "active",
+            must_change_password: true,
+            tenant_id: tenantId,
+          });
+          await sbInsert("user_roles", { user_id: defaultUserId, role: "admin" });
+        } catch (e) {
+          console.warn("Auto user creation failed:", e);
+        }
+      }
       return tenant;
     }
     return request("/tenants", { method: "POST", body: JSON.stringify(data) });
@@ -316,7 +337,7 @@ export const superAdminApi = {
   // Tenant Users
   getTenantUsers: async (tenantId: string) => {
     if (IS_LOVABLE) {
-      const profiles = await sbSelect("profiles");
+      const profiles = await sbSelect("profiles", { filters: { tenant_id: tenantId } });
       const roles = await sbSelect("user_roles");
       return profiles.map((p: any) => {
         const userRole = roles.find((r: any) => r.user_id === p.id);
@@ -426,6 +447,7 @@ export const superAdminApi = {
         address: data.address || null,
         status: "active",
         must_change_password: true,
+        tenant_id: tenantId,
       });
       if (data.role) {
         await sbInsert("user_roles", { user_id: newId, role: data.role });
