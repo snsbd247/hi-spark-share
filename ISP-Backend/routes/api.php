@@ -471,6 +471,13 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/domains', [SuperAdminController::class, 'allDomains']);
     Route::post('/domains', [SuperAdminController::class, 'assignDomain']);
     Route::delete('/domains/{id}', [SuperAdminController::class, 'removeDomain']);
+
+    // SMS Management (centralized)
+    Route::get('/sms-settings', [SuperAdminController::class, 'smsSettings']);
+    Route::put('/sms-settings', [SuperAdminController::class, 'updateSmsSettings']);
+    Route::get('/sms-wallets', [SuperAdminController::class, 'smsWallets']);
+    Route::post('/sms-recharge', [SuperAdminController::class, 'rechargeSms']);
+    Route::get('/sms-transactions', [SuperAdminController::class, 'smsTransactions']);
 });
 
 /*

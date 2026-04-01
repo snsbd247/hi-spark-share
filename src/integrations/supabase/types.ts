@@ -2181,8 +2181,10 @@ export type Database = {
           message: string
           phone: string
           response: string | null
+          sms_count: number | null
           sms_type: string
           status: string
+          tenant_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2191,8 +2193,10 @@ export type Database = {
           message: string
           phone: string
           response?: string | null
+          sms_count?: number | null
           sms_type: string
           status?: string
+          tenant_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2201,8 +2205,10 @@ export type Database = {
           message?: string
           phone?: string
           response?: string | null
+          sms_count?: number | null
           sms_type?: string
           status?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -2283,6 +2289,63 @@ export type Database = {
           message?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sms_transactions: {
+        Row: {
+          admin_id: string | null
+          amount: number
+          balance_after: number
+          created_at: string | null
+          description: string | null
+          id: string
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          admin_id?: string | null
+          amount: number
+          balance_after?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          tenant_id: string
+          type?: string
+        }
+        Update: {
+          admin_id?: string | null
+          amount?: number
+          balance_after?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      sms_wallets: {
+        Row: {
+          balance: number
+          created_at: string | null
+          id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

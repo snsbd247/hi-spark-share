@@ -71,4 +71,14 @@ export const superAdminApi = {
   getDomains: () => request("/domains"),
   assignDomain: (data: any) => request("/domains", { method: "POST", body: JSON.stringify(data) }),
   removeDomain: (id: string) => request(`/domains/${id}`, { method: "DELETE" }),
+
+  // SMS Management
+  getSmsSettings: () => request("/sms-settings"),
+  updateSmsSettings: (data: any) => request("/sms-settings", { method: "PUT", body: JSON.stringify(data) }),
+  getSmsWallets: () => request("/sms-wallets"),
+  rechargeSms: (data: any) => request("/sms-recharge", { method: "POST", body: JSON.stringify(data) }),
+  getSmsTransactions: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return request(`/sms-transactions${qs}`);
+  },
 };

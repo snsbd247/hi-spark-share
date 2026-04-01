@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Models\Module;
+use App\Models\SmsSetting;
+use App\Models\SmsWallet;
+use App\Models\SmsTransaction;
 use App\Models\SaasPlan;
 use App\Models\Subscription;
 use App\Models\Tenant;
@@ -395,5 +398,101 @@ class SuperAdminController extends Controller
         });
 
         return response()->json($result);
+    }
+
+    // ══════════════════════════════════════════
+    // SMS MANAGEMENT (Super Admin)
+    // ══════════════════════════════════════════
+
+    /**
+     * Get global SMS settings.
+     */
+    public function smsSettings()
+    {
+        $settings = SmsSetting::first();
+        return response()->json($settings);
+    }
+
+    /**
+     * Update global SMS settings.
+     */
+    public function updateSmsSettings(Request $request)
+    {
+        $settings = SmsSetting::first();
+        if (!$settings) {
+            $settings = SmsSetting::create($request->all());
+        } else {
+            $settings->update($request->all());
+        }
+        return response()->json($settings);
+    }
+
+    /**
+     * Get all tenant SMS wallets.
+     */
+    public function smsWallets()
+    {
+        $tenants = Tenant::select('id', 'name', 'subdomain', 'status')->get();
+
+        $wallets = SmsWallet::all()->keyBy('tenant_id');
+
+        $result = $tenants->map(function ($tenant) use ($wallets) {
+            $wallet = $wallets->get($tenant->id);
+            return [
+                'tenant_id'  => $tenant->id,
+                'tenant_name' => $tenant->name,
+                'subdomain'  => $tenant->subdomain,
+                'status'     => $tenant->status,
+                'balance'    => $wallet ? $wallet->balance : 0,
+                'wallet_id'  => $wallet ? $wallet->id : null,
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+    /**
+     * Recharge SMS balance for a tenant.
+     */
+    public function rechargeSms(Request $request)
+    {
+        $request->validate([
+            'tenant_id'   => 'required|uuid|exists:tenants,id',
+            'amount'      => 'required|integer|min:1',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $wallet = SmsWallet::firstOrCreate(
+            ['tenant_id' => $request->tenant_id],
+            ['balance' => 0]
+        );
+
+        $adminId = $request->get('super_admin')?->id ?? 'super_admin';
+
+        $wallet->recharge(
+            $request->amount,
+            $request->description ?? 'SMS Recharge by Super Admin',
+            $adminId
+        );
+
+        return response()->json([
+            'success'     => true,
+            'new_balance' => $wallet->balance,
+            'tenant_id'   => $request->tenant_id,
+        ]);
+    }
+
+    /**
+     * Get SMS transaction history for a tenant.
+     */
+    public function smsTransactions(Request $request)
+    {
+        $query = SmsTransaction::orderBy('created_at', 'desc');
+
+        if ($request->tenant_id) {
+            $query->where('tenant_id', $request->tenant_id);
+        }
+
+        return response()->json($query->limit(200)->get());
     }
 }
