@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db, supabaseDirect } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { Plus, Eye, Pencil, Printer, Search, Loader2, RefreshCw, ChevronLeft, Ch
 import { toast } from "sonner";
 
 import api from "@/lib/api";
+import { IS_LOVABLE } from "@/lib/environment";
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerView from "@/components/customers/CustomerView";
 import { generateCustomerPDF } from "@/lib/pdf";
@@ -50,30 +51,54 @@ export default function Customers() {
   const bulkSyncCustomers = async () => {
     setBulkSyncing(true);
     try {
-      let data: any;
-      const res = await api.post('/mikrotik/sync-all', {});
-      data = res.data;
-      if (data.success) {
-        const r = data.results;
-        const parts = [];
-        if (r.pushed > 0) parts.push(`${r.pushed} pushed`);
-        if (r.imported > 0) parts.push(`${r.imported} imported`);
-        if (r.updated > 0) parts.push(`${r.updated} updated`);
-        if (r.failed > 0) parts.push(`${r.failed} failed`);
-        // Backward compat
-        if (r.synced !== undefined) parts.push(`${r.synced} synced`);
-        toast.success(`Sync complete: ${parts.join(", ")}`);
-        if (r.errors?.length > 0) toast.warning(`Errors: ${r.errors.slice(0, 3).join("; ")}`);
-        queryClient.invalidateQueries({ queryKey: ["customers"] });
+      if (IS_LOVABLE) {
+        // Get first active router for credentials
+        const { data: routerData } = await db.from("mikrotik_routers").select("*").eq("status", "active").limit(1);
+        const router = routerData?.[0];
+        if (!router) { toast.error("কোনো রাউটার কনফিগার করা নেই"); setBulkSyncing(false); return; }
+        const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/sync-all', {
+          body: { router_id: router.id, ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port },
+        });
+        if (error) throw error;
+        if (data?.success) {
+          const r = data.results || {};
+          if (r.errors?.length && !r.imported && !r.pushed && !r.updated) {
+            const errMsg = r.errors[0] || "";
+            if (errMsg.includes("Connection refused") || errMsg.includes("timeout")) {
+              toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট পাবলিকলি ওপেন করুন।", { duration: 8000 });
+            } else toast.error(`Sync failed: ${errMsg}`);
+          } else {
+            const parts = [];
+            if (r.pushed > 0) parts.push(`${r.pushed} pushed`);
+            if (r.imported > 0) parts.push(`${r.imported} imported`);
+            if (r.updated > 0) parts.push(`${r.updated} updated`);
+            if (r.failed > 0) parts.push(`${r.failed} failed`);
+            toast.success(`Sync complete: ${parts.join(", ")}`);
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
+          }
+        } else toast.error(data?.error || "Sync failed");
       } else {
-        toast.error(data.error || "Bulk sync failed");
+        const res = await api.post('/mikrotik/sync-all', {});
+        const data = res.data;
+        if (data.success) {
+          const r = data.results;
+          const parts = [];
+          if (r.pushed > 0) parts.push(`${r.pushed} pushed`);
+          if (r.imported > 0) parts.push(`${r.imported} imported`);
+          if (r.updated > 0) parts.push(`${r.updated} updated`);
+          if (r.failed > 0) parts.push(`${r.failed} failed`);
+          if (r.synced !== undefined) parts.push(`${r.synced} synced`);
+          toast.success(`Sync complete: ${parts.join(", ")}`);
+          if (r.errors?.length > 0) toast.warning(`Errors: ${r.errors.slice(0, 3).join("; ")}`);
+          queryClient.invalidateQueries({ queryKey: ["customers"] });
+        } else toast.error(data.error || "Bulk sync failed");
       }
     } catch (err: any) {
       const msg = err?.response?.data?.error || err?.message || "Could not connect to MikroTik";
-      toast.error(msg);
-    } finally {
-      setBulkSyncing(false);
-    }
+      if (IS_LOVABLE && (msg.includes("Connection refused") || msg.includes("timeout"))) {
+        toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট পাবলিকলি ওপেন করুন।", { duration: 8000 });
+      } else toast.error(msg);
+    } finally { setBulkSyncing(false); }
   };
 
   const { data: customers, isLoading } = useQuery({
