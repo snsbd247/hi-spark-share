@@ -37,7 +37,7 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const adminPath = import.meta.env.VITE_SUPER_ADMIN_PATH || "admin_login162";
-    const base = getApiBaseUrl();
+    const base = API_BASE_URL;
     const res = await fetch(`${base}/${adminPath}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
