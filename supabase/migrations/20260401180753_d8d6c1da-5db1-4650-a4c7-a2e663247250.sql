@@ -1,0 +1,1 @@
+UPDATE profiles SET password_hash = '$2b$10$Dz6hoR40rPc8/Tor6qI0Gugytcvbu/x1KLj6oK5Qid4nVuzF1a8gy' WHERE username = 'fiberlink_admin';
