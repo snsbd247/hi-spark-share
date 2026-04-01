@@ -146,7 +146,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::middleware(['check.plan_module:billing', 'check.permission:billing,edit'])->group(function () {
         Route::put('/bills/{id}', [BillController::class, 'update']);
     });
-    Route::middleware('check.permission:billing,delete')->group(function () {
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,delete'])->group(function () {
         Route::delete('/bills/{id}', [BillController::class, 'destroy']);
     });
 
