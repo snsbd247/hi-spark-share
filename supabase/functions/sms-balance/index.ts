@@ -55,39 +55,44 @@ Deno.serve(async (req) => {
         ? (({ token: _t, ...rest }: any) => rest)(rawBalance)
         : rawBalance;
 
-    // Fetch sent count from GreenWeb report API (last 30 days)
+    // Fetch sent/failed count from local sms_logs (accurate source of truth)
     let sentCount = 0;
     let failedCount = 0;
     try {
       const now = new Date();
       const thirtyDaysAgo = new Date(now);
       thirtyDaysAgo.setDate(now.getDate() - 30);
-      const fromDate = thirtyDaysAgo.toISOString().split("T")[0];
-      const toDate = now.toISOString().split("T")[0];
+      const fromDate = thirtyDaysAgo.toISOString();
 
-      // GreenWeb report/log endpoint
-      const reportUrl = `http://api.greenweb.com.bd/g_api.php?token=${token}&report&from=${fromDate}&to=${toDate}&json`;
-      const reportRes = await fetch(reportUrl);
-      const reportText = await reportRes.text();
-      
-      try {
-        const reportData = JSON.parse(reportText);
-        if (Array.isArray(reportData)) {
-          sentCount = reportData.filter((r: any) => r.status === "sent" || r.status === "delivered" || r.status === "success").length;
-          failedCount = reportData.filter((r: any) => r.status === "failed" || r.status === "rejected").length;
-          // If no status field, count all as sent
-          if (sentCount === 0 && failedCount === 0 && reportData.length > 0) {
-            sentCount = reportData.length;
-          }
-        } else if (reportData && typeof reportData === "object") {
-          sentCount = reportData.total_sent || reportData.sent || reportData.count || 0;
-          failedCount = reportData.total_failed || reportData.failed || 0;
-        }
-      } catch {
-        // Report endpoint may not be JSON or may not exist
-      }
+      const { data: sentData } = await supabase
+        .from("sms_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "sent")
+        .gte("created_at", fromDate);
+
+      const { data: failedData } = await supabase
+        .from("sms_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed")
+        .gte("created_at", fromDate);
+
+      // count comes from the response headers when head:true
+      const { count: sentC } = await supabase
+        .from("sms_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "sent")
+        .gte("created_at", fromDate);
+
+      const { count: failedC } = await supabase
+        .from("sms_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "failed")
+        .gte("created_at", fromDate);
+
+      sentCount = sentC ?? 0;
+      failedCount = failedC ?? 0;
     } catch {
-      // Report fetch failed, continue with balance only
+      // DB query failed, continue with balance only
     }
 
     const result = {
