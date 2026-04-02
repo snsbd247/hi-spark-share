@@ -543,7 +543,8 @@ export default function SuperSmsManagement() {
                       <TableHead>Tenant</TableHead>
                       <TableHead>Subdomain</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">SMS Balance</TableHead>
+                      <TableHead className="text-right">Rate (৳/SMS)</TableHead>
+                      <TableHead className="text-right">Balance (৳)</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -556,8 +557,11 @@ export default function SuperSmsManagement() {
                           <Badge variant={w.status === "active" ? "default" : "secondary"}>{w.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
+                          <span className="font-medium">৳{Number(w.sms_rate).toFixed(2)}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
                           <span className={`font-bold ${w.balance < LOW_BALANCE_THRESHOLD ? "text-destructive" : "text-green-600"}`}>
-                            {w.balance.toLocaleString()}
+                            ৳{Number(w.balance).toFixed(2)}
                           </span>
                           {w.balance < LOW_BALANCE_THRESHOLD && w.status === "active" && (
                             <AlertTriangle className="h-3.5 w-3.5 text-destructive inline ml-1" />
@@ -581,7 +585,7 @@ export default function SuperSmsManagement() {
                     ))}
                     {wallets.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No tenants found</TableCell>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No tenants found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
