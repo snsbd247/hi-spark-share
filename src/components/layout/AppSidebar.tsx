@@ -10,7 +10,7 @@ import {
   Package, MapPin, Router, Shield, Wallet, BarChart3, FileText, Menu, X, ClipboardList, Wrench, KeyRound,
   Sun, Moon, HardDrive, Plug, Building2, ShoppingCart, DollarSign, TrendingUp, BoxIcon,
   Briefcase, CalendarDays, CalendarCheck, Banknote, FileSpreadsheet, Truck, Activity,
-  UserPlus, UserCheck, UserX, WifiOff, UserMinus, Globe, BookOpen, Scale,
+  UserPlus, UserCheck, UserX, WifiOff, UserMinus, Globe, BookOpen, Scale, Tag, Network, HelpCircle, PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ const billingNav: NavItem[] = [
   { to: "/payments", icon: CreditCard, label: "Payments", module: "payments" },
   { to: "/merchant-payments", icon: Wallet, label: "Merchant Payments", module: "merchant_payments" },
   { to: "/merchant-reports", icon: BarChart3, label: "Payment Reports", module: "reports" },
+  { to: "/coupons", icon: Tag, label: "Coupons", module: "billing" },
 ];
 
 const hrNav: NavItem[] = [
@@ -89,11 +90,13 @@ const supplierNav: NavItem[] = [
 
 const supportNav: NavItem[] = [
   { to: "/tickets", icon: Ticket, label: "Tickets", module: "tickets" },
+  { to: "/faq", icon: HelpCircle, label: "FAQ", module: "settings" },
   { to: "/sms", icon: MessageSquare, label: "SMS Logs", module: "sms" },
   { to: "/reminders", icon: Bell, label: "Reminders", module: "sms" },
 ];
 
 const reportingNav: NavItem[] = [
+  { to: "/analytics", icon: PieChart, label: "Advanced Analytics", module: "reports" },
   { to: "/reporting/daily", icon: FileText, label: "Daily Report", module: "reports" },
   { to: "/reporting/financial", icon: BarChart3, label: "Financial Statement", module: "reports" },
   { to: "/reporting/ledger-statement", icon: BookOpen, label: "Ledger Statement", module: "reports" },
@@ -111,7 +114,7 @@ const adminNav: NavItem[] = [
 const settingsNav: NavItem[] = [
   { to: "/settings/system", icon: Settings, label: "System Settings", module: "settings" },
   { to: "/settings/packages", icon: Package, label: "Packages", module: "settings" },
-  
+  { to: "/ip-pools", icon: Network, label: "IP Pools", module: "settings" },
   { to: "/settings/mikrotik", icon: Router, label: "MikroTik Routers", module: "settings" },
   { to: "/login-logs", icon: FileText, label: "Login Logs", module: "settings" },
   { to: "/audit-logs", icon: ClipboardList, label: "Audit Logs", module: "settings" },
@@ -215,6 +218,7 @@ export default function AppSidebar() {
     { to: "/payments", icon: CreditCard, label: t.sidebar.payments, module: "payments" },
     { to: "/merchant-payments", icon: Wallet, label: t.sidebar.merchantPayments, module: "merchant_payments" },
     { to: "/merchant-reports", icon: BarChart3, label: t.sidebar.paymentReports, module: "reports" },
+    { to: "/coupons", icon: Tag, label: "Coupons", module: "billing" },
   ];
 
   const tHrNav: NavItem[] = [
@@ -259,11 +263,13 @@ export default function AppSidebar() {
 
   const tSupportNav: NavItem[] = [
     { to: "/tickets", icon: Ticket, label: t.sidebar.tickets, module: "tickets" },
+    { to: "/faq", icon: HelpCircle, label: "FAQ", module: "settings" },
     { to: "/sms", icon: MessageSquare, label: t.sidebar.smsLogs, module: "sms" },
     { to: "/reminders", icon: Bell, label: t.sidebar.reminders, module: "sms" },
   ];
 
   const tReportingNav: NavItem[] = [
+    { to: "/analytics", icon: PieChart, label: "Advanced Analytics", module: "reports" },
     { to: "/reporting/daily", icon: FileText, label: t.sidebar.dailyReport, module: "reports" },
     { to: "/reporting/financial", icon: BarChart3, label: t.sidebar.financialStatement, module: "reports" },
     { to: "/reporting/ledger-statement", icon: BookOpen, label: t.sidebar.ledgerStatement, module: "reports" },
@@ -281,6 +287,7 @@ export default function AppSidebar() {
   const tSettingsNav: NavItem[] = [
     { to: "/settings/system", icon: Settings, label: t.sidebar.systemSettings, module: "settings" },
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
+    { to: "/ip-pools", icon: Network, label: "IP Pools", module: "settings" },
     { to: "/settings/integrations", icon: Plug, label: "Integrations", module: "settings" },
     { to: "/settings/locations", icon: Globe, label: "Location Management", module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },

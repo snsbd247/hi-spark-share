@@ -90,6 +90,8 @@ const ALLOWED_TABLES = new Set([
   "suppliers", "supplier_payments",
   // Sales & Expenses
   "sales", "sale_items", "expenses", "daily_reports",
+  // New modules
+  "notifications", "coupons", "ip_pools", "faqs",
 ]);
 
 const PUBLIC_READ_TABLES = new Set([
