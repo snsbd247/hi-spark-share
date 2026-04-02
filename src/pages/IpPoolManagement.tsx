@@ -365,6 +365,26 @@ export default function IpPoolManagement() {
                       {pushingId === pool.id ? t.ipPool.pushing : t.ipPool.push}
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingPool(pool);
+                        setForm({
+                          name: pool.name || "",
+                          subnet: pool.subnet || "",
+                          gateway: pool.gateway || "",
+                          start_ip: pool.start_ip || "",
+                          end_ip: pool.end_ip || "",
+                          total_ips: pool.total_ips || 0,
+                          type: pool.type || "pppoe",
+                          router_id: pool.router_id || "",
+                        });
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
