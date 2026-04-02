@@ -13,6 +13,6 @@ class SmsLog extends Model
 
     protected $fillable = [
         'id', 'phone', 'message', 'sms_type', 'status',
-        'response', 'customer_id',
+        'response', 'customer_id', 'tenant_id', 'sms_count',
     ];
 }
