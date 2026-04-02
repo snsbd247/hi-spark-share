@@ -20,6 +20,7 @@ interface Product {
   name: string;
   sku: string;
   category: string;
+  category_id: string;
   description: string;
   buy_price: number;
   sell_price: number;
@@ -29,7 +30,7 @@ interface Product {
 }
 
 const emptyProduct = {
-  name: "", sku: "", category: "other", description: "",
+  name: "", sku: "", category: "other", category_id: "", description: "",
   buy_price: 0, sell_price: 0, stock: 0, unit: "pcs",
 };
 
@@ -44,7 +45,15 @@ export default function Products() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data } = await ( db as any).from("products").select("*").order("name");
+      const { data } = await ( db as any).from("products").select("*,categoryRef:categories(name)").order("name");
+      return data || [];
+    },
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await (db as any).from("categories").select("*").eq("status", "active").order("name");
       return data || [];
     },
   });
@@ -82,7 +91,7 @@ export default function Products() {
 
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, sku: p.sku || "", category: p.category || "other", description: p.description || "", buy_price: Number(p.buy_price), sell_price: Number(p.sell_price), stock: Number(p.stock), unit: p.unit || "pcs" });
+    setForm({ name: p.name, sku: p.sku || "", category: p.category || "other", category_id: p.category_id || "", description: p.description || "", buy_price: Number(p.buy_price), sell_price: Number(p.sell_price), stock: Number(p.stock), unit: p.unit || "pcs" });
     setOpen(true);
   };
 
@@ -113,17 +122,31 @@ export default function Products() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><Label>Category</Label>
-                    <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="router">Router</SelectItem>
-                        <SelectItem value="cable">Cable</SelectItem>
-                        <SelectItem value="onu">ONU</SelectItem>
-                        <SelectItem value="splitter">Splitter</SelectItem>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {categories.length > 0 ? (
+                      <Select value={form.category_id} onValueChange={v => {
+                        const cat = categories.find((c: any) => c.id === v);
+                        setForm({...form, category_id: v, category: cat?.name || "other"});
+                      }}>
+                        <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="router">Router</SelectItem>
+                          <SelectItem value="cable">Cable</SelectItem>
+                          <SelectItem value="onu">ONU</SelectItem>
+                          <SelectItem value="splitter">Splitter</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <div><Label>Unit</Label>
                     <Select value={form.unit} onValueChange={v => setForm({...form, unit: v})}>
@@ -190,7 +213,7 @@ export default function Products() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.sku}</TableCell>
-                    <TableCell><Badge variant="outline">{p.category}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{(p as any).categoryRef?.name || p.category}</Badge></TableCell>
                     <TableCell className="text-right">৳{Number(p.buy_price).toLocaleString()}</TableCell>
                     <TableCell className="text-right">৳{Number(p.sell_price).toLocaleString()}</TableCell>
                     <TableCell className="text-right">

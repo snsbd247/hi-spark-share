@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, FileDown, Pencil, CreditCard } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-interface SaleItem { product_id: string; quantity: number; unit_price: number; }
+interface SaleItem { product_id: string; quantity: number; unit_price: number; serial_number?: string; }
 
 export default function Sales() {
   const { t } = useLanguage();
@@ -37,7 +37,7 @@ export default function Sales() {
     customer_name: "Walk-in Customer", customer_phone: "", sale_date: new Date().toISOString().split("T")[0],
     payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "",
   });
-  const [items, setItems] = useState<SaleItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
+  const [items, setItems] = useState<SaleItem[]>([{ product_id: "", quantity: 1, unit_price: 0, serial_number: "" }]);
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ["sales"],
@@ -61,6 +61,21 @@ export default function Sales() {
       const { data } = await db.from("customers").select("id, name, phone, customer_id").order("name");
       return data || [];
     },
+  });
+
+  // Fetch available serials for all selected products
+  const selectedProductIds = items.map(i => i.product_id).filter(Boolean);
+  const { data: availableSerials = [] } = useQuery({
+    queryKey: ["sale_serials", selectedProductIds],
+    queryFn: async () => {
+      if (selectedProductIds.length === 0) return [];
+      const { data } = await (db as any).from("product_serials")
+        .select("id,serial_number,product_id")
+        .in("product_id", selectedProductIds)
+        .eq("status", "available");
+      return data || [];
+    },
+    enabled: selectedProductIds.length > 0,
   });
 
   const filteredCustomers = customers.filter((c: any) =>
@@ -108,6 +123,21 @@ export default function Sales() {
         const prod = products.find((p: any) => p.id === item.product_id);
         if (prod) {
           await (db as any).from("products").update({ stock: Math.max(0, Number(prod.stock) - item.quantity) }).eq("id", item.product_id);
+
+          // Create inventory log
+          await (db as any).from("inventory_logs").insert({
+            product_id: item.product_id,
+            type: "out",
+            quantity: item.quantity,
+            note: `Sold - Invoice ${saleNo}`,
+            reference_type: "sale",
+            reference_id: sale.id,
+          });
+        }
+
+        // Mark serial as sold
+        if (item.serial_number) {
+          await (db as any).from("product_serials").update({ status: "assigned" }).eq("serial_number", item.serial_number);
         }
       }
 
@@ -117,6 +147,9 @@ export default function Sales() {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["inventory_logs_recent"] });
+      qc.invalidateQueries({ queryKey: ["sale_serials"] });
+      qc.invalidateQueries({ queryKey: ["product_serials"] });
       toast.success("Sale created & posted to ledger");
       closeDialog();
     },
@@ -190,7 +223,7 @@ export default function Sales() {
     setSelectedCustomerId("");
     setCustomerSearch("");
     setForm({ customer_name: "Walk-in Customer", customer_phone: "", sale_date: new Date().toISOString().split("T")[0], payment_method: "cash", discount: 0, tax: 0, paid_amount: 0, notes: "" });
-    setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
+    setItems([{ product_id: "", quantity: 1, unit_price: 0, serial_number: "" }]);
   };
 
   const openEdit = async (s: any) => {
@@ -224,7 +257,7 @@ export default function Sales() {
     generateSalesInvoicePDF({ ...s, items: itemsWithNames, invoice_number: s.sale_no });
   };
 
-  const addItem = () => setItems([...items, { product_id: "", quantity: 1, unit_price: 0 }]);
+  const addItem = () => setItems([...items, { product_id: "", quantity: 1, unit_price: 0, serial_number: "" }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: string, value: any) => {
     const newItems = [...items];
@@ -232,6 +265,7 @@ export default function Sales() {
     if (field === "product_id") {
       const prod = products.find((p: any) => p.id === value);
       if (prod) newItems[i].unit_price = Number(prod.sell_price);
+      newItems[i].serial_number = ""; // reset serial on product change
     }
     setItems(newItems);
   };
@@ -335,20 +369,39 @@ export default function Sales() {
                     <Label className="text-base font-semibold">Items</Label>
                     <Button type="button" variant="outline" size="sm" onClick={addItem}><Plus className="h-3 w-3 mr-1" />Add</Button>
                   </div>
-                  {items.map((item, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-end mb-2">
-                      <div className="col-span-5">
-                        <Select value={item.product_id} onValueChange={v => updateItem(i, "product_id", v)}>
-                          <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
-                          <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</SelectItem>)}</SelectContent>
-                        </Select>
+                  {items.map((item, i) => {
+                    const itemSerials = availableSerials.filter((s: any) => s.product_id === item.product_id);
+                    return (
+                      <div key={i} className="space-y-2 mb-3 p-3 border rounded-lg">
+                        <div className="grid grid-cols-12 gap-2 items-end">
+                          <div className="col-span-5">
+                            <Label className="text-xs">Product</Label>
+                            <Select value={item.product_id} onValueChange={v => updateItem(i, "product_id", v)}>
+                              <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
+                              <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2"><Label className="text-xs">Qty</Label><Input type="number" min={1} value={item.quantity} onChange={e => updateItem(i, "quantity", +e.target.value)} /></div>
+                          <div className="col-span-3"><Label className="text-xs">Price</Label><Input type="number" step="0.01" value={item.unit_price} onChange={e => updateItem(i, "unit_price", +e.target.value)} /></div>
+                          <div className="col-span-1 text-right font-medium text-sm py-2">৳{(item.quantity * item.unit_price).toLocaleString()}</div>
+                          <div className="col-span-1">{items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-3 w-3 text-destructive" /></Button>}</div>
+                        </div>
+                        {item.product_id && itemSerials.length > 0 && (
+                          <div className="pl-1">
+                            <Label className="text-xs text-muted-foreground">Serial Number (optional)</Label>
+                            <Select value={item.serial_number || ""} onValueChange={v => updateItem(i, "serial_number", v)}>
+                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select serial..." /></SelectTrigger>
+                              <SelectContent>
+                                {itemSerials.map((s: any) => (
+                                  <SelectItem key={s.id} value={s.serial_number}>{s.serial_number}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
-                      <div className="col-span-2"><Input type="number" min={1} value={item.quantity} onChange={e => updateItem(i, "quantity", +e.target.value)} /></div>
-                      <div className="col-span-3"><Input type="number" step="0.01" value={item.unit_price} onChange={e => updateItem(i, "unit_price", +e.target.value)} /></div>
-                      <div className="col-span-1 text-right font-medium text-sm py-2">৳{(item.quantity * item.unit_price).toLocaleString()}</div>
-                      <div className="col-span-1">{items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-3 w-3 text-destructive" /></Button>}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
