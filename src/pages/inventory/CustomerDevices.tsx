@@ -137,9 +137,13 @@ export default function CustomerDevices() {
       await (db as any).from("customer_devices").update({ status: "returned" }).eq("id", device.id);
       if (device.product_id) {
         const prod = products.find((p: any) => p.id === device.product_id);
-        await (db as any).from("products").update({ stock: (prod?.stock || 0) + 1 }).eq("id", device.product_id);
+        const newStock = (Number(prod?.stock) || 0) + 1;
+        await (db as any).from("products").update({ stock: newStock }).eq("id", device.product_id);
         await (db as any).from("inventory_logs").insert({
-          product_id: device.product_id, type: "return", quantity: 1, note: "Device returned from customer",
+          product_id: device.product_id, type: "return", quantity: 1,
+          note: "Device returned from customer",
+          reference_type: "customer_device",
+          reference_id: device.id,
         });
       }
       if (device.serial_number) {
@@ -150,6 +154,7 @@ export default function CustomerDevices() {
       qc.invalidateQueries({ queryKey: ["customer_devices"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["product_serials"] });
+      qc.invalidateQueries({ queryKey: ["inventory_logs_recent"] });
       toast.success("Device returned");
     },
   });
