@@ -33,6 +33,7 @@ const SETUP_ITEMS = [
   { key: "accounts", label: "Chart of Accounts (50+ entries)", icon: BookOpen },
   { key: "templates", label: "SMS & Email Templates", icon: Mail },
   { key: "ledger", label: "Ledger Mapping Settings", icon: Shield },
+  { key: "payment_gateways", label: "Payment Gateways (bKash & Nagad Sandbox)", icon: CreditCard },
 ];
 
 // ─── Local persistence helpers ───────────────────────────────
