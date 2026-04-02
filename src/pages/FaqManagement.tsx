@@ -82,9 +82,9 @@ export default function FaqManagement() {
           </Dialog>
         </div>
 
-        {categories.length > 0 ? categories.map(cat => (
+        {categories.length > 0 ? categories.map((cat: string) => (
           <Card key={cat}>
-            <CardHeader><CardTitle className="flex items-center gap-2 capitalize"><HelpCircle className="h-5 w-5" /> {cat}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 capitalize"><HelpCircle className="h-5 w-5" /> {String(cat)}</CardTitle></CardHeader>
             <CardContent>
               <Accordion type="multiple">
                 {faqs.filter((f: any) => f.category === cat).map((faq: any) => (
