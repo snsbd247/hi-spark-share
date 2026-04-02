@@ -592,8 +592,237 @@ class MikrotikService
     /**
      * Parse speed value from MikroTik rate-limit string.
      */
+    // ─── IP POOL SYNC & PUSH ────────────────────────────────
+
+    /**
+     * Sync IP pools from MikroTik router to database.
+     */
+    public function syncIpPools(string $routerId, ?string $tenantId = null): array
+    {
+        $router = MikrotikRouter::findOrFail($routerId);
+        $conn = $this->connect($router);
+
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $response = $this->sendCommand($conn, ['/ip/pool/print']);
+            $pools = $this->parseItems($response);
+
+            // Also preserve .id for push/update
+            $poolsWithId = $this->parseItemsWithId($response);
+
+            $synced = 0;
+            $skipped = 0;
+
+            foreach ($poolsWithId as $pool) {
+                $name = $pool['name'] ?? null;
+                if (!$name) { $skipped++; continue; }
+
+                $ranges = $pool['ranges'] ?? '';
+
+                // Parse ranges to start_ip / end_ip
+                $startIp = '';
+                $endIp = '';
+                $totalIps = 0;
+                if ($ranges) {
+                    $parts = explode(',', $ranges);
+                    $firstRange = trim($parts[0]);
+                    if (str_contains($firstRange, '-')) {
+                        [$startIp, $endIp] = explode('-', $firstRange, 2);
+                        $totalIps = $this->calculateIpCount($startIp, $endIp);
+                    } else {
+                        $startIp = $firstRange;
+                        $endIp = $firstRange;
+                        $totalIps = 1;
+                    }
+                }
+
+                $filter = ['router_id' => $routerId, 'name' => $name];
+                if ($tenantId) $filter['tenant_id'] = $tenantId;
+
+                IpPool::updateOrCreate($filter, [
+                    'tenant_id' => $tenantId,
+                    'router_id' => $routerId,
+                    'ranges' => $ranges,
+                    'start_ip' => trim($startIp),
+                    'end_ip' => trim($endIp),
+                    'total_ips' => $totalIps,
+                    'subnet' => $ranges,
+                    'status' => 'active',
+                    'mikrotik_id' => $pool['.id'] ?? null,
+                ]);
+                $synced++;
+            }
+
+            fclose($conn->socket);
+
+            return [
+                'success' => true,
+                'synced' => $synced,
+                'skipped' => $skipped,
+                'total' => count($pools),
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Push an IP pool from SaaS to MikroTik router.
+     */
+    public function pushIpPool(IpPool $pool): array
+    {
+        if (!$pool->router) {
+            return ['success' => false, 'error' => 'No router assigned'];
+        }
+
+        $conn = $this->connect($pool->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $ranges = $pool->ranges ?: ($pool->start_ip && $pool->end_ip ? "{$pool->start_ip}-{$pool->end_ip}" : '');
+
+            if (!$ranges) {
+                fclose($conn->socket);
+                return ['success' => false, 'error' => 'No IP range defined'];
+            }
+
+            if ($pool->mikrotik_id) {
+                // Update existing pool on router
+                $this->sendCommand($conn, [
+                    '/ip/pool/set',
+                    '=.id=' . $pool->mikrotik_id,
+                    '=name=' . $pool->name,
+                    '=ranges=' . $ranges,
+                ]);
+            } else {
+                // Check if pool with same name exists
+                $existing = $this->sendCommand($conn, [
+                    '/ip/pool/print',
+                    '?name=' . $pool->name,
+                ]);
+
+                $existingId = null;
+                foreach ($existing as $line) {
+                    if (str_starts_with($line, '=.id=')) {
+                        $existingId = substr($line, 4);
+                    }
+                }
+
+                if ($existingId) {
+                    $this->sendCommand($conn, [
+                        '/ip/pool/set',
+                        '=.id=' . $existingId,
+                        '=ranges=' . $ranges,
+                    ]);
+                    $pool->update(['mikrotik_id' => $existingId]);
+                } else {
+                    $addResponse = $this->sendCommand($conn, [
+                        '/ip/pool/add',
+                        '=name=' . $pool->name,
+                        '=ranges=' . $ranges,
+                    ]);
+
+                    // Extract new .id
+                    foreach ($addResponse as $line) {
+                        if (str_starts_with($line, '=ret=')) {
+                            $pool->update(['mikrotik_id' => substr($line, 5)]);
+                        }
+                    }
+                }
+            }
+
+            fclose($conn->socket);
+            return ['success' => true, 'message' => "Pool '{$pool->name}' pushed to router"];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Delete an IP pool from MikroTik router.
+     */
+    public function removeIpPool(IpPool $pool): array
+    {
+        if (!$pool->router || !$pool->mikrotik_id) {
+            return ['success' => false, 'error' => 'No router or MikroTik ID'];
+        }
+
+        $conn = $this->connect($pool->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            $this->sendCommand($conn, [
+                '/ip/pool/remove',
+                '=.id=' . $pool->mikrotik_id,
+            ]);
+
+            fclose($conn->socket);
+            return ['success' => true, 'message' => "Pool '{$pool->name}' removed from router"];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Parse items preserving .id field.
+     */
+    protected function parseItemsWithId(array $response): array
+    {
+        $items = [];
+        $current = [];
+        foreach ($response as $line) {
+            if ($line === '!re') {
+                if (!empty($current)) $items[] = $current;
+                $current = [];
+            } elseif (str_starts_with($line, '=') && str_contains($line, '=')) {
+                $withoutPrefix = substr($line, 1);
+                $eqPos = strpos($withoutPrefix, '=');
+                if ($eqPos !== false) {
+                    $key = substr($withoutPrefix, 0, $eqPos);
+                    $val = substr($withoutPrefix, $eqPos + 1);
+                    $current[$key] = $val;
+                }
+            }
+        }
+        if (!empty($current)) $items[] = $current;
+        return $items;
+    }
+
+    /**
+     * Calculate IP count from range.
+     */
+    protected function calculateIpCount(string $startIp, string $endIp): int
+    {
+        $start = ip2long(trim($startIp));
+        $end = ip2long(trim($endIp));
+        if ($start === false || $end === false) return 0;
+        return abs($end - $start) + 1;
+    }
+
     protected function parseSpeed(string $value, string $fullRate): int
     {
+        $num = intval($value);
+        if (stripos($fullRate, 'M') !== false || stripos($fullRate, 'm') !== false) {
+            return $num;
+        }
+        if (stripos($fullRate, 'k') !== false || stripos($fullRate, 'K') !== false) {
+            return max(1, intval($num / 1000));
+        }
+        if ($num > 1000000) return intval($num / 1000000);
+        if ($num > 1000) return intval($num / 1000);
+        return $num;
+    }
+}
         $num = intval($value);
         if (stripos($fullRate, 'M') !== false || stripos($fullRate, 'm') !== false) {
             return $num; // already in Mbps
