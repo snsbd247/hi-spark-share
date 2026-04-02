@@ -279,9 +279,9 @@ export default function TenantFinancialReportsTab({ tenantId }: { tenantId: stri
                   </ResponsiveContainer>
                   {profitLoss.yearly && (
                     <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
-                      <div className="text-center"><p className="text-xs text-muted-foreground">Yearly Revenue</p><p className="text-lg font-bold text-green-600">৳{Number(profitLoss.yearly.revenue).toLocaleString()}</p></div>
-                      <div className="text-center"><p className="text-xs text-muted-foreground">Yearly Expense</p><p className="text-lg font-bold text-destructive">৳{Number(profitLoss.yearly.expense).toLocaleString()}</p></div>
-                      <div className="text-center"><p className="text-xs text-muted-foreground">Net Profit</p><p className={`text-lg font-bold ${profitLoss.yearly.profit >= 0 ? "text-green-600" : "text-destructive"}`}>৳{Number(profitLoss.yearly.profit).toLocaleString()}</p></div>
+                       <div className="text-center"><p className="text-xs text-muted-foreground">Yearly Revenue</p><p className="text-lg font-bold text-primary">৳{Number(profitLoss.yearly.revenue).toLocaleString()}</p></div>
+                       <div className="text-center"><p className="text-xs text-muted-foreground">Yearly Expense</p><p className="text-lg font-bold text-destructive">৳{Number(profitLoss.yearly.expense).toLocaleString()}</p></div>
+                       <div className="text-center"><p className="text-xs text-muted-foreground">Net Profit</p><p className={`text-lg font-bold ${profitLoss.yearly.profit >= 0 ? "text-primary" : "text-destructive"}`}>৳{Number(profitLoss.yearly.profit).toLocaleString()}</p></div>
                     </div>
                   )}
                 </>
