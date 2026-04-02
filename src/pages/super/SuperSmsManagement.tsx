@@ -246,33 +246,44 @@ export default function SuperSmsManagement() {
 
   const handleRecharge = async () => {
     if (!selectedTenant || !rechargeAmount) return;
-    const amount = parseInt(rechargeAmount);
+    const amount = parseFloat(rechargeAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error("Enter a valid amount");
+      return;
+    }
+    const newRate = smsRateInput ? parseFloat(smsRateInput) : null;
+    if (newRate !== null && (isNaN(newRate) || newRate <= 0)) {
+      toast.error("Enter a valid SMS rate");
       return;
     }
     try {
       const { data: existing } = await db.from("sms_wallets").select("id, balance").eq("tenant_id", selectedTenant.tenant_id).maybeSingle();
       let newBalance: number;
+      const updatePayload: any = { updated_at: new Date().toISOString() };
       if (existing) {
-        newBalance = existing.balance + amount;
-        await db.from("sms_wallets").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", existing.id);
+        newBalance = parseFloat((existing.balance + amount).toFixed(2));
+        updatePayload.balance = newBalance;
+        if (newRate !== null) updatePayload.sms_rate = newRate;
+        await db.from("sms_wallets").update(updatePayload).eq("id", existing.id);
       } else {
         newBalance = amount;
-        await db.from("sms_wallets").insert({ tenant_id: selectedTenant.tenant_id, balance: amount });
+        const insertPayload: any = { tenant_id: selectedTenant.tenant_id, balance: amount };
+        if (newRate !== null) insertPayload.sms_rate = newRate;
+        await db.from("sms_wallets").insert(insertPayload);
       }
       await db.from("sms_transactions").insert({
         tenant_id: selectedTenant.tenant_id,
         amount,
         type: "credit",
-        description: rechargeDesc || "SMS Recharge by Super Admin",
+        description: (rechargeDesc || "SMS Recharge by Super Admin") + (newRate !== null ? ` (Rate: ৳${newRate}/SMS)` : ""),
         admin_id: "super_admin",
         balance_after: newBalance,
       });
-      toast.success(`Recharged ${amount} SMS to ${selectedTenant.tenant_name}`);
+      toast.success(`Recharged ৳${amount} to ${selectedTenant.tenant_name}`);
       setRechargeOpen(false);
       setRechargeAmount("");
       setRechargeDesc("");
+      setSmsRateInput("");
       setSelectedTenant(null);
       qc.invalidateQueries({ queryKey: ["super-sms-wallets"] });
       qc.invalidateQueries({ queryKey: ["super-sms-transactions"] });
