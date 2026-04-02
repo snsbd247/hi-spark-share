@@ -526,6 +526,17 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/smtp-settings', [SuperAdminController::class, 'smtpSettings']);
     Route::put('/smtp-settings', [SuperAdminController::class, 'updateSmtpSettings']);
     Route::post('/smtp-test', [SuperAdminController::class, 'testSmtp']);
+
+    // ── Tenant Financial Reports ────────────────────────
+    Route::get('/tenants/{id}/reports/overview', [\App\Http\Controllers\Api\TenantReportController::class, 'overview']);
+    Route::get('/tenants/{id}/reports/revenue', [\App\Http\Controllers\Api\TenantReportController::class, 'revenue']);
+    Route::get('/tenants/{id}/reports/expense', [\App\Http\Controllers\Api\TenantReportController::class, 'expense']);
+    Route::get('/tenants/{id}/reports/profit-loss', [\App\Http\Controllers\Api\TenantReportController::class, 'profitLoss']);
+    Route::get('/tenants/{id}/reports/invoices', [\App\Http\Controllers\Api\TenantReportController::class, 'invoices']);
+    Route::get('/tenants/{id}/reports/payments', [\App\Http\Controllers\Api\TenantReportController::class, 'payments']);
+    Route::get('/tenants/{id}/reports/customers', [\App\Http\Controllers\Api\TenantReportController::class, 'customers']);
+    Route::get('/tenants/{id}/reports/sms', [\App\Http\Controllers\Api\TenantReportController::class, 'sms']);
+    Route::get('/tenants/{id}/reports/ledger', [\App\Http\Controllers\Api\TenantReportController::class, 'ledger']);
 });
 
 /*
