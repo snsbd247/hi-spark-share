@@ -219,7 +219,13 @@ export default function Packages() {
           queryClient.invalidateQueries({ queryKey: ["packages-all"] });
         } else toast.error(data?.error || "MikroTik sync failed");
       } else {
-        const data = await mikrotikCall('sync-profile', { package_id: packageId, router_id: routerId || undefined });
+        const pkg = packages?.find((p: any) => p.id === packageId);
+        const pool = ipPools?.find((p: any) => p.id === pkg?.ip_pool_id);
+        const data = await mikrotikCall('sync-profile', {
+          package_id: packageId, router_id: routerId || undefined,
+          remote_address: pool?.name || undefined,
+          local_address: pool?.gateway || undefined,
+        });
         if (data.success) {
           toast.success(`MikroTik profile synced: ${data.profile_name}`);
           queryClient.invalidateQueries({ queryKey: ["packages-all"] });
