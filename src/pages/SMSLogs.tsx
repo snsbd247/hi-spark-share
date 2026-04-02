@@ -14,7 +14,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import GroupSmsDialog from "@/components/GroupSmsDialog";
 import { safeFormat } from "@/lib/utils";
-import api from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SMSLogs() {
@@ -41,11 +40,14 @@ export default function SMSLogs() {
     if (!smsForm.phone.trim() || !smsForm.message.trim()) return;
     setSending(true);
     try {
-      const { data } = await api.post('/sms/send', {
-        to: smsForm.phone,
-        message: smsForm.message,
-        sms_type: "manual",
+      const { data, error } = await db.functions.invoke("send-sms", {
+        body: {
+          to: smsForm.phone,
+          message: smsForm.message,
+          sms_type: "manual",
+        },
       });
+      if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data && data.success === false) {
         throw new Error(data.error || data.response || "SMS delivery failed");
@@ -53,8 +55,9 @@ export default function SMSLogs() {
       toast.success("SMS sent successfully");
       setSmsForm({ phone: "", message: "" });
       setSendOpen(false);
+      refetch();
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.message || "SMS sending failed");
     } finally {
       setSending(false);
     }
