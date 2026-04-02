@@ -1131,6 +1131,162 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ─── SYNC IP POOLS FROM ROUTER ────────────────────────────
+    if (req.method === "POST" && path === "sync-ip-pools") {
+      const body = await req.json().catch(() => ({}));
+      const routerId = body?.router_id;
+      if (!routerId) return jsonResponse({ success: false, error: "Missing router_id" }, 400);
+
+      const supabase = getSupabaseAdmin();
+      const router = await getRouterById(supabase, routerId);
+      if (!router) return jsonResponse({ success: false, error: "Router not found" }, 404);
+
+      try {
+        const pools = await withRouter(router, async (mt) => {
+          const res = await mt.send(["/ip/pool/print"]);
+          return parseItems(res.sentences);
+        });
+
+        let synced = 0;
+        for (const pool of pools) {
+          const name = pool.name || "";
+          const ranges = pool.ranges || "";
+          if (!name) continue;
+
+          // Parse start/end IP from ranges (format: "192.168.1.10-192.168.1.254")
+          let startIp = "", endIp = "", subnet = ranges;
+          const rangeParts = ranges.split("-");
+          if (rangeParts.length === 2) {
+            startIp = rangeParts[0].trim();
+            endIp = rangeParts[1].trim();
+          }
+
+          // Calculate total IPs
+          let totalIps = 0;
+          if (startIp && endIp) {
+            const startParts = startIp.split(".").map(Number);
+            const endParts = endIp.split(".").map(Number);
+            const startNum = (startParts[0] << 24) + (startParts[1] << 16) + (startParts[2] << 8) + startParts[3];
+            const endNum = (endParts[0] << 24) + (endParts[1] << 16) + (endParts[2] << 8) + endParts[3];
+            totalIps = Math.max(0, endNum - startNum + 1);
+          }
+
+          const mikrotikId = pool[".id"] || null;
+
+          // Upsert by router_id + name
+          const { data: existing } = await supabase
+            .from("ip_pools")
+            .select("id")
+            .eq("router_id", routerId)
+            .eq("name", name)
+            .maybeSingle();
+
+          if (existing) {
+            await supabase.from("ip_pools").update({
+              ranges, subnet: subnet || ranges, start_ip: startIp, end_ip: endIp,
+              total_ips: totalIps, mikrotik_id: mikrotikId, status: "active",
+            }).eq("id", existing.id);
+          } else {
+            await supabase.from("ip_pools").insert({
+              name, router_id: routerId, ranges, subnet: subnet || ranges,
+              start_ip: startIp, end_ip: endIp, total_ips: totalIps,
+              mikrotik_id: mikrotikId, status: "active", used_ips: 0,
+            });
+          }
+          synced++;
+        }
+
+        return jsonResponse({ success: true, synced });
+      } catch (e: any) {
+        console.error("IP Pool sync failed:", e.message);
+        return jsonResponse({ success: false, error: e.message }, 502);
+      }
+    }
+
+    // ─── PUSH SINGLE IP POOL TO ROUTER ──────────────────────────
+    if (req.method === "POST" && path === "push-ip-pool") {
+      const body = await req.json().catch(() => ({}));
+      const poolId = body?.pool_id;
+      if (!poolId) return jsonResponse({ success: false, error: "Missing pool_id" }, 400);
+
+      const supabase = getSupabaseAdmin();
+      const { data: pool } = await supabase.from("ip_pools").select("*, mikrotik_routers(*)").eq("id", poolId).single();
+      if (!pool) return jsonResponse({ success: false, error: "Pool not found" }, 404);
+
+      const router = pool.mikrotik_routers;
+      if (!router) return jsonResponse({ success: false, error: "No router assigned to this pool" }, 400);
+
+      try {
+        await withRouter(router, async (mt) => {
+          const ranges = pool.ranges || (pool.start_ip && pool.end_ip ? `${pool.start_ip}-${pool.end_ip}` : pool.subnet);
+          if (!ranges) throw new Error("No IP range defined");
+
+          // Check if pool exists on router
+          const listRes = await mt.send(["/ip/pool/print", `?name=${pool.name}`]);
+          const existing = parseItems(listRes.sentences);
+
+          if (existing.length > 0) {
+            const res = await mt.send(["/ip/pool/set", `=.id=${existing[0][".id"]}`, `=ranges=${ranges}`]);
+            if (res.trap) throw new Error(res.trap);
+          } else {
+            const res = await mt.send(["/ip/pool/add", `=name=${pool.name}`, `=ranges=${ranges}`]);
+            if (res.trap) throw new Error(res.trap);
+          }
+        });
+
+        return jsonResponse({ success: true, message: `Pool "${pool.name}" pushed successfully` });
+      } catch (e: any) {
+        console.error("IP Pool push failed:", e.message);
+        return jsonResponse({ success: false, error: e.message }, 502);
+      }
+    }
+
+    // ─── PUSH ALL IP POOLS TO ROUTER ────────────────────────────
+    if (req.method === "POST" && path === "push-all-ip-pools") {
+      const body = await req.json().catch(() => ({}));
+      const routerId = body?.router_id;
+      if (!routerId) return jsonResponse({ success: false, error: "Missing router_id" }, 400);
+
+      const supabase = getSupabaseAdmin();
+      const router = await getRouterById(supabase, routerId);
+      if (!router) return jsonResponse({ success: false, error: "Router not found" }, 404);
+
+      const { data: pools } = await supabase.from("ip_pools").select("*").eq("router_id", routerId);
+      if (!pools?.length) return jsonResponse({ success: true, pushed: 0, failed: 0, errors: [] });
+
+      const results = { pushed: 0, failed: 0, errors: [] as string[] };
+
+      try {
+        await withRouter(router, async (mt) => {
+          for (const pool of pools) {
+            try {
+              const ranges = pool.ranges || (pool.start_ip && pool.end_ip ? `${pool.start_ip}-${pool.end_ip}` : pool.subnet);
+              if (!ranges) { results.failed++; results.errors.push(`${pool.name}: No IP range`); continue; }
+
+              const listRes = await mt.send(["/ip/pool/print", `?name=${pool.name}`]);
+              const existing = parseItems(listRes.sentences);
+
+              if (existing.length > 0) {
+                const res = await mt.send(["/ip/pool/set", `=.id=${existing[0][".id"]}`, `=ranges=${ranges}`]);
+                if (res.trap) throw new Error(res.trap);
+              } else {
+                const res = await mt.send(["/ip/pool/add", `=name=${pool.name}`, `=ranges=${ranges}`]);
+                if (res.trap) throw new Error(res.trap);
+              }
+              results.pushed++;
+            } catch (e: any) {
+              results.failed++;
+              results.errors.push(`${pool.name}: ${e.message}`);
+            }
+          }
+        });
+      } catch (e: any) {
+        return jsonResponse({ success: false, error: `Router connection failed: ${e.message}` }, 502);
+      }
+
+      return jsonResponse({ success: true, ...results });
+    }
+
     return jsonResponse({ error: "Not found" }, 404);
   } catch (err) {
     console.error("MikroTik edge function error:", err);
