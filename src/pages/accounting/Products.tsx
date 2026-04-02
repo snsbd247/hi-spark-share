@@ -213,7 +213,7 @@ export default function Products() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.sku}</TableCell>
-                    <TableCell><Badge variant="outline">{p.category}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{(p as any).categoryRef?.name || p.category}</Badge></TableCell>
                     <TableCell className="text-right">৳{Number(p.buy_price).toLocaleString()}</TableCell>
                     <TableCell className="text-right">৳{Number(p.sell_price).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
