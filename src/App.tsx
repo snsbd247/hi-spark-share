@@ -263,6 +263,7 @@ function App() {
                   <Route path="onboarding" element={<SuperOnboarding />} />
                   <Route path="plans" element={<SuperPlans />} />
                   <Route path="subscriptions" element={<SuperSubscriptions />} />
+                  <Route path="billing" element={<SuperBilling />} />
                   <Route path="domains" element={<SuperDomains />} />
                   <Route path="sms" element={<SuperSmsManagement />} />
                   <Route path="smtp" element={<SuperSmtpSettings />} />
