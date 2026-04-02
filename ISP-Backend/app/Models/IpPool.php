@@ -3,15 +3,17 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class IpPool extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'name', 'subnet', 'gateway', 'start_ip', 'end_ip',
-        'total_ips', 'used_ips', 'status', 'router_id',
+        'id', 'tenant_id', 'name', 'subnet', 'gateway', 'start_ip', 'end_ip',
+        'total_ips', 'used_ips', 'status', 'router_id', 'type', 'ranges',
+        'mikrotik_id',
     ];
 
     protected $casts = [
