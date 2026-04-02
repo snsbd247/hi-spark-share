@@ -419,7 +419,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
                     .replace(/\{DueDate\}/g, bill.due_date || "")
                     .replace(/\{CustomerID\}/g, data.customer_id || "");
 
-                  await db.functions.invoke("send-sms", {
+                  const { data: smsResult, error: smsErr } = await db.functions.invoke("send-sms", {
                     body: {
                       to: data.phone,
                       message: billSmsMessage,
@@ -427,8 +427,11 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
                       customer_id: data.id,
                     },
                   });
-                } catch (billSmsErr) {
-                  console.warn("[NewCustomerBillSMS] Failed:", billSmsErr);
+                  if (smsErr || (smsResult && !smsResult.success)) {
+                    console.warn("[NewCustomerBillSMS] Failed:", smsResult?.error || smsErr?.message);
+                  }
+                } catch (billSmsErr: any) {
+                  console.warn("[NewCustomerBillSMS] Failed:", billSmsErr?.message);
                 }
               }
             }

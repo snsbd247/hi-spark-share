@@ -20,12 +20,64 @@ Deno.serve(async (req) => {
 
     if (!to || !message || !sms_type) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: to, message, sms_type" }),
+        JSON.stringify({ success: false, error: "Missing required fields: to, message, sms_type" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── Tenant wallet balance check ──────────────────
+    // ── Load SMS config from sms_settings (Super Admin managed) ──
+    const { data: settings, error: settingsErr } = await supabase
+      .from("sms_settings")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (settingsErr || !settings) {
+      console.error("[SMS] Failed to load settings:", settingsErr?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "SMS settings not configured by Super Admin" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = settings.api_token || "";
+    if (!token) {
+      console.error("[SMS] No API token configured");
+      return new Response(
+        JSON.stringify({ success: false, error: "SMS API token not configured by Super Admin" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Check if SMS is enabled for this type ──
+    const typeFlags: Record<string, string> = {
+      bill_generate: "sms_on_bill_generate",
+      payment: "sms_on_payment",
+      registration: "sms_on_registration",
+      suspension: "sms_on_suspension",
+      new_customer_bill: "sms_on_new_customer_bill",
+    };
+    if (typeFlags[sms_type] && !settings[typeFlags[sms_type]]) {
+      return new Response(
+        JSON.stringify({ success: false, reason: `SMS disabled for ${sms_type}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (["bill_reminder", "due_date", "overdue"].includes(sms_type) && settings.sms_on_reminder === false) {
+      return new Response(
+        JSON.stringify({ success: false, reason: "SMS disabled for bill reminders" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Calculate SMS units ──
+    const isUnicode = /[^\x00-\x7F]/.test(message);
+    const msgLen = message.length;
+    const smsCount = isUnicode
+      ? (msgLen <= 70 ? 1 : Math.ceil(msgLen / 67))
+      : (msgLen <= 160 ? 1 : Math.ceil(msgLen / 153));
+
+    // ── Tenant wallet balance check ──
     if (tenant_id) {
       const { data: wallet } = await supabase
         .from("sms_wallets")
@@ -34,15 +86,8 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       const currentBalance = wallet?.balance ?? 0;
-      // Calculate SMS units (Unicode: 70 chars = 1, ASCII: 160 chars = 1)
-      const isUnicode = /[^\x00-\x7F]/.test(message);
-      const len = message.length;
-      const smsCount = isUnicode
-        ? (len <= 70 ? 1 : Math.ceil(len / 67))
-        : (len <= 160 ? 1 : Math.ceil(len / 153));
 
       if (currentBalance < smsCount) {
-        // Log failed attempt
         await supabase.from("sms_logs").insert({
           phone: to, message, sms_type, status: "failed",
           response: "Insufficient SMS wallet balance",
@@ -50,63 +95,48 @@ Deno.serve(async (req) => {
           tenant_id, sms_count: smsCount,
         });
         return new Response(
-          JSON.stringify({ success: false, error: "Insufficient SMS balance. Contact Super Admin to recharge.", balance: currentBalance, required: smsCount }),
+          JSON.stringify({
+            success: false,
+            error: "Insufficient SMS balance. Contact Super Admin to recharge.",
+            balance: currentBalance,
+            required: smsCount,
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    // Load SMS config from sms_settings table or env var
-    const { data: settings } = await supabase.from("sms_settings").select("*").limit(1).single();
-    const token = settings?.api_token || "";
-    const gatewayUrl = "http://api.greenweb.com.bd/api.php";
-
-    if (!token) {
-      throw new Error("SMS API token not configured");
-    }
-
-    // Check if SMS is enabled for this type
-    const typeFlags: Record<string, string> = {
-      bill_generate: "sms_on_bill_generate",
-      payment: "sms_on_payment",
-      registration: "sms_on_registration",
-      suspension: "sms_on_suspension",
-      new_customer_bill: "sms_on_new_customer_bill",
-    };
-    if (typeFlags[sms_type] && settings && !settings[typeFlags[sms_type]]) {
-      return new Response(JSON.stringify({ success: false, reason: `SMS disabled for ${sms_type}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    if (["bill_reminder", "due_date", "overdue"].includes(sms_type) && settings?.sms_on_reminder === false) {
-      return new Response(JSON.stringify({ success: false, reason: "SMS disabled for bill reminders" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // Clean phone number
+    // ── Clean phone number (Bangladesh format) ──
     const cleanPhone = to.replace(/[^0-9]/g, "");
     const phone = cleanPhone.startsWith("88") ? cleanPhone : `88${cleanPhone}`;
 
-    // Calculate SMS count for logging
-    const isUnicode = /[^\x00-\x7F]/.test(message);
-    const msgLen = message.length;
-    const smsCount = isUnicode
-      ? (msgLen <= 70 ? 1 : Math.ceil(msgLen / 67))
-      : (msgLen <= 160 ? 1 : Math.ceil(msgLen / 153));
-
-    // Send SMS via gateway
+    // ── REAL API CALL to GreenWeb ──
+    const gatewayUrl = "http://api.greenweb.com.bd/api.php";
     let responseText = "";
     let status = "failed";
+
     try {
-      const smsUrl = `${gatewayUrl}?token=${token}&to=${phone}&message=${encodeURIComponent(message)}`;
+      console.log(`[SMS] Sending to ${phone} via GreenWeb API...`);
+      const smsUrl = `${gatewayUrl}?token=${encodeURIComponent(token)}&to=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}`;
       const smsResponse = await fetch(smsUrl);
       responseText = await smsResponse.text();
-      status = responseText.includes("Ok") ? "sent" : "failed";
+      console.log(`[SMS] GreenWeb raw response: "${responseText}"`);
+
+      // GreenWeb returns "Ok: <number>" on success
+      // Any other response = failure
+      if (responseText && responseText.trim().toLowerCase().startsWith("ok")) {
+        status = "sent";
+      } else {
+        status = "failed";
+        console.error(`[SMS] GreenWeb API returned non-success: "${responseText}"`);
+      }
     } catch (e: any) {
-      responseText = e.message || "Gateway error";
+      responseText = e.message || "Gateway connection error";
       status = "failed";
+      console.error(`[SMS] GreenWeb API exception: ${responseText}`);
     }
 
-    // ── Deduct wallet balance on success ─────────────
+    // ── Deduct wallet balance ONLY on confirmed success ──
     if (status === "sent" && tenant_id) {
       const { data: wallet } = await supabase
         .from("sms_wallets")
@@ -116,9 +146,11 @@ Deno.serve(async (req) => {
 
       if (wallet) {
         const newBalance = Math.max(0, wallet.balance - smsCount);
-        await supabase.from("sms_wallets").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", wallet.id);
+        await supabase
+          .from("sms_wallets")
+          .update({ balance: newBalance, updated_at: new Date().toISOString() })
+          .eq("id", wallet.id);
 
-        // Log transaction
         await supabase.from("sms_transactions").insert({
           tenant_id,
           amount: smsCount,
@@ -129,7 +161,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Log to database
+    // ── Log with REAL status ──
     await supabase.from("sms_logs").insert({
       phone: to, message, sms_type, status, response: responseText,
       customer_id: customer_id || null,
@@ -137,7 +169,7 @@ Deno.serve(async (req) => {
       sms_count: smsCount,
     });
 
-    // Also log to reminder_logs if it's a reminder type
+    // ── Reminder logs for billing types ──
     if (["bill_generate", "bill_reminder", "due_date", "overdue", "new_customer_bill"].includes(sms_type)) {
       await supabase.from("reminder_logs").insert({
         phone: to, message, channel: "sms", status,
@@ -145,20 +177,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get updated balance for response
+    // ── Get updated balance ──
     let remainingBalance = null;
     if (tenant_id) {
-      const { data: updatedWallet } = await supabase.from("sms_wallets").select("balance").eq("tenant_id", tenant_id).maybeSingle();
+      const { data: updatedWallet } = await supabase
+        .from("sms_wallets")
+        .select("balance")
+        .eq("tenant_id", tenant_id)
+        .maybeSingle();
       remainingBalance = updatedWallet?.balance ?? null;
     }
 
+    // ── Return REAL result based on API response ──
+    const isSuccess = status === "sent";
+    console.log(`[SMS] Final result: success=${isSuccess}, status=${status}`);
+
     return new Response(
-      JSON.stringify({ success: status === "sent", status, response: responseText, remaining_balance: remainingBalance }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: isSuccess,
+        status,
+        response: responseText,
+        remaining_balance: remainingBalance,
+        ...(status === "failed" ? { error: `SMS delivery failed: ${responseText}` } : {}),
+      }),
+      {
+        status: isSuccess ? 200 : 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
-  } catch (error) {
+  } catch (error: any) {
+    console.error(`[SMS] Unhandled error: ${error.message}`);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

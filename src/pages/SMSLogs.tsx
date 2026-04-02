@@ -47,6 +47,9 @@ export default function SMSLogs() {
         sms_type: "manual",
       });
       if (data?.error) throw new Error(data.error);
+      if (data && data.success === false) {
+        throw new Error(data.error || data.response || "SMS delivery failed");
+      }
       toast.success("SMS sent successfully");
       setSmsForm({ phone: "", message: "" });
       setSendOpen(false);

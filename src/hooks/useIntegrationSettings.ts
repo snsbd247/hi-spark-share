@@ -88,6 +88,9 @@ export function useSmsTestSend() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (data && data.success === false) {
+        throw new Error(data.error || data.response || "SMS delivery failed");
+      }
       return data;
     },
     onSuccess: () => toast.success("Test SMS sent successfully!"),

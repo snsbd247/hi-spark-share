@@ -160,7 +160,7 @@ export default function Billing() {
             .replace(/\{Month\}/g, bill.month || "")
             .replace(/\{CustomerID\}/g, bill.customers?.customer_id || "");
 
-          await db.functions.invoke("send-sms", {
+          const { data: smsResult, error: smsErr } = await db.functions.invoke("send-sms", {
             body: {
               to: bill.customers.phone,
               message: smsMessage,
@@ -168,8 +168,11 @@ export default function Billing() {
               customer_id: bill.customer_id,
             },
           });
-        } catch (smsErr) {
-          console.warn("[PaymentSMS] Failed:", smsErr);
+          if (smsErr || (smsResult && !smsResult.success)) {
+            console.warn("[PaymentSMS] Failed:", smsResult?.error || smsErr?.message);
+          }
+        } catch (smsErr: any) {
+          console.warn("[PaymentSMS] Failed:", smsErr?.message);
         }
       }
 
