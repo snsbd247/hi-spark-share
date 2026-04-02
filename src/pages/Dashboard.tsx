@@ -132,59 +132,26 @@ export default function Dashboard() {
   const bkash = usePaymentStats("bkash");
   const nagad = usePaymentStats("nagad");
 
-  // SMS Balance
-  const { data: smsBalanceRaw } = useQuery({
-    queryKey: ["sms-balance"],
+  // SMS Balance — from tenant wallet (assigned by Super Admin), NOT global API
+  const { data: walletSmsData } = useQuery({
+    queryKey: ["tenant-sms-wallet-balance"],
     queryFn: async () => {
-      const { data, error } = await db.functions.invoke("sms-balance");
-      if (error) throw error;
+      const { data } = await db.from("sms_wallets").select("balance").limit(1).maybeSingle();
       return data;
     },
-    refetchInterval: 300000, // 5 min
-    refetchOnMount: "always",
+    refetchInterval: 60000,
     retry: 1,
   });
 
   const smsBalance = useMemo(() => {
-    const parsePayload = (payload: any) => {
-      if (Array.isArray(payload)) {
-        const balanceEntry = payload.find((d: any) => d?.action === "balance");
-        const expiryEntry = payload.find((d: any) => d?.action === "expiry");
-        const rateEntry = payload.find((d: any) => d?.action === "rate");
-
-        const balance = Number.parseFloat(String(balanceEntry?.response ?? ""));
-        const rate = Number.parseFloat(String(rateEntry?.response ?? ""));
-
-        return {
-          balance: Number.isFinite(balance) ? balance : null,
-          expiry: expiryEntry?.response || null,
-          rate: Number.isFinite(rate) ? rate : null,
-        };
-      }
-
-      if (payload && typeof payload === "object") {
-        const balance = Number.parseFloat(String((payload as any).balance ?? ""));
-        const rate = Number.parseFloat(String((payload as any).rate ?? ""));
-        return {
-          balance: Number.isFinite(balance) ? balance : null,
-          expiry: (payload as any).expiry || null,
-          rate: Number.isFinite(rate) ? rate : null,
-        };
-      }
-
-      if (typeof payload === "string") {
-        try {
-          return parsePayload(JSON.parse(payload));
-        } catch {
-          return { balance: null, expiry: null, rate: null };
-        }
-      }
-
-      return { balance: null, expiry: null, rate: null };
+    const balance = walletSmsData?.balance ?? null;
+    return {
+      balance: typeof balance === "number" ? balance : null,
+      expiry: null,
+      rate: null,
+      isLow: typeof balance === "number" && balance < 20,
     };
-
-    return parsePayload(smsBalanceRaw);
-  }, [smsBalanceRaw]);
+  }, [walletSmsData]);
 
   // ── Derived calculations ──
   const total = customers?.length ?? 0;
