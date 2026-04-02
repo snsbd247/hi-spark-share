@@ -13,7 +13,7 @@ class Package extends Model
     protected $fillable = [
         'id', 'tenant_id', 'name', 'speed', 'monthly_price', 'download_speed', 'upload_speed',
         'is_active', 'mikrotik_profile_name', 'bandwidth_profile', 'burst_limit',
-        'router_id',
+        'router_id', 'ip_pool_id',
     ];
 
     protected $casts = [
@@ -26,6 +26,11 @@ class Package extends Model
     public function router()
     {
         return $this->belongsTo(MikrotikRouter::class, 'router_id');
+    }
+
+    public function ipPool()
+    {
+        return $this->belongsTo(IpPool::class, 'ip_pool_id');
     }
 
     public function customers()

@@ -51,13 +51,13 @@ export default function Packages() {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     name: "", speed: "", monthly_price: "", bandwidth_profile: "",
-    download_speed: "", upload_speed: "", burst_limit: "", router_id: "",
+    download_speed: "", upload_speed: "", burst_limit: "", router_id: "", ip_pool_id: "",
   });
 
   const { data: packages, isLoading } = useQuery({
     queryKey: ["packages-all"],
     queryFn: async () => {
-      const { data, error } = await db.from("packages").select("*, mikrotik_routers(name)").order("created_at", { ascending: false });
+      const { data, error } = await db.from("packages").select("*, mikrotik_routers(name), ip_pools(name, gateway)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -72,6 +72,15 @@ export default function Packages() {
     },
   });
 
+  const { data: ipPools } = useQuery({
+    queryKey: ["ip-pools-active"],
+    queryFn: async () => {
+      const { data, error } = await db.from("ip_pools").select("*").eq("status", "active");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const filtered = packages?.filter(
     (p) =>
       (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -80,7 +89,7 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditPkg(null);
-    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "", router_id: "" });
+    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "", router_id: "", ip_pool_id: "" });
     setFormOpen(true);
   };
 
@@ -95,6 +104,7 @@ export default function Packages() {
       upload_speed: pkg.upload_speed?.toString() || "",
       burst_limit: pkg.burst_limit || "",
       router_id: pkg.router_id || "",
+      ip_pool_id: pkg.ip_pool_id || "",
     });
     setFormOpen(true);
   };
@@ -111,6 +121,7 @@ export default function Packages() {
       upload_speed: parseInt(form.upload_speed) || 0,
       burst_limit: form.burst_limit || null,
       router_id: form.router_id || null,
+      ip_pool_id: form.ip_pool_id || null,
     };
 
     try {
@@ -194,16 +205,27 @@ export default function Packages() {
         // Find router credentials for edge function
         const router = routers?.find((r: any) => r.id === routerId);
         if (!router) { toast.error("রাউটার সিলেক্ট করুন"); return; }
+        // Find pool info for PPP profile
+        const pkg = packages?.find((p: any) => p.id === packageId);
+        const pool = ipPools?.find((p: any) => p.id === pkg?.ip_pool_id);
         const data = await mikrotikEdge('sync-profile', {
           package_id: packageId, router_id: routerId,
           ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port,
+          remote_address: pool?.name || undefined,
+          local_address: pool?.gateway || undefined,
         });
         if (data?.success) {
           toast.success(`MikroTik profile synced: ${data.profile_name}`);
           queryClient.invalidateQueries({ queryKey: ["packages-all"] });
         } else toast.error(data?.error || "MikroTik sync failed");
       } else {
-        const data = await mikrotikCall('sync-profile', { package_id: packageId, router_id: routerId || undefined });
+        const pkg = packages?.find((p: any) => p.id === packageId);
+        const pool = ipPools?.find((p: any) => p.id === pkg?.ip_pool_id);
+        const data = await mikrotikCall('sync-profile', {
+          package_id: packageId, router_id: routerId || undefined,
+          remote_address: pool?.name || undefined,
+          local_address: pool?.gateway || undefined,
+        });
         if (data.success) {
           toast.success(`MikroTik profile synced: ${data.profile_name}`);
           queryClient.invalidateQueries({ queryKey: ["packages-all"] });
@@ -303,6 +325,7 @@ export default function Packages() {
                  <TableHead>{t.portal.speed}</TableHead>
                  <TableHead>{t.billing.billAmount}</TableHead>
                  <TableHead>Bandwidth</TableHead>
+                 <TableHead>IP Pool</TableHead>
                  <TableHead>Router</TableHead>
                  <TableHead>MikroTik Profile</TableHead>
                  <TableHead>{t.common.status}</TableHead>
@@ -320,8 +343,13 @@ export default function Packages() {
                     {(pkg.download_speed > 0 || pkg.upload_speed > 0) ? (
                       <span className="text-sm">↓{pkg.download_speed}M / ↑{pkg.upload_speed}M</span>
                     ) : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                   </TableCell>
+                   <TableCell className="text-sm text-muted-foreground">
+                     {(pkg as any).ip_pools?.name ? (
+                       <span>{(pkg as any).ip_pools.name} <span className="text-xs">(GW: {(pkg as any).ip_pools.gateway || "—"})</span></span>
+                     ) : "—"}
+                   </TableCell>
+                   <TableCell className="text-sm text-muted-foreground">
                     {(pkg as any).mikrotik_routers?.name || "—"}
                   </TableCell>
                   <TableCell>
@@ -351,7 +379,7 @@ export default function Packages() {
                 </TableRow>
               ))}
               {filtered?.length === 0 && (
-                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{t.common.noData}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">{t.common.noData}</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -387,8 +415,19 @@ export default function Packages() {
                       <SelectItem key={r.id} value={r.id}>{r.name} — {r.ip_address}</SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
-              </div>
+                 </Select>
+               </div>
+               <div className="space-y-1.5 mb-4">
+                 <Label>IP Pool (Remote Address)</Label>
+                 <Select value={form.ip_pool_id} onValueChange={(v) => setForm({ ...form, ip_pool_id: v })}>
+                   <SelectTrigger><SelectValue placeholder="Select IP Pool for PPP Profile" /></SelectTrigger>
+                   <SelectContent>
+                     {ipPools?.filter((p: any) => !form.router_id || p.router_id === form.router_id).map((p: any) => (
+                       <SelectItem key={p.id} value={p.id}>{p.name} — {p.subnet} (GW: {p.gateway || "N/A"})</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Download Speed (Mbps)</Label>

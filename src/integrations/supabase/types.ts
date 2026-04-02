@@ -2141,6 +2141,7 @@ export type Database = {
           created_at: string
           download_speed: number
           id: string
+          ip_pool_id: string | null
           is_active: boolean
           mikrotik_profile_name: string | null
           monthly_price: number
@@ -2156,6 +2157,7 @@ export type Database = {
           created_at?: string
           download_speed?: number
           id?: string
+          ip_pool_id?: string | null
           is_active?: boolean
           mikrotik_profile_name?: string | null
           monthly_price?: number
@@ -2171,6 +2173,7 @@ export type Database = {
           created_at?: string
           download_speed?: number
           id?: string
+          ip_pool_id?: string | null
           is_active?: boolean
           mikrotik_profile_name?: string | null
           monthly_price?: number
@@ -2181,6 +2184,13 @@ export type Database = {
           upload_speed?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "packages_ip_pool_id_fkey"
+            columns: ["ip_pool_id"]
+            isOneToOne: false
+            referencedRelation: "ip_pools"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "packages_router_id_fkey"
             columns: ["router_id"]
