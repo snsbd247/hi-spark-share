@@ -170,13 +170,16 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
         const promises = batch.map(async (customer: any) => {
           const personalizedMsg = replacePlaceholders(message, customer);
           try {
-            const { data } = await api.post('/sms/send', {
-              to: customer.phone,
-              message: personalizedMsg,
-              sms_type: "group",
-              customer_id: customer.id,
+            const { data, error } = await db.functions.invoke("send-sms", {
+              body: {
+                to: customer.phone,
+                message: personalizedMsg,
+                sms_type: "group",
+                customer_id: customer.id,
+              },
             });
-            if (data?.success) successCount++;
+            if (error) { failCount++; }
+            else if (data?.success) successCount++;
             else failCount++;
           } catch {
             failCount++;
