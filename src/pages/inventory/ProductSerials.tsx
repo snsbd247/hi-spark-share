@@ -50,19 +50,53 @@ export default function ProductSerials() {
 
   const addMut = useMutation({
     mutationFn: async () => {
-      const { error } = await (db as any).from("product_serials").insert({
-        product_id: form.product_id,
-        serial_number: form.serial_number.trim(),
-        notes: form.notes || null,
-        status: "available",
-      });
-      if (error) throw error;
+      if (bulkMode) {
+        // Bulk add: parse comma-separated serials
+        const serialList = bulkSerials.split(',').map(s => s.trim()).filter(Boolean);
+        if (serialList.length === 0) throw new Error("No serials provided");
+        
+        // Check for duplicates within input
+        const uniqueSerials = [...new Set(serialList)];
+        if (uniqueSerials.length !== serialList.length) {
+          throw new Error("Duplicate serials found in input");
+        }
+
+        // Check existing serials
+        const { data: existing } = await (db as any).from("product_serials")
+          .select("serial_number")
+          .in("serial_number", uniqueSerials);
+        const existingSet = new Set((existing || []).map((e: any) => e.serial_number));
+        const conflicts = uniqueSerials.filter(s => existingSet.has(s));
+        if (conflicts.length > 0) {
+          throw new Error(`Duplicate serials already exist: ${conflicts.join(', ')}`);
+        }
+
+        const rows = uniqueSerials.map(s => ({
+          product_id: form.product_id,
+          serial_number: s,
+          notes: form.notes || null,
+          status: "available",
+        }));
+        const { error } = await (db as any).from("product_serials").insert(rows);
+        if (error) throw error;
+      } else {
+        const { error } = await (db as any).from("product_serials").insert({
+          product_id: form.product_id,
+          serial_number: form.serial_number.trim(),
+          notes: form.notes || null,
+          status: "available",
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["product_serials"] });
-      toast.success("Serial added");
+      const count = bulkMode ? bulkSerials.split(',').filter(s => s.trim()).length : 1;
+      toast.success(`${count} serial(s) added`);
       setOpen(false);
       setForm({ product_id: "", serial_number: "", notes: "" });
+      setBulkSerials("");
+      setBulkMode(false);
     },
     onError: (e: any) => toast.error(e.message || "Failed to add serial"),
   });
