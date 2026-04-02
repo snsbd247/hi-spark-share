@@ -505,7 +505,7 @@ export default function InitialDataImportTab() {
     "packages", "mikrotik_routers", "payment_gateways",
     "geo_upazilas", "geo_districts", "geo_divisions",
     "ticket_replies", "support_tickets",
-    "supplier_payments", "suppliers", "vendors",
+    "supplier_payments", "suppliers",
     "transactions", "accounts",
     "sms_templates",
   ];
