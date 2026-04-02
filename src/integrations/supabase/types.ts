@@ -355,11 +355,14 @@ export type Database = {
       bills: {
         Row: {
           amount: number
+          coupon_id: string | null
           created_at: string
           customer_id: string
+          discount: number
           due_date: string | null
           id: string
           month: string
+          paid_amount: number
           paid_date: string | null
           payment_link_token: string | null
           status: string
@@ -367,11 +370,14 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          coupon_id?: string | null
           created_at?: string
           customer_id: string
+          discount?: number
           due_date?: string | null
           id?: string
           month: string
+          paid_amount?: number
           paid_date?: string | null
           payment_link_token?: string | null
           status?: string
@@ -379,17 +385,27 @@ export type Database = {
         }
         Update: {
           amount?: number
+          coupon_id?: string | null
           created_at?: string
           customer_id?: string
+          discount?: number
           due_date?: string | null
           id?: string
           month?: string
+          paid_amount?: number
           paid_date?: string | null
           payment_link_token?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bills_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bills_customer_id_fkey"
             columns: ["customer_id"]
@@ -398,6 +414,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          updated_at: string
+          used_count: number
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          updated_at?: string
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          updated_at?: string
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
       }
       custom_roles: {
         Row: {
@@ -531,6 +592,7 @@ export type Database = {
           installation_date: string | null
           installed_by: string | null
           ip_address: string | null
+          mac_address: string | null
           mikrotik_sync_status: string
           monthly_bill: number
           mother_name: string | null
@@ -557,6 +619,7 @@ export type Database = {
           road: string | null
           router_id: string | null
           router_mac: string | null
+          static_ip: string | null
           status: string
           subnet: string | null
           upazila: string | null
@@ -586,6 +649,7 @@ export type Database = {
           installation_date?: string | null
           installed_by?: string | null
           ip_address?: string | null
+          mac_address?: string | null
           mikrotik_sync_status?: string
           monthly_bill?: number
           mother_name?: string | null
@@ -612,6 +676,7 @@ export type Database = {
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
+          static_ip?: string | null
           status?: string
           subnet?: string | null
           upazila?: string | null
@@ -641,6 +706,7 @@ export type Database = {
           installation_date?: string | null
           installed_by?: string | null
           ip_address?: string | null
+          mac_address?: string | null
           mikrotik_sync_status?: string
           monthly_bill?: number
           mother_name?: string | null
@@ -667,6 +733,7 @@ export type Database = {
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
+          static_ip?: string | null
           status?: string
           subnet?: string | null
           upazila?: string | null
@@ -1163,6 +1230,39 @@ export type Database = {
         }
         Relationships: []
       }
+      faqs: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          question: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          question: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          question?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       general_settings: {
         Row: {
           address: string | null
@@ -1381,6 +1481,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ip_pools: {
+        Row: {
+          created_at: string
+          end_ip: string
+          gateway: string | null
+          id: string
+          name: string
+          router_id: string | null
+          start_ip: string
+          status: string
+          subnet: string
+          total_ips: number
+          updated_at: string
+          used_ips: number
+        }
+        Insert: {
+          created_at?: string
+          end_ip: string
+          gateway?: string | null
+          id?: string
+          name: string
+          router_id?: string | null
+          start_ip: string
+          status?: string
+          subnet: string
+          total_ips?: number
+          updated_at?: string
+          used_ips?: number
+        }
+        Update: {
+          created_at?: string
+          end_ip?: string
+          gateway?: string | null
+          id?: string
+          name?: string
+          router_id?: string | null
+          start_ip?: string
+          status?: string
+          subnet?: string
+          total_ips?: number
+          updated_at?: string
+          used_ips?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ip_pools_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_routers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       loans: {
         Row: {
@@ -1634,6 +1787,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          metadata: Json | null
+          tenant_id: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          metadata?: Json | null
+          tenant_id?: string | null
+          title: string
+          type?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          tenant_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       olts: {
         Row: {
@@ -3083,6 +3283,7 @@ export type Database = {
       }
       support_tickets: {
         Row: {
+          admin_notes: string | null
           assigned_to: string | null
           category: string
           created_at: string
@@ -3095,6 +3296,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
           assigned_to?: string | null
           category?: string
           created_at?: string
@@ -3107,6 +3309,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
           assigned_to?: string | null
           category?: string
           created_at?: string
@@ -3160,6 +3363,8 @@ export type Database = {
           grace_days: number
           id: string
           logo_url: string | null
+          max_customers: number | null
+          max_users: number | null
           name: string
           phone: string | null
           plan: string | null
@@ -3184,6 +3389,8 @@ export type Database = {
           grace_days?: number
           id?: string
           logo_url?: string | null
+          max_customers?: number | null
+          max_users?: number | null
           name: string
           phone?: string | null
           plan?: string | null
@@ -3208,6 +3415,8 @@ export type Database = {
           grace_days?: number
           id?: string
           logo_url?: string | null
+          max_customers?: number | null
+          max_users?: number | null
           name?: string
           phone?: string | null
           plan?: string | null
