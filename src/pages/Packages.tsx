@@ -89,7 +89,7 @@ export default function Packages() {
 
   const openAdd = () => {
     setEditPkg(null);
-    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "", router_id: "" });
+    setForm({ name: "", speed: "", monthly_price: "", bandwidth_profile: "", download_speed: "", upload_speed: "", burst_limit: "", router_id: "", ip_pool_id: "" });
     setFormOpen(true);
   };
 
