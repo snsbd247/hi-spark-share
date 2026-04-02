@@ -514,7 +514,6 @@ const BUSINESS_DATA_TABLES = [
   "daily_reports",
   "transactions",
   "customers",
-  "vendors",
   "suppliers",
   "products",
   "expenses",
