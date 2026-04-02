@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CustomerAuthProvider } from "@/contexts/CustomerAuthContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -181,6 +181,7 @@ function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/customers" element={<PermissionGuard module="customers"><Customers /></PermissionGuard>} />
                 <Route path="/customers/:id" element={<PermissionGuard module="customers"><CustomerProfilePage /></PermissionGuard>} />
                 <Route path="/packages" element={<PermissionGuard module="settings"><Packages /></PermissionGuard>} />
