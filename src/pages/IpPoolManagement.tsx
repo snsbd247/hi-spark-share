@@ -14,10 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Network, Globe, RefreshCw, Upload, Router } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const IS_LOVABLE = window.location.hostname.includes("lovable.app") || window.location.hostname.includes("lovableproject.com");
 
 export default function IpPoolManagement() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -60,7 +62,7 @@ export default function IpPoolManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
-      toast.success("IP Pool তৈরি হয়েছে");
+      toast.success(t.ipPool.poolCreated);
       setOpen(false);
       setForm({ name: "", subnet: "", gateway: "", start_ip: "", end_ip: "", total_ips: 0, type: "pppoe", router_id: "" });
     },
@@ -72,7 +74,7 @@ export default function IpPoolManagement() {
       const { error } = await db.from("ip_pools").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ip-pools"] }); toast.success("ডিলিট হয়েছে"); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ip-pools"] }); toast.success(t.ipPool.deleted); },
   });
 
   const handleSyncFromRouter = async (routerId: string) => {
@@ -86,21 +88,21 @@ export default function IpPoolManagement() {
         });
         if (error) throw error;
         if (data?.success) {
-          toast.success(`${data.synced} টি IP Pool সিঙ্ক হয়েছে`);
+          toast.success(`${data.synced} ${t.ipPool.syncSuccess}`);
         } else {
-          toast.error(data?.error || "সিঙ্ক ব্যর্থ");
+          toast.error(data?.error || t.ipPool.syncFailed);
         }
       } else {
         const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: routerId });
         if (data?.success) {
-          toast.success(`${data.synced} টি IP Pool সিঙ্ক হয়েছে`);
+          toast.success(`${data.synced} ${t.ipPool.syncSuccess}`);
         } else {
-          toast.error(data?.error || "সিঙ্ক ব্যর্থ");
+          toast.error(data?.error || t.ipPool.syncFailed);
         }
       }
       queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
     } catch (e: any) {
-      toast.error(e.message || "সিঙ্ক এরর");
+      toast.error(e.message || t.ipPool.syncFailed);
     } finally {
       setSyncing(false);
     }
@@ -114,15 +116,15 @@ export default function IpPoolManagement() {
           body: { pool_id: poolId },
         });
         if (error) throw error;
-        if (data?.success) toast.success(data.message || "পুশ সফল");
-        else toast.error(data?.error || "পুশ ব্যর্থ");
+        if (data?.success) toast.success(data.message || t.ipPool.pushSuccess);
+        else toast.error(data?.error || t.ipPool.pushFailed);
       } else {
         const { data } = await api.post('/mikrotik/push-ip-pool', { pool_id: poolId });
-        if (data?.success) toast.success(data.message || "পুশ সফল");
-        else toast.error(data?.error || "পুশ ব্যর্থ");
+        if (data?.success) toast.success(data.message || t.ipPool.pushSuccess);
+        else toast.error(data?.error || t.ipPool.pushFailed);
       }
     } catch (e: any) {
-      toast.error(e.message || "পুশ এরর");
+      toast.error(e.message || t.ipPool.pushFailed);
     } finally {
       setPushingId(null);
     }
@@ -136,15 +138,15 @@ export default function IpPoolManagement() {
           body: { router_id: routerId },
         });
         if (error) throw error;
-        if (data?.success) toast.success(`${data.pushed} টি পুল পুশ হয়েছে`);
-        else toast.error(data?.error || "পুশ ব্যর্থ");
+        if (data?.success) toast.success(`${data.pushed} ${t.ipPool.pushSuccess}`);
+        else toast.error(data?.error || t.ipPool.pushFailed);
       } else {
         const { data } = await api.post('/mikrotik/push-all-ip-pools', { router_id: routerId });
-        if (data?.success) toast.success(`${data.pushed} টি পুল পুশ হয়েছে`);
-        else toast.error(data?.error || "পুশ ব্যর্থ");
+        if (data?.success) toast.success(`${data.pushed} ${t.ipPool.pushSuccess}`);
+        else toast.error(data?.error || t.ipPool.pushFailed);
       }
     } catch (e: any) {
-      toast.error(e.message || "পুশ এরর");
+      toast.error(e.message || t.ipPool.pushFailed);
     } finally {
       setPushingAll(false);
     }
@@ -158,17 +160,16 @@ export default function IpPoolManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">IP Pool Management</h1>
-            <p className="text-sm text-muted-foreground">MikroTik রাউটার থেকে সিঙ্ক বা ম্যানুয়ালি IP পুল পরিচালনা করুন</p>
+            <h1 className="text-2xl font-bold">{t.ipPool.title}</h1>
+            <p className="text-sm text-muted-foreground">{t.ipPool.subtitle}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {/* Sync from Router */}
             {activeRouters.length > 0 && (
               <Select onValueChange={(v) => handleSyncFromRouter(v)} disabled={syncing}>
                 <SelectTrigger className="w-[200px]">
                   <div className="flex items-center gap-2">
                     <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                    <span>{syncing ? "সিঙ্ক হচ্ছে..." : "রাউটার থেকে সিঙ্ক"}</span>
+                    <span>{syncing ? t.ipPool.syncing : t.ipPool.syncFromRouter}</span>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -184,13 +185,12 @@ export default function IpPoolManagement() {
               </Select>
             )}
 
-            {/* Push All to Router */}
             {activeRouters.length > 0 && pools.length > 0 && (
               <Select onValueChange={(v) => handlePushAllToRouter(v)} disabled={pushingAll}>
                 <SelectTrigger className="w-[200px]">
                   <div className="flex items-center gap-2">
                     <Upload className={`h-4 w-4 ${pushingAll ? "animate-spin" : ""}`} />
-                    <span>{pushingAll ? "পুশ হচ্ছে..." : "রাউটারে পুশ করুন"}</span>
+                    <span>{pushingAll ? t.ipPool.pushing : t.ipPool.pushToRouter}</span>
                   </div>
                 </SelectTrigger>
                 <SelectContent>
@@ -206,20 +206,19 @@ export default function IpPoolManagement() {
               </Select>
             )}
 
-            {/* Add Pool */}
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-2" /> Add Pool</Button>
+                <Button><Plus className="h-4 w-4 mr-2" /> {t.ipPool.addPool}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>Create IP Pool</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{t.ipPool.createPool}</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label>Pool Name</Label>
+                    <Label>{t.ipPool.poolName}</Label>
                     <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="pool-1" />
                   </div>
                   <div>
-                    <Label>Type</Label>
+                    <Label>{t.ipPool.type}</Label>
                     <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -230,9 +229,9 @@ export default function IpPoolManagement() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Router</Label>
+                    <Label>{t.ipPool.router}</Label>
                     <Select value={form.router_id} onValueChange={v => setForm(f => ({ ...f, router_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="রাউটার নির্বাচন করুন" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t.ipPool.selectRouter} /></SelectTrigger>
                       <SelectContent>
                         {routers.map((r: any) => (
                           <SelectItem key={r.id} value={r.id}>{r.name} ({r.ip_address})</SelectItem>
@@ -241,29 +240,29 @@ export default function IpPoolManagement() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Subnet</Label>
+                    <Label>{t.ipPool.subnet}</Label>
                     <Input value={form.subnet} onChange={e => setForm(f => ({ ...f, subnet: e.target.value }))} placeholder="192.168.1.0/24" />
                   </div>
                   <div>
-                    <Label>Gateway</Label>
+                    <Label>{t.ipPool.gateway}</Label>
                     <Input value={form.gateway} onChange={e => setForm(f => ({ ...f, gateway: e.target.value }))} placeholder="192.168.1.1" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Start IP</Label>
+                      <Label>{t.ipPool.startIp}</Label>
                       <Input value={form.start_ip} onChange={e => setForm(f => ({ ...f, start_ip: e.target.value }))} placeholder="192.168.1.10" />
                     </div>
                     <div>
-                      <Label>End IP</Label>
+                      <Label>{t.ipPool.endIp}</Label>
                       <Input value={form.end_ip} onChange={e => setForm(f => ({ ...f, end_ip: e.target.value }))} placeholder="192.168.1.254" />
                     </div>
                   </div>
                   <div>
-                    <Label>Total IPs</Label>
+                    <Label>{t.ipPool.totalIps}</Label>
                     <Input type="number" value={form.total_ips} onChange={e => setForm(f => ({ ...f, total_ips: Number(e.target.value) }))} />
                   </div>
                   <Button onClick={() => createMutation.mutate(form)} disabled={!form.name || createMutation.isPending} className="w-full">
-                    Create Pool
+                    {t.ipPool.createPool}
                   </Button>
                 </div>
               </DialogContent>
@@ -294,29 +293,29 @@ export default function IpPoolManagement() {
                 <CardContent className="space-y-3">
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Subnet:</span>
+                      <span className="text-muted-foreground">{t.ipPool.subnet}:</span>
                       <span className="font-mono text-xs">{pool.subnet || pool.ranges || "-"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Gateway:</span>
+                      <span className="text-muted-foreground">{t.ipPool.gateway}:</span>
                       <span className="font-mono">{pool.gateway || "-"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Range:</span>
+                      <span className="text-muted-foreground">{t.ipPool.range}:</span>
                       <span className="font-mono text-xs">
                         {pool.start_ip && pool.end_ip ? `${pool.start_ip} - ${pool.end_ip}` : pool.ranges || "-"}
                       </span>
                     </div>
                     {routerName && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Router:</span>
+                        <span className="text-muted-foreground">{t.ipPool.router}:</span>
                         <span className="text-xs font-medium">{routerName}</span>
                       </div>
                     )}
                   </div>
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span>{pool.used_ips}/{pool.total_ips} used</span><span>{usage}%</span>
+                      <span>{pool.used_ips}/{pool.total_ips} {t.ipPool.used}</span><span>{usage}%</span>
                     </div>
                     <Progress value={usage} className={`h-2 ${usage > 90 ? "[&>div]:bg-destructive" : ""}`} />
                   </div>
@@ -329,7 +328,7 @@ export default function IpPoolManagement() {
                       disabled={pushingId === pool.id || !pool.router_id}
                     >
                       <Upload className={`h-3 w-3 mr-1 ${pushingId === pool.id ? "animate-spin" : ""}`} />
-                      {pushingId === pool.id ? "পুশ হচ্ছে..." : "Push"}
+                      {pushingId === pool.id ? t.ipPool.pushing : t.ipPool.push}
                     </Button>
                     <Button
                       variant="ghost"
@@ -348,7 +347,7 @@ export default function IpPoolManagement() {
             <Card className="col-span-full">
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Globe className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                কোনো IP Pool কনফিগার করা হয়নি। রাউটার থেকে সিঙ্ক করুন অথবা ম্যানুয়ালি যোগ করুন।
+                {t.ipPool.noPoolsConfigured}
               </CardContent>
             </Card>
           )}
