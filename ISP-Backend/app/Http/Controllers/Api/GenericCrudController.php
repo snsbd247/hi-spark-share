@@ -450,11 +450,20 @@ class GenericCrudController extends Controller
                 }
             }
 
-            // Generic upsert
+            // Generic upsert by id
             if ($request->has('_upsert') && $request->has('id')) {
                 $existing = $model->find($request->id);
                 if ($existing) {
                     $existing->update(array_intersect_key($request->except(['_upsert']), array_flip($fillable)));
+                    return response()->json($existing->fresh());
+                }
+            }
+
+            // Key-based upsert for system_settings (setting_key is unique per tenant)
+            if ($request->has('_upsert') && $normalizedTable === 'system_settings' && $request->has('setting_key')) {
+                $existing = $model->where('setting_key', $request->setting_key)->first();
+                if ($existing) {
+                    $existing->update(array_intersect_key($request->except(['_upsert', 'id']), array_flip($fillable)));
                     return response()->json($existing->fresh());
                 }
             }
