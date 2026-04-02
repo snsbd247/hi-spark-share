@@ -325,6 +325,33 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_config: {
+        Row: {
+          config_key: string
+          config_value: string
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bills: {
         Row: {
           amount: number
@@ -1640,6 +1667,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      online_sessions: {
+        Row: {
+          bytes_in: number | null
+          bytes_out: number | null
+          connected_at: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          ip_address: string | null
+          last_seen: string | null
+          mac_address: string | null
+          pppoe_username: string
+          router_id: string | null
+          status: string
+          uptime: string | null
+        }
+        Insert: {
+          bytes_in?: number | null
+          bytes_out?: number | null
+          connected_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen?: string | null
+          mac_address?: string | null
+          pppoe_username: string
+          router_id?: string | null
+          status?: string
+          uptime?: string | null
+        }
+        Update: {
+          bytes_in?: number | null
+          bytes_out?: number | null
+          connected_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          ip_address?: string | null
+          last_seen?: string | null
+          mac_address?: string | null
+          pppoe_username?: string
+          router_id?: string | null
+          status?: string
+          uptime?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_sessions_router_id_fkey"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "mikrotik_routers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onus: {
         Row: {
