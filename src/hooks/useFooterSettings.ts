@@ -8,6 +8,7 @@ export interface FooterSettings {
   footer_developer: string;
   system_version: string;
   auto_update_year: boolean;
+  branding_copyright_text: string;
 }
 
 const DEFAULTS: FooterSettings = {
@@ -17,6 +18,7 @@ const DEFAULTS: FooterSettings = {
   footer_developer: "",
   system_version: "",
   auto_update_year: true,
+  branding_copyright_text: "",
 };
 
 export function useFooterSettings() {
@@ -29,6 +31,7 @@ export function useFooterSettings() {
         .in("setting_key", [
           "footer_text", "company_name", "footer_link",
           "footer_developer", "system_version", "auto_update_year",
+          "branding_copyright_text",
         ]);
       if (error) throw error;
 
@@ -44,6 +47,7 @@ export function useFooterSettings() {
         footer_developer: map.footer_developer || DEFAULTS.footer_developer,
         system_version: map.system_version || DEFAULTS.system_version,
         auto_update_year: map.auto_update_year !== "false",
+        branding_copyright_text: map.branding_copyright_text || DEFAULTS.branding_copyright_text,
       };
     },
     staleTime: 5 * 60 * 1000,

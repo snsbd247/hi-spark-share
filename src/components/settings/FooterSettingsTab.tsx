@@ -79,7 +79,7 @@ export default function FooterSettingsTab() {
     }
   };
 
-  const previewSettings: FooterSettings = { ...form };
+  const previewSettings: FooterSettings = { ...form, branding_copyright_text: "" };
   const previewText = renderFooterText(previewSettings);
 
   if (isLoading) {

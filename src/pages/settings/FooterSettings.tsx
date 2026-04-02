@@ -90,6 +90,7 @@ export default function FooterSettings() {
 
   const previewSettings: FooterSettingsType = {
     ...form,
+    branding_copyright_text: "",
   };
   const previewText = renderFooterText(previewSettings);
 
