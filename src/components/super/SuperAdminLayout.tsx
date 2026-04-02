@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, LayoutDashboard, Building2, CreditCard, Globe, LogOut, Loader2,
   Package, MessageSquare, Rocket, BarChart3, Mail, Menu, X, ChevronLeft,
+  Receipt,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { label: "Onboarding", icon: Rocket, path: "/super/onboarding" },
   { label: "Plans", icon: Package, path: "/super/plans" },
   { label: "Subscriptions", icon: CreditCard, path: "/super/subscriptions" },
+  { label: "Billing", icon: Receipt, path: "/super/billing" },
   { label: "Domains", icon: Globe, path: "/super/domains" },
   { label: "SMS Management", icon: MessageSquare, path: "/super/sms" },
   { label: "SMTP / Email", icon: Mail, path: "/super/smtp" },
