@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { unwrapApiResult } from "@/lib/apiResult";
 import { DIVISIONS, DISTRICTS, UPAZILAS } from "@/lib/bangladeshGeo";
 
 // ─── Error Handling ─────────────────────────────────────────────
@@ -43,6 +44,39 @@ async function tableCount(table: string): Promise<number> {
     .select("id", { count: "exact", head: true });
   if (error) return 0;
   return count || 0;
+}
+
+async function countSystemSettings(keys: string[]): Promise<number> {
+  const { count, error } = await (supabase.from as any)("system_settings")
+    .select("id", { count: "exact", head: true })
+    .in("setting_key", keys);
+  if (error) return 0;
+  return count || 0;
+}
+
+async function saveSystemSetting(settingKey: string, settingValue: string): Promise<void> {
+  const existing = unwrapApiResult(
+    await (supabase.from as any)("system_settings")
+      .select("id")
+      .eq("setting_key", settingKey)
+      .maybeSingle()
+  ) as { id?: string } | null;
+
+  if (existing?.id) {
+    unwrapApiResult(
+      await (supabase.from as any)("system_settings")
+        .update({ setting_value: settingValue, updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+    );
+    return;
+  }
+
+  unwrapApiResult(
+    await (supabase.from as any)("system_settings").insert({
+      setting_key: settingKey,
+      setting_value: settingValue,
+    })
+  );
 }
 
 // ─── 1. Geo Data Seeder ─────────────────────────────────────────
@@ -130,47 +164,58 @@ export async function importGeoData(force = false): Promise<SetupResult> {
 
 // ─── 2. Chart of Accounts Seeder ────────────────────────────────
 const DEFAULT_ACCOUNTS = [
-  // Assets
-  { name: "Assets", type: "asset", code: "1000", level: 0, is_system: true },
-  { name: "Cash in Hand", type: "asset", code: "1001", level: 1, is_system: true, parent: "Assets" },
-  { name: "Cash at Bank", type: "asset", code: "1002", level: 1, is_system: true, parent: "Assets" },
-  { name: "bKash Account", type: "asset", code: "1003", level: 1, is_system: true, parent: "Assets" },
-  { name: "Nagad Account", type: "asset", code: "1004", level: 1, is_system: true, parent: "Assets" },
-  { name: "Accounts Receivable", type: "asset", code: "1100", level: 1, is_system: true, parent: "Assets" },
-  { name: "Inventory", type: "asset", code: "1200", level: 1, is_system: true, parent: "Assets" },
-  { name: "Fixed Assets", type: "asset", code: "1500", level: 1, is_system: false, parent: "Assets" },
-  { name: "Network Equipment", type: "asset", code: "1501", level: 2, is_system: false, parent: "Fixed Assets" },
-  { name: "Office Equipment", type: "asset", code: "1502", level: 2, is_system: false, parent: "Fixed Assets" },
-  // Liabilities
-  { name: "Liabilities", type: "liability", code: "2000", level: 0, is_system: true },
-  { name: "Accounts Payable", type: "liability", code: "2100", level: 1, is_system: true, parent: "Liabilities" },
-  { name: "Employee Payable", type: "liability", code: "2200", level: 1, is_system: true, parent: "Liabilities" },
-  { name: "Tax Payable", type: "liability", code: "2300", level: 1, is_system: false, parent: "Liabilities" },
-  { name: "Customer Deposits", type: "liability", code: "2400", level: 1, is_system: false, parent: "Liabilities" },
-  // Equity
-  { name: "Equity", type: "equity", code: "3000", level: 0, is_system: true },
-  { name: "Owner's Capital", type: "equity", code: "3001", level: 1, is_system: true, parent: "Equity" },
-  { name: "Retained Earnings", type: "equity", code: "3002", level: 1, is_system: true, parent: "Equity" },
-  // Revenue
-  { name: "Revenue", type: "revenue", code: "4000", level: 0, is_system: true },
-  { name: "Internet Service Revenue", type: "revenue", code: "4001", level: 1, is_system: true, parent: "Revenue" },
-  { name: "Connectivity Fee Revenue", type: "revenue", code: "4002", level: 1, is_system: true, parent: "Revenue" },
-  { name: "Reconnection Fee", type: "revenue", code: "4003", level: 1, is_system: false, parent: "Revenue" },
-  { name: "Sales Revenue", type: "revenue", code: "4100", level: 1, is_system: false, parent: "Revenue" },
-  { name: "Other Income", type: "revenue", code: "4500", level: 1, is_system: false, parent: "Revenue" },
-  // Expenses
-  { name: "Expenses", type: "expense", code: "5000", level: 0, is_system: true },
-  { name: "Salary & Wages", type: "expense", code: "5001", level: 1, is_system: true, parent: "Expenses" },
-  { name: "Office Rent", type: "expense", code: "5002", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Electricity Bill", type: "expense", code: "5003", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Internet Bandwidth Cost", type: "expense", code: "5004", level: 1, is_system: true, parent: "Expenses" },
-  { name: "Transport & Conveyance", type: "expense", code: "5005", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Maintenance & Repair", type: "expense", code: "5006", level: 1, is_system: false, parent: "Expenses" },
-  { name: "SMS & Communication", type: "expense", code: "5007", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Purchase Cost (COGS)", type: "expense", code: "5100", level: 1, is_system: true, parent: "Expenses" },
-  { name: "Depreciation", type: "expense", code: "5200", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Bank Charges", type: "expense", code: "5300", level: 1, is_system: false, parent: "Expenses" },
-  { name: "Miscellaneous Expense", type: "expense", code: "5900", level: 1, is_system: false, parent: "Expenses" },
+  { name: "Assets", code: "1000", type: "asset", level: 0, is_system: true, parent_code: null },
+  { name: "Cash in Hand", code: "1001", type: "asset", level: 1, is_system: false, parent_code: "1000" },
+  { name: "Cash at Bank", code: "1002", type: "asset", level: 1, is_system: false, parent_code: "1000" },
+  { name: "bKash / Nagad Account", code: "1003", type: "asset", level: 1, is_system: false, parent_code: "1000" },
+  { name: "Accounts Receivable", code: "1010", type: "asset", level: 1, is_system: true, parent_code: "1000" },
+  { name: "Customer Receivable", code: "1011", type: "asset", level: 2, is_system: false, parent_code: "1010" },
+  { name: "Employee Advance / Receivable", code: "1012", type: "asset", level: 2, is_system: false, parent_code: "1010" },
+  { name: "Other Receivable", code: "1019", type: "asset", level: 2, is_system: false, parent_code: "1010" },
+  { name: "Inventory (Network Equipment)", code: "1020", type: "asset", level: 1, is_system: false, parent_code: "1000" },
+  { name: "Fixed Assets", code: "1100", type: "asset", level: 1, is_system: true, parent_code: "1000" },
+  { name: "Network Infrastructure", code: "1101", type: "asset", level: 2, is_system: false, parent_code: "1100" },
+  { name: "Office Equipment", code: "1102", type: "asset", level: 2, is_system: false, parent_code: "1100" },
+  { name: "Vehicles", code: "1103", type: "asset", level: 2, is_system: false, parent_code: "1100" },
+
+  { name: "Liabilities", code: "2000", type: "liability", level: 0, is_system: true, parent_code: null },
+  { name: "Accounts Payable", code: "2001", type: "liability", level: 1, is_system: true, parent_code: "2000" },
+  { name: "Vendor / Supplier Payable", code: "2001A", type: "liability", level: 2, is_system: false, parent_code: "2001" },
+  { name: "Other Payable", code: "2001B", type: "liability", level: 2, is_system: false, parent_code: "2001" },
+  { name: "Advance from Customers", code: "2002", type: "liability", level: 1, is_system: false, parent_code: "2000" },
+  { name: "Employee Payable", code: "2003", type: "liability", level: 1, is_system: true, parent_code: "2000" },
+  { name: "Salary Payable", code: "2003A", type: "liability", level: 2, is_system: false, parent_code: "2003" },
+  { name: "Bonus Payable", code: "2003B", type: "liability", level: 2, is_system: false, parent_code: "2003" },
+  { name: "Tax Payable", code: "2004", type: "liability", level: 1, is_system: false, parent_code: "2000" },
+  { name: "Loan Payable", code: "2010", type: "liability", level: 1, is_system: false, parent_code: "2000" },
+  { name: "Provident Fund Payable", code: "2011", type: "liability", level: 1, is_system: false, parent_code: "2000" },
+  { name: "Savings Fund Payable", code: "2012", type: "liability", level: 1, is_system: false, parent_code: "2000" },
+
+  { name: "Equity", code: "3000", type: "equity", level: 0, is_system: true, parent_code: null },
+  { name: "Owner's Capital", code: "3001", type: "equity", level: 1, is_system: false, parent_code: "3000" },
+  { name: "Retained Earnings", code: "3002", type: "equity", level: 1, is_system: false, parent_code: "3000" },
+
+  { name: "Income", code: "4000", type: "income", level: 0, is_system: true, parent_code: null },
+  { name: "Monthly Subscription Income", code: "4001", type: "income", level: 1, is_system: false, parent_code: "4000" },
+  { name: "New Connection Fee", code: "4002", type: "income", level: 1, is_system: false, parent_code: "4000" },
+  { name: "Equipment Sales Income", code: "4003", type: "income", level: 1, is_system: false, parent_code: "4000" },
+  { name: "Late Payment Fee", code: "4004", type: "income", level: 1, is_system: false, parent_code: "4000" },
+  { name: "Reconnection Fee", code: "4005", type: "income", level: 1, is_system: false, parent_code: "4000" },
+  { name: "Other Income", code: "4099", type: "income", level: 1, is_system: false, parent_code: "4000" },
+
+  { name: "Expenses", code: "5000", type: "expense", level: 0, is_system: true, parent_code: null },
+  { name: "Bandwidth Cost (ISP/IIG)", code: "5001", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Salary & Wages", code: "5002", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Office Rent", code: "5003", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Electricity Bill", code: "5004", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Network Maintenance", code: "5005", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Equipment Purchase", code: "5006", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Vehicle & Transport", code: "5007", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Marketing & Advertising", code: "5008", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Mobile & Communication", code: "5009", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Government Fees & License", code: "5010", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Provident Fund Expense (Employer)", code: "5011", type: "expense", level: 1, is_system: false, parent_code: "5000" },
+  { name: "Miscellaneous Expense", code: "5099", type: "expense", level: 1, is_system: false, parent_code: "5000" },
 ];
 
 export async function importChartOfAccounts(force = false): Promise<SetupResult> {
@@ -186,43 +231,46 @@ export async function importChartOfAccounts(force = false): Promise<SetupResult>
     }
 
     // First pass: insert root accounts (no parent)
-    const roots = DEFAULT_ACCOUNTS.filter((a) => !a.parent);
-    const rootInserts = roots.map(({ parent, ...rest }) => ({
+    const roots = DEFAULT_ACCOUNTS.filter((a) => !a.parent_code);
+    const rootInserts = roots.map(({ parent_code, ...rest }) => ({
       ...rest,
       balance: 0,
+      is_active: true,
       status: "active",
     }));
     const { data: insertedRoots, error: rootErr } = await (supabase.from as any)("accounts")
       .insert(rootInserts)
-      .select("id, name");
+      .select("id, code");
     if (rootErr) throw new Error(`Root accounts: ${rootErr.message}`);
 
-    const nameMap: Record<string, string> = {};
-    for (const r of insertedRoots) nameMap[r.name] = r.id;
+    const codeMap: Record<string, string> = {};
+    for (const r of insertedRoots) codeMap[r.code] = r.id;
 
     // Second pass: level 1 accounts
-    const level1 = DEFAULT_ACCOUNTS.filter((a) => a.level === 1 && a.parent);
-    const level1Inserts = level1.map(({ parent, ...rest }) => ({
+    const level1 = DEFAULT_ACCOUNTS.filter((a) => a.level === 1 && a.parent_code);
+    const level1Inserts = level1.map(({ parent_code, ...rest }) => ({
       ...rest,
-      parent_id: nameMap[parent!] || null,
+      parent_id: codeMap[parent_code!] || null,
       balance: 0,
+      is_active: true,
       status: "active",
     }));
 
     for (let i = 0; i < level1Inserts.length; i += 20) {
       const batch = level1Inserts.slice(i, i + 20);
-      const { data, error } = await (supabase.from as any)("accounts").insert(batch).select("id, name");
+      const { data, error } = await (supabase.from as any)("accounts").insert(batch).select("id, code");
       if (error) throw new Error(`Level 1 accounts: ${error.message}`);
-      for (const r of (data || [])) nameMap[r.name] = r.id;
+      for (const r of (data || [])) codeMap[r.code] = r.id;
     }
 
     // Third pass: level 2 accounts
-    const level2 = DEFAULT_ACCOUNTS.filter((a) => a.level === 2 && a.parent);
+    const level2 = DEFAULT_ACCOUNTS.filter((a) => a.level === 2 && a.parent_code);
     if (level2.length > 0) {
-      const level2Inserts = level2.map(({ parent, ...rest }) => ({
+      const level2Inserts = level2.map(({ parent_code, ...rest }) => ({
         ...rest,
-        parent_id: nameMap[parent!] || null,
+        parent_id: codeMap[parent_code!] || null,
         balance: 0,
+        is_active: true,
         status: "active",
       }));
       const { error } = await (supabase.from as any)("accounts").insert(level2Inserts);
@@ -307,18 +355,67 @@ const DEFAULT_INCOME_HEADS = [
   { name: "Other Income", description: "Miscellaneous income", status: "active" },
 ];
 
+const DEFAULT_LEDGER_SETTINGS = [
+  { key: "sales_income_account", target_code: "4003" },
+  { key: "sales_cash_account", target_code: "1001" },
+  { key: "purchase_expense_account", target_code: "5006" },
+  { key: "purchase_cash_account", target_code: "1001" },
+  { key: "service_income_account", target_code: "4001" },
+  { key: "expense_cash_account", target_code: "1001" },
+  { key: "salary_expense_account", target_code: "5002" },
+  { key: "salary_payable_account", target_code: "2003A" },
+  { key: "salary_cash_account", target_code: "1001" },
+  { key: "pf_expense_account", target_code: "5011" },
+  { key: "pf_payable_account", target_code: "2011" },
+  { key: "savings_fund_payable_account", target_code: "2012" },
+  { key: "customer_receivable_account", target_code: "1011" },
+  { key: "vendor_payable_account", target_code: "2001A" },
+  { key: "employee_advance_account", target_code: "1012" },
+  { key: "merchant_payment_account_id", target_code: "1003" },
+  { key: "connection_charge_account_id", target_code: "4002" },
+  { key: "monthly_bill_account_id", target_code: "4001" },
+];
+
 export async function importLedgerSettings(force = false): Promise<SetupResult> {
   return withErrorHandling("Ledger Settings Import", async () => {
     const expCount = await tableCount("expense_heads");
     const incCount = await tableCount("income_heads");
+    const settingKeys = DEFAULT_LEDGER_SETTINGS.map((setting) => setting.key);
+    const existingSettingsCount = await countSystemSettings(settingKeys);
 
-    if ((expCount > 0 || incCount > 0) && !force) {
-      return { success: true, message: `Ledger heads already exist (${expCount} expense, ${incCount} income)`, count: expCount + incCount, skipped: true };
+    if ((expCount > 0 || incCount > 0 || existingSettingsCount > 0) && !force) {
+      return {
+        success: true,
+        message: `Ledger settings already exist (${expCount} expense heads, ${incCount} income heads, ${existingSettingsCount} mappings)`,
+        count: expCount + incCount + existingSettingsCount,
+        skipped: true,
+      };
     }
 
     if (force) {
-      if (expCount > 0) await (supabase.from as any)("expense_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      if (incCount > 0) await (supabase.from as any)("income_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (expCount > 0) {
+        unwrapApiResult(await (supabase.from as any)("expense_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000"));
+      }
+      if (incCount > 0) {
+        unwrapApiResult(await (supabase.from as any)("income_heads").delete().neq("id", "00000000-0000-0000-0000-000000000000"));
+      }
+    }
+
+    const { data: accounts, error: accountsErr } = await (supabase.from as any)("accounts").select("id, code");
+    if (accountsErr) throw new Error(`Accounts lookup failed: ${accountsErr.message}`);
+
+    const codeToId: Record<string, string> = {};
+    (accounts || []).forEach((account: any) => {
+      if (account.code) codeToId[account.code] = account.id;
+    });
+
+    const missingCodes = DEFAULT_LEDGER_SETTINGS
+      .map((setting) => setting.target_code)
+      .filter((code, index, arr) => arr.indexOf(code) === index)
+      .filter((code) => !codeToId[code]);
+
+    if (missingCodes.length > 0) {
+      throw new Error(`Required ledger accounts are missing: ${missingCodes.join(", ")}`);
     }
 
     const { error: expErr } = await (supabase.from as any)("expense_heads").insert(DEFAULT_EXPENSE_HEADS);
@@ -327,17 +424,29 @@ export async function importLedgerSettings(force = false): Promise<SetupResult> 
     const { error: incErr } = await (supabase.from as any)("income_heads").insert(DEFAULT_INCOME_HEADS);
     if (incErr) throw new Error(`Income heads: ${incErr.message}`);
 
+    await Promise.all(
+      DEFAULT_LEDGER_SETTINGS.map((setting) => saveSystemSetting(setting.key, codeToId[setting.target_code]))
+    );
+
     // Verify
     const verifyExp = await tableCount("expense_heads");
     const verifyInc = await tableCount("income_heads");
+    const verifySettings = await countSystemSettings(settingKeys);
     if (verifyExp === 0 && verifyInc === 0) {
-      return { success: false, message: "Ledger import verification failed", error_code: "VERIFY_FAILED" };
+      return { success: false, message: "Ledger heads import verification failed", error_code: "VERIFY_FAILED" };
+    }
+    if (verifySettings < DEFAULT_LEDGER_SETTINGS.length) {
+      return {
+        success: false,
+        message: `Ledger mapping verification failed (${verifySettings}/${DEFAULT_LEDGER_SETTINGS.length} saved)`,
+        error_code: "VERIFY_FAILED",
+      };
     }
 
     return {
       success: true,
-      message: `${DEFAULT_EXPENSE_HEADS.length} expense heads + ${DEFAULT_INCOME_HEADS.length} income heads imported`,
-      count: DEFAULT_EXPENSE_HEADS.length + DEFAULT_INCOME_HEADS.length,
+      message: `${DEFAULT_EXPENSE_HEADS.length} expense heads + ${DEFAULT_INCOME_HEADS.length} income heads + ${DEFAULT_LEDGER_SETTINGS.length} mappings imported`,
+      count: DEFAULT_EXPENSE_HEADS.length + DEFAULT_INCOME_HEADS.length + DEFAULT_LEDGER_SETTINGS.length,
     };
   });
 }
