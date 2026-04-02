@@ -54,6 +54,7 @@ export default function SuperSmsManagement() {
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [rechargeDesc, setRechargeDesc] = useState("");
+  const [smsRateInput, setSmsRateInput] = useState("");
   const [selectedTenantTx, setSelectedTenantTx] = useState<string | null>(null);
 
   // ── Global SMS Settings ─────────────────────
