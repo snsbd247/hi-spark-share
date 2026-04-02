@@ -28,6 +28,11 @@ class Package extends Model
         return $this->belongsTo(MikrotikRouter::class, 'router_id');
     }
 
+    public function ipPool()
+    {
+        return $this->belongsTo(IpPool::class, 'ip_pool_id');
+    }
+
     public function customers()
     {
         return $this->hasMany(Customer::class);
