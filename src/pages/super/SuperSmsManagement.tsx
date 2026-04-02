@@ -54,6 +54,7 @@ export default function SuperSmsManagement() {
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [rechargeAmount, setRechargeAmount] = useState("");
   const [rechargeDesc, setRechargeDesc] = useState("");
+  const [smsRateInput, setSmsRateInput] = useState("");
   const [selectedTenantTx, setSelectedTenantTx] = useState<string | null>(null);
 
   // ── Global SMS Settings ─────────────────────
@@ -124,6 +125,7 @@ export default function SuperSmsManagement() {
         subdomain: t.subdomain,
         status: t.status,
         balance: walletMap[t.id]?.balance || 0,
+        sms_rate: walletMap[t.id]?.sms_rate ?? 0.50,
         wallet_id: walletMap[t.id]?.id || null,
       }));
     },
@@ -136,7 +138,7 @@ export default function SuperSmsManagement() {
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
       const { data } = await db
         .from("sms_logs")
-        .select("id, created_at, status, sms_type, tenant_id, sms_count")
+        .select("id, created_at, status, sms_type, tenant_id, sms_count, cost")
         .gte("created_at", thirtyDaysAgo)
         .order("created_at", { ascending: true });
       return data || [];
@@ -244,33 +246,44 @@ export default function SuperSmsManagement() {
 
   const handleRecharge = async () => {
     if (!selectedTenant || !rechargeAmount) return;
-    const amount = parseInt(rechargeAmount);
+    const amount = parseFloat(rechargeAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error("Enter a valid amount");
+      return;
+    }
+    const newRate = smsRateInput ? parseFloat(smsRateInput) : null;
+    if (newRate !== null && (isNaN(newRate) || newRate <= 0)) {
+      toast.error("Enter a valid SMS rate");
       return;
     }
     try {
       const { data: existing } = await db.from("sms_wallets").select("id, balance").eq("tenant_id", selectedTenant.tenant_id).maybeSingle();
       let newBalance: number;
+      const updatePayload: any = { updated_at: new Date().toISOString() };
       if (existing) {
-        newBalance = existing.balance + amount;
-        await db.from("sms_wallets").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", existing.id);
+        newBalance = parseFloat((existing.balance + amount).toFixed(2));
+        updatePayload.balance = newBalance;
+        if (newRate !== null) updatePayload.sms_rate = newRate;
+        await db.from("sms_wallets").update(updatePayload).eq("id", existing.id);
       } else {
         newBalance = amount;
-        await db.from("sms_wallets").insert({ tenant_id: selectedTenant.tenant_id, balance: amount });
+        const insertPayload: any = { tenant_id: selectedTenant.tenant_id, balance: amount };
+        if (newRate !== null) insertPayload.sms_rate = newRate;
+        await db.from("sms_wallets").insert(insertPayload);
       }
       await db.from("sms_transactions").insert({
         tenant_id: selectedTenant.tenant_id,
         amount,
         type: "credit",
-        description: rechargeDesc || "SMS Recharge by Super Admin",
+        description: (rechargeDesc || "SMS Recharge by Super Admin") + (newRate !== null ? ` (Rate: ৳${newRate}/SMS)` : ""),
         admin_id: "super_admin",
         balance_after: newBalance,
       });
-      toast.success(`Recharged ${amount} SMS to ${selectedTenant.tenant_name}`);
+      toast.success(`Recharged ৳${amount} to ${selectedTenant.tenant_name}`);
       setRechargeOpen(false);
       setRechargeAmount("");
       setRechargeDesc("");
+      setSmsRateInput("");
       setSelectedTenant(null);
       qc.invalidateQueries({ queryKey: ["super-sms-wallets"] });
       qc.invalidateQueries({ queryKey: ["super-sms-transactions"] });
@@ -542,7 +555,8 @@ export default function SuperSmsManagement() {
                       <TableHead>Tenant</TableHead>
                       <TableHead>Subdomain</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">SMS Balance</TableHead>
+                      <TableHead className="text-right">Rate (৳/SMS)</TableHead>
+                      <TableHead className="text-right">Balance (৳)</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -555,8 +569,11 @@ export default function SuperSmsManagement() {
                           <Badge variant={w.status === "active" ? "default" : "secondary"}>{w.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
+                          <span className="font-medium">৳{Number(w.sms_rate).toFixed(2)}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
                           <span className={`font-bold ${w.balance < LOW_BALANCE_THRESHOLD ? "text-destructive" : "text-green-600"}`}>
-                            {w.balance.toLocaleString()}
+                            ৳{Number(w.balance).toFixed(2)}
                           </span>
                           {w.balance < LOW_BALANCE_THRESHOLD && w.status === "active" && (
                             <AlertTriangle className="h-3.5 w-3.5 text-destructive inline ml-1" />
@@ -580,7 +597,7 @@ export default function SuperSmsManagement() {
                     ))}
                     {wallets.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No tenants found</TableCell>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No tenants found</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -718,18 +735,34 @@ export default function SuperSmsManagement() {
             <div className="p-3 rounded-lg bg-muted">
               <p className="font-medium">{selectedTenant?.tenant_name}</p>
               <p className="text-sm text-muted-foreground">
-                Current Balance: <span className="font-bold">{selectedTenant?.balance || 0} SMS</span>
+                Current Balance: <span className="font-bold">৳{Number(selectedTenant?.balance || 0).toFixed(2)}</span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Current Rate: <span className="font-bold">৳{Number(selectedTenant?.sms_rate ?? 0.50).toFixed(2)}/SMS</span>
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Recharge Amount (SMS Count)</Label>
+              <Label>Recharge Amount (৳)</Label>
               <Input
                 type="number"
                 value={rechargeAmount}
                 onChange={(e) => setRechargeAmount(e.target.value)}
                 placeholder="e.g., 500"
                 min="1"
+                step="0.01"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>SMS Rate (৳ per SMS unit)</Label>
+              <Input
+                type="number"
+                value={smsRateInput}
+                onChange={(e) => setSmsRateInput(e.target.value)}
+                placeholder={`Current: ৳${Number(selectedTenant?.sms_rate ?? 0.50).toFixed(2)}`}
+                min="0.01"
+                step="0.01"
+              />
+              <p className="text-xs text-muted-foreground">Leave empty to keep current rate</p>
             </div>
             <div className="space-y-2">
               <Label>Description (Optional)</Label>

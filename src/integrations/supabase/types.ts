@@ -2932,6 +2932,7 @@ export type Database = {
       }
       sms_logs: {
         Row: {
+          cost: number
           created_at: string
           customer_id: string | null
           id: string
@@ -2944,6 +2945,7 @@ export type Database = {
           tenant_id: string | null
         }
         Insert: {
+          cost?: number
           created_at?: string
           customer_id?: string | null
           id?: string
@@ -2956,6 +2958,7 @@ export type Database = {
           tenant_id?: string | null
         }
         Update: {
+          cost?: number
           created_at?: string
           customer_id?: string | null
           id?: string
@@ -3087,6 +3090,7 @@ export type Database = {
           balance: number
           created_at: string | null
           id: string
+          sms_rate: number
           tenant_id: string
           updated_at: string | null
         }
@@ -3094,6 +3098,7 @@ export type Database = {
           balance?: number
           created_at?: string | null
           id?: string
+          sms_rate?: number
           tenant_id: string
           updated_at?: string | null
         }
@@ -3101,6 +3106,7 @@ export type Database = {
           balance?: number
           created_at?: string | null
           id?: string
+          sms_rate?: number
           tenant_id?: string
           updated_at?: string | null
         }

@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Load SMS config from sms_settings (Super Admin managed) ──
+    // ── Load SMS config ──
     const { data: settings, error: settingsErr } = await supabase
       .from("sms_settings")
       .select("*")
@@ -33,7 +33,6 @@ Deno.serve(async (req) => {
       .single();
 
     if (settingsErr || !settings) {
-      console.error("[SMS] Failed to load settings:", settingsErr?.message);
       return new Response(
         JSON.stringify({ success: false, error: "SMS settings not configured by Super Admin" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -42,7 +41,6 @@ Deno.serve(async (req) => {
 
     const token = settings.api_token || "";
     if (!token) {
-      console.error("[SMS] No API token configured");
       return new Response(
         JSON.stringify({ success: false, error: "SMS API token not configured by Super Admin" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -77,29 +75,36 @@ Deno.serve(async (req) => {
       ? (msgLen <= 70 ? 1 : Math.ceil(msgLen / 67))
       : (msgLen <= 160 ? 1 : Math.ceil(msgLen / 153));
 
-    // ── Tenant wallet balance check ──
+    // ── Tenant wallet balance & rate check ──
+    let smsRate = 0.50; // default rate
+    let smsCost = 0;
+
     if (tenant_id) {
       const { data: wallet } = await supabase
         .from("sms_wallets")
-        .select("id, balance")
+        .select("id, balance, sms_rate")
         .eq("tenant_id", tenant_id)
         .maybeSingle();
 
       const currentBalance = wallet?.balance ?? 0;
+      smsRate = wallet?.sms_rate ?? 0.50;
+      smsCost = parseFloat((smsCount * smsRate).toFixed(2));
 
-      if (currentBalance < smsCount) {
+      if (currentBalance < smsCost) {
         await supabase.from("sms_logs").insert({
           phone: to, message, sms_type, status: "failed",
-          response: "Insufficient SMS wallet balance",
+          response: `Insufficient balance. Required: ৳${smsCost}, Available: ৳${currentBalance}`,
           customer_id: customer_id || null,
-          tenant_id, sms_count: smsCount,
+          tenant_id, sms_count: smsCount, cost: smsCost,
         });
         return new Response(
           JSON.stringify({
             success: false,
-            error: "Insufficient SMS balance. Contact Super Admin to recharge.",
+            error: `Insufficient SMS balance. Required: ৳${smsCost}, Available: ৳${currentBalance}`,
             balance: currentBalance,
-            required: smsCount,
+            required: smsCost,
+            sms_count: smsCount,
+            rate: smsRate,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -116,14 +121,12 @@ Deno.serve(async (req) => {
     let status = "failed";
 
     try {
-      console.log(`[SMS] Sending to ${phone} via GreenWeb API...`);
+      console.log(`[SMS] Sending to ${phone}, smsCount=${smsCount}, rate=${smsRate}, cost=${smsCost}`);
       const smsUrl = `${gatewayUrl}?token=${encodeURIComponent(token)}&to=${encodeURIComponent(phone)}&message=${encodeURIComponent(message)}`;
       const smsResponse = await fetch(smsUrl);
       responseText = await smsResponse.text();
       console.log(`[SMS] GreenWeb raw response: "${responseText}"`);
 
-      // GreenWeb returns "Ok: <number>" on success
-      // Any other response = failure
       if (responseText && responseText.trim().toLowerCase().startsWith("ok")) {
         status = "sent";
       } else {
@@ -137,15 +140,16 @@ Deno.serve(async (req) => {
     }
 
     // ── Deduct wallet balance ONLY on confirmed success ──
+    let remainingBalance = null;
     if (status === "sent" && tenant_id) {
       const { data: wallet } = await supabase
         .from("sms_wallets")
-        .select("id, balance")
+        .select("id, balance, sms_rate")
         .eq("tenant_id", tenant_id)
         .maybeSingle();
 
       if (wallet) {
-        const newBalance = Math.max(0, wallet.balance - smsCount);
+        const newBalance = parseFloat((Math.max(0, wallet.balance - smsCost)).toFixed(2));
         await supabase
           .from("sms_wallets")
           .update({ balance: newBalance, updated_at: new Date().toISOString() })
@@ -153,20 +157,23 @@ Deno.serve(async (req) => {
 
         await supabase.from("sms_transactions").insert({
           tenant_id,
-          amount: smsCount,
+          amount: smsCost,
           type: "debit",
-          description: `SMS to ${to} (${sms_type})`,
+          description: `SMS to ${to} (${sms_type}) — ${smsCount} unit(s) × ৳${smsRate}`,
           balance_after: newBalance,
         });
+
+        remainingBalance = newBalance;
       }
     }
 
-    // ── Log with REAL status ──
+    // ── Log with REAL status + cost ──
     await supabase.from("sms_logs").insert({
       phone: to, message, sms_type, status, response: responseText,
       customer_id: customer_id || null,
       tenant_id: tenant_id || null,
       sms_count: smsCount,
+      cost: status === "sent" ? smsCost : 0,
     });
 
     // ── Reminder logs for billing types ──
@@ -177,9 +184,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Get updated balance ──
-    let remainingBalance = null;
-    if (tenant_id) {
+    // ── Get updated balance if not already fetched ──
+    if (tenant_id && remainingBalance === null) {
       const { data: updatedWallet } = await supabase
         .from("sms_wallets")
         .select("balance")
@@ -188,9 +194,8 @@ Deno.serve(async (req) => {
       remainingBalance = updatedWallet?.balance ?? null;
     }
 
-    // ── Return REAL result based on API response ──
     const isSuccess = status === "sent";
-    console.log(`[SMS] Final result: success=${isSuccess}, status=${status}`);
+    console.log(`[SMS] Final: success=${isSuccess}, cost=${smsCost}, rate=${smsRate}`);
 
     return new Response(
       JSON.stringify({
@@ -198,6 +203,9 @@ Deno.serve(async (req) => {
         status,
         response: responseText,
         remaining_balance: remainingBalance,
+        cost: isSuccess ? smsCost : 0,
+        sms_count: smsCount,
+        rate: smsRate,
         ...(status === "failed" ? { error: `SMS delivery failed: ${responseText}` } : {}),
       }),
       {
