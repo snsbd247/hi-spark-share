@@ -32,16 +32,58 @@ Deno.serve(async (req) => {
       );
     }
 
-    const url = `http://api.greenweb.com.bd/g_api.php?token=${token}&balance&expiry&rate&json`;
-    const res = await fetch(url);
-    const rawData = await res.json();
+    // Fetch balance, expiry, rate
+    const balanceUrl = `http://api.greenweb.com.bd/g_api.php?token=${token}&balance&expiry&rate&json`;
+    const balanceRes = await fetch(balanceUrl);
+    const rawBalance = await balanceRes.json();
 
     // Strip token from response for security
-    const data = Array.isArray(rawData)
-      ? rawData.map(({ token: _t, ...rest }: any) => rest)
-      : rawData;
+    const balanceData = Array.isArray(rawBalance)
+      ? rawBalance.map(({ token: _t, ...rest }: any) => rest)
+      : rawBalance;
 
-    return new Response(JSON.stringify(data), {
+    // Fetch sent count from GreenWeb report API (last 30 days)
+    let sentCount = 0;
+    let failedCount = 0;
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      const fromDate = thirtyDaysAgo.toISOString().split("T")[0];
+      const toDate = now.toISOString().split("T")[0];
+
+      // GreenWeb report/log endpoint
+      const reportUrl = `http://api.greenweb.com.bd/g_api.php?token=${token}&report&from=${fromDate}&to=${toDate}&json`;
+      const reportRes = await fetch(reportUrl);
+      const reportText = await reportRes.text();
+      
+      try {
+        const reportData = JSON.parse(reportText);
+        if (Array.isArray(reportData)) {
+          sentCount = reportData.filter((r: any) => r.status === "sent" || r.status === "delivered" || r.status === "success").length;
+          failedCount = reportData.filter((r: any) => r.status === "failed" || r.status === "rejected").length;
+          // If no status field, count all as sent
+          if (sentCount === 0 && failedCount === 0 && reportData.length > 0) {
+            sentCount = reportData.length;
+          }
+        } else if (reportData && typeof reportData === "object") {
+          sentCount = reportData.total_sent || reportData.sent || reportData.count || 0;
+          failedCount = reportData.total_failed || reportData.failed || 0;
+        }
+      } catch {
+        // Report endpoint may not be JSON or may not exist
+      }
+    } catch {
+      // Report fetch failed, continue with balance only
+    }
+
+    const result = {
+      balance: Array.isArray(balanceData) ? balanceData : [balanceData],
+      sent_30_days: sentCount,
+      failed_30_days: failedCount,
+    };
+
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
