@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, FileDown, Pencil, CreditCard } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-interface SaleItem { product_id: string; quantity: number; unit_price: number; }
+interface SaleItem { product_id: string; quantity: number; unit_price: number; serial_number?: string; }
 
 export default function Sales() {
   const { t } = useLanguage();
