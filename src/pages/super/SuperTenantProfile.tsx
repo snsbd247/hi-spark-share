@@ -1284,6 +1284,145 @@ export default function SuperTenantProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Setup Progress ─────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" /> System Setup
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {isFullySetup ? "All setup steps completed" : `${completedSteps} of ${setupSteps.length} steps completed`}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={forceReimport}
+                  onChange={(e) => setForceReimport(e.target.checked)}
+                  className="rounded border-input"
+                />
+                Force Re-import
+              </label>
+              {!isFullySetup || forceReimport ? (
+                <Button onClick={() => setupMut.mutate("all")} disabled={setupMut.isPending} size="sm">
+                  {setupRunning === "all" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                  {forceReimport ? "Re-Import All" : "One-Click Full Setup"}
+                </Button>
+              ) : (
+                <Badge className="bg-primary/10 text-primary border-primary/20 px-3 py-1.5">
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Setup Complete
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Progress</span>
+              <span>{Math.round(setupProgress)}%</span>
+            </div>
+            <Progress value={setupProgress} className="h-2.5" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {setupSteps.map((step) => (
+              <div key={step.key} className={`flex items-center justify-between p-3.5 rounded-lg border transition-colors ${
+                step.done ? "bg-primary/5 border-primary/20" : "bg-card hover:bg-muted/50"
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  {step.done ? (
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    </div>
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                      <step.icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className={`text-sm ${step.done ? "text-primary font-medium" : "text-foreground"}`}>{step.label}</span>
+                </div>
+                {!step.done || forceReimport ? (
+                  <Button variant="outline" size="sm" onClick={() => setupMut.mutate(step.key)} disabled={setupMut.isPending} className="h-8">
+                    {setupRunning === step.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (forceReimport && step.done ? "Re-Import" : "Import")}
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="text-primary border-primary/30">Done</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Reset Business Data ────────────────────────────── */}
+      <Card className="border-destructive/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" /> Reset Business Data
+          </CardTitle>
+          <CardDescription>
+            Delete all business data (customers, bills, payments, transactions) while keeping users, roles, settings, and system configuration intact.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-1 space-y-1 text-sm text-muted-foreground">
+              <p>This will permanently delete:</p>
+              <ul className="list-disc list-inside text-xs space-y-0.5 ml-2">
+                <li>Customers, Bills, Payments, Ledger entries</li>
+                <li>SMS/Reminder logs, Daily reports</li>
+                <li>Products, Expenses, Vendors, Suppliers</li>
+                <li>Transactions</li>
+              </ul>
+              <p className="text-xs mt-2">Will NOT delete: Users, Roles, Settings, Accounts (COA), Templates, Geo data</p>
+            </div>
+            <Button variant="destructive" size="sm" onClick={() => setShowResetConfirm(true)} className="shrink-0">
+              <Trash2 className="h-4 w-4 mr-1" /> Reset Tenant Data
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog open={showResetConfirm} onOpenChange={(o) => { if (!o) { setShowResetConfirm(false); setResetConfirmText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Confirm Data Reset
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm space-y-2">
+              <p className="font-semibold">This action is irreversible!</p>
+              <p>All business data for tenant "{tenant?.name}" will be permanently deleted.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Type <span className="font-mono font-bold">RESET</span> to confirm</Label>
+              <Input
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="Type RESET here"
+                className="font-mono"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowResetConfirm(false); setResetConfirmText(""); }}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => resetMut.mutate()}
+              disabled={resetConfirmText !== "RESET" || resetMut.isPending}
+            >
+              {resetMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Confirm Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
