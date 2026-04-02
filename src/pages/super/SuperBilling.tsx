@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Plus, Loader2, CreditCard, AlertTriangle, CheckCircle, Clock,
   ArrowUpCircle, ArrowDownCircle, Receipt, DollarSign, Calendar,
-  TrendingUp, RefreshCw,
+  TrendingUp, RefreshCw, Pencil, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -222,6 +222,48 @@ export default function SuperBilling() {
 
   const [upgradeForm, setUpgradeForm] = useState({ plan_id: "", billing_cycle: "monthly" });
 
+  // Edit invoice
+  const [editOpen, setEditOpen] = useState(false);
+  const [editInv, setEditInv] = useState<any>(null);
+
+  const editInvoice = useMutation({
+    mutationFn: async (form: any) => {
+      const { error } = await (supabase.from as any)("subscription_invoices").update({
+        amount: Number(form.amount),
+        tax_amount: Number(form.tax_amount || 0),
+        total_amount: Number(form.total_amount),
+        billing_cycle: form.billing_cycle,
+        due_date: form.due_date,
+        notes: form.notes || null,
+        status: form.status,
+      }).eq("id", form.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Invoice updated");
+      setEditOpen(false);
+      setEditInv(null);
+      qc.invalidateQueries({ queryKey: ["subscription-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Delete invoice
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const deleteInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from as any)("subscription_invoices").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Invoice deleted");
+      setDeleteId(null);
+      qc.invalidateQueries({ queryKey: ["subscription-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -364,11 +406,19 @@ export default function SuperBilling() {
                       <TableCell>{inv.due_date ? format(new Date(inv.due_date), "dd MMM yyyy") : "—"}</TableCell>
                       <TableCell>{statusBadge(inv.status)}</TableCell>
                       <TableCell>
-                        {inv.status === "pending" && (
-                          <Button size="sm" onClick={() => markPaid.mutate(inv.id)} disabled={markPaid.isPending}>
-                            <CheckCircle className="h-3 w-3 mr-1" /> Mark Paid
+                        <div className="flex gap-1">
+                          {inv.status === "pending" && (
+                            <Button size="sm" onClick={() => markPaid.mutate(inv.id)} disabled={markPaid.isPending}>
+                              <CheckCircle className="h-3 w-3 mr-1" /> Mark Paid
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => { setEditInv({ ...inv, amount: inv.amount, tax_amount: inv.tax_amount || 0, total_amount: inv.total_amount, billing_cycle: inv.billing_cycle, due_date: inv.due_date, notes: inv.notes || "", status: inv.status }); setEditOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                          <Button size="icon" variant="ghost" className="text-destructive" onClick={() => setDeleteId(inv.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -484,6 +534,82 @@ export default function SuperBilling() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditInv(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Invoice</DialogTitle></DialogHeader>
+          {editInv && (
+            <form onSubmit={(e) => { e.preventDefault(); editInvoice.mutate(editInv); }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Amount</Label>
+                  <Input type="number" step="0.01" value={editInv.amount} onChange={(e) => setEditInv({ ...editInv, amount: e.target.value, total_amount: (Number(e.target.value) + Number(editInv.tax_amount) - Number(editInv.proration_credit || 0)).toFixed(2) })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tax</Label>
+                  <Input type="number" step="0.01" value={editInv.tax_amount} onChange={(e) => setEditInv({ ...editInv, tax_amount: e.target.value, total_amount: (Number(editInv.amount) + Number(e.target.value) - Number(editInv.proration_credit || 0)).toFixed(2) })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Total</Label>
+                  <Input type="number" step="0.01" value={editInv.total_amount} onChange={(e) => setEditInv({ ...editInv, total_amount: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input type="date" value={editInv.due_date || ""} onChange={(e) => setEditInv({ ...editInv, due_date: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Billing Cycle</Label>
+                  <Select value={editInv.billing_cycle} onValueChange={(v) => setEditInv({ ...editInv, billing_cycle: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={editInv.status} onValueChange={(v) => setEditInv({ ...editInv, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Input value={editInv.notes} onChange={(e) => setEditInv({ ...editInv, notes: e.target.value })} />
+              </div>
+              <Button type="submit" className="w-full" disabled={editInvoice.isPending}>
+                {editInvoice.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Update Invoice
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Invoice</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Are you sure you want to delete this invoice? This action cannot be undone.</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteId && deleteInvoice.mutate(deleteId)} disabled={deleteInvoice.isPending}>
+              {deleteInvoice.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
