@@ -1,0 +1,1 @@
+ALTER TABLE public.packages ADD COLUMN IF NOT EXISTS ip_pool_id uuid REFERENCES public.ip_pools(id) ON DELETE SET NULL;
