@@ -231,6 +231,11 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::get('/mikrotik/router-stats/{routerId}', [MikrotikBillControlController::class, 'routerStats']);
         Route::post('/mikrotik/import-users', [MikrotikBillControlController::class, 'importUsers']);
         Route::post('/mikrotik/import-packages', [MikrotikBillControlController::class, 'importPackages']);
+        // IP Pool sync
+        Route::post('/mikrotik/sync-ip-pools', [\App\Http\Controllers\Api\IpPoolController::class, 'syncFromRouter']);
+        Route::post('/mikrotik/push-ip-pool', [\App\Http\Controllers\Api\IpPoolController::class, 'pushToRouter']);
+        Route::post('/mikrotik/push-all-ip-pools', [\App\Http\Controllers\Api\IpPoolController::class, 'pushAllToRouter']);
+        Route::post('/mikrotik/queue-sync-ip-pools', [\App\Http\Controllers\Api\IpPoolController::class, 'queueSync']);
     });
 
     // ══════════════════════════════════════════════════════
