@@ -7,19 +7,22 @@ use App\Models\SmsLog;
 use App\Models\SmsSetting;
 use App\Models\SmsWallet;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SmsService
 {
     /**
      * Send SMS using the GLOBAL SMS API config (Super Admin managed).
      * Checks tenant wallet balance before sending.
+     * NEVER returns fake success — always validates real API response.
      */
-    public function send(string $to, string $message, string $smsType, ?string $customerId = null): array
+    public function send(string $to, string $message, string $smsType = 'manual', ?string $customerId = null): array
     {
         $settings = SmsSetting::first();
         $token = $settings->api_token ?? config('services.greenweb.token', '');
 
         if (!$token) {
+            Log::error('[SMS] No API token configured by Super Admin');
             return ['success' => false, 'error' => 'SMS API token not configured by Super Admin'];
         }
 
@@ -47,7 +50,8 @@ class SmsService
             );
 
             if (!$wallet->hasBalance($smsCount)) {
-                // Log the failed attempt
+                Log::warning("[SMS] Insufficient balance for tenant {$tenantId}. Required: {$smsCount}, Available: {$wallet->balance}");
+
                 SmsLog::create([
                     'phone'       => $to,
                     'message'     => $message,
@@ -60,39 +64,60 @@ class SmsService
                 ]);
 
                 return [
-                    'success' => false,
-                    'error'   => 'Insufficient SMS balance. Please contact Super Admin to recharge.',
-                    'balance' => $wallet->balance,
+                    'success'  => false,
+                    'error'    => 'Insufficient SMS balance. Please contact Super Admin to recharge.',
+                    'balance'  => $wallet->balance,
                     'required' => $smsCount,
                 ];
             }
         }
 
-        // ── Send via GreenWeb (Global API) ────────────────
+        // ── Clean phone number (Bangladesh format) ────────
         $cleanPhone = preg_replace('/[^0-9]/', '', $to);
         $phone = str_starts_with($cleanPhone, '88') ? $cleanPhone : "88{$cleanPhone}";
 
+        // ── REAL API CALL to GreenWeb ─────────────────────
         $gatewayUrl = 'http://api.greenweb.com.bd/api.php';
+        $responseText = '';
+        $status = 'failed';
+
         try {
-            $response = Http::get($gatewayUrl, [
+            Log::info("[SMS] Sending to {$phone} via GreenWeb API", [
+                'sms_type' => $smsType,
+                'message_length' => mb_strlen($message),
+                'sms_count' => $smsCount,
+            ]);
+
+            $response = Http::timeout(30)->get($gatewayUrl, [
                 'token'   => $token,
                 'to'      => $phone,
                 'message' => $message,
             ]);
 
             $responseText = $response->body();
-            $status = str_contains($responseText, 'Ok') ? 'sent' : 'failed';
+
+            Log::info("[SMS] GreenWeb raw response: \"{$responseText}\"");
+
+            // GreenWeb returns "Ok: <number>" on success
+            // Any other response = failure
+            if ($responseText && str_starts_with(strtolower(trim($responseText)), 'ok')) {
+                $status = 'sent';
+            } else {
+                $status = 'failed';
+                Log::error("[SMS] GreenWeb API returned non-success: \"{$responseText}\"");
+            }
         } catch (\Exception $e) {
             $responseText = $e->getMessage();
             $status = 'failed';
+            Log::error("[SMS] GreenWeb API exception: {$responseText}");
         }
 
-        // ── Deduct balance on successful send ─────────────
+        // ── Deduct balance ONLY on confirmed success ──────
         if ($status === 'sent' && $tenantId && isset($wallet)) {
             $wallet->deduct($smsCount, "SMS to {$to} ({$smsType})");
         }
 
-        // ── Log ───────────────────────────────────────────
+        // ── Log with REAL status ──────────────────────────
         SmsLog::create([
             'phone'       => $to,
             'message'     => $message,
@@ -105,7 +130,7 @@ class SmsService
         ]);
 
         // Reminder log for billing types
-        if (in_array($smsType, ['bill_generate', 'bill_reminder', 'due_date', 'overdue'])) {
+        if (in_array($smsType, ['bill_generate', 'bill_reminder', 'due_date', 'overdue', 'new_customer_bill'])) {
             ReminderLog::create([
                 'phone'       => $to,
                 'message'     => $message,
@@ -115,14 +140,75 @@ class SmsService
             ]);
         }
 
-        $result = ['success' => $status === 'sent', 'status' => $status, 'response' => $responseText];
+        $result = [
+            'success'  => $status === 'sent',
+            'status'   => $status,
+            'response' => $responseText,
+        ];
+
+        // Include error message for failed sends
+        if ($status === 'failed') {
+            $result['error'] = "SMS delivery failed: {$responseText}";
+        }
 
         if ($tenantId && isset($wallet)) {
             $wallet->refresh();
             $result['remaining_balance'] = $wallet->balance;
         }
 
+        Log::info("[SMS] Final result: success=" . ($result['success'] ? 'true' : 'false') . ", status={$status}");
+
         return $result;
+    }
+
+    /**
+     * Send bulk SMS (for queue-based processing)
+     */
+    public function sendBulk(array $phones, string $message, string $smsType = 'bulk'): array
+    {
+        $results = [];
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($phones as $phone) {
+            $result = $this->send($phone, $message, $smsType);
+            $results[] = $result;
+            if ($result['success']) {
+                $sent++;
+            } else {
+                $failed++;
+            }
+        }
+
+        return [
+            'total'  => count($phones),
+            'sent'   => $sent,
+            'failed' => $failed,
+            'results' => $results,
+        ];
+    }
+
+    /**
+     * Check GreenWeb API balance
+     */
+    public function checkBalance(): array
+    {
+        $settings = SmsSetting::first();
+        $token = $settings->api_token ?? config('services.greenweb.token', '');
+
+        if (!$token) {
+            return ['error' => 'No API token configured'];
+        }
+
+        try {
+            $response = Http::timeout(15)->get('http://api.greenweb.com.bd/api.php', [
+                'token' => $token,
+                'type'  => 'balance',
+            ]);
+            return ['balance' => $response->body()];
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
     }
 
     /**
