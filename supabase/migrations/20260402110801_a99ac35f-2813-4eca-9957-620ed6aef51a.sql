@@ -1,0 +1,1 @@
+UPDATE super_admins SET password_hash = '$2b$10$xOurGCXodz7jCYJ1fp/PnuWsc4TGzjus49iZbglbUupbwu/rep7jS', failed_attempts = 0, locked_until = NULL WHERE username = 'superadmin';
