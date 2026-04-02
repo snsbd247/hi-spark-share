@@ -1289,78 +1289,8 @@ export default function SuperTenantProfile() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Full System Reset + Demo Import Card ─────────────── */}
-      <Card className="border-destructive/50 bg-destructive/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <Database className="h-5 w-5" /> 🔥 Full System Reset + Demo Import
-          </CardTitle>
-          <CardDescription>
-            সম্পূর্ণ সিস্টেম রিসেট করুন — শুধুমাত্র Super Admin টেবিল সংরক্ষিত থাকবে। রিসেটের পর ডেমো ডাটা (Geo, Accounts, Templates, Ledger) স্বয়ংক্রিয়ভাবে ইমপোর্ট হবে।
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex-1 space-y-1 text-sm text-muted-foreground">
-              <p className="font-semibold text-destructive">🚨 সব কিছু মুছে যাবে:</p>
-              <ul className="list-disc list-inside text-xs space-y-0.5 ml-2">
-                <li>সকল Tenants, Users, Roles, Permissions</li>
-                <li>সকল Customers, Bills, Payments, Transactions</li>
-                <li>সকল Settings, Templates, Geo data, Accounts</li>
-                <li>সকল HR, Inventory, SMS logs, Sessions</li>
-                <li>সকল Plans, Subscriptions, Domains, Modules</li>
-              </ul>
-              <p className="text-xs mt-2 font-semibold text-primary">✅ শুধুমাত্র সংরক্ষিত: super_admins, super_admin_sessions</p>
-              <p className="text-xs">রিসেটের পর Geo Data, Chart of Accounts, SMS Templates, এবং Ledger Heads স্বয়ংক্রিয়ভাবে ইমপোর্ট হবে।</p>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={() => setShowFullResetConfirm(true)}
-              className="shrink-0"
-            >
-              <Database className="h-4 w-4 mr-1" /> Full System Reset
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Full System Reset Confirmation Dialog */}
-      <Dialog open={showFullResetConfirm} onOpenChange={(o) => { if (!o) { setShowFullResetConfirm(false); setFullResetConfirmText(""); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" /> 🔥 Full System Reset Confirmation
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm space-y-2">
-              <p className="font-semibold">⚠️ এটি একটি অত্যন্ত বিপজ্জনক অপারেশন!</p>
-              <p>Super Admins ছাড়া সম্পূর্ণ সিস্টেমের সব ডাটা মুছে যাবে।</p>
-              <p>রিসেটের পর ডেমো ডাটা (Geo, COA, Templates, Ledger) ইমপোর্ট হবে।</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Type <span className="font-mono font-bold">DELETE EVERYTHING</span> to confirm</Label>
-              <Input
-                value={fullResetConfirmText}
-                onChange={(e) => setFullResetConfirmText(e.target.value)}
-                placeholder="Type DELETE EVERYTHING here"
-                className="font-mono"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowFullResetConfirm(false); setFullResetConfirmText(""); }}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => fullResetMut.mutate()}
-              disabled={fullResetConfirmText !== "DELETE EVERYTHING" || fullResetMut.isPending}
-            >
-              {fullResetMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Database className="h-4 w-4 mr-1" />}
-              {fullResetMut.isPending ? "Resetting & Importing..." : "Confirm Full Reset"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       <Tabs defaultValue="sms" className="w-full">
         <TabsList className="w-full grid grid-cols-5">
