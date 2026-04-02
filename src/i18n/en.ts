@@ -618,6 +618,8 @@ const en = {
     push: "Push",
     noPoolsConfigured: "No IP Pool configured. Sync from router or add manually.",
     poolCreated: "IP Pool created",
+    poolUpdated: "IP Pool updated",
+    editPool: "Edit Pool",
     deleted: "Deleted",
     syncSuccess: "IP Pools synced",
     pushSuccess: "Push successful",

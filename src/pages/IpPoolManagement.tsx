@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Network, Globe, RefreshCw, Upload, Router } from "lucide-react";
+import { Plus, Trash2, Network, Globe, RefreshCw, Upload, Router, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -22,13 +22,13 @@ export default function IpPoolManagement() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingPool, setEditingPool] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [pushingAll, setPushingAll] = useState(false);
   const [pushingId, setPushingId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    name: "", subnet: "", gateway: "", start_ip: "", end_ip: "",
-    total_ips: 0, type: "pppoe", router_id: "",
-  });
+
+  const emptyForm = { name: "", subnet: "", gateway: "", start_ip: "", end_ip: "", total_ips: 0, type: "pppoe", router_id: "" };
+  const [form, setForm] = useState(emptyForm);
 
   const { data: pools = [] } = useQuery({
     queryKey: ["ip-pools"],
@@ -64,7 +64,31 @@ export default function IpPoolManagement() {
       queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
       toast.success(t.ipPool.poolCreated);
       setOpen(false);
-      setForm({ name: "", subnet: "", gateway: "", start_ip: "", end_ip: "", total_ips: 0, type: "pppoe", router_id: "" });
+      setEditingPool(null);
+      setForm(emptyForm);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof form }) => {
+      const ranges = data.start_ip && data.end_ip ? `${data.start_ip}-${data.end_ip}` : data.subnet;
+      const updateData: any = {
+        name: data.name, subnet: data.subnet || ranges, gateway: data.gateway,
+        start_ip: data.start_ip, end_ip: data.end_ip, total_ips: data.total_ips || 0,
+        type: data.type, ranges,
+      };
+      if (data.router_id) updateData.router_id = data.router_id;
+      else updateData.router_id = null;
+      const { error } = await db.from("ip_pools").update(updateData).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
+      toast.success(t.ipPool.poolUpdated || "Pool updated");
+      setOpen(false);
+      setEditingPool(null);
+      setForm(emptyForm);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -206,12 +230,12 @@ export default function IpPoolManagement() {
               </Select>
             )}
 
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingPool(null); setForm(emptyForm); } }}>
               <DialogTrigger asChild>
                 <Button><Plus className="h-4 w-4 mr-2" /> {t.ipPool.addPool}</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>{t.ipPool.createPool}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editingPool ? (t.ipPool.editPool || "Edit Pool") : t.ipPool.createPool}</DialogTitle></DialogHeader>
                 <div className="space-y-4">
                   <div>
                     <Label>{t.ipPool.poolName}</Label>
@@ -261,9 +285,19 @@ export default function IpPoolManagement() {
                     <Label>{t.ipPool.totalIps}</Label>
                     <Input type="number" value={form.total_ips} onChange={e => setForm(f => ({ ...f, total_ips: Number(e.target.value) }))} />
                   </div>
-                  <Button onClick={() => createMutation.mutate(form)} disabled={!form.name || createMutation.isPending} className="w-full">
-                    {t.ipPool.createPool}
-                  </Button>
+                  {editingPool ? (
+                    <Button
+                      onClick={() => updateMutation.mutate({ id: editingPool.id, data: form })}
+                      disabled={!form.name || updateMutation.isPending}
+                      className="w-full"
+                    >
+                      {t.ipPool.editPool || "Edit Pool"}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => createMutation.mutate(form)} disabled={!form.name || createMutation.isPending} className="w-full">
+                      {t.ipPool.createPool}
+                    </Button>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
@@ -329,6 +363,26 @@ export default function IpPoolManagement() {
                     >
                       <Upload className={`h-3 w-3 mr-1 ${pushingId === pool.id ? "animate-spin" : ""}`} />
                       {pushingId === pool.id ? t.ipPool.pushing : t.ipPool.push}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingPool(pool);
+                        setForm({
+                          name: pool.name || "",
+                          subnet: pool.subnet || "",
+                          gateway: pool.gateway || "",
+                          start_ip: pool.start_ip || "",
+                          end_ip: pool.end_ip || "",
+                          total_ips: pool.total_ips || 0,
+                          type: pool.type || "pppoe",
+                          router_id: pool.router_id || "",
+                        });
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost"
