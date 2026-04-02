@@ -415,6 +415,33 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -489,6 +516,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      customer_devices: {
+        Row: {
+          assigned_at: string | null
+          created_at: string
+          customer_id: string | null
+          id: string
+          ip_address: string | null
+          mac_address: string | null
+          notes: string | null
+          product_id: string | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          ip_address?: string | null
+          mac_address?: string | null
+          notes?: string | null
+          product_id?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          ip_address?: string | null
+          mac_address?: string | null
+          notes?: string | null
+          product_id?: string | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_devices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_ledger: {
         Row: {
@@ -1482,6 +1559,39 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_logs: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          product_id: string | null
+          quantity: number
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_id?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_id?: string | null
+          quantity?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       ip_pools: {
         Row: {
           created_at: string
@@ -2249,13 +2359,54 @@ export type Database = {
           },
         ]
       }
+      product_serials: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          product_id: string | null
+          serial_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          serial_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          serial_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_serials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          brand: string | null
           buy_price: number
           category: string | null
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
+          model: string | null
           name: string
           sell_price: number
           sku: string | null
@@ -2265,11 +2416,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           buy_price?: number
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          model?: string | null
           name: string
           sell_price?: number
           sku?: string | null
@@ -2279,11 +2433,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           buy_price?: number
           category?: string | null
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          model?: string | null
           name?: string
           sell_price?: number
           sku?: string | null
