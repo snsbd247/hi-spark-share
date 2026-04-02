@@ -306,6 +306,7 @@ export default function AppSidebar() {
     { to: "/settings/backup", icon: HardDrive, label: t.sidebar.backupRestore, module: "settings" },
     { to: "/settings/api-health", icon: Activity, label: t.sidebar.apiHealth, module: "settings" },
     { to: "/settings/domains", icon: Globe, label: "Domain Management", module: "settings" },
+    { to: "/settings/subscription", icon: Receipt, label: "Subscription Invoices" },
   ];
 
   const siteName = branding.site_name || "Smart ISP";
