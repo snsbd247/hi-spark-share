@@ -314,6 +314,7 @@ export default function Packages() {
                  <TableHead>{t.portal.speed}</TableHead>
                  <TableHead>{t.billing.billAmount}</TableHead>
                  <TableHead>Bandwidth</TableHead>
+                 <TableHead>IP Pool</TableHead>
                  <TableHead>Router</TableHead>
                  <TableHead>MikroTik Profile</TableHead>
                  <TableHead>{t.common.status}</TableHead>
