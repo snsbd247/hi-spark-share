@@ -578,4 +578,18 @@ export const superAdminApi = {
     if (to) params.set("to", to);
     return request(`/tenants/${tenantId}/reports/ledger?${params}`);
   },
+  getTenantReportTrialBalance: (tenantId: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    return request(`/tenants/${tenantId}/reports/trial-balance?${params}`);
+  },
+  getTenantReportBalanceSheet: (tenantId: string) => request(`/tenants/${tenantId}/reports/balance-sheet`),
+  getTenantReportAccountBalances: (tenantId: string) => request(`/tenants/${tenantId}/reports/account-balances`),
+  getTenantReportReceivablePayable: (tenantId: string) => request(`/tenants/${tenantId}/reports/receivable-payable`),
+  getTenantReportInventory: (tenantId: string) => request(`/tenants/${tenantId}/reports/inventory`),
+  getTenantReportCashFlow: (tenantId: string, year?: number) => {
+    const params = year ? `?year=${year}` : "";
+    return request(`/tenants/${tenantId}/reports/cash-flow${params}`);
+  },
 };

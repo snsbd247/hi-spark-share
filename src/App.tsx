@@ -70,7 +70,7 @@ const FooterSettings = lazy(() => import("@/pages/settings/FooterSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AccPurchases = lazy(() => import("@/pages/accounting/Purchases"));
 const AccProducts = lazy(() => import("@/pages/accounting/Products"));
-const AccVendors = lazy(() => import("@/pages/accounting/Vendors"));
+
 const AccSales = lazy(() => import("@/pages/accounting/Sales"));
 const AccExpenses = lazy(() => import("@/pages/accounting/Expenses"));
 const AccReports = lazy(() => import("@/pages/accounting/Reports"));
@@ -228,7 +228,7 @@ function App() {
                 <Route path="/accounting/equity-changes" element={<PermissionGuard module="accounting"><EquityChanges /></PermissionGuard>} />
                 <Route path="/accounting/daybook" element={<PermissionGuard module="accounting"><Daybook /></PermissionGuard>} />
                 <Route path="/accounting/receivable-payable" element={<PermissionGuard module="accounting"><ReceivablePayable /></PermissionGuard>} />
-                <Route path="/accounting/vendors" element={<PermissionGuard module="accounting"><AccVendors /></PermissionGuard>} />
+                
                 <Route path="/accounting/products" element={<PermissionGuard module="inventory"><AccProducts /></PermissionGuard>} />
                 <Route path="/accounting/purchases" element={<PermissionGuard module="accounting"><AccPurchases /></PermissionGuard>} />
                 <Route path="/accounting/sales" element={<PermissionGuard module="inventory"><AccSales /></PermissionGuard>} />

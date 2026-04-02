@@ -68,7 +68,7 @@ const accountingNav: NavItem[] = [
   { to: "/accounting/expense-head", icon: DollarSign, label: "Expense Heads", module: "accounting" },
   { to: "/accounting/others-head", icon: BoxIcon, label: "Other Heads", module: "accounting" },
   { to: "/accounting/expenses", icon: DollarSign, label: "Expenses", module: "accounting" },
-  { to: "/accounting/vendors", icon: Building2, label: "Vendors", module: "accounting" },
+  
   { to: "/accounting/receivable-payable", icon: Receipt, label: "Receivable & Payable", module: "accounting" },
   { to: "/accounting/trial-balance", icon: Scale, label: "Trial Balance", module: "accounting" },
   { to: "/accounting/profit-loss", icon: TrendingUp, label: "Profit & Loss", module: "accounting" },
@@ -246,7 +246,7 @@ export default function AppSidebar() {
     { to: "/accounting/expense-head", icon: DollarSign, label: t.sidebar.expenseHeads, module: "accounting" },
     { to: "/accounting/others-head", icon: BoxIcon, label: t.sidebar.otherHeads, module: "accounting" },
     { to: "/accounting/expenses", icon: DollarSign, label: t.sidebar.expenses, module: "accounting" },
-    { to: "/accounting/vendors", icon: Building2, label: t.sidebar.vendors, module: "accounting" },
+    
     { to: "/accounting/receivable-payable", icon: Receipt, label: t.sidebar.receivablePayable, module: "accounting" },
     { to: "/accounting/trial-balance", icon: Scale, label: t.sidebar.trialBalance, module: "accounting" },
     { to: "/accounting/profit-loss", icon: TrendingUp, label: t.sidebar.profitLoss, module: "accounting" },
