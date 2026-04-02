@@ -267,6 +267,7 @@ function App() {
                 <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
                 <Route path="/settings/api-health" element={<PermissionGuard module="settings"><ApiHealthMonitor /></PermissionGuard>} />
                 <Route path="/settings/domains" element={<PermissionGuard module="settings"><DomainManagement /></PermissionGuard>} />
+                <Route path="/settings/subscription" element={<ProtectedRoute><SubscriptionInvoices /></ProtectedRoute>} />
                 <Route path="/coupons" element={<PermissionGuard module="billing"><CouponManagement /></PermissionGuard>} />
                 <Route path="/ip-pools" element={<PermissionGuard module="settings"><IpPoolManagement /></PermissionGuard>} />
                 <Route path="/faq" element={<PermissionGuard module="settings"><FaqManagement /></PermissionGuard>} />
