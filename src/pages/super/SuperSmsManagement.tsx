@@ -90,10 +90,20 @@ export default function SuperSmsManagement() {
   const apiBalance = useMemo(() => {
     if (!liveBalance) return null;
     const balArr = liveBalance.balance || liveBalance;
+    // GreenWeb returns [{action:"balance", response:"154.66"}, {action:"expiry", response:"..."}, ...]
     if (Array.isArray(balArr) && balArr.length > 0) {
+      const findAction = (name: string) => balArr.find((b: any) => b.action === name)?.response;
+      const balVal = findAction("balance");
+      if (balVal !== undefined) {
+        return {
+          balance: balVal,
+          expire_date: findAction("expiry") ?? null,
+          rate: findAction("rate") ?? null,
+        };
+      }
+      // Fallback: old format
       const item = balArr[0];
       return {
-        ...item,
         balance: item.balance ?? item.remaining ?? item.credit ?? null,
         expire_date: item.expire_date ?? item.expiry ?? item.expire ?? null,
         rate: item.rate ?? item.sms_rate ?? null,
@@ -101,9 +111,9 @@ export default function SuperSmsManagement() {
     }
     if (typeof balArr === 'object' && balArr !== null) {
       return {
-        ...balArr,
-        balance: balArr.balance ?? balArr.remaining ?? balArr.credit ?? null,
+        balance: balArr.balance ?? balArr.remaining ?? balArr.credit ?? balArr.response ?? null,
         expire_date: balArr.expire_date ?? balArr.expiry ?? balArr.expire ?? null,
+        rate: balArr.rate ?? balArr.sms_rate ?? null,
       };
     }
     return null;
