@@ -13,6 +13,8 @@ class Tenant extends Model
         'name', 'subdomain', 'email', 'phone',
         'logo_url', 'status', 'plan',
         'trial_ends_at', 'settings',
+        'max_users', 'max_customers',
+        'plan_expire_date', 'grace_days', 'plan_id', 'plan_expiry_message',
     ];
 
     protected $casts = [
