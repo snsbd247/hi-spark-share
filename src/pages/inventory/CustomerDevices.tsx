@@ -78,8 +78,16 @@ export default function CustomerDevices() {
 
   const assignMut = useMutation({
     mutationFn: async () => {
+      // Validate stock
+      if (form.product_id) {
+        const prod = products.find((p: any) => p.id === form.product_id);
+        if (prod && Number(prod.stock) <= 0) {
+          throw new Error("Product is out of stock!");
+        }
+      }
+
       // Create device record
-      const { error } = await (db as any).from("customer_devices").insert({
+      const { data: device, error } = await (db as any).from("customer_devices").insert({
         customer_id: form.customer_id,
         product_id: form.product_id || null,
         serial_number: form.serial_number || null,
@@ -88,18 +96,22 @@ export default function CustomerDevices() {
         assigned_at: new Date().toISOString(),
         status: "active",
         notes: form.notes || null,
-      });
+      }).select().single();
       if (error) throw error;
 
-      // Decrement stock
+      // Decrement stock & log
       if (form.product_id) {
-        await (db as any).from("products").update({ stock: (products.find((p: any) => p.id === form.product_id)?.stock || 1) - 1 }).eq("id", form.product_id);
+        const prod = products.find((p: any) => p.id === form.product_id);
+        const newStock = Math.max(0, (Number(prod?.stock) || 1) - 1);
+        await (db as any).from("products").update({ stock: newStock }).eq("id", form.product_id);
 
         await (db as any).from("inventory_logs").insert({
           product_id: form.product_id,
           type: "out",
           quantity: 1,
-          note: "Device assigned to customer",
+          note: `Device assigned to customer`,
+          reference_type: "customer_device",
+          reference_id: device.id,
         });
       }
 
