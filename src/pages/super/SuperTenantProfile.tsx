@@ -22,8 +22,9 @@ import {
   AlertTriangle, Loader2, Database, MapPin, BookOpen, Mail, Zap,
   Shield, Activity, Clock, TrendingUp, Lightbulb, Plus, Ban,
   RefreshCw, Trash2, ExternalLink, Phone, AtSign, Calendar,
-  LogIn, Users, Eye, Edit, Key, History, Receipt
+  LogIn, Users, Eye, Edit, Key, History, Receipt, BarChart3
 } from "lucide-react";
+import TenantFinancialReportsTab from "@/components/super/TenantFinancialReportsTab";
 
 // ─── SMS Recharge Dialog ─────────────────────────────────────
 function SmsRechargeDialog({ tenantId, currentBalance, onSuccess }: {
