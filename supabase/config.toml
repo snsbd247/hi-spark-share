@@ -1,4 +1,1 @@
 project_id = "udxrzqpivtzunnfenmyd"
-
-[functions.backup-restore]
-verify_jwt = false
