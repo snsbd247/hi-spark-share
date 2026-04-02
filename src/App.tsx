@@ -69,6 +69,7 @@ const BackupRestore = lazy(() => import("@/pages/settings/BackupRestore"));
 const FooterSettings = lazy(() => import("@/pages/settings/FooterSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AccPurchases = lazy(() => import("@/pages/accounting/Purchases"));
+const AccountingDashboard = lazy(() => import("@/pages/accounting/AccountingDashboard"));
 const AccProducts = lazy(() => import("@/pages/accounting/Products"));
 
 const AccSales = lazy(() => import("@/pages/accounting/Sales"));
