@@ -204,6 +204,7 @@ const DomainManagement = () => {
   };
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Main Domain Card */}
       <Card>
