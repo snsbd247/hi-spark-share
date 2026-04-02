@@ -8,6 +8,7 @@ export interface FooterSettings {
   footer_developer: string;
   system_version: string;
   auto_update_year: boolean;
+  branding_copyright_text: string;
 }
 
 const DEFAULTS: FooterSettings = {
