@@ -399,8 +399,19 @@ export default function Packages() {
                       <SelectItem key={r.id} value={r.id}>{r.name} — {r.ip_address}</SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
-              </div>
+                 </Select>
+               </div>
+               <div className="space-y-1.5 mb-4">
+                 <Label>IP Pool (Remote Address)</Label>
+                 <Select value={form.ip_pool_id} onValueChange={(v) => setForm({ ...form, ip_pool_id: v })}>
+                   <SelectTrigger><SelectValue placeholder="Select IP Pool for PPP Profile" /></SelectTrigger>
+                   <SelectContent>
+                     {ipPools?.filter((p: any) => !form.router_id || p.router_id === form.router_id).map((p: any) => (
+                       <SelectItem key={p.id} value={p.id}>{p.name} — {p.subnet} (GW: {p.gateway || "N/A"})</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Download Speed (Mbps)</Label>
