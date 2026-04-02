@@ -91,7 +91,7 @@ export default function Products() {
 
   const openEdit = (p: Product) => {
     setEditing(p);
-    setForm({ name: p.name, sku: p.sku || "", category: p.category || "other", description: p.description || "", buy_price: Number(p.buy_price), sell_price: Number(p.sell_price), stock: Number(p.stock), unit: p.unit || "pcs" });
+    setForm({ name: p.name, sku: p.sku || "", category: p.category || "other", category_id: p.category_id || "", description: p.description || "", buy_price: Number(p.buy_price), sell_price: Number(p.sell_price), stock: Number(p.stock), unit: p.unit || "pcs" });
     setOpen(true);
   };
 
