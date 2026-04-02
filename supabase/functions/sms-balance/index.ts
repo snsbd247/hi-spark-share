@@ -55,50 +55,32 @@ Deno.serve(async (req) => {
         ? (({ token: _t, ...rest }: any) => rest)(rawBalance)
         : rawBalance;
 
-    // Fetch sent/failed count from local sms_logs (accurate source of truth)
-    let sentCount = 0;
-    let failedCount = 0;
+    // Fetch total sent SMS stats from GreenWeb tokensms API
+    let totalSent = 0;
     try {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      const fromDate = thirtyDaysAgo.toISOString();
-
-      const { data: sentData } = await supabase
-        .from("sms_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "sent")
-        .gte("created_at", fromDate);
-
-      const { data: failedData } = await supabase
-        .from("sms_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "failed")
-        .gte("created_at", fromDate);
-
-      // count comes from the response headers when head:true
-      const { count: sentC } = await supabase
-        .from("sms_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "sent")
-        .gte("created_at", fromDate);
-
-      const { count: failedC } = await supabase
-        .from("sms_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "failed")
-        .gte("created_at", fromDate);
-
-      sentCount = sentC ?? 0;
-      failedCount = failedC ?? 0;
+      const statsUrl = `http://api.greenweb.com.bd/g_api.php?token=${token}&tokensms`;
+      const statsRes = await fetch(statsUrl);
+      const statsText = await statsRes.text();
+      console.log("GreenWeb tokensms response:", statsText);
+      // Response is typically a number or JSON
+      const parsed = parseInt(statsText.trim(), 10);
+      if (!isNaN(parsed)) {
+        totalSent = parsed;
+      } else {
+        try {
+          const statsJson = JSON.parse(statsText);
+          totalSent = statsJson.total_sms ?? statsJson.tokensms ?? statsJson.sent ?? statsJson.count ?? 0;
+        } catch {
+          totalSent = 0;
+        }
+      }
     } catch {
-      // DB query failed, continue with balance only
+      // Stats fetch failed
     }
 
     const result = {
       balance: Array.isArray(balanceData) ? balanceData : [balanceData],
-      sent_30_days: sentCount,
-      failed_30_days: failedCount,
+      total_sent: totalSent,
     };
 
     return new Response(JSON.stringify(result), {
