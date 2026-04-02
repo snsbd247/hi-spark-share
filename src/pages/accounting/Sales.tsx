@@ -147,6 +147,9 @@ export default function Sales() {
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["inventory_logs_recent"] });
+      qc.invalidateQueries({ queryKey: ["sale_serials"] });
+      qc.invalidateQueries({ queryKey: ["product_serials"] });
       toast.success("Sale created & posted to ledger");
       closeDialog();
     },
