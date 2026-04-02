@@ -45,7 +45,15 @@ export default function Products() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const { data } = await ( db as any).from("products").select("*").order("name");
+      const { data } = await ( db as any).from("products").select("*,categoryRef:categories(name)").order("name");
+      return data || [];
+    },
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await (db as any).from("categories").select("*").eq("status", "active").order("name");
       return data || [];
     },
   });
