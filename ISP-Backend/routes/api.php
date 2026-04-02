@@ -537,6 +537,12 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/tenants/{id}/reports/customers', [\App\Http\Controllers\Api\TenantReportController::class, 'customers']);
     Route::get('/tenants/{id}/reports/sms', [\App\Http\Controllers\Api\TenantReportController::class, 'sms']);
     Route::get('/tenants/{id}/reports/ledger', [\App\Http\Controllers\Api\TenantReportController::class, 'ledger']);
+    Route::get('/tenants/{id}/reports/trial-balance', [\App\Http\Controllers\Api\TenantReportController::class, 'trialBalance']);
+    Route::get('/tenants/{id}/reports/balance-sheet', [\App\Http\Controllers\Api\TenantReportController::class, 'balanceSheet']);
+    Route::get('/tenants/{id}/reports/account-balances', [\App\Http\Controllers\Api\TenantReportController::class, 'accountBalances']);
+    Route::get('/tenants/{id}/reports/receivable-payable', [\App\Http\Controllers\Api\TenantReportController::class, 'receivablePayable']);
+    Route::get('/tenants/{id}/reports/inventory', [\App\Http\Controllers\Api\TenantReportController::class, 'inventory']);
+    Route::get('/tenants/{id}/reports/cash-flow', [\App\Http\Controllers\Api\TenantReportController::class, 'cashFlow']);
 });
 
 /*
