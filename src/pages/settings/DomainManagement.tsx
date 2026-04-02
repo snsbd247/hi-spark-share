@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,6 +204,7 @@ const DomainManagement = () => {
   };
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Main Domain Card */}
       <Card>
@@ -452,6 +454,7 @@ const DomainManagement = () => {
         onClose={() => setDnsDialogDomain(null)}
       />
     </div>
+    </DashboardLayout>
   );
 };
 
