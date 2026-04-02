@@ -620,6 +620,8 @@ const bn: Translations = {
     push: "পুশ",
     noPoolsConfigured: "কোনো IP Pool কনফিগার করা হয়নি। রাউটার থেকে সিঙ্ক করুন অথবা ম্যানুয়ালি যোগ করুন।",
     poolCreated: "IP পুল তৈরি হয়েছে",
+    poolUpdated: "IP পুল আপডেট হয়েছে",
+    editPool: "পুল এডিট",
     deleted: "ডিলিট হয়েছে",
     syncSuccess: "IP পুল সিঙ্ক হয়েছে",
     pushSuccess: "পুশ সফল",
