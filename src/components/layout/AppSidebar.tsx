@@ -78,8 +78,13 @@ const accountingNav: NavItem[] = [
 ];
 
 const inventoryNav: NavItem[] = [
-  { to: "/accounting/products", icon: BoxIcon, label: "Products", module: "inventory" },
-  { to: "/accounting/sales", icon: DollarSign, label: "Sales", module: "inventory" },
+  { to: "/inventory", icon: BarChart3, label: "Dashboard", module: "inventory" },
+  { to: "/inventory/products", icon: BoxIcon, label: "Products", module: "inventory" },
+  { to: "/inventory/categories", icon: BoxIcon, label: "Categories", module: "inventory" },
+  { to: "/inventory/serials", icon: BoxIcon, label: "Serial Numbers", module: "inventory" },
+  { to: "/inventory/devices", icon: BoxIcon, label: "Customer Devices", module: "inventory" },
+  { to: "/inventory/sales", icon: DollarSign, label: "Sales", module: "inventory" },
+  { to: "/inventory/logs", icon: BoxIcon, label: "Stock Logs", module: "inventory" },
 ];
 
 const supplierNav: NavItem[] = [
@@ -251,8 +256,13 @@ export default function AppSidebar() {
   ];
 
   const tInventoryNav: NavItem[] = [
-    { to: "/accounting/products", icon: BoxIcon, label: t.sidebar.products, module: "inventory" },
-    { to: "/accounting/sales", icon: DollarSign, label: t.sidebar.sales, module: "inventory" },
+    { to: "/inventory", icon: BarChart3, label: t.sidebar.inventory || "Dashboard", module: "inventory" },
+    { to: "/inventory/products", icon: BoxIcon, label: t.sidebar.products, module: "inventory" },
+    { to: "/inventory/categories", icon: BoxIcon, label: "Categories", module: "inventory" },
+    { to: "/inventory/serials", icon: BoxIcon, label: "Serial Numbers", module: "inventory" },
+    { to: "/inventory/devices", icon: BoxIcon, label: "Customer Devices", module: "inventory" },
+    { to: "/inventory/sales", icon: DollarSign, label: t.sidebar.sales, module: "inventory" },
+    { to: "/inventory/logs", icon: BoxIcon, label: "Stock Logs", module: "inventory" },
   ];
 
   const tSupplierNav: NavItem[] = [

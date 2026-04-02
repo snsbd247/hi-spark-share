@@ -117,6 +117,13 @@ const IpPoolManagement = lazy(() => import("@/pages/IpPoolManagement"));
 const FaqManagement = lazy(() => import("@/pages/FaqManagement"));
 const AdvancedAnalytics = lazy(() => import("@/pages/AdvancedAnalytics"));
 
+// Inventory module
+const InventoryDashboard = lazy(() => import("@/pages/inventory/InventoryDashboard"));
+const InventoryCategories = lazy(() => import("@/pages/inventory/Categories"));
+const ProductSerials = lazy(() => import("@/pages/inventory/ProductSerials"));
+const CustomerDevices = lazy(() => import("@/pages/inventory/CustomerDevices"));
+const InventoryLogs = lazy(() => import("@/pages/inventory/InventoryLogs"));
+
 // Super Admin (separate chunk)
 import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 const SuperAdminLogin = lazy(() => import("@/pages/super/SuperAdminLogin"));
@@ -225,7 +232,15 @@ function App() {
                 <Route path="/accounting/expenses" element={<PermissionGuard module="accounting"><AccExpenses /></PermissionGuard>} />
                 <Route path="/accounting/reports" element={<PermissionGuard module="accounting"><AccReports /></PermissionGuard>} />
 
-                {/* Supplier Routes */}
+                {/* Inventory Routes */}
+                <Route path="/inventory" element={<PermissionGuard module="inventory"><InventoryDashboard /></PermissionGuard>} />
+                <Route path="/inventory/products" element={<PermissionGuard module="inventory"><AccProducts /></PermissionGuard>} />
+                <Route path="/inventory/categories" element={<PermissionGuard module="inventory"><InventoryCategories /></PermissionGuard>} />
+                <Route path="/inventory/serials" element={<PermissionGuard module="inventory"><ProductSerials /></PermissionGuard>} />
+                <Route path="/inventory/devices" element={<PermissionGuard module="inventory"><CustomerDevices /></PermissionGuard>} />
+                <Route path="/inventory/logs" element={<PermissionGuard module="inventory"><InventoryLogs /></PermissionGuard>} />
+                <Route path="/inventory/sales" element={<PermissionGuard module="inventory"><AccSales /></PermissionGuard>} />
+
                 <Route path="/supplier/list" element={<PermissionGuard module="supplier"><SupplierList /></PermissionGuard>} />
                 <Route path="/supplier/:id" element={<PermissionGuard module="supplier"><SupplierProfile /></PermissionGuard>} />
                 <Route path="/supplier/purchases" element={<PermissionGuard module="supplier"><SupplierPurchases /></PermissionGuard>} />
