@@ -2214,6 +2214,7 @@ export type Database = {
           password: string | null
           receiving_account_id: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
           username: string | null
         }
@@ -2230,6 +2231,7 @@ export type Database = {
           password?: string | null
           receiving_account_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -2246,6 +2248,7 @@ export type Database = {
           password?: string | null
           receiving_account_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -2255,6 +2258,13 @@ export type Database = {
             columns: ["receiving_account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_gateways_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

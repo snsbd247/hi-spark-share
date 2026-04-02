@@ -451,12 +451,61 @@ export async function importLedgerSettings(force = false): Promise<SetupResult> 
   });
 }
 
-// ─── 5. Full Setup (One-Click) ──────────────────────────────────
+// ─── 5. Payment Gateways Sandbox Seeder ────────────────────────
+export async function importPaymentGateways(force = false): Promise<SetupResult> {
+  return withErrorHandling("Payment Gateways Import", async () => {
+    const existingCount = await tableCount("payment_gateways");
+    if (existingCount > 0 && !force) {
+      return { success: true, message: `Payment gateways already configured (${existingCount})`, count: existingCount, skipped: true };
+    }
+
+    if (force && existingCount > 0) {
+      await (supabase.from as any)("payment_gateways").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
+    const gateways = [
+      {
+        gateway_name: "bkash",
+        environment: "sandbox",
+        status: "active",
+        app_key: "4f6o0cjiki2rfm34kfdadl1eqq",
+        app_secret: "2is7hdktrekvrbljjh44ll3d9l1dtjo4pasmjvs5vl5qr3fhc4b",
+        username: "sandboxTokenizedUser02",
+        password: "sandboxTokenizedUser02@12345",
+        merchant_number: "01770618567",
+        base_url: "https://tokenized.sandbox.bka.sh/v1.2.0-beta",
+      },
+      {
+        gateway_name: "nagad",
+        environment: "sandbox",
+        status: "active",
+        app_key: "683002007104225",
+        app_secret: "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCJakyLqojWTDAVUdN...",
+        username: "",
+        password: "",
+        merchant_number: "683002007104225",
+        base_url: "https://sandbox.mynagad.com:10061/remote-payment-gateway-1.0/api/dfs",
+      },
+    ];
+
+    const { error } = await (supabase.from as any)("payment_gateways").insert(gateways);
+    if (error) throw new Error(`Payment gateways: ${error.message}`);
+
+    return {
+      success: true,
+      message: `${gateways.length} payment gateways (bKash & Nagad sandbox) configured`,
+      count: gateways.length,
+    };
+  });
+}
+
+// ─── 6. Full Setup (One-Click) ──────────────────────────────────
 export interface FullSetupResult {
   geo: SetupResult;
   accounts: SetupResult;
   templates: SetupResult;
   ledger: SetupResult;
+  paymentGateways: SetupResult;
   overall: boolean;
 }
 
@@ -465,13 +514,15 @@ export async function setupAll(force = false): Promise<FullSetupResult> {
   const accounts = await importChartOfAccounts(force);
   const templates = await importTemplates(force);
   const ledger = await importLedgerSettings(force);
+  const paymentGateways = await importPaymentGateways(force);
 
   return {
     geo,
     accounts,
     templates,
     ledger,
-    overall: geo.success && accounts.success && templates.success && ledger.success,
+    paymentGateways,
+    overall: geo.success && accounts.success && templates.success && ledger.success && paymentGateways.success,
   };
 }
 
@@ -482,6 +533,7 @@ export async function runSetupStep(step: string, force = false): Promise<SetupRe
     case "accounts": return importChartOfAccounts(force);
     case "templates": return importTemplates(force);
     case "ledger": return importLedgerSettings(force);
+    case "payment_gateways": return importPaymentGateways(force);
     default: return { success: false, message: `Unknown setup step: ${step}`, error_code: "INVALID_STEP" };
   }
 }

@@ -847,17 +847,19 @@ export default function SuperTenantProfile() {
       if (step === "all") {
         const result: FullSetupResult = await setupAll(forceReimport);
         if (!result.overall) {
-          const failures = [
+        const failures = [
             !result.geo.success && `Geo: ${result.geo.message}`,
             !result.accounts.success && `Accounts: ${result.accounts.message}`,
             !result.templates.success && `Templates: ${result.templates.message}`,
             !result.ledger.success && `Ledger: ${result.ledger.message}`,
+            !result.paymentGateways.success && `Payment Gateways: ${result.paymentGateways.message}`,
           ].filter(Boolean);
           throw new Error(failures.join("; "));
         }
         await superAdminApi.updateTenant(id!, {
           setup_geo: true, setup_accounts: true,
           setup_templates: true, setup_ledger: true,
+          setup_payment_gateways: true,
           setup_status: "completed",
         });
         return result;
@@ -946,6 +948,7 @@ export default function SuperTenantProfile() {
     { key: "accounts", label: "Chart of Accounts", icon: BookOpen, done: tenant.setup_accounts },
     { key: "templates", label: "SMS/Email Templates", icon: Mail, done: tenant.setup_templates },
     { key: "ledger", label: "Ledger Mapping Settings", icon: Database, done: tenant.setup_ledger },
+    { key: "payment_gateways", label: "Payment Gateways (bKash & Nagad)", icon: CreditCard, done: tenant.setup_payment_gateways },
   ];
   const completedSteps = setupSteps.filter((s) => s.done).length;
   const setupProgress = (completedSteps / setupSteps.length) * 100;

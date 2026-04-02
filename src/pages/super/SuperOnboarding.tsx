@@ -33,6 +33,7 @@ const SETUP_ITEMS = [
   { key: "accounts", label: "Chart of Accounts (50+ entries)", icon: BookOpen },
   { key: "templates", label: "SMS & Email Templates", icon: Mail },
   { key: "ledger", label: "Ledger Mapping Settings", icon: Shield },
+  { key: "payment_gateways", label: "Payment Gateways (bKash & Nagad Sandbox)", icon: CreditCard },
 ];
 
 // ─── Local persistence helpers ───────────────────────────────
@@ -170,6 +171,7 @@ export default function SuperOnboarding() {
           setup_accounts: result.accounts.success,
           setup_templates: result.templates.success,
           setup_ledger: result.ledger.success,
+          setup_payment_gateways: result.paymentGateways.success,
           setup_status: result.overall ? "completed" : "partial",
         });
       }
@@ -179,6 +181,7 @@ export default function SuperOnboarding() {
           !result.accounts.success && `Accounts: ${result.accounts.message}`,
           !result.templates.success && `Templates: ${result.templates.message}`,
           !result.ledger.success && `Ledger: ${result.ledger.message}`,
+          !result.paymentGateways.success && `Payment Gateways: ${result.paymentGateways.message}`,
         ].filter(Boolean);
         throw new Error(failures.join("; "));
       }
