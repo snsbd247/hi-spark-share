@@ -71,14 +71,15 @@ export default function SuperSmsManagement() {
   }
 
   // ── Live API Balance & Sent Stats ────────────────────────
-  const { data: liveBalance, isLoading: balanceLoading, refetch: refetchBalance } = useQuery({
+  const { data: liveBalance, isLoading: balanceLoading, error: balanceError, refetch: refetchBalance } = useQuery({
     queryKey: ["super-live-sms-balance"],
     queryFn: async () => {
       const { data, error } = await db.functions.invoke("sms-balance");
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       return data;
     },
-    refetchInterval: 5 * 60 * 1000, // auto-refresh every 5 min
+    refetchInterval: 5 * 60 * 1000,
     retry: 1,
   });
 
@@ -86,9 +87,23 @@ export default function SuperSmsManagement() {
     if (!liveBalance) return null;
     const balArr = liveBalance.balance || liveBalance;
     if (Array.isArray(balArr) && balArr.length > 0) {
-      return balArr[0];
+      const item = balArr[0];
+      // GreenWeb returns balance as string, normalize
+      return {
+        ...item,
+        balance: item.balance ?? item.remaining ?? item.credit ?? null,
+        expire_date: item.expire_date ?? item.expiry ?? item.expire ?? null,
+        rate: item.rate ?? item.sms_rate ?? null,
+      };
     }
-    return balArr;
+    if (typeof balArr === 'object' && balArr !== null) {
+      return {
+        ...balArr,
+        balance: balArr.balance ?? balArr.remaining ?? balArr.credit ?? null,
+        expire_date: balArr.expire_date ?? balArr.expiry ?? balArr.expire ?? null,
+      };
+    }
+    return null;
   }, [liveBalance]);
 
   // Sent/Failed from API (not DB)
