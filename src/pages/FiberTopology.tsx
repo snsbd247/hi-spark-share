@@ -576,6 +576,7 @@ export default function FiberTopology() {
   const handleSubmit = () => {
     switch (dialogType) {
       case "olt": createOlt.mutate(formData); break;
+      case "edit_olt": updateOlt.mutate(formData); break;
       case "cable": {
         const cablePayload = { ...formData };
         if (cableSourceType === "splitter_output") {
@@ -590,6 +591,7 @@ export default function FiberTopology() {
         createCable.mutate(cablePayload);
         break;
       }
+      case "edit_cable": updateCable.mutate(formData); break;
       case "splitter": {
         const splitterPayload = { ...formData };
         if (splitterSourceType === "splitter_output") {
@@ -604,8 +606,11 @@ export default function FiberTopology() {
         createSplitter.mutate(splitterPayload);
         break;
       }
+      case "edit_splitter": updateSplitter.mutate(formData); break;
       case "onu": createOnu.mutate(formData); break;
+      case "edit_onu": updateOnu.mutate(formData); break;
       case "splice": createSplice.mutate(formData); break;
+      case "edit_splice": updateSplice.mutate(formData); break;
     }
   };
 
