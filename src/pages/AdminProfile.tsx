@@ -208,9 +208,9 @@ export default function AdminProfile() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" /> Personal Information
+              <User className="h-5 w-5" /> {t.profilePage.personalInformation}
             </CardTitle>
-            <CardDescription>Update your profile details</CardDescription>
+            <CardDescription>{t.profilePage.updateProfileDetails}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
