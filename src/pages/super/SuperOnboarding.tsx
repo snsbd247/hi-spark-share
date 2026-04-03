@@ -14,11 +14,11 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-import { useLanguage } from "@/contexts/LanguageContext";
   Building2, Globe, CreditCard, Database, CheckCircle2, AlertCircle,
   ArrowRight, ArrowLeft, Loader2, Rocket, Zap, MapPin, BookOpen,
   Mail, Shield, MessageSquare, Plus, Info
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Step definitions ────────────────────────────────────────
 const STEPS = [

@@ -15,10 +15,10 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { hashPassword } from "@/lib/passwordHash";
 import {
-import { useLanguage } from "@/contexts/LanguageContext";
   Users, Plus, Search, Edit, Trash2, Shield, Key, Eye, EyeOff,
   UserPlus, Loader2, ChevronDown, Lock, Mail, Phone, MapPin, BadgeCheck
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface UserForm {
   full_name: string;
