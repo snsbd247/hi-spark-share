@@ -12,8 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Categories() {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -38,12 +40,12 @@ export default function Categories() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
-      toast.success(editing ? "Category updated" : "Category created");
+      toast.success(editing ? t.inventory.categoryUpdated : t.inventory.categoryCreated);
       setOpen(false);
       setEditing(null);
       setForm({ name: "", description: "" });
     },
-    onError: (e: any) => toast.error(e.message || "Failed"),
+    onError: (e: any) => toast.error(e.message || t.common.error),
   });
 
   const deleteMut = useMutation({
@@ -52,7 +54,7 @@ export default function Categories() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
-      toast.success("Category deleted");
+      toast.success(t.inventory.categoryDeleted);
     },
   });
 
@@ -63,17 +65,17 @@ export default function Categories() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Product Categories</h1>
-            <p className="text-muted-foreground text-sm">Organize products by category</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.inventory.productCategories}</h1>
+            <p className="text-muted-foreground text-sm">{t.inventory.organizeByCategory}</p>
           </div>
           <Button onClick={() => { setEditing(null); setForm({ name: "", description: "" }); setOpen(true); }}>
-            <Plus className="h-4 w-4 mr-1" /> Add Category
+            <Plus className="h-4 w-4 mr-1" /> {t.inventory.addCategory}
           </Button>
         </div>
 
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search categories..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder={t.inventory.searchCategories} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
 
         <Card>
@@ -81,27 +83,27 @@ export default function Categories() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.common.name}</TableHead>
+                  <TableHead>{t.common.description}</TableHead>
+                  <TableHead>{t.common.status}</TableHead>
+                  <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">{t.common.loading}</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No categories found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">{t.inventory.noCategoriesFound}</TableCell></TableRow>
                 ) : filtered.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium text-foreground">{c.name}</TableCell>
                     <TableCell className="text-muted-foreground">{c.description || "—"}</TableCell>
-                    <TableCell><Badge variant="default">{c.status || "active"}</Badge></TableCell>
+                    <TableCell><Badge variant="default">{c.status || t.common.active}</Badge></TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="icon" onClick={() => { setEditing(c); setForm({ name: c.name, description: c.description || "" }); setOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete?")) deleteMut.mutate(c.id); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { if (confirm(t.common.confirm + "?")) deleteMut.mutate(c.id); }}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -114,18 +116,18 @@ export default function Categories() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
-            <DialogHeader><DialogTitle>{editing ? "Edit Category" : "Add Category"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editing ? t.inventory.editCategory : t.inventory.addCategory}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Name *</Label>
+                <Label>{t.common.name} *</Label>
                 <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Routers" />
               </div>
               <div>
-                <Label>Description</Label>
-                <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
+                <Label>{t.common.description}</Label>
+                <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t.inventory.optionalDescription} />
               </div>
               <Button className="w-full" disabled={!form.name.trim() || saveMut.isPending} onClick={() => saveMut.mutate()}>
-                {saveMut.isPending ? "Saving..." : editing ? "Update" : "Create"}
+                {saveMut.isPending ? t.common.loading : editing ? t.common.update : t.common.create}
               </Button>
             </div>
           </DialogContent>

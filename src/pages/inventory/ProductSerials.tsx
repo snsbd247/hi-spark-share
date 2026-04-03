@@ -10,9 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, Barcode } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Serial {
   id: string;
@@ -24,6 +25,7 @@ interface Serial {
 }
 
 export default function ProductSerials() {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -51,17 +53,12 @@ export default function ProductSerials() {
   const addMut = useMutation({
     mutationFn: async () => {
       if (bulkMode) {
-        // Bulk add: parse comma-separated serials
         const serialList = bulkSerials.split(',').map(s => s.trim()).filter(Boolean);
         if (serialList.length === 0) throw new Error("No serials provided");
-        
-        // Check for duplicates within input
         const uniqueSerials = [...new Set(serialList)];
         if (uniqueSerials.length !== serialList.length) {
           throw new Error("Duplicate serials found in input");
         }
-
-        // Check existing serials
         const { data: existing } = await (db as any).from("product_serials")
           .select("serial_number")
           .in("serial_number", uniqueSerials);
@@ -70,21 +67,16 @@ export default function ProductSerials() {
         if (conflicts.length > 0) {
           throw new Error(`Duplicate serials already exist: ${conflicts.join(', ')}`);
         }
-
         const rows = uniqueSerials.map(s => ({
-          product_id: form.product_id,
-          serial_number: s,
-          notes: form.notes || null,
-          status: "available",
+          product_id: form.product_id, serial_number: s,
+          notes: form.notes || null, status: "available",
         }));
         const { error } = await (db as any).from("product_serials").insert(rows);
         if (error) throw error;
       } else {
         const { error } = await (db as any).from("product_serials").insert({
-          product_id: form.product_id,
-          serial_number: form.serial_number.trim(),
-          notes: form.notes || null,
-          status: "available",
+          product_id: form.product_id, serial_number: form.serial_number.trim(),
+          notes: form.notes || null, status: "available",
         });
         if (error) throw error;
       }
@@ -92,13 +84,12 @@ export default function ProductSerials() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["product_serials"] });
       const count = bulkMode ? bulkSerials.split(',').filter(s => s.trim()).length : 1;
-      toast.success(`${count} serial(s) added`);
+      toast.success(`${count} ${t.inventory.serialsDetected}`);
       setOpen(false);
       setForm({ product_id: "", serial_number: "", notes: "" });
-      setBulkSerials("");
-      setBulkMode(false);
+      setBulkSerials(""); setBulkMode(false);
     },
-    onError: (e: any) => toast.error(e.message || "Failed to add serial"),
+    onError: (e: any) => toast.error(e.message || t.common.error),
   });
 
   const deleteMut = useMutation({
@@ -107,7 +98,7 @@ export default function ProductSerials() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["product_serials"] });
-      toast.success("Serial deleted");
+      toast.success(t.inventory.serialDeleted);
     },
   });
 
@@ -133,25 +124,25 @@ export default function ProductSerials() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Serial Numbers</h1>
-            <p className="text-muted-foreground text-sm">Track individual product serial numbers</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.inventory.serialNumbers}</h1>
+            <p className="text-muted-foreground text-sm">{t.inventory.trackSerials}</p>
           </div>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add Serial</Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> {t.inventory.addSerial}</Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search serials..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder={t.inventory.searchSerials} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="available">Available</SelectItem>
-              <SelectItem value="assigned">Assigned</SelectItem>
-              <SelectItem value="damaged">Damaged</SelectItem>
-              <SelectItem value="returned">Returned</SelectItem>
+              <SelectItem value="all">{t.inventory.allStatus}</SelectItem>
+              <SelectItem value="available">{t.common.active}</SelectItem>
+              <SelectItem value="assigned">{t.inventory.assigned}</SelectItem>
+              <SelectItem value="damaged">{t.inventory.damaged}</SelectItem>
+              <SelectItem value="returned">{t.inventory.returned}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -161,18 +152,18 @@ export default function ProductSerials() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Serial Number</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.fiberTopology.serialNumber}</TableHead>
+                  <TableHead>{t.inventory.product}</TableHead>
+                  <TableHead>{t.common.status}</TableHead>
+                  <TableHead>{t.common.note}</TableHead>
+                  <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t.common.loading}</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No serials found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t.inventory.noSerialsFound}</TableCell></TableRow>
                 ) : filtered.map((s: Serial) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-medium">{s.serial_number}</TableCell>
@@ -181,7 +172,7 @@ export default function ProductSerials() {
                     <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">{s.notes || "—"}</TableCell>
                     <TableCell className="text-right">
                       {s.status === "available" && (
-                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this serial?")) deleteMut.mutate(s.id); }}>
+                        <Button variant="ghost" size="icon" onClick={() => { if (confirm(t.inventory.deleteSerial)) deleteMut.mutate(s.id); }}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
@@ -193,26 +184,20 @@ export default function ProductSerials() {
           </CardContent>
         </Card>
 
-        {/* Add Serial Dialog */}
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setBulkMode(false); setBulkSerials(""); } }}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Add Serial Number{bulkMode ? "s (Bulk)" : ""}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{bulkMode ? t.inventory.addSerialBulk : t.inventory.addSerialNumber}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={bulkMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBulkMode(!bulkMode)}
-                >
-                  {bulkMode ? "Bulk Mode ✓" : "Bulk Mode"}
+                <Button type="button" variant={bulkMode ? "default" : "outline"} size="sm" onClick={() => setBulkMode(!bulkMode)}>
+                  {bulkMode ? `${t.inventory.bulkMode} ✓` : t.inventory.bulkMode}
                 </Button>
-                {bulkMode && <span className="text-xs text-muted-foreground">Comma-separated serials</span>}
+                {bulkMode && <span className="text-xs text-muted-foreground">{t.inventory.commaSeparatedSerials}</span>}
               </div>
               <div>
-                <Label>Product</Label>
+                <Label>{t.inventory.product}</Label>
                 <Select value={form.product_id} onValueChange={v => setForm({ ...form, product_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.inventory.selectProduct} /></SelectTrigger>
                   <SelectContent>
                     {products.map((p: any) => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
@@ -222,39 +207,30 @@ export default function ProductSerials() {
               </div>
               {bulkMode ? (
                 <div>
-                  <Label>Serial Numbers (comma-separated)</Label>
-                  <Textarea
-                    value={bulkSerials}
-                    onChange={e => setBulkSerials(e.target.value)}
-                    placeholder="e.g. SN001,SN002,SN003"
-                    rows={4}
-                  />
+                  <Label>{t.inventory.serialNumbersCommaSeparated}</Label>
+                  <Textarea value={bulkSerials} onChange={e => setBulkSerials(e.target.value)} placeholder="e.g. SN001,SN002,SN003" rows={4} />
                   {bulkSerials && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {bulkSerials.split(',').filter(s => s.trim()).length} serial(s) detected
+                      {bulkSerials.split(',').filter(s => s.trim()).length} {t.inventory.serialsDetected}
                     </p>
                   )}
                 </div>
               ) : (
                 <div>
-                  <Label>Serial Number</Label>
+                  <Label>{t.fiberTopology.serialNumber}</Label>
                   <Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder="e.g. SN-2024-001" />
                 </div>
               )}
               <div>
-                <Label>Notes</Label>
-                <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+                <Label>{t.common.note}</Label>
+                <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t.inventory.optionalNotes} />
               </div>
               <Button
                 className="w-full"
-                disabled={
-                  !form.product_id ||
-                  (bulkMode ? !bulkSerials.trim() : !form.serial_number.trim()) ||
-                  addMut.isPending
-                }
+                disabled={!form.product_id || (bulkMode ? !bulkSerials.trim() : !form.serial_number.trim()) || addMut.isPending}
                 onClick={() => addMut.mutate()}
               >
-                {addMut.isPending ? "Adding..." : bulkMode ? `Add ${bulkSerials.split(',').filter(s => s.trim()).length} Serial(s)` : "Add Serial"}
+                {addMut.isPending ? t.inventory.adding : t.inventory.addSerials}
               </Button>
             </div>
           </DialogContent>

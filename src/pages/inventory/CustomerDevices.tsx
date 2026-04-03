@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, Search, RotateCcw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Device {
   id: string;
@@ -29,6 +30,7 @@ interface Device {
 }
 
 export default function CustomerDevices() {
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -79,7 +81,6 @@ export default function CustomerDevices() {
 
   const assignMut = useMutation({
     mutationFn: async () => {
-      // Validate stock
       if (form.product_id) {
         const prod = products.find((p: any) => p.id === form.product_id);
         if (prod && Number(prod.stock) <= 0) {
@@ -87,7 +88,6 @@ export default function CustomerDevices() {
         }
       }
 
-      // Create device record
       const { data: device, error } = await (db as any).from("customer_devices").insert({
         customer_id: form.customer_id,
         product_id: form.product_id || null,
@@ -100,23 +100,17 @@ export default function CustomerDevices() {
       }).select().single();
       if (error) throw error;
 
-      // Decrement stock & log
       if (form.product_id) {
         const prod = products.find((p: any) => p.id === form.product_id);
         const newStock = Math.max(0, (Number(prod?.stock) || 1) - 1);
         await (db as any).from("products").update({ stock: newStock }).eq("id", form.product_id);
-
         await (db as any).from("inventory_logs").insert({
-          product_id: form.product_id,
-          type: "out",
-          quantity: 1,
+          product_id: form.product_id, type: "out", quantity: 1,
           note: `Device assigned to customer`,
-          reference_type: "customer_device",
-          reference_id: device.id,
+          reference_type: "customer_device", reference_id: device.id,
         });
       }
 
-      // Mark serial assigned
       if (form.serial_number) {
         await (db as any).from("product_serials").update({ status: "assigned" }).eq("serial_number", form.serial_number);
       }
@@ -126,11 +120,11 @@ export default function CustomerDevices() {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["product_serials"] });
       qc.invalidateQueries({ queryKey: ["inventory_logs_recent"] });
-      toast.success("Device assigned successfully");
+      toast.success(t.inventory.deviceAssigned);
       setOpen(false);
       setForm({ customer_id: "", product_id: "", serial_number: "", mac_address: "", ip_address: "", notes: "" });
     },
-    onError: (e: any) => toast.error(e.message || "Failed to assign device"),
+    onError: (e: any) => toast.error(e.message || t.common.error),
   });
 
   const returnMut = useMutation({
@@ -143,8 +137,7 @@ export default function CustomerDevices() {
         await (db as any).from("inventory_logs").insert({
           product_id: device.product_id, type: "return", quantity: 1,
           note: "Device returned from customer",
-          reference_type: "customer_device",
-          reference_id: device.id,
+          reference_type: "customer_device", reference_id: device.id,
         });
       }
       if (device.serial_number) {
@@ -156,7 +149,7 @@ export default function CustomerDevices() {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["product_serials"] });
       qc.invalidateQueries({ queryKey: ["inventory_logs_recent"] });
-      toast.success("Device returned");
+      toast.success(t.inventory.deviceReturned);
     },
   });
 
@@ -176,24 +169,24 @@ export default function CustomerDevices() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Customer Devices</h1>
-            <p className="text-muted-foreground text-sm">Track devices assigned to customers</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.inventory.customerDevices}</h1>
+            <p className="text-muted-foreground text-sm">{t.inventory.trackDevices}</p>
           </div>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Assign Device</Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> {t.inventory.assignDevice}</Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search devices..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder={t.inventory.searchDevices} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="returned">Returned</SelectItem>
-              <SelectItem value="damaged">Damaged</SelectItem>
+              <SelectItem value="all">{t.inventory.allStatus}</SelectItem>
+              <SelectItem value="active">{t.inventory.active}</SelectItem>
+              <SelectItem value="returned">{t.inventory.returned}</SelectItem>
+              <SelectItem value="damaged">{t.inventory.damaged}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -203,21 +196,21 @@ export default function CustomerDevices() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Serial</TableHead>
+                  <TableHead>{t.tickets.customer}</TableHead>
+                  <TableHead>{t.inventory.product}</TableHead>
+                  <TableHead>{t.fiberTopology.serialNumber}</TableHead>
                   <TableHead>MAC</TableHead>
                   <TableHead>IP</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.common.status}</TableHead>
+                  <TableHead>{t.inventory.assigned}</TableHead>
+                  <TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t.common.loading}</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No devices found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{t.inventory.noDevicesFound}</TableCell></TableRow>
                 ) : filtered.map((d: Device) => (
                   <TableRow key={d.id}>
                     <TableCell>
@@ -240,8 +233,8 @@ export default function CustomerDevices() {
                     </TableCell>
                     <TableCell className="text-right">
                       {d.status === "active" && (
-                        <Button variant="outline" size="sm" onClick={() => { if (confirm("Return this device?")) returnMut.mutate(d); }}>
-                          <RotateCcw className="h-3 w-3 mr-1" /> Return
+                        <Button variant="outline" size="sm" onClick={() => { if (confirm(t.inventory.returnDevice)) returnMut.mutate(d); }}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> {t.inventory.returnBtn}
                         </Button>
                       )}
                     </TableCell>
@@ -252,15 +245,14 @@ export default function CustomerDevices() {
           </CardContent>
         </Card>
 
-        {/* Assign Device Dialog */}
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Assign Device to Customer</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t.inventory.assignDeviceToCustomer}</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Customer *</Label>
+                <Label>{t.tickets.customer} *</Label>
                 <Select value={form.customer_id} onValueChange={v => setForm({ ...form, customer_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.inventory.selectCustomer} /></SelectTrigger>
                   <SelectContent>
                     {customers.map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>{c.name} ({c.customer_id})</SelectItem>
@@ -269,21 +261,21 @@ export default function CustomerDevices() {
                 </Select>
               </div>
               <div>
-                <Label>Product</Label>
+                <Label>{t.inventory.product}</Label>
                 <Select value={form.product_id} onValueChange={v => setForm({ ...form, product_id: v, serial_number: "" })}>
-                  <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t.inventory.selectProduct} /></SelectTrigger>
                   <SelectContent>
                     {products.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name} (Stock: {p.stock})</SelectItem>
+                      <SelectItem key={p.id} value={p.id}>{p.name} ({t.inventory.stock}: {p.stock})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               {form.product_id && serials.length > 0 && (
                 <div>
-                  <Label>Serial Number</Label>
+                  <Label>{t.fiberTopology.serialNumber}</Label>
                   <Select value={form.serial_number} onValueChange={v => setForm({ ...form, serial_number: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select serial" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t.inventory.selectSerial} /></SelectTrigger>
                     <SelectContent>
                       {serials.map((s: any) => (
                         <SelectItem key={s.id} value={s.serial_number}>{s.serial_number}</SelectItem>
@@ -294,26 +286,26 @@ export default function CustomerDevices() {
               )}
               {(!form.product_id || serials.length === 0) && (
                 <div>
-                  <Label>Serial Number (manual)</Label>
-                  <Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder="Enter serial number" />
+                  <Label>{t.inventory.serialNumberManual}</Label>
+                  <Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder={t.inventory.enterSerialNumber} />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>MAC Address</Label>
+                  <Label>{t.fiberTopology.macAddress}</Label>
                   <Input value={form.mac_address} onChange={e => setForm({ ...form, mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" />
                 </div>
                 <div>
-                  <Label>IP Address</Label>
+                  <Label>{t.customers.ipAddress}</Label>
                   <Input value={form.ip_address} onChange={e => setForm({ ...form, ip_address: e.target.value })} placeholder="192.168.1.x" />
                 </div>
               </div>
               <div>
-                <Label>Notes</Label>
-                <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />
+                <Label>{t.common.note}</Label>
+                <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={t.inventory.optionalNotes} />
               </div>
               <Button className="w-full" disabled={!form.customer_id || assignMut.isPending} onClick={() => assignMut.mutate()}>
-                {assignMut.isPending ? "Assigning..." : "Assign Device"}
+                {assignMut.isPending ? t.common.loading : t.inventory.assignDevice}
               </Button>
             </div>
           </DialogContent>
