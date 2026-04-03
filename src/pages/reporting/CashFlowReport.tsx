@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Wallet } from "lucide-react";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function CashFlowReport() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -29,24 +30,32 @@ export default function CashFlowReport() {
     return { month: label, inflow, outflow, net: inflow - outflow };
   });
 
+  const columns = [
+    { header: "Month", key: "month" },
+    { header: "Inflow", key: "inflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Outflow", key: "outflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Net", key: "net", format: (v: number) => `Tk ${v.toLocaleString()}` },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Wallet className="h-6 w-6" /> Cash Flow Report</h1>
-            <p className="text-muted-foreground text-sm">Monthly cash inflow vs outflow</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Wallet className="h-6 w-6" /> Cash Flow Report</h1>
+          <p className="text-muted-foreground text-sm">Monthly cash inflow vs outflow</p>
+        </div>
+
+        <ReportToolbar title={`Cash Flow Report - ${year}`} data={months} columns={columns} showDateFilter={false}>
           <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[0, 1, 2].map(i => { const y = String(new Date().getFullYear() - i); return <SelectItem key={y} value={y}>{y}</SelectItem>; })}
             </SelectContent>
           </Select>
-        </div>
+        </ReportToolbar>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Monthly Cash Flow — {year}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Monthly Cash Flow - {year}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={months}>

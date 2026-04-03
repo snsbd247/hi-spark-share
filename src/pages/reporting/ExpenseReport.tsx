@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -5,13 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { PieChart as PieIcon } from "lucide-react";
 import { format, subDays } from "date-fns";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
 export default function ExpenseReport() {
+  const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 90), "yyyy-MM-dd"));
+  const [dateTo, setDateTo] = useState(() => format(new Date(), "yyyy-MM-dd"));
+
   const { data: expenses = [] } = useQuery({
-    queryKey: ["expense-report"],
-    queryFn: async () => { const { data } = await db.from("expenses").select("*"); return data || []; },
+    queryKey: ["expense-report", dateFrom, dateTo],
+    queryFn: async () => {
+      let q = db.from("expenses").select("*");
+      if (dateFrom) q = q.gte("date", dateFrom);
+      if (dateTo) q = q.lte("date", dateTo);
+      const { data } = await q;
+      return data || [];
+    },
   });
 
   const totalExpense = expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
@@ -23,14 +34,28 @@ export default function ExpenseReport() {
   });
   const byCategory = Object.entries(catMap).map(([category, total]) => ({ category, total }));
 
-  const thirtyDaysAgo = subDays(new Date(), 30);
-  const recent = expenses.filter((e: any) => new Date(e.date || e.created_at) >= thirtyDaysAgo);
   const dailyMap: Record<string, number> = {};
-  recent.forEach((e: any) => {
+  expenses.forEach((e: any) => {
     const d = (e.date || e.created_at)?.substring(0, 10);
     if (d) dailyMap[d] = (dailyMap[d] || 0) + Number(e.amount || 0);
   });
   const daily = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, total]) => ({ date, total }));
+
+  const tableData = expenses.map((e: any) => ({
+    date: (e.date || e.created_at)?.substring(0, 10) || "",
+    category: e.category || "other",
+    description: e.description || "",
+    amount: Number(e.amount || 0),
+    method: e.payment_method || "cash",
+  }));
+
+  const columns = [
+    { header: "Date", key: "date" },
+    { header: "Category", key: "category" },
+    { header: "Description", key: "description" },
+    { header: "Amount", key: "amount", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Method", key: "method" },
+  ];
 
   return (
     <DashboardLayout>
@@ -39,6 +64,16 @@ export default function ExpenseReport() {
           <h1 className="text-2xl font-bold text-foreground">Expense Report</h1>
           <p className="text-muted-foreground text-sm">Expense breakdown by category and daily trend</p>
         </div>
+
+        <ReportToolbar
+          title="Expense Report"
+          data={tableData}
+          columns={columns}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+        />
 
         <Card>
           <CardContent className="pt-6">

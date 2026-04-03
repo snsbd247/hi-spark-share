@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle } from "lucide-react";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function InventoryReport() {
   const { data: products = [] } = useQuery({
@@ -16,6 +17,24 @@ export default function InventoryReport() {
   const lowStock = products.filter((p: any) => Number(p.stock_quantity || 0) <= Number(p.low_stock_alert || 0));
   const totalItems = products.reduce((s: number, p: any) => s + Number(p.stock_quantity || 0), 0);
 
+  const tableData = products.map((p: any) => ({
+    name: p.name,
+    sku: p.sku || "",
+    stock: Number(p.stock_quantity || 0),
+    cost_price: Number(p.cost_price || 0),
+    sale_price: Number(p.sale_price || 0),
+    value: Number(p.stock_quantity || 0) * Number(p.cost_price || 0),
+  }));
+
+  const columns = [
+    { header: "Product", key: "name" },
+    { header: "SKU", key: "sku" },
+    { header: "Stock", key: "stock" },
+    { header: "Cost Price", key: "cost_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Sale Price", key: "sale_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Value", key: "value", format: (v: number) => `Tk ${v.toLocaleString()}` },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -23,6 +42,8 @@ export default function InventoryReport() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Package className="h-6 w-6" /> Inventory Report</h1>
           <p className="text-muted-foreground text-sm">Stock levels, valuation and low stock alerts</p>
         </div>
+
+        <ReportToolbar title="Inventory Report" data={tableData} columns={columns} showDateFilter={false} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Products</p><p className="text-2xl font-bold">{products.length}</p></CardContent></Card>
