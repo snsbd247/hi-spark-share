@@ -96,11 +96,12 @@ export interface Stats {
 
 export interface FiberMapMarker {
   id: string;
-  type: "olt" | "splitter";
+  type: "olt" | "splitter" | "cable" | "onu";
   name: string;
   lat: number;
   lng: number;
   cable?: string | null;
+  customer?: string | null;
 }
 
 export interface FiberSearchResult {
