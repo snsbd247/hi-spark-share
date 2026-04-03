@@ -51,7 +51,7 @@ function MetricCard({ title, value, icon: Icon, trend, subtitle, color = "text-p
 }
 
 export default function TenantFinancialReportsTab({ tenantId }: { tenantId: string }) {
-  const [reportTab, setReportTab] = useState("overview");
+  const [reportTab, setReportTab] = useState("revenue");
   const [plYear, setPlYear] = useState(String(new Date().getFullYear()));
 
   const { data: overview, isLoading: loadingOverview } = useQuery({
