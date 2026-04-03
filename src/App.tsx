@@ -266,6 +266,14 @@ function App() {
                 <Route path="/reporting/traffic" element={<PermissionGuard module="reports"><TrafficMonitor /></PermissionGuard>} />
                 <Route path="/reporting/sales-purchase" element={<PermissionGuard module="reports"><SalesPurchaseReport /></PermissionGuard>} />
                 <Route path="/reporting/ledger-statement" element={<PermissionGuard module="reports"><ReportLedgerStatement /></PermissionGuard>} />
+                <Route path="/reporting/revenue" element={<PermissionGuard module="reports"><RevenueReport /></PermissionGuard>} />
+                <Route path="/reporting/expense" element={<PermissionGuard module="reports"><ExpenseReport /></PermissionGuard>} />
+                <Route path="/reporting/profit-loss" element={<PermissionGuard module="reports"><ProfitLossReport /></PermissionGuard>} />
+                <Route path="/reporting/cash-flow" element={<PermissionGuard module="reports"><CashFlowReport /></PermissionGuard>} />
+                <Route path="/reporting/trial-balance" element={<PermissionGuard module="reports"><TrialBalanceReport /></PermissionGuard>} />
+                <Route path="/reporting/balance-sheet" element={<PermissionGuard module="reports"><BalanceSheetReport /></PermissionGuard>} />
+                <Route path="/reporting/receivable-payable" element={<PermissionGuard module="reports"><ReceivablePayableReport /></PermissionGuard>} />
+                <Route path="/reporting/inventory" element={<PermissionGuard module="reports"><InventoryReport /></PermissionGuard>} />
 
                 {/* Settings Routes */}
                 <Route path="/settings/general" element={<PermissionGuard module="settings"><GeneralSettings /></PermissionGuard>} />
