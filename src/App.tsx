@@ -134,6 +134,9 @@ const ProductSerials = lazy(() => import("@/pages/inventory/ProductSerials"));
 const CustomerDevices = lazy(() => import("@/pages/inventory/CustomerDevices"));
 const InventoryLogs = lazy(() => import("@/pages/inventory/InventoryLogs"));
 
+// Network Topology
+const NetworkMap = lazy(() => import("@/pages/NetworkMap"));
+
 // Super Admin (separate chunk)
 import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
 const SuperAdminLogin = lazy(() => import("@/pages/super/SuperAdminLogin"));
