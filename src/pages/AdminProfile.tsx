@@ -128,7 +128,7 @@ export default function AdminProfile() {
       if (updateError) throw updateError;
 
       queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
-      toast.success("Avatar updated");
+      toast.success(t.profilePage.avatarUpdated);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
