@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { IS_LOVABLE } from "@/lib/environment";
 import {
   Network, Plus, Search, ChevronRight, ChevronDown, Server, Cable, Cpu,
   GitBranch, Radio, User, Activity, Layers, CircleDot, Hash, MapPin,
@@ -18,6 +19,31 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MapLocationPicker } from "@/components/MapLocationPicker";
+import {
+  buildFiberMapMarkersFromTree,
+  buildFiberStatsFromTree,
+  createFiberCableInSupabase,
+  createFiberOnuInSupabase,
+  createFiberOltInSupabase,
+  createFiberSpliceInSupabase,
+  createFiberSplitterInSupabase,
+  EMPTY_FIBER_STATS,
+  fetchFiberSpliceCountFromSupabase,
+  fetchFiberTopologyTreeFromSupabase,
+  searchFiberTopologyTree,
+  unwrapApiArray,
+  unwrapApiObject,
+  type FiberCableData,
+  type FiberCoreData,
+  type FiberCustomer,
+  type FiberMapMarker,
+  type FiberOnuData,
+  type OltData,
+  type PonPort,
+  type Splitter,
+  type SplitterOutput,
+  type Stats,
+} from "@/lib/fiberTopology";
 
 // ─── Fiber Color Constants ─────────────
 const FIBER_COLORS: Record<string, string> = {
@@ -32,33 +58,29 @@ function ColorDot({ color }: { color?: string }) {
   return <span className={cn("inline-block h-3 w-3 rounded-full shrink-0", cls)} title={color || "N/A"} />;
 }
 
-// ─── Types ─────────────────────────────
-interface FiberCustomer { id: string; name: string; customer_id: string; }
-interface FiberOnuData { id: string; serial_number: string; mac_address: string; status: string; customer_id: string; customer?: FiberCustomer; }
-interface SplitterOutput { id: string; output_number: number; status: string; color?: string; connection_type?: string; onu?: FiberOnuData; }
-interface Splitter { id: string; ratio: string; location: string; label: string; status: string; lat?: number; lng?: number; outputs: SplitterOutput[]; }
-interface FiberCoreData { id: string; core_number: number; color: string; status: string; connected_olt_port_id?: string; splitter?: Splitter; }
-interface FiberCableData { id: string; name: string; total_cores: number; color: string; length_meters: number; status: string; cores: FiberCoreData[]; }
-interface PonPort { id: string; port_number: number; status: string; cables: FiberCableData[]; }
-interface OltData { id: string; name: string; location: string; total_pon_ports: number; status: string; lat?: number; lng?: number; pon_ports: PonPort[]; }
-interface Stats { total_olts: number; total_cables: number; total_cores: number; free_cores: number; used_cores: number; total_splitters: number; total_outputs: number; free_outputs: number; used_outputs: number; total_onus: number; total_splices?: number; }
-
 // ─── API ──────────────────────────
 const fetchTree = async (): Promise<OltData[]> => {
+  if (IS_LOVABLE) {
+    return fetchFiberTopologyTreeFromSupabase();
+  }
+
   const { data } = await api.get("/fiber-topology/tree");
-  return Array.isArray(data) ? data : [];
+  return unwrapApiArray<OltData>(data);
 };
+
 const fetchStats = async (): Promise<Stats> => {
   const { data } = await api.get("/fiber-topology/stats");
-  return data;
+  return unwrapApiObject<Stats>(data, EMPTY_FIBER_STATS);
 };
+
 const searchTopology = async (q: string) => {
   const { data } = await api.get(`/fiber-topology/search?q=${q}`);
-  return data;
+  return unwrapApiArray<any>(data);
 };
+
 const fetchMapData = async () => {
   const { data } = await api.get("/fiber-topology/map-data");
-  return Array.isArray(data) ? data : [];
+  return unwrapApiArray<FiberMapMarker>(data);
 };
 
 const normalizeFiberTree = (data: unknown): OltData[] => (Array.isArray(data) ? (data as OltData[]) : []);
@@ -179,23 +201,42 @@ export default function FiberTopology() {
   const [activeTab, setActiveTab] = useState("tree");
 
   const { data: tree = [], isLoading: treeLoading } = useQuery({ queryKey: ["fiber-tree"], queryFn: fetchTree });
-  const { data: stats } = useQuery({ queryKey: ["fiber-stats"], queryFn: fetchStats });
-  const { data: mapMarkers = [] } = useQuery({ queryKey: ["fiber-map"], queryFn: fetchMapData, enabled: activeTab === "map" });
+  const safeTree = useMemo(() => normalizeFiberTree(tree), [tree]);
+
+  const { data: serverStats } = useQuery({ queryKey: ["fiber-stats"], queryFn: fetchStats, enabled: !IS_LOVABLE });
+  const { data: spliceCount = 0 } = useQuery({ queryKey: ["fiber-splice-count"], queryFn: fetchFiberSpliceCountFromSupabase, enabled: IS_LOVABLE });
+  const { data: fetchedMapMarkers = [] } = useQuery({ queryKey: ["fiber-map"], queryFn: fetchMapData, enabled: !IS_LOVABLE && activeTab === "map" });
+
+  const stats = useMemo(
+    () => (IS_LOVABLE ? buildFiberStatsFromTree(safeTree, spliceCount) : serverStats),
+    [safeTree, serverStats, spliceCount],
+  );
+
+  const mapMarkers = useMemo<FiberMapMarker[]>(
+    () => (IS_LOVABLE ? buildFiberMapMarkersFromTree(safeTree) : fetchedMapMarkers),
+    [fetchedMapMarkers, safeTree],
+  );
 
   const handleSearch = useCallback(async (q: string) => {
     setSearchQuery(q);
     if (q.length >= 2) {
+      if (IS_LOVABLE) {
+        setSearchResults(searchFiberTopologyTree(safeTree, q));
+        return;
+      }
+
       const results = await searchTopology(q);
       setSearchResults(Array.isArray(results) ? results : []);
     } else {
       setSearchResults([]);
     }
-  }, []);
+  }, [safeTree]);
 
   const invalidateAll = useCallback(() => Promise.all([
     queryClient.invalidateQueries({ queryKey: ["fiber-tree"] }),
     queryClient.invalidateQueries({ queryKey: ["fiber-stats"] }),
     queryClient.invalidateQueries({ queryKey: ["fiber-map"] }),
+    queryClient.invalidateQueries({ queryKey: ["fiber-splice-count"] }),
   ]), [queryClient]);
 
   const injectCreatedOltIntoTree = useCallback((payload: any) => {
@@ -209,38 +250,70 @@ export default function FiberTopology() {
   }, [queryClient]);
 
   const createOlt = useMutation({
-    mutationFn: (data: any) => api.post("/fiber-topology/olts", data),
-    onSuccess: async (response) => {
-      console.log("Created OLT response", response?.data);
-      injectCreatedOltIntoTree(response);
+    mutationFn: async (data: any) => {
+      if (IS_LOVABLE) {
+        return createFiberOltInSupabase(data);
+      }
+
+      const response = await api.post("/fiber-topology/olts", data);
+      return response.data ?? response;
+    },
+    onSuccess: async (createdOlt) => {
+      injectCreatedOltIntoTree(createdOlt);
       await invalidateAll();
       toast.success("OLT তৈরি হয়েছে");
       setDialogType(null);
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message || "ত্রুটি"),
+    onError: (e: any) => toast.error(e?.message || e?.response?.data?.message || "ত্রুটি"),
   });
   const createCable = useMutation({
-    mutationFn: (data: any) => api.post("/fiber-topology/cables", data),
-    onSuccess: () => { toast.success("ক্যাবল তৈরি হয়েছে"); invalidateAll(); setDialogType(null); },
-    onError: (e: any) => toast.error(e?.response?.data?.error || "ত্রুটি"),
+    mutationFn: async (data: any) => {
+      if (IS_LOVABLE) {
+        return createFiberCableInSupabase(data);
+      }
+
+      const response = await api.post("/fiber-topology/cables", data);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("ক্যাবল তৈরি হয়েছে"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
   const createSplitter = useMutation({
-    mutationFn: (data: any) => api.post("/fiber-topology/splitters", data),
-    onSuccess: () => { toast.success("স্প্লিটার তৈরি হয়েছে"); invalidateAll(); setDialogType(null); },
-    onError: (e: any) => toast.error(e?.response?.data?.error || "ত্রুটি"),
+    mutationFn: async (data: any) => {
+      if (IS_LOVABLE) {
+        return createFiberSplitterInSupabase(data);
+      }
+
+      const response = await api.post("/fiber-topology/splitters", data);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("স্প্লিটার তৈরি হয়েছে"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
   const createOnu = useMutation({
-    mutationFn: (data: any) => api.post("/fiber-topology/onus", data),
-    onSuccess: () => { toast.success("ONU অ্যাসাইন হয়েছে"); invalidateAll(); setDialogType(null); },
-    onError: (e: any) => toast.error(e?.response?.data?.error || "ত্রুটি"),
+    mutationFn: async (data: any) => {
+      if (IS_LOVABLE) {
+        return createFiberOnuInSupabase(data);
+      }
+
+      const response = await api.post("/fiber-topology/onus", data);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("ONU অ্যাসাইন হয়েছে"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
   const createSplice = useMutation({
-    mutationFn: (data: any) => api.post("/fiber-topology/splices", data),
-    onSuccess: () => { toast.success("স্প্লাইস তৈরি হয়েছে"); invalidateAll(); setDialogType(null); },
-    onError: (e: any) => toast.error(e?.response?.data?.error || "ত্রুটি"),
-  });
+    mutationFn: async (data: any) => {
+      if (IS_LOVABLE) {
+        return createFiberSpliceInSupabase(data);
+      }
 
-  const safeTree = Array.isArray(tree) ? tree : [];
+      const response = await api.post("/fiber-topology/splices", data);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("স্প্লাইস তৈরি হয়েছে"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
+  });
 
   const allPonPorts = useMemo(() =>
     safeTree.flatMap(olt => (olt.pon_ports || []).map(p => ({ ...p, oltName: olt.name }))),
