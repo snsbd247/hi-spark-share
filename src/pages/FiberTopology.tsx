@@ -787,6 +787,10 @@ export default function FiberTopology() {
               </div>
             </div>
             <div><Label>{t.fiberTopology.lengthMeters}</Label><Input type="number" value={formData.length_meters || ""} onChange={e => setFormData({ ...formData, length_meters: parseFloat(e.target.value) })} /></div>
+            <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
