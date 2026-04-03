@@ -454,10 +454,15 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::get('/fiber-topology/tree', [\App\Http\Controllers\Api\FiberTopologyController::class, 'tree']);
     Route::get('/fiber-topology/stats', [\App\Http\Controllers\Api\FiberTopologyController::class, 'stats']);
     Route::get('/fiber-topology/search', [\App\Http\Controllers\Api\FiberTopologyController::class, 'search']);
+    Route::get('/fiber-topology/map-data', [\App\Http\Controllers\Api\FiberTopologyController::class, 'mapData']);
+    Route::get('/fiber-topology/splices', [\App\Http\Controllers\Api\FiberTopologyController::class, 'splices']);
     Route::post('/fiber-topology/olts', [\App\Http\Controllers\Api\FiberTopologyController::class, 'storeOlt']);
     Route::post('/fiber-topology/cables', [\App\Http\Controllers\Api\FiberTopologyController::class, 'storeCable']);
     Route::post('/fiber-topology/splitters', [\App\Http\Controllers\Api\FiberTopologyController::class, 'storeSplitter']);
     Route::post('/fiber-topology/onus', [\App\Http\Controllers\Api\FiberTopologyController::class, 'storeOnu']);
+    Route::post('/fiber-topology/splices', [\App\Http\Controllers\Api\FiberTopologyController::class, 'storeSplice']);
+    Route::post('/fiber-topology/map-core-to-port', [\App\Http\Controllers\Api\FiberTopologyController::class, 'mapCoreToPort']);
+    Route::delete('/fiber-topology/splices/{id}', [\App\Http\Controllers\Api\FiberTopologyController::class, 'deleteSplice']);
 
     // ══════════════════════════════════════════════════════
     // ── GENERIC CRUD — catches remaining tables ─────────
