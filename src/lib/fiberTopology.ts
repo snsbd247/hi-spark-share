@@ -106,6 +106,9 @@ export interface FiberMapMarker {
   lng: number;
   cable?: string | null;
   customer?: string | null;
+  parentLat?: number;
+  parentLng?: number;
+  lineColor?: string;
 }
 
 export interface FiberSearchResult {
@@ -518,51 +521,66 @@ export function buildFiberStatsFromTree(tree: OltData[], spliceCount = 0): Stats
 
 export function buildFiberMapMarkersFromTree(tree: OltData[]): FiberMapMarker[] {
   const markers: FiberMapMarker[] = [];
+  const CABLE_COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#34495e"];
+  let colorIdx = 0;
 
-  function walkSplitter(splitter: Splitter, cableName?: string) {
-    if (typeof splitter.lat === "number" && typeof splitter.lng === "number") {
+  function walkSplitter(splitter: Splitter, parentLat?: number, parentLng?: number, cableName?: string, lineColor?: string) {
+    const hasCoords = typeof splitter.lat === "number" && typeof splitter.lng === "number";
+    if (hasCoords) {
       markers.push({
         id: splitter.id, type: "splitter",
-        name: `${splitter.label || "Splitter"} (${splitter.ratio})`,
-        lat: splitter.lat, lng: splitter.lng, cable: cableName,
+        name: `${splitter.label || "SPL"} (${splitter.ratio})`,
+        lat: splitter.lat!, lng: splitter.lng!, cable: cableName,
+        parentLat, parentLng, lineColor,
       });
     }
+    const sLat = hasCoords ? splitter.lat : parentLat;
+    const sLng = hasCoords ? splitter.lng : parentLng;
+
     splitter.outputs.forEach((output) => {
-      // ONU markers
       if (output.onu && typeof output.onu.lat === "number" && typeof output.onu.lng === "number") {
         markers.push({
           id: output.onu.id, type: "onu",
-          name: `ONU: ${output.onu.serial_number}`,
+          name: output.onu.customer?.name || output.onu.serial_number,
           lat: output.onu.lat, lng: output.onu.lng,
           customer: output.onu.customer?.name || null,
+          parentLat: sLat, parentLng: sLng, lineColor: lineColor || "#9b59b6",
         });
       }
       if (output.child_cables) {
-        output.child_cables.forEach((cable) => walkCable(cable));
+        output.child_cables.forEach((cable) => walkCable(cable, sLat, sLng));
       }
-      if (output.child_splitter) walkSplitter(output.child_splitter);
+      if (output.child_splitter) walkSplitter(output.child_splitter, sLat, sLng, undefined, lineColor);
     });
   }
 
-  function walkCable(cable: FiberCableData) {
-    // Cable markers
-    if (typeof cable.lat === "number" && typeof cable.lng === "number") {
+  function walkCable(cable: FiberCableData, parentLat?: number, parentLng?: number) {
+    const hasCoords = typeof cable.lat === "number" && typeof cable.lng === "number";
+    const cableColor = CABLE_COLORS[colorIdx++ % CABLE_COLORS.length];
+    if (hasCoords) {
       markers.push({
         id: cable.id, type: "cable",
-        name: `Cable: ${cable.name}`,
-        lat: cable.lat, lng: cable.lng,
+        name: cable.name,
+        lat: cable.lat!, lng: cable.lng!,
+        parentLat, parentLng, lineColor: cableColor,
       });
     }
+    const cLat = hasCoords ? cable.lat : parentLat;
+    const cLng = hasCoords ? cable.lng : parentLng;
+
     cable.cores.forEach((core) => {
-      if (core.splitter) walkSplitter(core.splitter, cable.name);
+      if (core.splitter) walkSplitter(core.splitter, cLat, cLng, cable.name, cableColor);
     });
   }
 
   tree.forEach((olt) => {
-    if (typeof olt.lat === "number" && typeof olt.lng === "number") {
-      markers.push({ id: olt.id, type: "olt", name: olt.name, lat: olt.lat, lng: olt.lng });
+    const hasCoords = typeof olt.lat === "number" && typeof olt.lng === "number";
+    if (hasCoords) {
+      markers.push({ id: olt.id, type: "olt", name: olt.name, lat: olt.lat!, lng: olt.lng! });
     }
-    olt.pon_ports.forEach((port) => port.cables.forEach((cable) => walkCable(cable)));
+    const oLat = hasCoords ? olt.lat : undefined;
+    const oLng = hasCoords ? olt.lng : undefined;
+    olt.pon_ports.forEach((port) => port.cables.forEach((cable) => walkCable(cable, oLat, oLng)));
   });
 
   return markers;

@@ -122,66 +122,94 @@ function TopologyMap({ markers, loadingText }: { markers: any[]; loadingText: st
           iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
           shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
         });
-        setMapComponents({ MapContainer: mod.MapContainer, TileLayer: mod.TileLayer, Marker: mod.Marker, Popup: mod.Popup, L });
+        setMapComponents({
+          MapContainer: mod.MapContainer, TileLayer: mod.TileLayer,
+          Marker: mod.Marker, Popup: mod.Popup, Polyline: mod.Polyline, L,
+        });
       });
     });
   });
 
   if (!MapComponents) {
     return (
-      <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+      <div className="flex items-center justify-center h-[500px] text-muted-foreground">
         <Activity className="h-6 w-6 animate-spin mr-2" /> {loadingText}
       </div>
     );
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, L } = MapComponents;
+  const { MapContainer, TileLayer, Marker, Popup, Polyline, L } = MapComponents;
   const center = markers.length > 0 ? [markers[0].lat, markers[0].lng] : [23.8103, 90.4125];
 
-  const oltIcon = new L.Icon({
-    iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-  });
-  const splitterIcon = new L.Icon({
-    iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-green.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-  });
-  const cableIcon = new L.Icon({
-    iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-blue.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-  });
-  const onuIcon = new L.Icon({
-    iconUrl: "https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-violet.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-  });
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "olt": return oltIcon;
-      case "splitter": return splitterIcon;
-      case "cable": return cableIcon;
-      case "onu": return onuIcon;
-      default: return splitterIcon;
-    }
+  const MARKER_STYLES: Record<string, { bg: string; border: string; text: string; label: string }> = {
+    olt: { bg: "#dc2626", border: "#991b1b", text: "#fff", label: "OLT" },
+    splitter: { bg: "#7c3aed", border: "#5b21b6", text: "#fff", label: "SPL" },
+    cable: { bg: "#2563eb", border: "#1d4ed8", text: "#fff", label: "CBL" },
+    onu: { bg: "#059669", border: "#047857", text: "#fff", label: "ONU" },
   };
 
+  const createLabelIcon = (type: string, name: string) => {
+    const style = MARKER_STYLES[type] || MARKER_STYLES.onu;
+    const shortName = name.length > 12 ? name.substring(0, 12) + "…" : name;
+    return new L.DivIcon({
+      className: "",
+      iconSize: [0, 0],
+      iconAnchor: [0, 20],
+      popupAnchor: [0, -24],
+      html: `<div style="
+        display:flex; align-items:center; gap:3px;
+        transform: translate(-50%, -100%);
+        white-space:nowrap; cursor:pointer;
+      ">
+        <div style="
+          background:${style.bg}; color:${style.text};
+          border:2px solid ${style.border};
+          border-radius:4px; padding:2px 5px;
+          font-size:10px; font-weight:700;
+          line-height:1.2; box-shadow:0 2px 6px rgba(0,0,0,0.3);
+        ">${style.label}</div>
+        <div style="
+          background:rgba(255,255,255,0.92); color:#1e293b;
+          border:1px solid ${style.border};
+          border-radius:3px; padding:1px 4px;
+          font-size:9px; font-weight:500;
+          line-height:1.2; max-width:120px; overflow:hidden;
+          text-overflow:ellipsis; box-shadow:0 1px 3px rgba(0,0,0,0.15);
+        ">${shortName}</div>
+      </div>`,
+    });
+  };
+
+  // Build polylines from parent connections
+  const lines: { positions: [number, number][]; color: string }[] = [];
+  markers.forEach((m: any) => {
+    if (typeof m.parentLat === "number" && typeof m.parentLng === "number") {
+      lines.push({
+        positions: [[m.parentLat, m.parentLng], [m.lat, m.lng]],
+        color: m.lineColor || "#6b7280",
+      });
+    }
+  });
+
   return (
-    <div className="h-[400px] rounded-lg overflow-hidden border border-border">
+    <div className="h-[500px] rounded-lg overflow-hidden border border-border">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-      <MapContainer center={center} zoom={13} className="h-full w-full" scrollWheelZoom>
+      <MapContainer center={center} zoom={15} className="h-full w-full" scrollWheelZoom>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OSM" />
+        {lines.map((line: any, i: number) => (
+          <Polyline key={`line-${i}`} positions={line.positions} pathOptions={{ color: line.color, weight: 3, opacity: 0.8 }} />
+        ))}
         {markers.map((m: any) => (
-          <Marker key={m.id} position={[m.lat, m.lng]} icon={getIcon(m.type)}>
+          <Marker key={m.id} position={[m.lat, m.lng]} icon={createLabelIcon(m.type, m.name)}>
             <Popup>
-              <div className="text-sm">
-                <div className="font-bold">{m.name}</div>
-                <div className="text-muted-foreground capitalize">{m.type}</div>
-                {m.cable && <div className="text-xs">Cable: {m.cable}</div>}
-                {m.customer && <div className="text-xs">Customer: {m.customer}</div>}
+              <div className="text-sm min-w-[150px]">
+                <div className="font-bold text-base">{m.name}</div>
+                <div className="text-muted-foreground capitalize text-xs mt-1">{m.type.toUpperCase()}</div>
+                {m.cable && <div className="text-xs mt-1">📦 Cable: {m.cable}</div>}
+                {m.customer && <div className="text-xs mt-1">👤 Customer: {m.customer}</div>}
+                <div className="text-xs mt-1 text-muted-foreground">
+                  📍 {m.lat.toFixed(6)}, {m.lng.toFixed(6)}
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -787,11 +815,12 @@ export default function FiberTopology() {
               ) : (
                 <TopologyMap markers={mapMarkers} loadingText={t.fiberTopology.loadingMap} />
               )}
-              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-red-500 inline-block" /> OLT</span>
-                <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-blue-500 inline-block" /> Cable</span>
-                <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-green-500 inline-block" /> {t.fiberTopology.splitter}</span>
-                <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-violet-500 inline-block" /> ONU</span>
+              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1"><span className="h-3 w-5 rounded text-[8px] font-bold text-white flex items-center justify-center" style={{background:"#dc2626"}}>OLT</span> OLT</span>
+                <span className="flex items-center gap-1"><span className="h-3 w-5 rounded text-[8px] font-bold text-white flex items-center justify-center" style={{background:"#2563eb"}}>CBL</span> Cable</span>
+                <span className="flex items-center gap-1"><span className="h-3 w-5 rounded text-[8px] font-bold text-white flex items-center justify-center" style={{background:"#7c3aed"}}>SPL</span> {t.fiberTopology.splitter}</span>
+                <span className="flex items-center gap-1"><span className="h-3 w-5 rounded text-[8px] font-bold text-white flex items-center justify-center" style={{background:"#059669"}}>ONU</span> ONU</span>
+                <span className="flex items-center gap-1"><span className="h-4 w-6 border-t-2" style={{borderColor:"#6b7280"}} /> Connection</span>
               </div>
             </CardContent>
           </Card>
