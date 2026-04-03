@@ -22,6 +22,7 @@ import { MapLocationPicker } from "@/components/MapLocationPicker";
 import {
   buildFiberMapMarkersFromTree,
   buildFiberStatsFromTree,
+  collectAllFreeOutputs,
   createFiberCableInSupabase,
   createFiberOnuInSupabase,
   createFiberOltInSupabase,
@@ -35,9 +36,9 @@ import {
   unwrapApiObject,
   type FiberCableData,
   type FiberCoreData,
-  type FiberCustomer,
   type FiberMapMarker,
   type FiberOnuData,
+  type FreeOutputItem,
   type OltData,
   type PonPort,
   type Splitter,
@@ -60,10 +61,7 @@ function ColorDot({ color }: { color?: string }) {
 
 // ─── API ──────────────────────────
 const fetchTree = async (): Promise<OltData[]> => {
-  if (IS_LOVABLE) {
-    return fetchFiberTopologyTreeFromSupabase();
-  }
-
+  if (IS_LOVABLE) return fetchFiberTopologyTreeFromSupabase();
   const { data } = await api.get("/fiber-topology/tree");
   return unwrapApiArray<OltData>(data);
 };
@@ -130,13 +128,11 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 
 // ─── Map Component (Leaflet) ────────────
 function TopologyMap({ markers }: { markers: any[] }) {
-  // Lazy load leaflet only if map tab is active
   const [MapComponents, setMapComponents] = useState<any>(null);
 
   useState(() => {
     import("react-leaflet").then((mod) => {
       import("leaflet").then((L) => {
-        // Fix default icon
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
           iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -191,6 +187,88 @@ function TopologyMap({ markers }: { markers: any[] }) {
   );
 }
 
+// ─── Recursive Splitter Tree Renderer ──────────────
+function SplitterTreeNode({ splitter, level }: { splitter: Splitter; level: number }) {
+  return (
+    <TreeNode
+      key={splitter.id}
+      label={`স্প্লিটার (${splitter.ratio})${splitter.label ? ` - ${splitter.label}` : ""}${splitter.source_type === "splitter_output" ? " 🔗" : ""}`}
+      icon={GitBranch} iconColor="text-amber-500"
+      extra={splitter.lat ? <MapPin className="h-3 w-3 text-muted-foreground" /> : undefined}
+      badge={`${(splitter.outputs || []).filter((o) => o.status === "free").length} ফ্রি`}
+      level={level}
+    >
+      {(splitter.outputs || []).map((output) => (
+        <OutputTreeNode key={output.id} output={output} level={level + 1} />
+      ))}
+    </TreeNode>
+  );
+}
+
+function OutputTreeNode({ output, level }: { output: SplitterOutput; level: number }) {
+  const hasChildren = !!(output.onu || output.child_cables?.length || output.child_splitter);
+  const connectionLabel = output.connection_type === "fiber" ? " → 📡 ফাইবার"
+    : output.connection_type === "splitter" ? " → 🔀 স্প্লিটার"
+    : output.connection_type === "onu" ? ` → ${output.onu?.serial_number || "ONU"}`
+    : "";
+
+  return (
+    <TreeNode
+      label={`আউটপুট ${output.output_number}${connectionLabel}`}
+      icon={output.onu ? Radio : output.connection_type === "fiber" ? Cable : output.connection_type === "splitter" ? GitBranch : Cpu}
+      iconColor={output.onu ? "text-violet-500" : output.connection_type ? "text-blue-500" : "text-muted-foreground"}
+      extra={<ColorDot color={output.color} />}
+      badge={output.status === "free" ? "ফ্রি" : "ব্যবহৃত"}
+      badgeVariant={output.status === "free" ? "secondary" : "default"}
+      level={level}
+    >
+      {output.onu?.customer && (
+        <TreeNode
+          label={`${output.onu.customer.name} (${output.onu.customer.customer_id})`}
+          icon={User} iconColor="text-green-500" level={level + 1}
+        />
+      )}
+      {output.child_cables?.map((cable) => (
+        <CableTreeNode key={cable.id} cable={cable} level={level + 1} />
+      ))}
+      {output.child_splitter && (
+        <SplitterTreeNode splitter={output.child_splitter} level={level + 1} />
+      )}
+    </TreeNode>
+  );
+}
+
+function CableTreeNode({ cable, level }: { cable: FiberCableData; level: number }) {
+  return (
+    <TreeNode
+      label={`${cable.name} (${cable.total_cores} কোর)${cable.source_type === "splitter" ? " 🔗" : ""}`}
+      icon={Cable} iconColor="text-blue-500"
+      badge={`${(cable.cores || []).filter((c) => c.status === "free").length} ফ্রি`}
+      level={level}
+    >
+      {(cable.cores || []).map((core) => (
+        <CoreTreeNode key={core.id} core={core} level={level + 1} />
+      ))}
+    </TreeNode>
+  );
+}
+
+function CoreTreeNode({ core, level }: { core: FiberCoreData; level: number }) {
+  return (
+    <TreeNode
+      label={`কোর ${core.core_number}`}
+      icon={CircleDot}
+      iconColor={core.status === "free" ? "text-emerald-500" : "text-rose-500"}
+      extra={<ColorDot color={core.color} />}
+      badge={core.status === "free" ? "ফ্রি" : "ব্যবহৃত"}
+      badgeVariant={core.status === "free" ? "secondary" : "destructive"}
+      level={level}
+    >
+      {core.splitter && <SplitterTreeNode splitter={core.splitter} level={level + 1} />}
+    </TreeNode>
+  );
+}
+
 // ─── Main Page ────────────────────────
 export default function FiberTopology() {
   const queryClient = useQueryClient();
@@ -224,7 +302,6 @@ export default function FiberTopology() {
         setSearchResults(searchFiberTopologyTree(safeTree, q));
         return;
       }
-
       const results = await searchTopology(q);
       setSearchResults(Array.isArray(results) ? results : []);
     } else {
@@ -242,7 +319,6 @@ export default function FiberTopology() {
   const injectCreatedOltIntoTree = useCallback((payload: any) => {
     const createdOlt = payload?.data ?? payload;
     if (!createdOlt?.id) return;
-
     queryClient.setQueryData<OltData[]>(["fiber-tree"], (current) => {
       const safeCurrent = normalizeFiberTree(current);
       return [createdOlt as OltData, ...safeCurrent.filter((olt) => olt.id !== createdOlt.id)];
@@ -251,63 +327,47 @@ export default function FiberTopology() {
 
   const createOlt = useMutation({
     mutationFn: async (data: any) => {
-      if (IS_LOVABLE) {
-        return createFiberOltInSupabase(data);
-      }
-
+      if (IS_LOVABLE) return createFiberOltInSupabase(data);
       const response = await api.post("/fiber-topology/olts", data);
       return response.data ?? response;
     },
-    onSuccess: async (createdOlt) => {
-      injectCreatedOltIntoTree(createdOlt);
-      await invalidateAll();
-      toast.success("OLT তৈরি হয়েছে");
-      setDialogType(null);
-    },
+    onSuccess: async (createdOlt) => { injectCreatedOltIntoTree(createdOlt); await invalidateAll(); toast.success("OLT তৈরি হয়েছে"); setDialogType(null); },
     onError: (e: any) => toast.error(e?.message || e?.response?.data?.message || "ত্রুটি"),
   });
+
   const createCable = useMutation({
     mutationFn: async (data: any) => {
-      if (IS_LOVABLE) {
-        return createFiberCableInSupabase(data);
-      }
-
+      if (IS_LOVABLE) return createFiberCableInSupabase(data);
       const response = await api.post("/fiber-topology/cables", data);
       return response.data ?? response;
     },
     onSuccess: async () => { toast.success("ক্যাবল তৈরি হয়েছে"); await invalidateAll(); setDialogType(null); },
     onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
+
   const createSplitter = useMutation({
     mutationFn: async (data: any) => {
-      if (IS_LOVABLE) {
-        return createFiberSplitterInSupabase(data);
-      }
-
+      if (IS_LOVABLE) return createFiberSplitterInSupabase(data);
       const response = await api.post("/fiber-topology/splitters", data);
       return response.data ?? response;
     },
     onSuccess: async () => { toast.success("স্প্লিটার তৈরি হয়েছে"); await invalidateAll(); setDialogType(null); },
     onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
+
   const createOnu = useMutation({
     mutationFn: async (data: any) => {
-      if (IS_LOVABLE) {
-        return createFiberOnuInSupabase(data);
-      }
-
+      if (IS_LOVABLE) return createFiberOnuInSupabase(data);
       const response = await api.post("/fiber-topology/onus", data);
       return response.data ?? response;
     },
     onSuccess: async () => { toast.success("ONU অ্যাসাইন হয়েছে"); await invalidateAll(); setDialogType(null); },
     onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || "ত্রুটি"),
   });
+
   const createSplice = useMutation({
     mutationFn: async (data: any) => {
-      if (IS_LOVABLE) {
-        return createFiberSpliceInSupabase(data);
-      }
-
+      if (IS_LOVABLE) return createFiberSpliceInSupabase(data);
       const response = await api.post("/fiber-topology/splices", data);
       return response.data ?? response;
     },
@@ -320,37 +380,69 @@ export default function FiberTopology() {
     [safeTree]
   );
 
-  const allCores = useMemo(() =>
-    safeTree.flatMap(olt =>
-      (olt.pon_ports || []).flatMap(pp =>
-        (pp.cables || []).flatMap(cable =>
-          (cable.cores || []).map(c => ({ ...c, cableName: cable.name, oltName: olt.name }))
-        )
-      )
-    ), [safeTree]
-  );
+  // Collect all cores recursively
+  const allCores = useMemo(() => {
+    const cores: Array<FiberCoreData & { cableName: string; oltName: string }> = [];
+    function walkCables(cables: FiberCableData[], oltName: string) {
+      cables.forEach((cable) => {
+        cable.cores.forEach((c) => {
+          cores.push({ ...c, cableName: cable.name, oltName });
+          if (c.splitter) walkSplitter(c.splitter, oltName);
+        });
+      });
+    }
+    function walkSplitter(splitter: Splitter, oltName: string) {
+      splitter.outputs.forEach((o) => {
+        if (o.child_cables) walkCables(o.child_cables, oltName);
+        if (o.child_splitter) walkSplitter(o.child_splitter, oltName);
+      });
+    }
+    safeTree.forEach((olt) => olt.pon_ports.forEach((pp) => walkCables(pp.cables, olt.name)));
+    return cores;
+  }, [safeTree]);
 
   const allFreeCores = useMemo(() => allCores.filter(c => c.status === "free"), [allCores]);
 
-  const allFreeOutputs = useMemo(() =>
-    safeTree.flatMap(olt =>
-      (olt.pon_ports || []).flatMap(pp =>
-        (pp.cables || []).flatMap(cable =>
-          (cable.cores || []).flatMap(core =>
-            (core.splitter?.outputs || []).filter((o: any) => o.status === "free").map((o: any) => ({
-              ...o, splitterRatio: core.splitter?.ratio, coreNumber: core.core_number, cableName: cable.name, coreColor: core.color,
-            }))
-          )
-        )
-      )
-    ), [safeTree]
-  );
+  // Collect all free outputs recursively
+  const allFreeOutputs = useMemo(() => collectAllFreeOutputs(safeTree), [safeTree]);
+
+  // Cable source type state
+  const cableSourceType = formData._cable_source_type || "olt";
+
+  // Splitter source type state
+  const splitterSourceType = formData._splitter_source_type || "core";
 
   const handleSubmit = () => {
     switch (dialogType) {
       case "olt": createOlt.mutate(formData); break;
-      case "cable": createCable.mutate(formData); break;
-      case "splitter": createSplitter.mutate(formData); break;
+      case "cable": {
+        const cablePayload = { ...formData };
+        if (cableSourceType === "splitter_output") {
+          cablePayload.source_type = "splitter";
+          cablePayload.source_id = formData._source_output_id;
+          cablePayload.pon_port_id = null;
+        } else {
+          cablePayload.source_type = "olt";
+        }
+        delete cablePayload._cable_source_type;
+        delete cablePayload._source_output_id;
+        createCable.mutate(cablePayload);
+        break;
+      }
+      case "splitter": {
+        const splitterPayload = { ...formData };
+        if (splitterSourceType === "splitter_output") {
+          splitterPayload.source_type = "splitter_output";
+          splitterPayload.source_id = formData._source_output_id;
+          splitterPayload.core_id = null;
+        } else {
+          splitterPayload.source_type = "core";
+        }
+        delete splitterPayload._splitter_source_type;
+        delete splitterPayload._source_output_id;
+        createSplitter.mutate(splitterPayload);
+        break;
+      }
       case "onu": createOnu.mutate(formData); break;
       case "splice": createSplice.mutate(formData); break;
     }
@@ -360,17 +452,17 @@ export default function FiberTopology() {
     <div className="space-y-6 animate-fade-up">
       <PageHeader
         title="ফাইবার নেটওয়ার্ক টপোলজি"
-        description="OLT → PON → Fiber → Core → Splice → Splitter → ONU → Customer"
+        description="OLT → Fiber → Core → Splice → Splitter → Fiber → Splitter → ONU (ফ্লেক্সিবল চেইনিং)"
         icon={<Network className="h-5 w-5" />}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => { setFormData({ total_pon_ports: 8 }); setDialogType("olt"); }}>
               <Plus className="h-4 w-4 mr-1" /> OLT
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setFormData({ total_cores: 12 }); setDialogType("cable"); }}>
+            <Button size="sm" variant="outline" onClick={() => { setFormData({ total_cores: 12, _cable_source_type: "olt" }); setDialogType("cable"); }}>
               <Plus className="h-4 w-4 mr-1" /> ক্যাবল
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setFormData({ ratio: "1:8" }); setDialogType("splitter"); }}>
+            <Button size="sm" variant="outline" onClick={() => { setFormData({ ratio: "1:8", _splitter_source_type: "core" }); setDialogType("splitter"); }}>
               <Plus className="h-4 w-4 mr-1" /> স্প্লিটার
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setFormData({}); setDialogType("splice"); }}>
@@ -427,7 +519,7 @@ export default function FiberTopology() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" /> নেটওয়ার্ক হায়ারার্কি
+                <Layers className="h-4 w-4 text-primary" /> নেটওয়ার্ক হায়ারার্কি (ফ্লেক্সিবল চেইনিং)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -452,53 +544,7 @@ export default function FiberTopology() {
                       {(olt.pon_ports || []).map(pp => (
                         <TreeNode key={pp.id} label={`PON Port ${pp.port_number}`} icon={Hash} iconColor="text-orange-500" badge={`${(pp.cables || []).length} ক্যাবল`} level={1}>
                           {(pp.cables || []).map(cable => (
-                            <TreeNode key={cable.id} label={`${cable.name} (${cable.total_cores} কোর)`} icon={Cable} iconColor="text-blue-500" badge={`${(cable.cores || []).filter((c: any) => c.status === "free").length} ফ্রি`} level={2}>
-                              {(cable.cores || []).map(core => (
-                                <TreeNode
-                                  key={core.id}
-                                  label={`কোর ${core.core_number}`}
-                                  icon={CircleDot}
-                                  iconColor={core.status === "free" ? "text-emerald-500" : "text-rose-500"}
-                                  extra={<ColorDot color={core.color} />}
-                                  badge={core.status === "free" ? "ফ্রি" : "ব্যবহৃত"}
-                                  badgeVariant={core.status === "free" ? "secondary" : "destructive"}
-                                  level={3}
-                                >
-                                  {core.splitter && (
-                                    <TreeNode
-                                      key={core.splitter.id}
-                                      label={`স্প্লিটার (${core.splitter.ratio})${core.splitter.label ? ` - ${core.splitter.label}` : ""}`}
-                                      icon={GitBranch} iconColor="text-amber-500"
-                                      extra={core.splitter.lat ? <MapPin className="h-3 w-3 text-muted-foreground" /> : undefined}
-                                      badge={`${(core.splitter.outputs || []).filter((o: any) => o.status === "free").length} ফ্রি`}
-                                      level={4}
-                                    >
-                                      {(core.splitter.outputs || []).map((output: SplitterOutput) => (
-                                        <TreeNode
-                                          key={output.id}
-                                          label={output.onu
-                                            ? `আউটপুট ${output.output_number} → ${output.onu.serial_number} → ${output.onu.customer?.name || "N/A"}`
-                                            : `আউটপুট ${output.output_number}`}
-                                          icon={output.onu ? Radio : Cpu}
-                                          iconColor={output.onu ? "text-violet-500" : "text-muted-foreground"}
-                                          extra={<ColorDot color={output.color} />}
-                                          badge={output.status === "free" ? "ফ্রি" : "ব্যবহৃত"}
-                                          badgeVariant={output.status === "free" ? "secondary" : "default"}
-                                          level={5}
-                                        >
-                                          {output.onu?.customer && (
-                                            <TreeNode
-                                              label={`${output.onu.customer.name} (${output.onu.customer.customer_id})`}
-                                              icon={User} iconColor="text-green-500" level={6}
-                                            />
-                                          )}
-                                        </TreeNode>
-                                      ))}
-                                    </TreeNode>
-                                  )}
-                                </TreeNode>
-                              ))}
-                            </TreeNode>
+                            <CableTreeNode key={cable.id} cable={cable} level={2} />
                           ))}
                         </TreeNode>
                       ))}
@@ -558,19 +604,51 @@ export default function FiberTopology() {
         </DialogContent>
       </Dialog>
 
-      {/* Cable Dialog */}
+      {/* Cable Dialog - FLEXIBLE SOURCE */}
       <Dialog open={dialogType === "cable"} onOpenChange={(o) => !o && setDialogType(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>নতুন ফাইবার ক্যাবল</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>নাম *</Label><Input value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Fiber-001" /></div>
+
+            {/* Source Type Selector */}
             <div>
-              <Label>PON পোর্ট</Label>
-              <Select value={formData.pon_port_id || ""} onValueChange={v => setFormData({ ...formData, pon_port_id: v })}>
-                <SelectTrigger><SelectValue placeholder="পোর্ট সিলেক্ট করুন" /></SelectTrigger>
-                <SelectContent>{allPonPorts.map(p => <SelectItem key={p.id} value={p.id}>{p.oltName} → Port {p.port_number}</SelectItem>)}</SelectContent>
+              <Label>সোর্স টাইপ *</Label>
+              <Select value={cableSourceType} onValueChange={v => setFormData({ ...formData, _cable_source_type: v, pon_port_id: "", _source_output_id: "" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="olt">OLT PON Port</SelectItem>
+                  <SelectItem value="splitter_output">স্প্লিটার আউটপুট 🔗</SelectItem>
+                </SelectContent>
               </Select>
             </div>
+
+            {cableSourceType === "olt" ? (
+              <div>
+                <Label>PON পোর্ট</Label>
+                <Select value={formData.pon_port_id || ""} onValueChange={v => setFormData({ ...formData, pon_port_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="পোর্ট সিলেক্ট করুন" /></SelectTrigger>
+                  <SelectContent>{allPonPorts.map(p => <SelectItem key={p.id} value={p.id}>{p.oltName} → Port {p.port_number}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label>স্প্লিটার আউটপুট *</Label>
+                <Select value={formData._source_output_id || ""} onValueChange={v => setFormData({ ...formData, _source_output_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="আউটপুট সিলেক্ট করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {allFreeOutputs.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        <span className="flex items-center gap-1.5">
+                          <ColorDot color={o.color} /> {o.path}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div><Label>কোর সংখ্যা *</Label><Input type="number" value={formData.total_cores || 12} onChange={e => setFormData({ ...formData, total_cores: parseInt(e.target.value) })} /></div>
             <div>
               <Label className="flex items-center gap-1"><Palette className="h-3.5 w-3.5" /> কোর কালার (স্বয়ংক্রিয়ভাবে সেট হবে)</Label>
@@ -591,24 +669,55 @@ export default function FiberTopology() {
         </DialogContent>
       </Dialog>
 
-      {/* Splitter Dialog */}
+      {/* Splitter Dialog - FLEXIBLE SOURCE */}
       <Dialog open={dialogType === "splitter"} onOpenChange={(o) => !o && setDialogType(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>নতুন স্প্লিটার</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {/* Source Type Selector */}
             <div>
-              <Label>ফ্রি কোর *</Label>
-              <Select value={formData.core_id || ""} onValueChange={v => setFormData({ ...formData, core_id: v })}>
-                <SelectTrigger><SelectValue placeholder="কোর সিলেক্ট করুন" /></SelectTrigger>
+              <Label>সোর্স টাইপ *</Label>
+              <Select value={splitterSourceType} onValueChange={v => setFormData({ ...formData, _splitter_source_type: v, core_id: "", _source_output_id: "" })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {allFreeCores.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <span className="flex items-center gap-1.5"><ColorDot color={c.color} /> {c.oltName} → {c.cableName} → কোর {c.core_number}</span>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="core">ফাইবার কোর</SelectItem>
+                  <SelectItem value="splitter_output">স্প্লিটার আউটপুট 🔗</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {splitterSourceType === "core" ? (
+              <div>
+                <Label>ফ্রি কোর *</Label>
+                <Select value={formData.core_id || ""} onValueChange={v => setFormData({ ...formData, core_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="কোর সিলেক্ট করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {allFreeCores.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-1.5"><ColorDot color={c.color} /> {c.oltName} → {c.cableName} → কোর {c.core_number}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label>স্প্লিটার আউটপুট *</Label>
+                <Select value={formData._source_output_id || ""} onValueChange={v => setFormData({ ...formData, _source_output_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="আউটপুট সিলেক্ট করুন" /></SelectTrigger>
+                  <SelectContent>
+                    {allFreeOutputs.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        <span className="flex items-center gap-1.5">
+                          <ColorDot color={o.color} /> {o.path}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>রেশিও *</Label>
               <Select value={formData.ratio || "1:8"} onValueChange={v => setFormData({ ...formData, ratio: v })}>
@@ -680,11 +789,10 @@ export default function FiberTopology() {
               <Select value={formData.splitter_output_id || ""} onValueChange={v => setFormData({ ...formData, splitter_output_id: v })}>
                 <SelectTrigger><SelectValue placeholder="আউটপুট সিলেক্ট করুন" /></SelectTrigger>
                 <SelectContent>
-                  {allFreeOutputs.map((o: any) => (
+                  {allFreeOutputs.map((o) => (
                     <SelectItem key={o.id} value={o.id}>
                       <span className="flex items-center gap-1.5">
-                        <ColorDot color={o.color} />
-                        {o.cableName} → কোর {o.coreNumber} → ({o.splitterRatio}) → আউটপুট {o.output_number}
+                        <ColorDot color={o.color} /> {o.path}
                       </span>
                     </SelectItem>
                   ))}
