@@ -17,16 +17,35 @@ class FiberTopologyController extends Controller
 {
     private function applyAdminTenantContext(Request $request): ?string
     {
-        $adminUser = $request->admin_user ?? null;
-        $tenantId = $adminUser->tenant_id ?? tenant_id();
+        $adminUser = $request->get('admin_user');
+        $tenantId = $adminUser?->tenant_id ?: $request->get('__tenant_id') ?: tenant_id();
 
-        if ($tenantId && !app()->bound('tenant')) {
-            $tenant = \App\Models\Tenant::find($tenantId);
-            if ($tenant) {
-                app()->instance('tenant', $tenant);
-                app()->instance(\App\Models\Tenant::class, $tenant);
-            }
+        if (!$tenantId) {
+            return null;
         }
+
+        $currentTenant = app()->bound('tenant') ? app('tenant') : null;
+
+        if (!$currentTenant || $currentTenant->id !== $tenantId) {
+            $tenant = \App\Models\Tenant::find($tenantId);
+            if (!$tenant) {
+                return null;
+            }
+
+            if (app()->bound('tenant')) {
+                app()->forgetInstance('tenant');
+            }
+
+            if (app()->bound(\App\Models\Tenant::class)) {
+                app()->forgetInstance(\App\Models\Tenant::class);
+            }
+
+            app()->instance('tenant', $tenant);
+            app()->instance(\App\Models\Tenant::class, $tenant);
+        }
+
+        $request->attributes->set('__tenant_id', $tenantId);
+        $request->merge(['__tenant_id' => $tenantId]);
 
         return $tenantId;
     }
@@ -48,7 +67,7 @@ class FiberTopologyController extends Controller
                     'ponPorts.cables.cores.splitter.outputs.onu.customer',
                     'ponPorts.cables.cores.connectedPort',
                 ])
-                ->orderBy('name')
+                ->latest('created_at')
                 ->get();
 
             return response()->json($olts);
