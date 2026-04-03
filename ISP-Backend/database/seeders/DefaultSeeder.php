@@ -40,13 +40,13 @@ class DefaultSeeder extends Seeder
     private function seedRoles(): void
     {
         $roles = [
-            ['name' => 'Super Admin', 'description' => 'Full system access', 'db_role' => 'super_admin', 'is_system' => true],
-            ['name' => 'Admin', 'description' => 'Administrative access', 'db_role' => 'admin', 'is_system' => true],
-            ['name' => 'Staff', 'description' => 'Standard staff access', 'db_role' => 'staff', 'is_system' => true],
-            ['name' => 'Manager', 'description' => 'Manager access', 'db_role' => 'manager', 'is_system' => true],
-            ['name' => 'Operator', 'description' => 'Operator access', 'db_role' => 'operator', 'is_system' => true],
-            ['name' => 'Technician', 'description' => 'Technician access', 'db_role' => 'technician', 'is_system' => true],
-            ['name' => 'Accountant', 'description' => 'Accounting access', 'db_role' => 'accountant', 'is_system' => true],
+            ['name' => 'Super Admin', 'description' => 'Full system access',    'db_role' => 'super_admin', 'is_system' => true],
+            ['name' => 'Admin',       'description' => 'Full tenant access',     'db_role' => 'admin',       'is_system' => true],
+            ['name' => 'Owner',       'description' => 'Tenant owner',           'db_role' => 'owner',       'is_system' => true],
+            ['name' => 'Manager',     'description' => 'Management access',      'db_role' => 'manager',     'is_system' => true],
+            ['name' => 'Staff',       'description' => 'Basic operations',       'db_role' => 'staff',       'is_system' => false],
+            ['name' => 'Technician',  'description' => 'Technical support',      'db_role' => 'technician',  'is_system' => false],
+            ['name' => 'Accountant',  'description' => 'Finance operations',     'db_role' => 'accountant',  'is_system' => false],
         ];
         foreach ($roles as $role) {
             CustomRole::firstOrCreate(['name' => $role['name']], $role);
@@ -104,7 +104,7 @@ class DefaultSeeder extends Seeder
             'footer_developer' => 'Sync & Solutions IT',
             'system_version' => '1.0.1',
             'auto_update_year' => 'true',
-            'enabled_modules' => '["billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","customers"]',
+            'enabled_modules' => '["billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","customers","mikrotik","packages"]',
             'invoice_footer' => 'Thank you for using our internet service.',
             'ledger_type' => 'running_balance',
         ];
@@ -316,6 +316,7 @@ class DefaultSeeder extends Seeder
             'customers', 'billing', 'payments', 'merchant_payments',
             'tickets', 'sms', 'accounting', 'inventory', 'hr',
             'supplier', 'reports', 'settings', 'users', 'roles',
+            'mikrotik', 'packages',
         ];
 
         $permissionIds = [];
@@ -340,8 +341,8 @@ class DefaultSeeder extends Seeder
 
         $roles = CustomRole::all()->keyBy('name');
 
-        // Super Admin & Admin → all permissions
-        foreach (['Super Admin', 'Admin'] as $roleName) {
+        // Super Admin, Admin & Owner → all permissions
+        foreach (['Super Admin', 'Admin', 'Owner'] as $roleName) {
             if (!isset($roles[$roleName])) continue;
             foreach ($permissionIds as $permId) {
                 \App\Models\RolePermission::create([
@@ -366,7 +367,7 @@ class DefaultSeeder extends Seeder
 
         // Staff → view all + create/edit on core modules
         if (isset($roles['Staff'])) {
-            $staffModules = ['customers', 'billing', 'payments', 'merchant_payments', 'tickets', 'sms'];
+            $staffModules = ['customers', 'billing', 'payments', 'merchant_payments', 'tickets', 'sms', 'packages'];
             foreach ($permissionIds as $key => $permId) {
                 [$mod, $act] = explode('.', $key);
                 if ($act === 'view' || in_array($mod, $staffModules)) {
@@ -378,26 +379,13 @@ class DefaultSeeder extends Seeder
             }
         }
 
-        // Operator → view all + create/edit customers, billing, payments, tickets
-        if (isset($roles['Operator'])) {
-            $opModules = ['customers', 'billing', 'payments', 'tickets'];
-            foreach ($permissionIds as $key => $permId) {
-                [$mod, $act] = explode('.', $key);
-                if ($act === 'view' || (in_array($mod, $opModules) && $act !== 'delete')) {
-                    \App\Models\RolePermission::create([
-                        'role_id' => $roles['Operator']->id,
-                        'permission_id' => $permId,
-                    ]);
-                }
-            }
-        }
-
-        // Technician → view customers, tickets + create/edit tickets
+        // Technician → view customers, tickets, mikrotik + create/edit tickets
         if (isset($roles['Technician'])) {
             foreach ($permissionIds as $key => $permId) {
                 [$mod, $act] = explode('.', $key);
                 if (($mod === 'customers' && $act === 'view') ||
                     ($mod === 'tickets') ||
+                    ($mod === 'mikrotik') ||
                     ($mod === 'reports' && $act === 'view')) {
                     \App\Models\RolePermission::create([
                         'role_id' => $roles['Technician']->id,

@@ -353,7 +353,6 @@ export default function SuperUsers() {
                   <SelectItem value="owner">Owner</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="operator">Operator</SelectItem>
                   <SelectItem value="technician">Technician</SelectItem>
                   <SelectItem value="accountant">Accountant</SelectItem>
                   <SelectItem value="custom">Custom Role</SelectItem>
