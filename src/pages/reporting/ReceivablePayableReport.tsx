@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function ReceivablePayableReport() {
   const { data: customers = [] } = useQuery({
@@ -25,6 +26,14 @@ export default function ReceivablePayableReport() {
   const receivables = Object.values(receivableMap).filter(r => r.due > 0).sort((a, b) => b.due - a.due);
   const totalReceivable = receivables.reduce((s, r) => s + r.due, 0);
 
+  const columns = [
+    { header: "Customer ID", key: "customer_id" },
+    { header: "Name", key: "name" },
+    { header: "Area", key: "area" },
+    { header: "Unpaid Bills", key: "bills" },
+    { header: "Due Amount", key: "due", format: (v: number) => `Tk ${v.toLocaleString()}` },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -32,6 +41,8 @@ export default function ReceivablePayableReport() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><AlertTriangle className="h-6 w-6" /> Receivable / Payable</h1>
           <p className="text-muted-foreground text-sm">Outstanding customer dues and payable summary</p>
         </div>
+
+        <ReportToolbar title="Receivable Payable Report" data={receivables} columns={columns} showDateFilter={false} />
 
         <div className="grid grid-cols-2 gap-4">
           <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Receivable</p><p className="text-2xl font-bold text-destructive">৳{totalReceivable.toLocaleString()}</p></CardContent></Card>

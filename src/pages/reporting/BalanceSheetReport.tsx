@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BookOpen } from "lucide-react";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function BalanceSheetReport() {
   const { data: accounts = [] } = useQuery({
@@ -18,6 +19,21 @@ export default function BalanceSheetReport() {
   const totalAssets = assets.reduce((s: number, a: any) => s + Number(a.balance || 0), 0);
   const totalLiabilities = liabilities.reduce((s: number, a: any) => s + Number(a.balance || 0), 0);
   const totalEquity = equity.reduce((s: number, a: any) => s + Number(a.balance || 0), 0);
+
+  const allItems = [...assets.map((a: any) => ({ ...a, section: "Asset" })), ...liabilities.map((a: any) => ({ ...a, section: "Liability" })), ...equity.map((a: any) => ({ ...a, section: "Equity" }))];
+  const tableData = allItems.map((a: any) => ({
+    section: a.section,
+    code: a.code,
+    name: a.name,
+    balance: Number(a.balance || 0),
+  }));
+
+  const columns = [
+    { header: "Section", key: "section" },
+    { header: "Code", key: "code" },
+    { header: "Account Name", key: "name" },
+    { header: "Balance", key: "balance", format: (v: number) => `Tk ${v.toLocaleString()}` },
+  ];
 
   const Section = ({ title, items, total, color }: { title: string; items: any[]; total: number; color: string }) => (
     <Card>
@@ -49,6 +65,8 @@ export default function BalanceSheetReport() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><BookOpen className="h-6 w-6" /> Balance Sheet</h1>
           <p className="text-muted-foreground text-sm">Assets, liabilities, and equity overview</p>
         </div>
+
+        <ReportToolbar title="Balance Sheet" data={tableData} columns={columns} showDateFilter={false} />
 
         <div className="grid grid-cols-3 gap-4">
           <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Assets</p><p className="text-2xl font-bold text-primary">৳{totalAssets.toLocaleString()}</p></CardContent></Card>

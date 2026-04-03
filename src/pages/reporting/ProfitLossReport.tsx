@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function ProfitLossReport() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -30,6 +31,13 @@ export default function ProfitLossReport() {
     return { month: label, revenue: rev, expense: exp, profit: rev - exp };
   });
 
+  const columns = [
+    { header: "Month", key: "month" },
+    { header: "Revenue", key: "revenue", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Expense", key: "expense", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: "Profit", key: "profit", format: (v: number) => `Tk ${v.toLocaleString()}` },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -38,13 +46,21 @@ export default function ProfitLossReport() {
             <h1 className="text-2xl font-bold text-foreground">Profit & Loss Report</h1>
             <p className="text-muted-foreground text-sm">Monthly revenue vs expense analysis</p>
           </div>
+        </div>
+
+        <ReportToolbar
+          title={`Profit & Loss Report - ${year}`}
+          data={months}
+          columns={columns}
+          showDateFilter={false}
+        >
           <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[0, 1, 2].map(i => { const y = String(new Date().getFullYear() - i); return <SelectItem key={y} value={y}>{y}</SelectItem>; })}
             </SelectContent>
           </Select>
-        </div>
+        </ReportToolbar>
 
         <div className="grid grid-cols-3 gap-4">
           <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Yearly Revenue</p><p className="text-2xl font-bold text-primary">৳{yearlyRevenue.toLocaleString()}</p></CardContent></Card>
@@ -53,7 +69,7 @@ export default function ProfitLossReport() {
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Monthly P&L — {year}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Monthly P&L - {year}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={months}>

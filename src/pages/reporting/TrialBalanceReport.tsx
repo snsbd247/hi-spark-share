@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Scale } from "lucide-react";
+import ReportToolbar from "@/components/reports/ReportToolbar";
 
 export default function TrialBalanceReport() {
   const { data: accounts = [] } = useQuery({
@@ -18,8 +19,16 @@ export default function TrialBalanceReport() {
     credit: ["liability", "equity", "income"].includes(a.type) ? Math.max(Number(a.balance || 0), 0) : 0,
   }));
 
-  const totalDebit = items.reduce((s, i) => s + i.debit, 0);
-  const totalCredit = items.reduce((s, i) => s + i.credit, 0);
+  const totalDebit = items.reduce((s: any, i: any) => s + i.debit, 0);
+  const totalCredit = items.reduce((s: any, i: any) => s + i.credit, 0);
+
+  const columns = [
+    { header: "Code", key: "code" },
+    { header: "Account Name", key: "name" },
+    { header: "Type", key: "type" },
+    { header: "Debit", key: "debit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
+    { header: "Credit", key: "credit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
+  ];
 
   return (
     <DashboardLayout>
@@ -28,6 +37,8 @@ export default function TrialBalanceReport() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Scale className="h-6 w-6" /> Trial Balance</h1>
           <p className="text-muted-foreground text-sm">Summary of all account balances</p>
         </div>
+
+        <ReportToolbar title="Trial Balance" data={items} columns={columns} showDateFilter={false} />
 
         <Card>
           <CardContent className="p-0">
@@ -42,7 +53,7 @@ export default function TrialBalanceReport() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item, i) => (
+                {items.map((item: any, i: number) => (
                   <TableRow key={i}>
                     <TableCell className="font-mono text-xs">{item.code}</TableCell>
                     <TableCell>{item.name}</TableCell>
