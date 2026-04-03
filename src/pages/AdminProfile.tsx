@@ -263,9 +263,9 @@ export default function AdminProfile() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5" /> Change Password
+              <KeyRound className="h-5 w-5" /> {t.profilePage.changePassword}
             </CardTitle>
-            <CardDescription>Update your login password</CardDescription>
+            <CardDescription>{t.profilePage.updateLoginPassword}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
