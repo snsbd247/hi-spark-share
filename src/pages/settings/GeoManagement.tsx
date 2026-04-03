@@ -50,7 +50,7 @@ function DivisionsTab() {
       const { error } = await (db as any).from("geo_divisions").insert({ name: name.trim() });
       if (error) throw error;
     },
-    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ["geo-divisions-all"] }); setName(""); toast.success("Division added"); },
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ["geo-divisions-all"] }); setName(""); toast.success(geo.divisionAdded); },
     onError: (e: any) => toast.error(e.message),
   });
 
