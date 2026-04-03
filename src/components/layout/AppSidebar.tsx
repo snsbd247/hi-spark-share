@@ -204,15 +204,15 @@ export default function AppSidebar() {
   const tSettingsNav: NavItem[] = [
     { to: "/settings/system", icon: Settings, label: t.sidebar.systemSettings, module: "settings" },
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
-    { to: "/ip-pools", icon: Network, label: "IP Pools", module: "settings" },
-    { to: "/settings/integrations", icon: Plug, label: "Integrations", module: "settings" },
-    { to: "/settings/locations", icon: Globe, label: "Location Management", module: "settings" },
+    { to: "/ip-pools", icon: Network, label: t.sidebar.ipPools, module: "settings" },
+    { to: "/settings/integrations", icon: Plug, label: t.sidebar.integrations, module: "settings" },
+    { to: "/settings/locations", icon: Globe, label: t.sidebar.locationManagement, module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },
     { to: "/login-logs", icon: FileText, label: t.sidebar.loginLogs, module: "settings" },
     { to: "/audit-logs", icon: ClipboardList, label: t.sidebar.auditLogs, module: "settings" },
     { to: "/settings/api-health", icon: Activity, label: t.sidebar.apiHealth, module: "settings" },
-    { to: "/settings/domains", icon: Globe, label: "Domain Management", module: "settings" },
-    { to: "/settings/subscription", icon: Receipt, label: "Subscription Invoices" },
+    { to: "/settings/domains", icon: Globe, label: t.sidebar.domainManagement, module: "settings" },
+    { to: "/settings/subscription", icon: Receipt, label: t.sidebar.subscriptionInvoices },
   ];
 
   const siteName = branding.site_name || "Smart ISP";
