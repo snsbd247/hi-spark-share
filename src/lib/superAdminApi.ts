@@ -547,48 +547,324 @@ export const superAdminApi = {
     return request(`/tenants/${tenantId}/users`, { method: "POST", body: JSON.stringify(data) });
   },
 
-  // ── Tenant Financial Reports ──────────────────────────
-  getTenantReportOverview: (tenantId: string) => request(`/tenants/${tenantId}/reports/overview`),
-  getTenantReportRevenue: (tenantId: string, from?: string, to?: string) => {
+  // ── Tenant Financial Reports (with Supabase fallback) ──────────────────────────
+
+  getTenantReportOverview: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const [customers, bills, payments, expenses, products, smsWallet, smsLogs, accounts, transactions] = await Promise.all([
+        sbSelect("customers"),
+        sbSelect("bills"),
+        sbSelect("payments"),
+        sbSelect("expenses"),
+        sbSelect("products"),
+        sbSelect("sms_wallets").catch(() => []),
+        sbSelect("sms_logs").catch(() => []),
+        sbSelect("accounts").catch(() => []),
+        sbSelect("transactions").catch(() => []),
+      ]);
+
+      const activeCustomers = customers.filter((c: any) => c.connection_status === "active");
+      const inactiveCustomers = customers.filter((c: any) => c.connection_status !== "active");
+      const currentBills = bills.filter((b: any) => b.month === currentMonth);
+      const totalBilled = currentBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
+      const paidBills = currentBills.filter((b: any) => b.status === "paid");
+      const totalCollected = paidBills.reduce((s: number, b: any) => s + Number(b.paid_amount || b.amount || 0), 0);
+      const totalDue = totalBilled - totalCollected;
+
+      const allPaidPayments = payments.filter((p: any) => p.status === "completed");
+      const totalRevenue = allPaidPayments.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+      const monthPayments = allPaidPayments.filter((p: any) => p.paid_at?.startsWith(currentMonth));
+      const monthlyRevenue = monthPayments.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+
+      const totalExpense = expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+      const monthExpenses = expenses.filter((e: any) => e.date?.startsWith(currentMonth));
+      const monthlyExpense = monthExpenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+
+      const inventoryValue = products.reduce((s: number, p: any) => s + (Number(p.stock_quantity || 0) * Number(p.cost_price || 0)), 0);
+      const arpu = activeCustomers.length > 0 ? Math.round(monthlyRevenue / activeCustomers.length) : 0;
+      const collectionRate = totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100 * 10) / 10 : 0;
+      const churnCount = inactiveCustomers.length;
+      const churnRate = customers.length > 0 ? Math.round((churnCount / customers.length) * 100 * 10) / 10 : 0;
+
+      const monthlySms = smsLogs.filter((s: any) => s.created_at?.startsWith(currentMonth)).length;
+      const walletBalance = smsWallet?.[0]?.balance || 0;
+
+      return {
+        total_revenue: totalRevenue,
+        monthly_revenue: monthlyRevenue,
+        total_expense: totalExpense,
+        monthly_expense: monthlyExpense,
+        net_profit: totalRevenue - totalExpense,
+        monthly_profit: monthlyRevenue - monthlyExpense,
+        total_billed: totalBilled,
+        total_collected: totalCollected,
+        total_due: totalDue,
+        collection_rate: collectionRate,
+        total_customers: customers.length,
+        active_customers: activeCustomers.length,
+        inactive_customers: inactiveCustomers.length,
+        arpu,
+        churn_rate: churnRate,
+        churn_count: churnCount,
+        inventory_value: inventoryValue,
+        monthly_sms: monthlySms,
+        total_sms: smsLogs.length,
+        sms_balance: walletBalance,
+      };
+    }
+    return request(`/tenants/${tenantId}/reports/overview`);
+  },
+
+  getTenantReportRevenue: async (tenantId: string, from?: string, to?: string) => {
+    if (IS_LOVABLE) {
+      const payments = await sbSelect("payments");
+      const completed = payments.filter((p: any) => p.status === "completed");
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recent = completed.filter((p: any) => new Date(p.paid_at || p.created_at) >= thirtyDaysAgo);
+
+      const dailyMap: Record<string, number> = {};
+      recent.forEach((p: any) => {
+        const d = (p.paid_at || p.created_at)?.substring(0, 10);
+        dailyMap[d] = (dailyMap[d] || 0) + Number(p.amount || 0);
+      });
+      const daily = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, total]) => ({ date, total }));
+
+      const methodMap: Record<string, { total: number; count: number }> = {};
+      completed.forEach((p: any) => {
+        const m = p.payment_method || "cash";
+        if (!methodMap[m]) methodMap[m] = { total: 0, count: 0 };
+        methodMap[m].total += Number(p.amount || 0);
+        methodMap[m].count++;
+      });
+      const by_method = Object.entries(methodMap).map(([payment_method, v]) => ({ payment_method, ...v }));
+
+      return { daily, by_method };
+    }
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     return request(`/tenants/${tenantId}/reports/revenue?${params}`);
   },
-  getTenantReportExpense: (tenantId: string, from?: string, to?: string) => {
+
+  getTenantReportExpense: async (tenantId: string, from?: string, to?: string) => {
+    if (IS_LOVABLE) {
+      const expenses = await sbSelect("expenses");
+      const catMap: Record<string, number> = {};
+      expenses.forEach((e: any) => {
+        const cat = e.category || "other";
+        catMap[cat] = (catMap[cat] || 0) + Number(e.amount || 0);
+      });
+      const by_category = Object.entries(catMap).map(([category, total]) => ({ category, total }));
+
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recent = expenses.filter((e: any) => new Date(e.date || e.created_at) >= thirtyDaysAgo);
+      const dailyMap: Record<string, number> = {};
+      recent.forEach((e: any) => {
+        const d = (e.date || e.created_at)?.substring(0, 10);
+        dailyMap[d] = (dailyMap[d] || 0) + Number(e.amount || 0);
+      });
+      const daily = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, total]) => ({ date, total }));
+
+      return { by_category, daily };
+    }
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     return request(`/tenants/${tenantId}/reports/expense?${params}`);
   },
-  getTenantReportProfitLoss: (tenantId: string, year?: number) => {
+
+  getTenantReportProfitLoss: async (tenantId: string, year?: number) => {
+    if (IS_LOVABLE) {
+      const yr = year || new Date().getFullYear();
+      const [payments, expenses] = await Promise.all([
+        sbSelect("payments"),
+        sbSelect("expenses"),
+      ]);
+      const completed = payments.filter((p: any) => p.status === "completed");
+      const months: any[] = [];
+      let yearlyRevenue = 0, yearlyExpense = 0;
+
+      for (let m = 1; m <= 12; m++) {
+        const monthStr = `${yr}-${String(m).padStart(2, "0")}`;
+        const monthLabel = new Date(yr, m - 1).toLocaleString("default", { month: "short" });
+        const rev = completed.filter((p: any) => (p.paid_at || p.created_at)?.startsWith(monthStr))
+          .reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+        const exp = expenses.filter((e: any) => (e.date || e.created_at)?.startsWith(monthStr))
+          .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+        yearlyRevenue += rev;
+        yearlyExpense += exp;
+        months.push({ month: monthLabel, revenue: rev, expense: exp, profit: rev - exp });
+      }
+
+      return { months, yearly: { revenue: yearlyRevenue, expense: yearlyExpense, profit: yearlyRevenue - yearlyExpense } };
+    }
     const params = year ? `?year=${year}` : "";
     return request(`/tenants/${tenantId}/reports/profit-loss${params}`);
   },
-  getTenantReportInvoices: (tenantId: string, month?: string) => {
+
+  getTenantReportInvoices: async (tenantId: string, month?: string) => {
+    if (IS_LOVABLE) {
+      const m = month || new Date().toISOString().substring(0, 7);
+      const bills = await sbSelect("bills");
+      const filtered = bills.filter((b: any) => b.month === m);
+      return { month: m, bills: filtered };
+    }
     const params = month ? `?month=${month}` : "";
     return request(`/tenants/${tenantId}/reports/invoices${params}`);
   },
-  getTenantReportPayments: (tenantId: string) => request(`/tenants/${tenantId}/reports/payments`),
-  getTenantReportCustomers: (tenantId: string) => request(`/tenants/${tenantId}/reports/customers`),
-  getTenantReportSms: (tenantId: string) => request(`/tenants/${tenantId}/reports/sms`),
-  getTenantReportLedger: (tenantId: string, from?: string, to?: string) => {
+
+  getTenantReportPayments: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const payments = await sbSelect("payments");
+      const recent = payments.sort((a: any, b: any) => (b.paid_at || b.created_at || "").localeCompare(a.paid_at || a.created_at || "")).slice(0, 50);
+      return { payments: recent, total: payments.length };
+    }
+    return request(`/tenants/${tenantId}/reports/payments`);
+  },
+
+  getTenantReportCustomers: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const customers = await sbSelect("customers");
+      const byArea: Record<string, number> = {};
+      const byStatus: Record<string, number> = {};
+      customers.forEach((c: any) => {
+        byArea[c.area || "Unknown"] = (byArea[c.area || "Unknown"] || 0) + 1;
+        byStatus[c.connection_status || "unknown"] = (byStatus[c.connection_status || "unknown"] || 0) + 1;
+      });
+      return {
+        total: customers.length,
+        by_area: Object.entries(byArea).map(([area, count]) => ({ area, count })),
+        by_status: Object.entries(byStatus).map(([status, count]) => ({ status, count })),
+      };
+    }
+    return request(`/tenants/${tenantId}/reports/customers`);
+  },
+
+  getTenantReportSms: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const [logs, wallet] = await Promise.all([
+        sbSelect("sms_logs").catch(() => []),
+        sbSelect("sms_wallets").catch(() => []),
+      ]);
+      const byType: Record<string, number> = {};
+      logs.forEach((l: any) => {
+        byType[l.sms_type || "general"] = (byType[l.sms_type || "general"] || 0) + 1;
+      });
+      return {
+        total_sent: logs.length,
+        balance: wallet?.[0]?.balance || 0,
+        by_type: Object.entries(byType).map(([type, count]) => ({ type, count })),
+      };
+    }
+    return request(`/tenants/${tenantId}/reports/sms`);
+  },
+
+  getTenantReportLedger: async (tenantId: string, from?: string, to?: string) => {
+    if (IS_LOVABLE) {
+      const transactions = await sbSelect("transactions").catch(() => []);
+      const recent = transactions.sort((a: any, b: any) => (b.date || "").localeCompare(a.date || "")).slice(0, 100);
+      return { entries: recent };
+    }
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     return request(`/tenants/${tenantId}/reports/ledger?${params}`);
   },
-  getTenantReportTrialBalance: (tenantId: string, from?: string, to?: string) => {
+
+  getTenantReportTrialBalance: async (tenantId: string, from?: string, to?: string) => {
+    if (IS_LOVABLE) {
+      const accounts = await sbSelect("accounts").catch(() => []);
+      const items = accounts.filter((a: any) => a.is_active !== false).map((a: any) => ({
+        code: a.code, name: a.name, type: a.type,
+        debit: ["asset", "expense"].includes(a.type) ? Math.max(Number(a.balance || 0), 0) : 0,
+        credit: ["liability", "equity", "income"].includes(a.type) ? Math.max(Number(a.balance || 0), 0) : 0,
+      }));
+      return { accounts: items };
+    }
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     return request(`/tenants/${tenantId}/reports/trial-balance?${params}`);
   },
-  getTenantReportBalanceSheet: (tenantId: string) => request(`/tenants/${tenantId}/reports/balance-sheet`),
-  getTenantReportAccountBalances: (tenantId: string) => request(`/tenants/${tenantId}/reports/account-balances`),
-  getTenantReportReceivablePayable: (tenantId: string) => request(`/tenants/${tenantId}/reports/receivable-payable`),
-  getTenantReportInventory: (tenantId: string) => request(`/tenants/${tenantId}/reports/inventory`),
-  getTenantReportCashFlow: (tenantId: string, year?: number) => {
+
+  getTenantReportBalanceSheet: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const accounts = await sbSelect("accounts").catch(() => []);
+      const assets = accounts.filter((a: any) => a.type === "asset" && a.is_active !== false);
+      const liabilities = accounts.filter((a: any) => a.type === "liability" && a.is_active !== false);
+      const equity = accounts.filter((a: any) => a.type === "equity" && a.is_active !== false);
+      return {
+        assets: assets.map((a: any) => ({ name: a.name, balance: Number(a.balance || 0) })),
+        liabilities: liabilities.map((a: any) => ({ name: a.name, balance: Number(a.balance || 0) })),
+        equity: equity.map((a: any) => ({ name: a.name, balance: Number(a.balance || 0) })),
+        total_assets: assets.reduce((s: number, a: any) => s + Number(a.balance || 0), 0),
+        total_liabilities: liabilities.reduce((s: number, a: any) => s + Number(a.balance || 0), 0),
+        total_equity: equity.reduce((s: number, a: any) => s + Number(a.balance || 0), 0),
+      };
+    }
+    return request(`/tenants/${tenantId}/reports/balance-sheet`);
+  },
+
+  getTenantReportAccountBalances: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const accounts = await sbSelect("accounts").catch(() => []);
+      return { accounts: accounts.filter((a: any) => a.is_active !== false).map((a: any) => ({ id: a.id, code: a.code, name: a.name, type: a.type, balance: Number(a.balance || 0) })) };
+    }
+    return request(`/tenants/${tenantId}/reports/account-balances`);
+  },
+
+  getTenantReportReceivablePayable: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const [customers, bills] = await Promise.all([
+        sbSelect("customers"),
+        sbSelect("bills"),
+      ]);
+      const unpaidBills = bills.filter((b: any) => b.status !== "paid");
+      const receivableMap: Record<string, { name: string; due: number }> = {};
+      unpaidBills.forEach((b: any) => {
+        const cust = customers.find((c: any) => c.id === b.customer_id);
+        if (!receivableMap[b.customer_id]) receivableMap[b.customer_id] = { name: cust?.name || "Unknown", due: 0 };
+        receivableMap[b.customer_id].due += Number(b.amount || 0) - Number(b.paid_amount || 0);
+      });
+      const receivables = Object.values(receivableMap).filter(r => r.due > 0).sort((a, b) => b.due - a.due);
+      return { receivables, total_receivable: receivables.reduce((s, r) => s + r.due, 0), payables: [], total_payable: 0 };
+    }
+    return request(`/tenants/${tenantId}/reports/receivable-payable`);
+  },
+
+  getTenantReportInventory: async (tenantId: string) => {
+    if (IS_LOVABLE) {
+      const products = await sbSelect("products").catch(() => []);
+      const totalValue = products.reduce((s: number, p: any) => s + (Number(p.stock_quantity || 0) * Number(p.cost_price || 0)), 0);
+      const lowStock = products.filter((p: any) => p.stock_quantity <= (p.low_stock_alert || 0));
+      return { products, total_value: totalValue, low_stock: lowStock, total_items: products.length };
+    }
+    return request(`/tenants/${tenantId}/reports/inventory`);
+  },
+
+  getTenantReportCashFlow: async (tenantId: string, year?: number) => {
+    if (IS_LOVABLE) {
+      const yr = year || new Date().getFullYear();
+      const [payments, expenses] = await Promise.all([
+        sbSelect("payments"),
+        sbSelect("expenses"),
+      ]);
+      const completed = payments.filter((p: any) => p.status === "completed");
+      const months: any[] = [];
+
+      for (let m = 1; m <= 12; m++) {
+        const monthStr = `${yr}-${String(m).padStart(2, "0")}`;
+        const monthLabel = new Date(yr, m - 1).toLocaleString("default", { month: "short" });
+        const inflow = completed.filter((p: any) => (p.paid_at || p.created_at)?.startsWith(monthStr))
+          .reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+        const outflow = expenses.filter((e: any) => (e.date || e.created_at)?.startsWith(monthStr))
+          .reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+        months.push({ month: monthLabel, inflow, outflow, net: inflow - outflow });
+      }
+
+      return { months };
+    }
     const params = year ? `?year=${year}` : "";
     return request(`/tenants/${tenantId}/reports/cash-flow${params}`);
   },
