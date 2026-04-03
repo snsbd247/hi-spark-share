@@ -317,6 +317,9 @@ function App() {
                   <Route path="sms" element={<SuperSmsManagement />} />
                   <Route path="smtp" element={<SuperSmtpSettings />} />
                   <Route path="analytics" element={<SuperAnalytics />} />
+                  <Route path="users" element={<SuperUsers />} />
+                  <Route path="roles" element={<SuperRoles />} />
+                  <Route path="activity-logs" element={<SuperActivityLogs />} />
                 </Route>
 
                 {/* Customer Portal */}
