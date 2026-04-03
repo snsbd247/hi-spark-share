@@ -1907,6 +1907,118 @@ export type Database = {
         }
         Relationships: []
       }
+      network_links: {
+        Row: {
+          created_at: string
+          from_node_id: string
+          id: string
+          label: string | null
+          link_type: string | null
+          tenant_id: string
+          to_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_node_id: string
+          id?: string
+          label?: string | null
+          link_type?: string | null
+          tenant_id: string
+          to_node_id: string
+        }
+        Update: {
+          created_at?: string
+          from_node_id?: string
+          id?: string
+          label?: string | null
+          link_type?: string | null
+          tenant_id?: string
+          to_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_links_from_node_id_fkey"
+            columns: ["from_node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_links_to_node_id_fkey"
+            columns: ["to_node_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_nodes: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          lat: number
+          lng: number
+          metadata: Json | null
+          name: string
+          parent_id: string | null
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          lat: number
+          lng: number
+          metadata?: Json | null
+          name: string
+          parent_id?: string | null
+          status?: string
+          tenant_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          metadata?: Json | null
+          name?: string
+          parent_id?: string | null
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "network_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_nodes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
