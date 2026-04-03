@@ -20,8 +20,11 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { getResolvedBranding, type BrandingData } from "@/lib/brandingHelper";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperBilling() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [showInvoice, setShowInvoice] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);

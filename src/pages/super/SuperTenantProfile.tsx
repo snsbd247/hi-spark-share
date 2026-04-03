@@ -25,6 +25,7 @@ import {
   LogIn, Users, Eye, Edit, Key, History, Receipt, BarChart3
 } from "lucide-react";
 import TenantFinancialReportsTab from "@/components/super/TenantFinancialReportsTab";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── SMS Recharge Dialog ─────────────────────────────────────
 function SmsRechargeDialog({ tenantId, currentBalance, onSuccess }: {
@@ -790,6 +791,8 @@ function TenantSessionsTab({ tenantId }: { tenantId: string }) {
 }
 
 export default function SuperTenantProfile() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();

@@ -12,8 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Building2, Ban, CheckCircle, Trash2, Search, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperTenants() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -61,36 +64,36 @@ export default function SuperTenants() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Tenant Management</h1>
+        <h1 className="text-2xl font-bold text-foreground">{sa.tenantManagement}</h1>
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" /> Create Tenant</Button>
+            <Button><Plus className="h-4 w-4 mr-2" /> {sa.createTenant}</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Create New ISP Tenant</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{sa.createNewTenant}</DialogTitle></DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>ISP Name</Label>
+                  <Label>{sa.ispName}</Label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Subdomain</Label>
+                  <Label>{sa.subdomain}</Label>
                   <Input value={form.subdomain} onChange={(e) => setForm({ ...form, subdomain: e.target.value })} placeholder="isp1" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{sa.emailUsername}</Label>
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>{sa.mobile}</Label>
                   <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Plan</Label>
+                <Label>{sa.plan}</Label>
                 <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={sa.selectPlan} /></SelectTrigger>
                   <SelectContent>
                     {plans.map((p: any) => (
                       <SelectItem key={p.id} value={p.id}>{p.name} — ৳{p.price_monthly}/mo</SelectItem>
@@ -99,19 +102,19 @@ export default function SuperTenants() {
                 </Select>
               </div>
               <div className="border-t pt-4 space-y-4">
-                <p className="text-sm font-medium text-muted-foreground">Tenant Admin Account</p>
+                <p className="text-sm font-medium text-muted-foreground">{sa.tenantAdminAccount}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Admin Name</Label>
+                    <Label>{sa.adminName}</Label>
                     <Input value={form.admin_name} onChange={(e) => setForm({ ...form, admin_name: e.target.value })} required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Admin Email</Label>
+                    <Label>{sa.adminEmail}</Label>
                     <Input type="email" value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} required />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Admin Password</Label>
+                  <Label>{sa.adminPassword}</Label>
                   <Input type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} required minLength={6} />
                 </div>
               </div>
@@ -127,15 +130,15 @@ export default function SuperTenants() {
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search tenants..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder={sa.searchTenants} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="suspended">Suspended</SelectItem>
-            <SelectItem value="trial">Trial</SelectItem>
+            <SelectItem value="all">{sa.allStatus}</SelectItem>
+            <SelectItem value="active">{t.common.active}</SelectItem>
+            <SelectItem value="suspended">{t.common.status}</SelectItem>
+            <SelectItem value="trial">{sa.trial}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -146,20 +149,20 @@ export default function SuperTenants() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ISP Name</TableHead>
-                <TableHead>Subdomain</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Customers</TableHead>
-                <TableHead>Users</TableHead>
+                <TableHead>{sa.ispName}</TableHead>
+                <TableHead>{sa.subdomain}</TableHead>
+                <TableHead>{sa.plan}</TableHead>
+                <TableHead>{sa.customers}</TableHead>
+                <TableHead>{sa.users}</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
               ) : tenants.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No tenants found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{sa.noTenantsFound}</TableCell></TableRow>
               ) : tenants.map((t: any) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">{t.name}</TableCell>

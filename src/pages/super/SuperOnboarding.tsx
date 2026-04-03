@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
+import { useLanguage } from "@/contexts/LanguageContext";
   Building2, Globe, CreditCard, Database, CheckCircle2, AlertCircle,
   ArrowRight, ArrowLeft, Loader2, Rocket, Zap, MapPin, BookOpen,
   Mail, Shield, MessageSquare, Plus, Info
@@ -81,6 +82,8 @@ function clearDraft() {
 
 // ─── Component ───────────────────────────────────────────────
 export default function SuperOnboarding() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();

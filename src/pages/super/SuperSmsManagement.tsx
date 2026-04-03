@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const LOW_BALANCE_THRESHOLD = 100;
 
@@ -51,6 +52,8 @@ const chartConfig = {
 };
 
 export default function SuperSmsManagement() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [rechargeOpen, setRechargeOpen] = useState(false);

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ModuleItem {
   id: string;
@@ -22,6 +23,8 @@ interface ModuleItem {
 }
 
 export default function SuperPlans() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [editPlan, setEditPlan] = useState<any>(null);
@@ -220,54 +223,54 @@ export default function SuperPlans() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Plan Management</h1>
+        <h1 className="text-2xl font-bold text-foreground">{sa.planManagement}</h1>
         <Dialog open={showCreate} onOpenChange={(v) => { setShowCreate(v); if (!v) setEditPlan(null); }}>
-          <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Create Plan</Button></DialogTrigger>
+          <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> {sa.createPlan}</Button></DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{editPlan ? "Edit Plan" : "Create Subscription Plan"}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editPlan ? sa.editPlan : sa.createSubscriptionPlan}</DialogTitle></DialogHeader>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Plan Name</Label>
+                  <Label>{sa.planName}</Label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Slug</Label>
+                  <Label>{sa.slug}</Label>
                   <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="starter" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Monthly Price (৳)</Label>
+                  <Label>{sa.monthlyPrice}</Label>
                   <Input type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Yearly Price (৳)</Label>
+                  <Label>{sa.yearlyPrice}</Label>
                   <Input type="number" value={form.price_yearly} onChange={(e) => setForm({ ...form, price_yearly: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Max Customers</Label>
+                  <Label>{sa.maxCustomers}</Label>
                   <Input type="number" value={form.max_customers} onChange={(e) => setForm({ ...form, max_customers: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Max Users</Label>
+                  <Label>{sa.maxUsers}</Label>
                   <Input type="number" value={form.max_users} onChange={(e) => setForm({ ...form, max_users: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t.common.description}</Label>
                 <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
 
               {/* Module Selection - ALL modules shown */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Module Access Control</Label>
+                  <Label className="text-base font-semibold">{sa.moduleAccessControl}</Label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={allNonCoreSelected ? deselectAllModules : selectAllModules}
                   >
-                    {allNonCoreSelected ? "Deselect All" : "Select All"}
+                    {allNonCoreSelected ? sa.deselectAll : sa.selectAll}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -296,7 +299,7 @@ export default function SuperPlans() {
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium">{mod.name}</span>
                           {mod.is_core && (
-                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">Core</Badge>
+                            <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{sa.core}</Badge>
                           )}
                         </div>
                       </label>
@@ -307,7 +310,7 @@ export default function SuperPlans() {
 
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {editPlan ? "Update Plan" : "Create Plan"}
+                {editPlan ? sa.updatePlan : sa.createPlan}
               </Button>
             </form>
           </DialogContent>
@@ -322,16 +325,16 @@ export default function SuperPlans() {
                 <TableHead>Plan</TableHead>
                 <TableHead>Monthly</TableHead>
                 <TableHead>Yearly</TableHead>
-                <TableHead>Limits</TableHead>
-                <TableHead>Modules</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{sa.limits}</TableHead>
+                <TableHead>{sa.modules}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
               ) : plans.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No plans found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{sa.noPlansFound}</TableCell></TableRow>
               ) : plans.map((p: any) => {
                 const coreCount = allModules.filter(m => m.is_core).length;
                 const totalEnabled = coreCount + (p.module_slugs?.length || 0);

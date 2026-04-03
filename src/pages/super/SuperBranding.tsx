@@ -9,8 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Palette, Save, Upload, X, Globe, Mail, Phone, MapPin, FileText, Building2 } from "lucide-react";
 import { clearBrandingCache } from "@/lib/brandingHelper";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperBranding() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
@@ -215,13 +218,13 @@ export default function SuperBranding() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4" /> Basic Information
+              <Building2 className="h-4 w-4" /> {sa.basicInformation}
             </CardTitle>
             <CardDescription>Software name and identity</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Software Name *</Label>
+              <Label>{sa.softwareName} *</Label>
               <Input
                 value={form.site_name}
                 onChange={(e) => setForm({ ...form, site_name: e.target.value })}
@@ -238,7 +241,7 @@ export default function SuperBranding() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Primary Color</Label>
+              <Label>{sa.primaryColor}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -261,7 +264,7 @@ export default function SuperBranding() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Globe className="h-4 w-4" /> Contact Information
+              <Globe className="h-4 w-4" /> {sa.contactInformation}
             </CardTitle>
             <CardDescription>Support email, phone, and general contact</CardDescription>
           </CardHeader>
@@ -284,7 +287,7 @@ export default function SuperBranding() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> Support Email</Label>
+              <Label className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> {sa.supportEmail}</Label>
               <Input
                 type="email"
                 value={form.support_email}
@@ -293,7 +296,7 @@ export default function SuperBranding() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Support Phone</Label>
+              <Label className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {sa.supportPhone}</Label>
               <Input
                 value={form.support_phone}
                 onChange={(e) => setForm({ ...form, support_phone: e.target.value })}
@@ -307,16 +310,16 @@ export default function SuperBranding() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Upload className="h-4 w-4" /> Logo & Favicon
+              <Upload className="h-4 w-4" /> {sa.logoFavicon}
             </CardTitle>
             <CardDescription>Upload your software logo, login page logo, and favicon</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {(["logo_url", "login_logo_url", "favicon_url"] as const).map((field) => {
               const labels: Record<string, string> = {
-                logo_url: "Main Logo",
-                login_logo_url: "Login Page Logo",
-                favicon_url: "Favicon",
+                logo_url: sa.mainLogo,
+                login_logo_url: sa.loginPageLogo,
+                favicon_url: sa.favicon,
               };
               return (
                 <div key={field} className="space-y-2">
@@ -373,13 +376,13 @@ export default function SuperBranding() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> Footer & Copyright
+              <FileText className="h-4 w-4" /> {sa.footerCopyright}
             </CardTitle>
             <CardDescription>Text shown in invoice footers, PDF documents, and portal footer</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Footer Text</Label>
+              <Label>{sa.footerText}</Label>
               <Textarea
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
@@ -389,7 +392,7 @@ export default function SuperBranding() {
               <p className="text-xs text-muted-foreground">Shown at the bottom of all invoices and PDF documents</p>
             </div>
             <div className="space-y-2">
-              <Label>Copyright Text</Label>
+              <Label>{sa.copyrightText}</Label>
               <Input
                 value={copyrightText}
                 onChange={(e) => setCopyrightText(e.target.value)}

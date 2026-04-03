@@ -10,8 +10,11 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Mail, Save, Send, Server, Shield, CheckCircle2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperSmtpSettings() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [testEmail, setTestEmail] = useState("");
 
@@ -62,7 +65,7 @@ export default function SuperSmtpSettings() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Mail className="h-6 w-6" /> SMTP Email Settings
+          <Mail className="h-6 w-6" /> {sa.smtpEmailSettings}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure centralized SMTP for all tenant email communications
@@ -75,7 +78,7 @@ export default function SuperSmtpSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" /> SMTP Server Configuration
+                <Server className="h-5 w-5" /> {sa.smtpServerConfig}
               </CardTitle>
               <CardDescription>
                 All system emails will be sent through this SMTP server
@@ -84,7 +87,7 @@ export default function SuperSmtpSettings() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>SMTP Host</Label>
+                  <Label>{sa.smtpHost}</Label>
                   <Input
                     value={currentForm.host || ""}
                     onChange={(e) => updateField("host", e.target.value)}
@@ -92,7 +95,7 @@ export default function SuperSmtpSettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Port</Label>
+                  <Label>{sa.port}</Label>
                   <Input
                     type="number"
                     value={currentForm.port || 587}
@@ -104,7 +107,7 @@ export default function SuperSmtpSettings() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Username</Label>
+                  <Label>{sa.username}</Label>
                   <Input
                     value={currentForm.username || ""}
                     onChange={(e) => updateField("username", e.target.value)}
@@ -112,7 +115,7 @@ export default function SuperSmtpSettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Password</Label>
+                  <Label>{sa.password}</Label>
                   <Input
                     type="password"
                     value={currentForm.password || ""}
@@ -124,7 +127,7 @@ export default function SuperSmtpSettings() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Encryption</Label>
+                  <Label>{sa.encryption}</Label>
                   <Select
                     value={currentForm.encryption || "tls"}
                     onValueChange={(v) => updateField("encryption", v)}
@@ -138,7 +141,7 @@ export default function SuperSmtpSettings() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label>{t.common.status}</Label>
                   <Select
                     value={currentForm.status || "active"}
                     onValueChange={(v) => updateField("status", v)}
@@ -156,7 +159,7 @@ export default function SuperSmtpSettings() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>From Email</Label>
+                  <Label>{sa.fromEmail}</Label>
                   <Input
                     value={currentForm.from_email || ""}
                     onChange={(e) => updateField("from_email", e.target.value)}
@@ -164,7 +167,7 @@ export default function SuperSmtpSettings() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>From Name</Label>
+                  <Label>{sa.fromName}</Label>
                   <Input
                     value={currentForm.from_name || ""}
                     onChange={(e) => updateField("from_name", e.target.value)}
@@ -186,14 +189,14 @@ export default function SuperSmtpSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Shield className="h-5 w-5" /> Status
+                <Shield className="h-5 w-5" /> {t.common.status}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {currentForm.host ? (
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
-                  <span className="text-sm">SMTP Configured</span>
+                  <span className="text-sm">{sa.smtpConfigured}</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -212,12 +215,12 @@ export default function SuperSmtpSettings() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Send className="h-5 w-5" /> Test Email
+                <Send className="h-5 w-5" /> {sa.testEmail}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <Label>Send test to</Label>
+                <Label>{sa.sendTestTo}</Label>
                 <Input
                   type="email"
                   value={testEmail}

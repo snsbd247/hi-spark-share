@@ -11,8 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperSubscriptions() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [showAssign, setShowAssign] = useState(false);
   const [form, setForm] = useState({ tenant_id: "", plan_id: "", billing_cycle: "monthly", start_date: new Date().toISOString().split("T")[0] });
@@ -36,25 +39,25 @@ export default function SuperSubscriptions() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Subscriptions</h1>
+        <h1 className="text-2xl font-bold text-foreground">{sa.subscriptions}</h1>
         <Dialog open={showAssign} onOpenChange={setShowAssign}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Assign Subscription</Button></DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> {sa.assignSubscriptionBtn}</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Assign Subscription</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{sa.assignSubscription}</DialogTitle></DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); assignMut.mutate(form); }} className="space-y-4">
               <div className="space-y-2">
-                <Label>Tenant</Label>
+                <Label>{sa.tenant}</Label>
                 <Select value={form.tenant_id} onValueChange={(v) => setForm({ ...form, tenant_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select tenant" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={sa.selectTenant} /></SelectTrigger>
                   <SelectContent>
                     {tenants.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.subdomain})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Plan</Label>
+                <Label>{sa.plan}</Label>
                 <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={sa.selectPlan} /></SelectTrigger>
                   <SelectContent>
                     {plans.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                   </SelectContent>
@@ -62,17 +65,17 @@ export default function SuperSubscriptions() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Billing Cycle</Label>
+                  <Label>{sa.billingCycle}</Label>
                   <Select value={form.billing_cycle} onValueChange={(v) => setForm({ ...form, billing_cycle: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
+                      <SelectItem value="monthly">{sa.monthly}</SelectItem>
+                      <SelectItem value="yearly">{sa.yearly}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>{sa.startDate}</Label>
                   <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
                 </div>
               </div>
@@ -89,12 +92,12 @@ export default function SuperSubscriptions() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Cycle</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{sa.tenant}</TableHead>
+                <TableHead>{sa.plan}</TableHead>
+                <TableHead>{sa.cycle}</TableHead>
+                <TableHead>{sa.amount}</TableHead>
+                <TableHead>{sa.period}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { hashPassword } from "@/lib/passwordHash";
 import {
+import { useLanguage } from "@/contexts/LanguageContext";
   Users, Plus, Search, Edit, Trash2, Shield, Key, Eye, EyeOff,
   UserPlus, Loader2, ChevronDown, Lock, Mail, Phone, MapPin, BadgeCheck
 } from "lucide-react";
@@ -38,6 +39,8 @@ const emptyForm: UserForm = {
 };
 
 export default function SuperUsers() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -193,7 +196,7 @@ export default function SuperUsers() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" />
-            User Management
+            {sa.userManagement}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Manage system users, roles, and access</p>
         </div>
@@ -205,10 +208,10 @@ export default function SuperUsers() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Users", value: users.length, icon: Users },
-          { label: "Active", value: users.filter((u: any) => u.status === "active").length, icon: BadgeCheck },
-          { label: "Admins", value: users.filter((u: any) => ["super_admin", "admin", "owner"].includes(u.role)).length, icon: Shield },
-          { label: "Custom Roles", value: customRoles.length, icon: Key },
+          { label: sa.totalUsers, value: users.length, icon: Users },
+          { label: t.common.active, value: users.filter((u: any) => u.status === "active").length, icon: BadgeCheck },
+          { label: sa.admins, value: users.filter((u: any) => ["super_admin", "admin", "owner"].includes(u.role)).length, icon: Shield },
+          { label: sa.customRoles, value: customRoles.length, icon: Key },
         ].map((s, i) => (
           <Card key={i} className="glass-card border-border/40">
             <CardContent className="p-4 flex items-center gap-3">
@@ -228,7 +231,7 @@ export default function SuperUsers() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search users..."
+          placeholder={sa.searchUsersPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -241,12 +244,12 @@ export default function SuperUsers() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>User</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Staff ID</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{sa.user}</TableHead>
+                <TableHead>{sa.username}</TableHead>
+                <TableHead>{sa.role}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
+                <TableHead>{sa.staffId}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -255,7 +258,7 @@ export default function SuperUsers() {
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                 </TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{sa.noTenantsFound}</TableCell></TableRow>
               ) : filtered.map((u: any) => (
                 <TableRow key={u.id} className="hover:bg-muted/20 transition-colors">
                   <TableCell>
@@ -304,25 +307,25 @@ export default function SuperUsers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editingUser ? <Edit className="h-5 w-5 text-primary" /> : <UserPlus className="h-5 w-5 text-primary" />}
-              {editingUser ? "Edit User" : "Create New User"}
+              {editingUser ? sa.editUserTitle : sa.createNewUser}
             </DialogTitle>
           </DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
-              <Label>Full Name *</Label>
+              <Label>{sa.fullName} *</Label>
               <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Enter full name" />
             </div>
             <div className="space-y-2">
-              <Label>Username * {editingUser && <span className="text-xs text-muted-foreground">(read-only)</span>}</Label>
+              <Label>{sa.username} * {editingUser && <span className="text-xs text-muted-foreground">(read-only)</span>}</Label>
               <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={!!editingUser} placeholder="Enter username" className={editingUser ? "bg-muted" : ""} />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>{sa.emailUsername}</Label>
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Enter email" />
             </div>
             <div className="space-y-2">
-              <Label>Mobile</Label>
+              <Label>{sa.mobile}</Label>
               <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="Enter mobile" />
             </div>
             <div className="space-y-2">
@@ -340,7 +343,7 @@ export default function SuperUsers() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Staff ID</Label>
+              <Label>{sa.staffId}</Label>
               <Input value={form.staff_id} onChange={(e) => setForm({ ...form, staff_id: e.target.value })} placeholder="e.g. S-001" />
             </div>
             <div className="space-y-2">
@@ -373,7 +376,7 @@ export default function SuperUsers() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t.common.status}</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -383,13 +386,13 @@ export default function SuperUsers() {
               </Select>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label>Address</Label>
+              <Label>{t.common.description}</Label>
               <Textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter address" rows={2} />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t.common.cancel}</Button>
             <Button onClick={() => saveMutation.mutate(!!editingUser)} disabled={saveMutation.isPending} className="bg-gradient-to-r from-primary to-accent">
               {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {editingUser ? "Update" : "Create"}
@@ -402,11 +405,11 @@ export default function SuperUsers() {
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete User?</DialogTitle>
+            <DialogTitle>{sa.deleteUser}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">This action cannot be undone. The user and their role assignments will be permanently removed.</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>{t.common.cancel}</Button>
             <Button variant="destructive" onClick={() => deleteId && deleteMutation.mutate(deleteId)} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Delete

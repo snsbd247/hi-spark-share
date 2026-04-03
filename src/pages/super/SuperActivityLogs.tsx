@@ -12,8 +12,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Search, Activity, FileText, Loader2, Eye, Shield, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperActivityLogs() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const [tab, setTab] = useState("audit");
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
@@ -59,7 +62,7 @@ export default function SuperActivityLogs() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Activity className="h-6 w-6 text-primary" /> Activity & Audit Logs
+          <Activity className="h-6 w-6 text-primary" /> {sa.activityAuditLogs}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Track all system actions and data changes</p>
       </div>
@@ -67,10 +70,10 @@ export default function SuperActivityLogs() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Audit Entries", value: auditLogs.length, icon: FileText },
-          { label: "Activity Entries", value: activityLogs.length, icon: Activity },
-          { label: "Creates", value: auditLogs.filter((l: any) => l.action === "create").length, icon: Shield },
-          { label: "Deletes", value: auditLogs.filter((l: any) => l.action === "delete").length, icon: Clock },
+          { label: sa.auditEntries, value: auditLogs.length, icon: FileText },
+          { label: sa.activityEntries, value: activityLogs.length, icon: Activity },
+          { label: sa.creates, value: auditLogs.filter((l: any) => l.action === "create").length, icon: Shield },
+          { label: sa.deletes, value: auditLogs.filter((l: any) => l.action === "delete").length, icon: Clock },
         ].map((s, i) => (
           <Card key={i} className="glass-card border-border/40">
             <CardContent className="p-4 flex items-center gap-3">
@@ -90,23 +93,23 @@ export default function SuperActivityLogs() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search logs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder={sa.searchLogs} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <Select value={actionFilter} onValueChange={setActionFilter}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Actions</SelectItem>
-            <SelectItem value="create">Create</SelectItem>
-            <SelectItem value="edit">Edit</SelectItem>
-            <SelectItem value="delete">Delete</SelectItem>
+            <SelectItem value="all">{sa.allActions}</SelectItem>
+            <SelectItem value="create">{sa.create}</SelectItem>
+            <SelectItem value="edit">{sa.edit}</SelectItem>
+            <SelectItem value="delete">{sa.delete}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-muted/50">
-          <TabsTrigger value="audit" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> Audit Logs</TabsTrigger>
-          <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-3.5 w-3.5" /> Activity Logs</TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1.5"><FileText className="h-3.5 w-3.5" /> {sa.auditLogs}</TabsTrigger>
+          <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-3.5 w-3.5" /> {sa.activityLogs}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="audit">
@@ -115,19 +118,19 @@ export default function SuperActivityLogs() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Time</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Table</TableHead>
-                    <TableHead>Record ID</TableHead>
-                    <TableHead className="text-right">Details</TableHead>
+                    <TableHead>{sa.time}</TableHead>
+                    <TableHead>{sa.user}</TableHead>
+                    <TableHead>{sa.action}</TableHead>
+                    <TableHead>{sa.table}</TableHead>
+                    <TableHead>{sa.recordId}</TableHead>
+                    <TableHead className="text-right">{sa.details}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {auditLoading ? (
                     <TableRow><TableCell colSpan={6} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
                   ) : filteredAudit.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No logs found</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">{sa.noLogsFound}</TableCell></TableRow>
                   ) : filteredAudit.slice(0, 100).map((l: any) => (
                     <TableRow key={l.id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
@@ -158,18 +161,18 @@ export default function SuperActivityLogs() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Time</TableHead>
-                    <TableHead>Module</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>{sa.time}</TableHead>
+                    <TableHead>{sa.module}</TableHead>
+                    <TableHead>{sa.action}</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>IP</TableHead>
+                    <TableHead>{sa.ip}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {activityLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
                   ) : filteredActivity.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No logs found</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{sa.noLogsFound}</TableCell></TableRow>
                   ) : filteredActivity.slice(0, 100).map((l: any) => (
                     <TableRow key={l.id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
@@ -195,7 +198,7 @@ export default function SuperActivityLogs() {
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" /> Audit Log Detail
+              <FileText className="h-5 w-5 text-primary" /> {sa.auditLogDetail}
             </DialogTitle>
           </DialogHeader>
           {detailLog && (
@@ -212,7 +215,7 @@ export default function SuperActivityLogs() {
 
                 {detailLog.old_data && (
                   <div>
-                    <p className="text-sm font-semibold text-red-500 mb-1">Before (Old Data)</p>
+                    <p className="text-sm font-semibold text-red-500 mb-1">{sa.before}</p>
                     <pre className="bg-muted/50 p-3 rounded-lg text-xs overflow-auto max-h-48 font-mono">
                       {JSON.stringify(detailLog.old_data, null, 2)}
                     </pre>
@@ -220,7 +223,7 @@ export default function SuperActivityLogs() {
                 )}
                 {detailLog.new_data && (
                   <div>
-                    <p className="text-sm font-semibold text-emerald-500 mb-1">After (New Data)</p>
+                    <p className="text-sm font-semibold text-emerald-500 mb-1">{sa.after}</p>
                     <pre className="bg-muted/50 p-3 rounded-lg text-xs overflow-auto max-h-48 font-mono">
                       {JSON.stringify(detailLog.new_data, null, 2)}
                     </pre>

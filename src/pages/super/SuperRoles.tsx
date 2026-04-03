@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Shield, Plus, Edit, Trash2, Loader2, Key, Lock, Search } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface RoleForm {
   name: string;
@@ -20,6 +21,8 @@ interface RoleForm {
 }
 
 export default function SuperRoles() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [permDialogOpen, setPermDialogOpen] = useState(false);
@@ -129,7 +132,7 @@ export default function SuperRoles() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" /> Roles & Permissions
+            <Shield className="h-6 w-6 text-primary" /> {sa.rolesPermissions}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Manage roles and assign granular permissions</p>
         </div>
@@ -141,9 +144,9 @@ export default function SuperRoles() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: "Total Roles", value: roles.length, icon: Shield },
-          { label: "System Roles", value: roles.filter((r: any) => r.is_system).length, icon: Lock },
-          { label: "Permissions", value: permissions.length, icon: Key },
+          { label: sa.totalRoles, value: roles.length, icon: Shield },
+          { label: sa.systemRoles, value: roles.filter((r: any) => r.is_system).length, icon: Lock },
+          { label: sa.permissions, value: permissions.length, icon: Key },
         ].map((s, i) => (
           <Card key={i} className="glass-card border-border/40">
             <CardContent className="p-4 flex items-center gap-3">
@@ -165,10 +168,10 @@ export default function SuperRoles() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>Role Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{sa.roleName}</TableHead>
+                <TableHead>{t.common.description}</TableHead>
+                <TableHead>{sa.type}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -177,7 +180,7 @@ export default function SuperRoles() {
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                 </TableCell></TableRow>
               ) : roles.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No roles found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">{sa.noRolesFound}</TableCell></TableRow>
               ) : roles.map((r: any) => (
                 <TableRow key={r.id} className="hover:bg-muted/20 transition-colors">
                   <TableCell className="font-medium">{r.name}</TableCell>
@@ -213,20 +216,20 @@ export default function SuperRoles() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingRole ? "Edit Role" : "Create Role"}</DialogTitle>
+            <DialogTitle>{editingRole ? sa.editRole : sa.createRole}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Role Name *</Label>
+              <Label>{sa.roleName} *</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Billing Manager" />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
+              <Label>{t.common.description}</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Role description" rows={3} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t.common.cancel}</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()} className="bg-gradient-to-r from-primary to-accent">
               {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {editingRole ? "Update" : "Create"}
@@ -240,12 +243,12 @@ export default function SuperRoles() {
         <DialogContent className="max-w-3xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" /> Assign Permissions
+              <Key className="h-5 w-5 text-primary" /> {sa.assignPermissions}
             </DialogTitle>
           </DialogHeader>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search permissions..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+            <Input placeholder={sa.searchPermissions} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
           </div>
           <ScrollArea className="h-[55vh] pr-4">
             <div className="space-y-4">
@@ -288,7 +291,7 @@ export default function SuperRoles() {
             <Badge variant="outline" className="mr-auto">
               {selectedPerms.length} / {permissions.length} selected
             </Badge>
-            <Button variant="outline" onClick={() => setPermDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPermDialogOpen(false)}>{t.common.cancel}</Button>
             <Button onClick={() => savePermsMutation.mutate()} disabled={savePermsMutation.isPending} className="bg-gradient-to-r from-primary to-accent">
               {savePermsMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Save Permissions
@@ -300,10 +303,10 @@ export default function SuperRoles() {
       {/* Delete Confirm */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete Role?</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{sa.deleteRole}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">This will remove the role and all its permission assignments.</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>{t.common.cancel}</Button>
             <Button variant="destructive" onClick={() => deleteId && deleteMutation.mutate(deleteId)} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Delete

@@ -5,11 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+import { useLanguage } from "@/contexts/LanguageContext";
   Building2, Users, CreditCard, TrendingUp, MessageSquare,
   Activity, CheckCircle2, AlertTriangle, Globe, BarChart3
 } from "lucide-react";
 
 export default function SuperAnalytics() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const { data: tenants = [], isLoading: tLoading } = useQuery({ queryKey: ["super-tenants"], queryFn: () => superAdminApi.getTenants({}) });
   const { data: plans = [] } = useQuery({ queryKey: ["super-plans"], queryFn: superAdminApi.getPlans });
   const { data: subs = [] } = useQuery({ queryKey: ["super-subscriptions"], queryFn: () => superAdminApi.getSubscriptions({}) });
@@ -35,7 +38,7 @@ export default function SuperAnalytics() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-        <BarChart3 className="h-6 w-6" /> Analytics Dashboard
+        <BarChart3 className="h-6 w-6" /> {sa.analyticsDashboard}
       </h1>
 
       {/* KPI Cards */}
@@ -78,7 +81,7 @@ export default function SuperAnalytics() {
 
       {/* Plan Distribution */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">Plan Distribution</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">{sa.planDistribution}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {planDist.map((p) => (
             <div key={p.name} className="space-y-1">
@@ -94,7 +97,7 @@ export default function SuperAnalytics() {
 
       {/* Tenant Health Overview */}
       <Card>
-        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Activity className="h-5 w-5" /> Tenant Health Overview</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Activity className="h-5 w-5" /> {sa.tenantHealthOverview}</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-2">
             {tenants.map((t: any) => {

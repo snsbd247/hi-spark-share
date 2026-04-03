@@ -11,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperDomains() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ tenant_id: "", domain: "" });
@@ -41,23 +44,23 @@ export default function SuperDomains() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Domain Management</h1>
+        <h1 className="text-2xl font-bold text-foreground">{sa.domainManagement}</h1>
         <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Assign Domain</Button></DialogTrigger>
+          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> {sa.assignDomain}</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Assign Custom Domain</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{sa.assignCustomDomain}</DialogTitle></DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); assignMut.mutate(form); }} className="space-y-4">
               <div className="space-y-2">
-                <Label>Tenant</Label>
+                <Label>{sa.tenant}</Label>
                 <Select value={form.tenant_id} onValueChange={(v) => setForm({ ...form, tenant_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select tenant" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={sa.selectTenant} /></SelectTrigger>
                   <SelectContent>
                     {tenants.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Domain</Label>
+                <Label>{sa.domainName}</Label>
                 <Input value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} placeholder="billing.clientisp.com" required />
               </div>
               <Button type="submit" className="w-full" disabled={assignMut.isPending}>
@@ -73,11 +76,11 @@ export default function SuperDomains() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Domain</TableHead>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Primary</TableHead>
-                <TableHead>Verified</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{sa.domainName}</TableHead>
+                <TableHead>{sa.tenant}</TableHead>
+                <TableHead>{sa.primary}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -87,8 +90,8 @@ export default function SuperDomains() {
                 <TableRow key={d.id}>
                   <TableCell className="font-medium">{d.domain}</TableCell>
                   <TableCell>{d.tenant?.name || "—"}</TableCell>
-                  <TableCell>{d.is_primary ? <Badge>Primary</Badge> : "—"}</TableCell>
-                  <TableCell>{d.is_verified ? <Badge variant="default">Verified</Badge> : <Badge variant="secondary">Pending</Badge>}</TableCell>
+                  <TableCell>{d.is_primary ? <Badge>{sa.primary}</Badge> : "—"}</TableCell>
+                  <TableCell>{d.is_verified ? <Badge variant="default">{t.common.status}</Badge> : <Badge variant="secondary">Pending</Badge>}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remove this domain?")) removeMut.mutate(d.id); }}>
                       <Trash2 className="h-4 w-4 text-destructive" />

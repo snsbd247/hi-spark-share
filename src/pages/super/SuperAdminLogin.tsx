@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperAdminLogin() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const { login } = useSuperAdmin();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");

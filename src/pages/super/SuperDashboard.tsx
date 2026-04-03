@@ -5,8 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, CreditCard, AlertTriangle, TrendingUp, MessageSquare, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperDashboard() {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const navigate = useNavigate();
   const { data: tenants = [], isLoading: tLoading } = useQuery({ queryKey: ["super-tenants"], queryFn: () => superAdminApi.getTenants({}) });
   const { data: subs = [] } = useQuery({ queryKey: ["super-subscriptions"], queryFn: () => superAdminApi.getSubscriptions({}) });
@@ -15,7 +18,7 @@ export default function SuperDashboard() {
   if (tLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">{sa.dashboard}</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32" />)}
         </div>
@@ -93,7 +96,7 @@ export default function SuperDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{expiringSoon.length + incompleteSetup.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">need attention</p>
+            <p className="text-xs text-muted-foreground mt-1">{sa.needAttention}</p>
           </CardContent>
         </Card>
       </div>
@@ -103,7 +106,7 @@ export default function SuperDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" /> Alerts & Warnings
+              <AlertTriangle className="h-5 w-5 text-destructive" /> {sa.alertsWarnings}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -113,7 +116,7 @@ export default function SuperDashboard() {
                   <p className="font-medium text-sm">{sub.tenant?.name || "—"} — Subscription expiring</p>
                   <p className="text-xs text-muted-foreground">{sub.plan?.name} · Expires {sub.end_date}</p>
                 </div>
-                <Badge variant="outline" className="text-destructive border-destructive/30">Expiring</Badge>
+                <Badge variant="outline" className="text-destructive border-destructive/30">{sa.expiring}</Badge>
               </div>
             ))}
             {incompleteSetup.map((t: any) => (
@@ -122,7 +125,7 @@ export default function SuperDashboard() {
                   <p className="font-medium text-sm">{t.name} — Setup incomplete</p>
                   <p className="text-xs text-muted-foreground">{t.subdomain}.smartispapp.com</p>
                 </div>
-                <Badge variant="outline" className="text-yellow-600 border-yellow-500/30">Setup</Badge>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500/30">{sa.setup}</Badge>
               </div>
             ))}
           </CardContent>
@@ -132,7 +135,7 @@ export default function SuperDashboard() {
       {/* Recent Tenants */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Tenants</CardTitle>
+          <CardTitle className="text-lg">{sa.recentTenants}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
