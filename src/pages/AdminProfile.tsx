@@ -232,9 +232,9 @@ export default function AdminProfile() {
               </div>
             </div>
             <div>
-              <Label>Email</Label>
+              <Label>{t.common.email}</Label>
               <Input value={user?.email || ""} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.profilePage.emailCannotChange}</p>
             </div>
             <div>
               <Label>Mobile</Label>
