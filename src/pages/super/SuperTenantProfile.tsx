@@ -663,9 +663,9 @@ function TenantActivityTab({ tenantId }: { tenantId: string }) {
 }
 
 // ─── Tenant Login History Tab ────────────────────────────────
-function TenantLoginHistoryTab({
+function TenantLoginHistoryTab({ tenantId }: { tenantId: string }) {
   const { t } = useLanguage();
-  const sa = t.superAdmin; tenantId }: { tenantId: string }) {
+  const sa = t.superAdmin;
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["super-tenant-login-history", tenantId],
     queryFn: () => superAdminApi.getTenantLoginHistory(tenantId),
