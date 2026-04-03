@@ -150,6 +150,9 @@ const SuperSmsManagement = lazy(() => import("@/pages/super/SuperSmsManagement")
 const SuperAnalytics = lazy(() => import("@/pages/super/SuperAnalytics"));
 const SuperSmtpSettings = lazy(() => import("@/pages/super/SuperSmtpSettings"));
 const SuperBranding = lazy(() => import("@/pages/super/SuperBranding"));
+const SuperUsers = lazy(() => import("@/pages/super/SuperUsers"));
+const SuperRoles = lazy(() => import("@/pages/super/SuperRoles"));
+const SuperActivityLogs = lazy(() => import("@/pages/super/SuperActivityLogs"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
