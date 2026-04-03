@@ -122,7 +122,7 @@ export default function AppSidebar() {
     { to: "/payments", icon: CreditCard, label: t.sidebar.payments, module: "payments" },
     { to: "/merchant-payments", icon: Wallet, label: t.sidebar.merchantPayments, module: "merchant_payments" },
     { to: "/merchant-reports", icon: BarChart3, label: t.sidebar.paymentReports, module: "reports" },
-    { to: "/coupons", icon: Tag, label: "Coupons", module: "billing" },
+    { to: "/coupons", icon: Tag, label: t.sidebar.coupons, module: "billing" },
   ];
 
   const tHrNav: NavItem[] = [
