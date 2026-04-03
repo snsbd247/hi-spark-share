@@ -97,6 +97,8 @@ class GenericCrudController extends Controller
         'billing_config' => \App\Models\SystemSetting::class,
         'sms_wallets' => \App\Models\SmsWallet::class,
         'sms_transactions' => \App\Models\SmsTransaction::class,
+        'network_nodes' => \App\Models\NetworkNode::class,
+        'network_links' => \App\Models\NetworkLink::class,
         // SaaS
         'saas_plans' => \App\Models\SaasPlan::class,
         'subscriptions' => \App\Models\Subscription::class,
