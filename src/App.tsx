@@ -65,7 +65,7 @@ const UserLoginHistory = lazy(() => import("@/pages/UserLoginHistory"));
 const SessionManagement = lazy(() => import("@/pages/SessionManagement"));
 const SecurityDashboard = lazy(() => import("@/pages/SecurityDashboard"));
 const RoleManagement = lazy(() => import("@/pages/settings/RoleManagement"));
-const BackupRestore = lazy(() => import("@/pages/settings/BackupRestore"));
+
 const FooterSettings = lazy(() => import("@/pages/settings/FooterSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AccPurchases = lazy(() => import("@/pages/accounting/Purchases"));
@@ -284,7 +284,7 @@ function App() {
                 <Route path="/settings/roles" element={<PermissionGuard module="roles"><RoleManagement /></PermissionGuard>} />
                 <Route path="/settings/footer" element={<PermissionGuard module="settings"><FooterSettings /></PermissionGuard>} />
                 <Route path="/settings/integrations" element={<PermissionGuard module="settings"><IntegrationManagement /></PermissionGuard>} />
-                <Route path="/settings/backup" element={<PermissionGuard module="settings"><BackupRestore /></PermissionGuard>} />
+                
                 <Route path="/settings/api-health" element={<PermissionGuard module="settings"><ApiHealthMonitor /></PermissionGuard>} />
                 <Route path="/settings/domains" element={<PermissionGuard module="settings"><DomainManagement /></PermissionGuard>} />
                 <Route path="/settings/subscription" element={<ProtectedRoute><SubscriptionInvoices /></ProtectedRoute>} />
