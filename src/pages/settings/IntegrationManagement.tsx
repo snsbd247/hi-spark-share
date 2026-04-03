@@ -58,21 +58,21 @@ function SmtpTab() {
       <StatusBadge connected={!!settings?.smtp_host} label="SMTP" />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" /> SMTP Configuration</CardTitle>
-          <CardDescription>Configure email delivery settings for notifications and invoices</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" /> {t.integrations.smtpConfiguration}</CardTitle>
+          <CardDescription>{t.integrations.smtpConfigDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>SMTP Host</Label>
+              <Label>{t.integrations.smtpHost}</Label>
               <Input value={form.smtp_host} onChange={(e) => setForm({ ...form, smtp_host: e.target.value })} disabled={!canEdit} placeholder="smtp.gmail.com" />
             </div>
             <div className="space-y-2">
-              <Label>SMTP Port</Label>
+              <Label>{t.integrations.smtpPort}</Label>
               <Input value={form.smtp_port} onChange={(e) => setForm({ ...form, smtp_port: e.target.value })} disabled={!canEdit} placeholder="587" />
             </div>
             <div className="space-y-2">
-              <Label>Username / Email</Label>
+              <Label>{t.integrations.usernameEmail}</Label>
               <Input value={form.smtp_user} onChange={(e) => setForm({ ...form, smtp_user: e.target.value })} disabled={!canEdit} placeholder="user@example.com" />
             </div>
             <div className="space-y-2">
@@ -85,15 +85,15 @@ function SmtpTab() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>From Email</Label>
+              <Label>{t.integrations.fromEmail}</Label>
               <Input value={form.smtp_from_email} onChange={(e) => setForm({ ...form, smtp_from_email: e.target.value })} disabled={!canEdit} placeholder="noreply@yourisp.com" />
             </div>
             <div className="space-y-2">
-              <Label>From Name</Label>
+              <Label>{t.integrations.fromName}</Label>
               <Input value={form.smtp_from_name} onChange={(e) => setForm({ ...form, smtp_from_name: e.target.value })} disabled={!canEdit} placeholder="Smart ISP" />
             </div>
             <div className="space-y-2">
-              <Label>Encryption</Label>
+              <Label>{t.integrations.encryption}</Label>
               <Select value={form.smtp_encryption} onValueChange={(v) => setForm({ ...form, smtp_encryption: v })} disabled={!canEdit}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -108,7 +108,7 @@ function SmtpTab() {
             <div className="flex justify-end mt-4">
               <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save SMTP Settings
+                {t.integrations.saveSmtpSettings}
               </Button>
             </div>
           )}
@@ -118,17 +118,17 @@ function SmtpTab() {
       {/* Test Email */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><TestTube className="h-4 w-4" /> Send Test Email</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><TestTube className="h-4 w-4" /> {t.integrations.sendTestEmail}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3 items-end">
             <div className="flex-1 space-y-2">
-              <Label>Recipient Email</Label>
+              <Label>{t.integrations.recipientEmail}</Label>
               <Input type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="test@example.com" />
             </div>
             <Button onClick={() => testMutation.mutate(testEmail)} disabled={testMutation.isPending || !testEmail}>
               {testMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
-              Send Test
+              {t.integrations.sendTest}
             </Button>
           </div>
         </CardContent>
@@ -263,8 +263,8 @@ function SmtpEmailTemplates() {
       <CardHeader>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" /> Email Templates</CardTitle>
-            <CardDescription className="mt-1">Configure email notification templates with dynamic variables</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" /> {t.integrations.emailTemplates}</CardTitle>
+            <CardDescription className="mt-1">{t.integrations.emailTemplatesDesc}</CardDescription>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {VARIABLE_HINTS.map((v) => (
                 <Badge key={v} variant="secondary" className="text-xs font-mono">{v}</Badge>
@@ -277,15 +277,15 @@ function SmtpEmailTemplates() {
               size="sm"
               onClick={() => {
                 setForm((prev) => ({ ...prev, ...DEMO_TEMPLATES }));
-                toast.success("ডেমো টেমপ্লেট লোড হয়েছে। Save Templates চাপুন।");
+                toast.success("ডেমো টেমপ্লেট লোড হয়েছে। {t.integrations.saveTemplates} চাপুন।");
               }}
             >
               <Settings2 className="h-4 w-4 mr-2" />
-              Load Demo
+              {t.integrations.loadDemo}
             </Button>
             <Button onClick={handleSave} disabled={saving} size="sm">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Templates
+              {t.integrations.saveTemplates}
             </Button>
           </div>
         </div>
@@ -362,13 +362,13 @@ function SmsTab() {
       <StatusBadge connected={!!form.api_token} label="GreenWeb SMS" />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><MessageSquare className="h-4 w-4" /> GreenWeb SMS Gateway</CardTitle>
-          <CardDescription>sms.greenweb.com.bd API configuration</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2"><MessageSquare className="h-4 w-4" /> {t.integrations.greenwebGateway}</CardTitle>
+          <CardDescription>{t.integrations.greenwebDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>API Token</Label>
+              <Label>{t.integrations.apiToken}</Label>
               <div className="relative">
                 <Input type={showToken ? "text" : "password"} value={form.api_token || ""} onChange={(e) => setForm({ ...form, api_token: e.target.value })} disabled={!canEdit} placeholder="Your GreenWeb API token" />
                 <button type="button" onClick={() => setShowToken(!showToken)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -377,20 +377,20 @@ function SmsTab() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Sender ID</Label>
+              <Label>{t.integrations.senderId}</Label>
               <Input value={form.sender_id || ""} onChange={(e) => setForm({ ...form, sender_id: e.target.value })} disabled={!canEdit} placeholder="SmartISP" />
             </div>
           </div>
           <Separator />
-          <h4 className="text-sm font-medium">Notification Events</h4>
+          <h4 className="text-sm font-medium">{t.integrations.notificationEvents}</h4>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { key: "sms_on_bill_generate", label: "Bill Generation" },
-              { key: "sms_on_payment", label: "Payment Confirmation" },
-              { key: "sms_on_registration", label: "New Registration" },
-              { key: "sms_on_suspension", label: "Account Suspension" },
-              { key: "sms_on_reminder", label: "Bill Reminder" },
-              { key: "sms_on_new_customer_bill", label: "New Customer Bill" },
+              { key: "sms_on_bill_generate", label: t.integrations.billGeneration },
+              { key: "sms_on_payment", label: t.integrations.paymentConfirmation },
+              { key: "sms_on_registration", label: t.integrations.newRegistration },
+              { key: "sms_on_suspension", label: t.integrations.accountSuspension },
+              { key: "sms_on_reminder", label: t.integrations.billReminder },
+              { key: "sms_on_new_customer_bill", label: t.integrations.newCustomerBill },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <span className="text-sm">{label}</span>
@@ -399,18 +399,18 @@ function SmsTab() {
             ))}
           </div>
           <Separator />
-          <h4 className="text-sm font-medium">WhatsApp Cloud API</h4>
+          <h4 className="text-sm font-medium">{t.integrations.whatsappCloudApi}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex items-center justify-between sm:col-span-2 rounded-lg border border-border p-3">
-              <span className="text-sm">Enable WhatsApp</span>
+              <span className="text-sm">{t.integrations.enableWhatsapp}</span>
               <Switch checked={form.whatsapp_enabled} onCheckedChange={(v) => setForm({ ...form, whatsapp_enabled: v })} disabled={!canEdit} />
             </div>
             <div className="space-y-2">
-              <Label>WhatsApp API Token</Label>
+              <Label>{t.integrations.whatsappApiToken}</Label>
               <Input type="password" value={form.whatsapp_token || ""} onChange={(e) => setForm({ ...form, whatsapp_token: e.target.value })} disabled={!canEdit} placeholder="Meta Business API token" />
             </div>
             <div className="space-y-2">
-              <Label>Phone Number ID</Label>
+              <Label>{t.integrations.phoneNumberId}</Label>
               <Input value={form.whatsapp_phone_id || ""} onChange={(e) => setForm({ ...form, whatsapp_phone_id: e.target.value })} disabled={!canEdit} placeholder="WhatsApp phone number ID" />
             </div>
           </div>
@@ -418,7 +418,7 @@ function SmsTab() {
             <div className="flex justify-end">
               <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save SMS Settings
+                {t.integrations.saveSmsSettings}
               </Button>
             </div>
           )}
@@ -428,12 +428,12 @@ function SmsTab() {
       {/* Test SMS */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><TestTube className="h-4 w-4" /> Send Test SMS</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><TestTube className="h-4 w-4" /> {t.integrations.sendTestSms}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Phone Number</Label>
+              <Label>{t.integrations.phoneNumber}</Label>
               <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="01XXXXXXXXX" />
             </div>
             <div className="space-y-2">
@@ -444,7 +444,7 @@ function SmsTab() {
           <div className="flex justify-end mt-3">
             <Button onClick={() => smsTestMutation.mutate({ phone: testPhone, message: testMessage })} disabled={smsTestMutation.isPending || !testPhone}>
               {smsTestMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
-              Send Test SMS
+              {t.integrations.sendTestSms}
             </Button>
           </div>
         </CardContent>
@@ -516,13 +516,13 @@ function BkashTab() {
       <GatewayStatusCard gateway={gateway} testMutation={bkashTest} label="bKash" />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><Wallet className="h-4 w-4" /> bKash API Configuration</CardTitle>
-          <CardDescription>Configure bKash payment gateway credentials</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2"><Wallet className="h-4 w-4" /> {t.integrations.bkashApiConfiguration}</CardTitle>
+          <CardDescription>{t.integrations.bkashConfigDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>App Key</Label>
+              <Label>{t.integrations.appKey}</Label>
               <Input value={form.app_key} onChange={(e) => setForm({ ...form, app_key: e.target.value })} disabled={!canEdit} placeholder="Enter App Key" />
             </div>
             <PasswordField label="App Secret" value={form.app_secret} onChange={(v) => setForm({ ...form, app_secret: v })} show={showSecret} onToggle={() => setShowSecret(!showSecret)} disabled={!canEdit} />
@@ -532,7 +532,7 @@ function BkashTab() {
             </div>
             <PasswordField label="Password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} show={showPassword} onToggle={() => setShowPassword(!showPassword)} disabled={!canEdit} />
             <div className="space-y-2">
-              <Label>Environment</Label>
+              <Label>{t.integrations.environment}</Label>
               <Select value={form.environment} onValueChange={(env) => setForm({ ...form, environment: env, base_url: BASE_URLS[env] || form.base_url })} disabled={!canEdit}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -542,15 +542,15 @@ function BkashTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Merchant Number</Label>
+              <Label>{t.integrations.merchantNumber}</Label>
               <Input value={form.merchant_number} onChange={(e) => setForm({ ...form, merchant_number: e.target.value })} disabled={!canEdit} placeholder="01XXXXXXXXX" />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Base URL</Label>
+              <Label>{t.integrations.baseUrl}</Label>
               <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} disabled={!canEdit} className="font-mono text-xs" />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Receiving Ledger Account</Label>
+              <Label>{t.integrations.receivingLedger}</Label>
               <LedgerAccountSelect value={form.receiving_account_id} onChange={(v) => setForm({ ...form, receiving_account_id: v })} disabled={!canEdit} />
               <p className="text-xs text-muted-foreground">Select which ledger account receives bKash payments</p>
             </div>
@@ -559,7 +559,7 @@ function BkashTab() {
             <div className="flex justify-end mt-4">
               <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save bKash Settings
+                {t.integrations.saveBkashSettings}
               </Button>
             </div>
           )}
@@ -571,11 +571,11 @@ function BkashTab() {
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Transaction Management</p>
-              <p className="text-xs text-muted-foreground">Query transactions, process refunds, view payment logs</p>
+              <p className="text-sm font-medium">{t.integrations.transactionManagement}</p>
+              <p className="text-xs text-muted-foreground">{t.integrations.transactionManagementDesc}</p>
             </div>
             <Button variant="outline" onClick={() => navigate("/settings/bkash")}>
-              <ExternalLink className="h-4 w-4 mr-2" /> Manage Transactions
+              <ExternalLink className="h-4 w-4 mr-2" /> {t.integrations.manageTransactions}
             </Button>
           </div>
         </CardContent>
@@ -647,7 +647,7 @@ function NagadTab() {
       <GatewayStatusCard gateway={gateway} testMutation={nagadTest} label="Nagad" />
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" /> Nagad API Configuration</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" /> {t.integrations.nagadApiConfiguration}</CardTitle>
           <CardDescription>Configure Nagad payment gateway credentials (Merchant ID, PG Public Key, Merchant Private Key)</CardDescription>
         </CardHeader>
         <CardContent>
@@ -663,7 +663,7 @@ function NagadTab() {
             </div>
             <PasswordField label="Merchant Private Key / Password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} show={showPassword} onToggle={() => setShowPassword(!showPassword)} disabled={!canEdit} />
             <div className="space-y-2">
-              <Label>Environment</Label>
+              <Label>{t.integrations.environment}</Label>
               <Select value={form.environment} onValueChange={(env) => setForm({ ...form, environment: env, base_url: BASE_URLS[env] || form.base_url })} disabled={!canEdit}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -673,15 +673,15 @@ function NagadTab() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Merchant Number</Label>
+              <Label>{t.integrations.merchantNumber}</Label>
               <Input value={form.merchant_number} onChange={(e) => setForm({ ...form, merchant_number: e.target.value })} disabled={!canEdit} placeholder="01XXXXXXXXX" />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Base URL</Label>
+              <Label>{t.integrations.baseUrl}</Label>
               <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} disabled={!canEdit} className="font-mono text-xs" />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Receiving Ledger Account</Label>
+              <Label>{t.integrations.receivingLedger}</Label>
               <LedgerAccountSelect value={form.receiving_account_id} onChange={(v) => setForm({ ...form, receiving_account_id: v })} disabled={!canEdit} />
               <p className="text-xs text-muted-foreground">Select which ledger account receives Nagad payments</p>
             </div>
@@ -690,7 +690,7 @@ function NagadTab() {
             <div className="flex justify-end mt-4">
               <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Nagad Settings
+                {t.integrations.saveNagadSettings}
               </Button>
             </div>
           )}
@@ -702,11 +702,11 @@ function NagadTab() {
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Transaction Management</p>
-              <p className="text-xs text-muted-foreground">Query transactions, process refunds, view payment logs</p>
+              <p className="text-sm font-medium">{t.integrations.transactionManagement}</p>
+              <p className="text-xs text-muted-foreground">{t.integrations.transactionManagementDesc}</p>
             </div>
             <Button variant="outline" onClick={() => navigate("/settings/nagad")}>
-              <ExternalLink className="h-4 w-4 mr-2" /> Manage Transactions
+              <ExternalLink className="h-4 w-4 mr-2" /> {t.integrations.manageTransactions}
             </Button>
           </div>
         </CardContent>
@@ -728,9 +728,9 @@ function LedgerAccountSelect({ value, onChange, disabled }: { value: string; onC
   });
   return (
     <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)} disabled={disabled}>
-      <SelectTrigger><SelectValue placeholder="Select Ledger Account" /></SelectTrigger>
+      <SelectTrigger><SelectValue placeholder={t.integrations.selectLedgerAccount} /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="none">— No Ledger Selected —</SelectItem>
+        <SelectItem value="none">{t.integrations.noLedgerSelected}</SelectItem>
         {accounts.map((a: any) => (
           <SelectItem key={a.id} value={a.id}>[{a.code}] {a.name}</SelectItem>
         ))}
@@ -747,9 +747,9 @@ function StatusBadge({ connected, label }: { connected: boolean; label: string }
   return (
     <div className="flex items-center gap-3">
       {connected ? (
-        <div className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-success" /><span className="text-muted-foreground">{label} configured</span></div>
+        <div className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-success" /><span className="text-muted-foreground">{label} {t.integrations.configured}</span></div>
       ) : (
-        <div className="flex items-center gap-2 text-sm"><XCircle className="h-4 w-4 text-destructive" /><span className="text-muted-foreground">{label} not configured</span></div>
+        <div className="flex items-center gap-2 text-sm"><XCircle className="h-4 w-4 text-destructive" /><span className="text-muted-foreground">{label} not {t.integrations.configured}</span></div>
       )}
     </div>
   );
@@ -772,7 +772,7 @@ function GatewayStatusCard({ gateway, testMutation, label }: { gateway: any; tes
             )}
             <div>
               <Badge variant={gateway?.status === "connected" ? "default" : "destructive"}>
-                {gateway?.status === "connected" ? "Connected" : "Not Connected"}
+                {gateway?.status === "connected" ? t.integrations.connected : t.integrations.notConnected}
               </Badge>
               <div className="flex gap-3 text-xs text-muted-foreground mt-1">
                 {gateway?.environment && <span>Env: {gateway.environment}</span>}
@@ -814,9 +814,9 @@ export default function IntegrationManagement() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Settings2 className="h-6 w-6" /> Integration Management
+            <Settings2 className="h-6 w-6" /> {t.integrations.title}
           </h1>
-          <p className="text-muted-foreground text-sm">Configure and test all external service integrations</p>
+          <p className="text-muted-foreground text-sm">{t.integrations.subtitle}</p>
         </div>
 
         <Tabs defaultValue="smtp" className="space-y-6">

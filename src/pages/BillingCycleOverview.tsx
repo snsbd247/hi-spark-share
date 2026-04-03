@@ -148,7 +148,7 @@ export default function BillingCycleOverview() {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Billing Cycle Overview</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t.billingCycle.title}</h1>
         <p className="text-muted-foreground mt-1">Customers grouped by due date for {format(new Date(), "MMMM yyyy")}</p>
       </div>
       <div className="flex justify-end mb-4">
@@ -158,16 +158,16 @@ export default function BillingCycleOverview() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total Active</p></div></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><CheckCircle className="h-5 w-5 text-success" /><div><p className="text-2xl font-bold">{stats.paid}</p><p className="text-xs text-muted-foreground">Paid</p></div></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><AlertTriangle className="h-5 w-5 text-destructive" /><div><p className="text-2xl font-bold">{stats.overdue}</p><p className="text-xs text-muted-foreground">Overdue</p></div></CardContent></Card>
-        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Clock className="h-5 w-5 text-warning" /><div><p className="text-2xl font-bold">{stats.noBill}</p><p className="text-xs text-muted-foreground">No Bill Yet</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">{t.billingCycle.totalActive}</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><CheckCircle className="h-5 w-5 text-success" /><div><p className="text-2xl font-bold">{stats.paid}</p><p className="text-xs text-muted-foreground">{t.common.paid}</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><AlertTriangle className="h-5 w-5 text-destructive" /><div><p className="text-2xl font-bold">{stats.overdue}</p><p className="text-xs text-muted-foreground">{t.billingCycle.overdue}</p></div></CardContent></Card>
+        <Card><CardContent className="pt-4 pb-4 flex items-center gap-3"><Clock className="h-5 w-5 text-warning" /><div><p className="text-2xl font-bold">{stats.noBill}</p><p className="text-xs text-muted-foreground">{t.billingCycle.noBillYet}</p></div></CardContent></Card>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center h-48"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : sortedGroups.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">No active customers found</CardContent></Card>
+        <Card><CardContent className="py-12 text-center text-muted-foreground">{t.billingCycle.noActiveCustomers}</CardContent></Card>
       ) : (
         <div className="space-y-4">
           {sortedGroups.map(([day, customers]) => (
@@ -184,7 +184,7 @@ export default function BillingCycleOverview() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
-                        <th className="text-left py-2 px-2 font-medium">ID</th><th className="text-left py-2 px-2 font-medium">Name</th><th className="text-left py-2 px-2 font-medium">Phone</th><th className="text-right py-2 px-2 font-medium">Bill</th><th className="text-center py-2 px-2 font-medium">Status</th><th className="text-center py-2 px-2 font-medium">Connection</th><th className="text-right py-2 px-2 font-medium">{t.common.actions}</th>
+                        <th className="text-left py-2 px-2 font-medium">{t.billingCycle.id}</th><th className="text-left py-2 px-2 font-medium">{t.common.name}</th><th className="text-left py-2 px-2 font-medium">{t.common.phone}</th><th className="text-right py-2 px-2 font-medium">{t.billingCycle.bill}</th><th className="text-center py-2 px-2 font-medium">{t.common.status}</th><th className="text-center py-2 px-2 font-medium">{t.billingCycle.connection}</th><th className="text-right py-2 px-2 font-medium">{t.common.actions}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -226,18 +226,18 @@ export default function BillingCycleOverview() {
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit Billing Record</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.billingCycle.editBillingRecord}</DialogTitle></DialogHeader>
           {editCustomer && (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">{editCustomer.name} ({editCustomer.customer_id})</p>
-              <div className="space-y-1.5"><Label>Bill Amount</Label><Input type="number" value={editBillAmount} onChange={(e) => setEditBillAmount(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Bill Status</Label>
+              <div className="space-y-1.5"><Label>{t.billingCycle.billAmount}</Label><Input type="number" value={editBillAmount} onChange={(e) => setEditBillAmount(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>{t.billingCycle.billStatus}</Label>
                 <Select value={editBillStatus} onValueChange={setEditBillStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unpaid">Unpaid</SelectItem><SelectItem value="paid">Paid</SelectItem><SelectItem value="partial">Partial</SelectItem></SelectContent></Select>
               </div>
-              <div className="space-y-1.5"><Label>Connection Status</Label>
+              <div className="space-y-1.5"><Label>{t.billingCycle.connectionStatus}</Label>
                 <Select value={editConnectionStatus} onValueChange={setEditConnectionStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="pending_reactivation">Pending Reactivation</SelectItem></SelectContent></Select>
               </div>
-              <div className="flex justify-end"><Button onClick={handleEditSave}>Save Changes</Button></div>
+              <div className="flex justify-end"><Button onClick={handleEditSave}>{t.billingCycle.saveChanges}</Button></div>
             </div>
           )}
         </DialogContent>

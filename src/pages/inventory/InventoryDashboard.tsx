@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, ArrowDown, ArrowUp, RotateCcw, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function InventoryDashboard() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const { data: products = [] } = useQuery({
@@ -44,8 +46,8 @@ export default function InventoryDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Inventory Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Overview of stock, devices, and inventory activity</p>
+          <h1 className="text-2xl font-bold text-foreground">{t.inventoryDashboard.title}</h1>
+          <p className="text-muted-foreground text-sm">{t.inventoryDashboard.subtitle}</p>
         </div>
 
         {/* Stats Cards */}
@@ -54,9 +56,9 @@ export default function InventoryDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Products</p>
+                  <p className="text-sm text-muted-foreground">{t.inventoryDashboard.totalProducts}</p>
                   <p className="text-2xl font-bold text-foreground">{products.length}</p>
-                  <p className="text-xs text-muted-foreground">Total Stock: {totalStock}</p>
+                  <p className="text-xs text-muted-foreground">{t.inventoryDashboard.totalStock}: {totalStock}</p>
                 </div>
                 <Package className="h-8 w-8 text-primary" />
               </div>
@@ -67,9 +69,9 @@ export default function InventoryDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Stock Value</p>
+                  <p className="text-sm text-muted-foreground">{t.inventoryDashboard.stockValue}</p>
                   <p className="text-2xl font-bold text-foreground">৳{totalValue.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Based on buy price</p>
+                  <p className="text-xs text-muted-foreground">{t.inventoryDashboard.basedOnBuyPrice}</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-primary" />
               </div>
@@ -80,9 +82,9 @@ export default function InventoryDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Low Stock Items</p>
+                  <p className="text-sm text-muted-foreground">{t.inventoryDashboard.lowStockItems}</p>
                   <p className="text-2xl font-bold text-destructive">{lowStock.length}</p>
-                  <p className="text-xs text-muted-foreground">Out of stock: {outOfStock.length}</p>
+                  <p className="text-xs text-muted-foreground">{t.inventoryDashboard.outOfStock}: {outOfStock.length}</p>
                 </div>
                 <AlertTriangle className="h-8 w-8 text-destructive" />
               </div>
@@ -93,9 +95,9 @@ export default function InventoryDashboard() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Devices</p>
+                  <p className="text-sm text-muted-foreground">{t.inventoryDashboard.activeDevices}</p>
                   <p className="text-2xl font-bold text-foreground">{devices.length}</p>
-                  <p className="text-xs text-muted-foreground">Assigned to customers</p>
+                  <p className="text-xs text-muted-foreground">{t.inventoryDashboard.assignedToCustomers}</p>
                 </div>
                 <Package className="h-8 w-8 text-primary" />
               </div>
@@ -108,7 +110,7 @@ export default function InventoryDashboard() {
           <Card className="border-destructive/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-4 w-4" /> Low Stock Alert
+                <AlertTriangle className="h-4 w-4" /> {t.inventoryDashboard.lowStockAlert}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -129,11 +131,11 @@ export default function InventoryDashboard() {
         {/* Recent Activity */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent Inventory Activity</CardTitle>
+            <CardTitle className="text-base">{t.inventoryDashboard.recentActivity}</CardTitle>
           </CardHeader>
           <CardContent>
             {logs.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t.inventoryDashboard.noRecentActivity}</p>
             ) : (
               <div className="space-y-2">
                 {logs.map((log: any) => (

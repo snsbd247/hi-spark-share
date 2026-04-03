@@ -19,6 +19,7 @@ import {
   Radio, Router, Cpu, User, LocateFixed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── Fix default marker icons ──
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -152,6 +153,7 @@ function DraggableMarker({
 
 // ── Main Component ──
 export default function NetworkMap() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -342,19 +344,19 @@ export default function NetworkMap() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Network className="h-6 w-6 text-primary" />
-            Network Topology Map
+            {t.networkMap.title}
           </h1>
-          <p className="text-sm text-muted-foreground">Visual ISP network topology builder with drag & drop</p>
+          <p className="text-sm text-muted-foreground">{t.networkMap.subtitle}</p>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Nodes", value: stats.total, icon: Cpu, color: "text-primary" },
-          { label: "Online", value: stats.online, icon: Radio, color: "text-emerald-500" },
-          { label: "Offline", value: stats.offline, icon: Radio, color: "text-destructive" },
-          { label: "Connections", value: stats.links, icon: Link2, color: "text-purple-500" },
+          { label: t.networkMap.totalNodes, value: stats.total, icon: Cpu, color: "text-primary" },
+          { label: t.networkMap.online, value: stats.online, icon: Radio, color: "text-emerald-500" },
+          { label: t.networkMap.offline, value: stats.offline, icon: Radio, color: "text-destructive" },
+          { label: t.networkMap.connections, value: stats.links, icon: Link2, color: "text-purple-500" },
         ].map((s) => (
           <Card key={s.label} className="bg-card/50 backdrop-blur border-border/50">
             <CardContent className="p-3 flex items-center gap-3">
@@ -377,7 +379,7 @@ export default function NetworkMap() {
             <div className="relative flex-1 min-w-[180px] max-w-xs">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search nodes..."
+                placeholder={t.networkMap.searchNodes}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 h-9 bg-background/50"
@@ -404,7 +406,7 @@ export default function NetworkMap() {
               className="h-9"
             >
               <Plus className="h-4 w-4 mr-1" />
-              {addMode ? "Click Map..." : "Add Node"}
+              {addMode ? t.networkMap.clickMap : t.networkMap.addNode}
             </Button>
 
             <Button
@@ -414,7 +416,7 @@ export default function NetworkMap() {
               className="h-9"
             >
               <Link2 className="h-4 w-4 mr-1" />
-              {connectMode ? (connectFrom ? "Select 2nd..." : "Select 1st...") : "Connect"}
+              {connectMode ? (connectFrom ? t.networkMap.selectSecond : t.networkMap.selectFirst) : t.networkMap.connect}
             </Button>
 
             <Button size="sm" variant="outline" onClick={() => setShowLinks(!showLinks)} className="h-9">
@@ -500,10 +502,10 @@ export default function NetworkMap() {
             {(addMode || connectMode) && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium shadow-lg">
                 {addMode
-                  ? "🎯 Click on the map to place a node"
+                  ? t.networkMap.clickMapToPlace
                   : connectFrom
-                    ? `🔗 Now click the second node (from: ${connectFrom.name})`
-                    : "🔗 Click the first node to connect"}
+                    ? t.networkMap.clickSecondNode.replace("{name}", connectFrom.name)
+                    : t.networkMap.clickFirstNode}
               </div>
             )}
           </div>
@@ -521,7 +523,7 @@ export default function NetworkMap() {
         <CardContent>
           {filteredNodes.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No nodes yet. Click "Add Node" then click on the map.
+              {t.networkMap.noNodesYet}
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
@@ -551,7 +553,7 @@ export default function NetworkMap() {
                     className="h-6 w-6 shrink-0 text-destructive hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete "${node.name}"?`)) deleteNode.mutate(node.id);
+                      if (confirm(t.networkMap.deleteNodeConfirm.replace("{name}", node.name))) deleteNode.mutate(node.id);
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -569,7 +571,7 @@ export default function NetworkMap() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
-              Add Network Node
+              {t.networkMap.addNetworkNode}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -604,7 +606,7 @@ export default function NetworkMap() {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAddDialog(false); setAddMode(false); }}>Cancel</Button>
             <Button onClick={handleCreateNode} disabled={!newNodeName.trim() || createNode.isPending}>
-              {createNode.isPending ? "Creating..." : "Create Node"}
+              {createNode.isPending ? t.networkMap.creating : t.networkMap.createNode}
             </Button>
           </DialogFooter>
         </DialogContent>

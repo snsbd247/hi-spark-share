@@ -174,13 +174,13 @@ export default function MerchantPayments() {
     <DashboardLayout>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Merchant Payments</h1>
-          <p className="text-muted-foreground mt-1">Reconcile bKash merchant payments with customer bills</p>
+          <h1 className="text-2xl font-bold text-foreground">{t.merchantPayments.title}</h1>
+          <p className="text-muted-foreground mt-1">{t.merchantPayments.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setSmsInfoOpen(true)}><MessageSquareText className="h-4 w-4 mr-2" /> SMS Gateway Setup</Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> Upload Excel</Button>
-          <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" /> Record Payment</Button>
+          <Button variant="outline" onClick={() => setSmsInfoOpen(true)}><MessageSquareText className="h-4 w-4 mr-2" /> {t.merchantPayments.smsGatewaySetup}</Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" /> {t.merchantPayments.uploadExcel}</Button>
+          <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-2" /> {t.merchantPayments.recordPayment}</Button>
         </div>
       </div>
 
@@ -188,11 +188,11 @@ export default function MerchantPayments() {
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by TrxID, phone, reference..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder={t.merchantPayments.searchPlaceholder} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="unmatched">Unmatched</SelectItem><SelectItem value="manual_review">Manual Review</SelectItem><SelectItem value="rejected">Rejected</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="all">{t.merchantPayments.allStatus}</SelectItem><SelectItem value="matched">{t.merchantPayments.matched}</SelectItem><SelectItem value="unmatched">{t.merchantPayments.unmatched}</SelectItem><SelectItem value="manual_review">{t.merchantPayments.manualReview}</SelectItem><SelectItem value="rejected">{t.merchantPayments.rejected}</SelectItem></SelectContent>
           </Select>
         </div>
 
@@ -203,12 +203,12 @@ export default function MerchantPayments() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead><TableHead>Transaction ID</TableHead><TableHead>Sender Phone</TableHead><TableHead>Amount</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead>Matched Customer</TableHead><TableHead className="text-right">{t.common.actions}</TableHead>
+                  <TableHead>{t.common.date}</TableHead><TableHead>{t.merchantPayments.transactionId}</TableHead><TableHead>{t.merchantPayments.senderPhone}</TableHead><TableHead>{t.common.amount}</TableHead><TableHead>{t.merchantPayments.reference}</TableHead><TableHead>{t.common.status}</TableHead><TableHead>{t.merchantPayments.matchedCustomer}</TableHead><TableHead className="text-right">{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!filtered?.length ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">No merchant payments found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-12">{t.merchantPayments.noPaymentsFound}</TableCell></TableRow>
                 ) : (
                   filtered.map((p) => (
                     <TableRow key={p.id}>
@@ -241,7 +241,7 @@ export default function MerchantPayments() {
                           )}
                           {p.status !== "matched" && p.status !== "rejected" && (
                             <>
-                              <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}><Link2 className="h-4 w-4 mr-1" /> Match</Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedPayment(p); setMatchCustomerId(p.reference || ""); setMatchOpen(true); }}><Link2 className="h-4 w-4 mr-1" /> {t.merchantPayments.match}</Button>
                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleReject(p)}><XCircle className="h-4 w-4" /></Button>
                             </>
                           )}
@@ -259,15 +259,15 @@ export default function MerchantPayments() {
       {/* Add Payment Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Record Merchant Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.merchantPayments.recordMerchantPayment}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-1.5"><Label>Transaction ID *</Label><Input value={form.transaction_id} onChange={(e) => setForm({ ...form, transaction_id: e.target.value })} placeholder="e.g. TRX123456789" /></div>
+            <div className="space-y-1.5"><Label>{t.merchantPayments.transactionId} *</Label><Input value={form.transaction_id} onChange={(e) => setForm({ ...form, transaction_id: e.target.value })} placeholder="e.g. TRX123456789" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Sender Phone *</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} placeholder="01XXXXXXXXX" /></div>
-              <div className="space-y-1.5"><Label>Amount *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0" /></div>
+              <div className="space-y-1.5"><Label>{t.merchantPayments.senderPhone} *</Label><Input value={form.sender_phone} onChange={(e) => setForm({ ...form, sender_phone: e.target.value })} placeholder="01XXXXXXXXX" /></div>
+              <div className="space-y-1.5"><Label>{t.common.amount} *</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0" /></div>
             </div>
-            <div className="space-y-1.5"><Label>Reference (Customer ID)</Label><Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="e.g. ISP-00001" /></div>
-            <div className="space-y-1.5"><Label>Payment Date</Label><Input type="datetime-local" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>{t.merchantPayments.referenceCustomerId}</Label><Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="e.g. ISP-00001" /></div>
+            <div className="space-y-1.5"><Label>{t.merchantPayments.paymentDate}</Label><Input type="datetime-local" value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} /></div>
             <p className="text-xs text-muted-foreground">System will auto-match if the reference matches a customer ID and amount matches an unpaid bill.</p>
             <div className="flex justify-end"><Button onClick={handleAdd} disabled={loading}>{loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Record & Match</Button></div>
           </div>
@@ -277,7 +277,7 @@ export default function MerchantPayments() {
       {/* Manual Match Dialog */}
       <Dialog open={matchOpen} onOpenChange={setMatchOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Manual Match Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.merchantPayments.manualMatchPayment}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {selectedPayment && (
               <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
@@ -288,13 +288,13 @@ export default function MerchantPayments() {
                 {selectedPayment.notes && <p className="text-xs text-warning">{selectedPayment.notes}</p>}
               </div>
             )}
-            <div className="space-y-1.5"><Label>Customer ID</Label><Input value={matchCustomerId} onChange={(e) => { setMatchCustomerId(e.target.value); setMatchBillId(""); }} placeholder="ISP-00001" /></div>
+            <div className="space-y-1.5"><Label>{t.merchantPayments.customerId}</Label><Input value={matchCustomerId} onChange={(e) => { setMatchCustomerId(e.target.value); setMatchBillId(""); }} placeholder="ISP-00001" /></div>
             {unpaidBills && unpaidBills.length > 0 && (
-              <div className="space-y-1.5"><Label>Select Unpaid Bill</Label>
-                <Select value={matchBillId} onValueChange={setMatchBillId}><SelectTrigger><SelectValue placeholder="Select a bill..." /></SelectTrigger><SelectContent>{unpaidBills.map((b) => (<SelectItem key={b.id} value={b.id}>{b.month} — ৳{Number(b.amount).toLocaleString()}</SelectItem>))}</SelectContent></Select>
+              <div className="space-y-1.5"><Label>{t.merchantPayments.selectUnpaidBill}</Label>
+                <Select value={matchBillId} onValueChange={setMatchBillId}><SelectTrigger><SelectValue placeholder={t.merchantPayments.selectBillPlaceholder} /></SelectTrigger><SelectContent>{unpaidBills.map((b) => (<SelectItem key={b.id} value={b.id}>{b.month} — ৳{Number(b.amount).toLocaleString()}</SelectItem>))}</SelectContent></Select>
               </div>
             )}
-            {unpaidBills && unpaidBills.length === 0 && matchCustomerId && <p className="text-sm text-destructive">No unpaid bills found for this customer</p>}
+            {unpaidBills && unpaidBills.length === 0 && matchCustomerId && <p className="text-sm text-destructive">{t.merchantPayments.noUnpaidBills}</p>}
             <div className="flex justify-end"><Button onClick={handleManualMatch} disabled={loading || !matchBillId}>{loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Match</Button></div>
           </div>
         </DialogContent>
@@ -303,7 +303,7 @@ export default function MerchantPayments() {
       {/* Edit Merchant Payment Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit Merchant Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.merchantPayments.editMerchantPayment}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5"><Label>Transaction ID</Label><Input value={editForm.transaction_id} onChange={(e) => setEditForm({ ...editForm, transaction_id: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -322,7 +322,7 @@ export default function MerchantPayments() {
       {/* SMS Gateway Setup Dialog */}
       <Dialog open={smsInfoOpen} onOpenChange={setSmsInfoOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>SMS Gateway Setup</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.merchantPayments.smsGatewaySetupTitle}</DialogTitle></DialogHeader>
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">Configure your Android SMS Gateway or SMS Forwarding service to send incoming bKash merchant SMS to the API endpoint below.</p>
             <div className="space-y-1.5"><Label>API Endpoint</Label><div className="flex gap-2"><Input value={apiEndpoint} readOnly className="font-mono text-xs" /><Button variant="outline" size="icon" onClick={copyEndpoint}><Copy className="h-4 w-4" /></Button></div></div>
