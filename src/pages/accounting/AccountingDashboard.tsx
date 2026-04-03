@@ -147,7 +147,7 @@ export default function AccountingDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-muted-foreground py-12">No expenses recorded</p>
+                <p className="text-center text-muted-foreground py-12">{t.accounting.noExpensesRecorded}</p>
               )}
             </CardContent>
           </Card>
