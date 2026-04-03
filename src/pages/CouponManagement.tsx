@@ -13,8 +13,10 @@ import { Plus, Trash2, Tag, Percent, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function CouponManagement() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" });
@@ -41,7 +43,7 @@ export default function CouponManagement() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success("Coupon created"); setOpen(false); setForm({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success(t.couponPage.couponCreated); setOpen(false); setForm({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" }); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -50,7 +52,7 @@ export default function CouponManagement() {
       const { error } = await db.from("coupons").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success("Coupon deleted"); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success(t.couponPage.couponDeleted); },
   });
 
   const toggleMutation = useMutation({
@@ -65,42 +67,42 @@ export default function CouponManagement() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Coupon Management</h1>
+          <h1 className="text-2xl font-bold">{t.couponPage.title}</h1>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> Add Coupon</Button></DialogTrigger>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" /> {t.couponPage.addCoupon}</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Create Coupon</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t.couponPage.createCoupon}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div><Label>Code</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="SAVE20" /></div>
-                <div><Label>Description</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
+                <div><Label>{t.couponPage.code}</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="SAVE20" /></div>
+                <div><Label>{t.common.description}</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Type</Label>
+                  <div><Label>{t.couponPage.type}</Label>
                     <Select value={form.discount_type} onValueChange={v => setForm(f => ({ ...f, discount_type: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="fixed">Fixed (৳)</SelectItem><SelectItem value="percentage">Percentage (%)</SelectItem></SelectContent>
+                      <SelectContent><SelectItem value="fixed">{t.couponPage.fixedAmount}</SelectItem><SelectItem value="percentage">{t.couponPage.percentage}</SelectItem></SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Value</Label><Input type="number" value={form.discount_value} onChange={e => setForm(f => ({ ...f, discount_value: Number(e.target.value) }))} /></div>
+                  <div><Label>{t.couponPage.value}</Label><Input type="number" value={form.discount_value} onChange={e => setForm(f => ({ ...f, discount_value: Number(e.target.value) }))} /></div>
                 </div>
-                <div><Label>Max Uses (0 = unlimited)</Label><Input type="number" value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: Number(e.target.value) }))} /></div>
+                <div><Label>{t.couponPage.maxUses}</Label><Input type="number" value={form.max_uses} onChange={e => setForm(f => ({ ...f, max_uses: Number(e.target.value) }))} /></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Valid From</Label><Input type="date" value={form.valid_from} onChange={e => setForm(f => ({ ...f, valid_from: e.target.value }))} /></div>
-                  <div><Label>Valid Until</Label><Input type="date" value={form.valid_until} onChange={e => setForm(f => ({ ...f, valid_until: e.target.value }))} /></div>
+                  <div><Label>{t.couponPage.validFrom}</Label><Input type="date" value={form.valid_from} onChange={e => setForm(f => ({ ...f, valid_from: e.target.value }))} /></div>
+                  <div><Label>{t.couponPage.validUntil}</Label><Input type="date" value={form.valid_until} onChange={e => setForm(f => ({ ...f, valid_until: e.target.value }))} /></div>
                 </div>
-                <Button onClick={() => createMutation.mutate(form)} disabled={!form.code || createMutation.isPending} className="w-full">Create</Button>
+                <Button onClick={() => createMutation.mutate(form)} disabled={!form.code || createMutation.isPending} className="w-full">{t.common.create}</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5" /> Active Coupons ({coupons.length})</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5" /> {t.couponPage.activeCoupons} ({coupons.length})</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Value</TableHead>
-                  <TableHead>Used</TableHead><TableHead>Valid Until</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
+                  <TableHead>{t.couponPage.code}</TableHead><TableHead>{t.couponPage.type}</TableHead><TableHead>{t.couponPage.value}</TableHead>
+                  <TableHead>{t.couponPage.used}</TableHead><TableHead>{t.couponPage.validUntil}</TableHead><TableHead>{t.common.status}</TableHead><TableHead>{t.common.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -110,16 +112,16 @@ export default function CouponManagement() {
                     <TableCell>{c.discount_type === "percentage" ? <Percent className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}</TableCell>
                     <TableCell>{c.discount_type === "percentage" ? `${c.discount_value}%` : `৳${c.discount_value}`}</TableCell>
                     <TableCell>{c.used_count}/{c.max_uses || "∞"}</TableCell>
-                    <TableCell>{c.valid_until ? safeFormat(c.valid_until, "dd MMM yyyy", "-") : "No limit"}</TableCell>
+                    <TableCell>{c.valid_until ? safeFormat(c.valid_until, "dd MMM yyyy", "-") : t.couponPage.noLimit}</TableCell>
                     <TableCell>
                       <Badge variant={c.is_active ? "default" : "secondary"} className="cursor-pointer" onClick={() => toggleMutation.mutate({ id: c.id, is_active: !c.is_active })}>
-                        {c.is_active ? "Active" : "Inactive"}
+                        {c.is_active ? t.couponPage.active : t.couponPage.inactive}
                       </Badge>
                     </TableCell>
                     <TableCell><Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                   </TableRow>
                 ))}
-                {!coupons.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No coupons found</TableCell></TableRow>}
+                {!coupons.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{t.couponPage.noCouponsFound}</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>

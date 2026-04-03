@@ -55,8 +55,8 @@ export default function AuditLogs() {
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
-        <p className="text-muted-foreground mt-1">Track all edit and delete actions by administrators</p>
+        <h1 className="text-2xl font-bold text-foreground">{t.auditLogsPage.title}</h1>
+        <p className="text-muted-foreground mt-1">{t.auditLogsPage.subtitle}</p>
       </div>
 
       <div className="glass-card rounded-xl">
@@ -64,13 +64,13 @@ export default function AuditLogs() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search admin, table, record..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={t.auditLogsPage.searchPlaceholder} className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger><SelectValue placeholder="Action type" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t.auditLogsPage.actionType} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="edit">Edit</SelectItem>
+                <SelectItem value="all">{t.auditLogsPage.allActions}</SelectItem>
+                <SelectItem value="edit">{t.common.edit}</SelectItem>
                 <SelectItem value="delete">{t.common.delete}</SelectItem>
               </SelectContent>
             </Select>
@@ -86,17 +86,17 @@ export default function AuditLogs() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Admin</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Table</TableHead>
-                  <TableHead>Record ID</TableHead>
-                  <TableHead className="text-right">Details</TableHead>
+                  <TableHead>{t.common.date}</TableHead>
+                  <TableHead>{t.auditLogsPage.admin}</TableHead>
+                  <TableHead>{t.auditLogsPage.action}</TableHead>
+                  <TableHead>{t.auditLogsPage.table}</TableHead>
+                  <TableHead>{t.auditLogsPage.recordId}</TableHead>
+                  <TableHead className="text-right">{t.auditLogsPage.details}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!filtered?.length ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-12">No audit logs found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-12">{t.auditLogsPage.noLogsFound}</TableCell></TableRow>
                 ) : (
                   filtered.map((log) => (
                     <TableRow key={log.id}>
@@ -126,21 +126,21 @@ export default function AuditLogs() {
       {/* Detail Dialog */}
       <Dialog open={!!detailLog} onOpenChange={(o) => !o && setDetailLog(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Audit Log Details</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t.auditLogsPage.auditLogDetails}</DialogTitle></DialogHeader>
           {detailLog && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-muted-foreground">Admin</p><p className="font-medium">{detailLog.admin_name}</p></div>
-                <div><p className="text-muted-foreground">Action</p><p className="font-medium capitalize">{detailLog.action}</p></div>
-                <div><p className="text-muted-foreground">Table</p><p className="font-mono">{detailLog.table_name}</p></div>
-                <div><p className="text-muted-foreground">Date</p><p>{safeFormat(detailLog.created_at, "dd MMM yyyy HH:mm:ss")}</p></div>
+                <div><p className="text-muted-foreground">{t.auditLogsPage.admin}</p><p className="font-medium">{detailLog.admin_name}</p></div>
+                <div><p className="text-muted-foreground">{t.auditLogsPage.action}</p><p className="font-medium capitalize">{detailLog.action}</p></div>
+                <div><p className="text-muted-foreground">{t.auditLogsPage.table}</p><p className="font-mono">{detailLog.table_name}</p></div>
+                <div><p className="text-muted-foreground">{t.common.date}</p><p>{safeFormat(detailLog.created_at, "dd MMM yyyy HH:mm:ss")}</p></div>
               </div>
-              <div><p className="text-muted-foreground mb-1">Record ID</p><p className="font-mono text-xs bg-muted rounded p-2 break-all">{detailLog.record_id}</p></div>
+              <div><p className="text-muted-foreground mb-1">{t.auditLogsPage.recordId}</p><p className="font-mono text-xs bg-muted rounded p-2 break-all">{detailLog.record_id}</p></div>
               {detailLog.old_data && (
-                <div><p className="text-muted-foreground mb-1">Old Data</p><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{JSON.stringify(detailLog.old_data, null, 2)}</pre></div>
+                <div><p className="text-muted-foreground mb-1">{t.auditLogsPage.oldData}</p><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{JSON.stringify(detailLog.old_data, null, 2)}</pre></div>
               )}
               {detailLog.new_data && (
-                <div><p className="text-muted-foreground mb-1">New Data</p><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{JSON.stringify(detailLog.new_data, null, 2)}</pre></div>
+                <div><p className="text-muted-foreground mb-1">{t.auditLogsPage.newData}</p><pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{JSON.stringify(detailLog.new_data, null, 2)}</pre></div>
               )}
             </div>
           )}

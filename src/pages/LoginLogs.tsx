@@ -23,20 +23,20 @@ const actionColors: Record<string, string> = {
   logout: "outline",
 };
 
-const actionLabels: Record<string, string> = {
-  login: "Admin Login",
-  login_success: "Login Success",
-  login_requested: "Login Requested",
-  login_approved: "Approved",
-  login_approved_completed: "Approved (Complete)",
-  login_rejected: "Rejected",
-  customer_login: "Customer Login",
-  logout: "Logout",
-};
-
 export default function LoginLogs() {
   const { t } = useLanguage();
   const [search, setSearch] = useState("");
+
+  const actionLabels: Record<string, string> = {
+    login: t.loginLogsPage.adminLogin,
+    login_success: t.loginLogsPage.loginSuccess,
+    login_requested: t.loginLogsPage.loginRequested,
+    login_approved: t.loginLogsPage.approved,
+    login_approved_completed: t.loginLogsPage.approvedCompleted,
+    login_rejected: t.loginLogsPage.rejected,
+    customer_login: t.loginLogsPage.customerLogin,
+    logout: t.loginLogsPage.logout,
+  };
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ["admin-login-logs"],
@@ -59,7 +59,6 @@ export default function LoginLogs() {
     },
   });
 
-  // Also fetch customer names for customer_login actions
   const { data: customers } = useQuery({
     queryKey: ["customers-map-login"],
     queryFn: async () => {
@@ -90,18 +89,18 @@ export default function LoginLogs() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Login Audit Logs</h1>
-            <p className="text-muted-foreground text-sm">Track all admin &amp; customer login history</p>
+            <h1 className="text-2xl font-bold text-foreground">{t.loginLogsPage.title}</h1>
+            <p className="text-muted-foreground text-sm">{t.loginLogsPage.subtitle}</p>
           </div>
           <Badge variant="outline" className="gap-1">
-            <Shield className="h-3 w-3" /> Security
+            <Shield className="h-3 w-3" /> {t.security.securityDashboard.split(" ")[0]}
           </Badge>
         </div>
 
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search logs..."
+            placeholder={t.loginLogsPage.searchLogs}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -117,19 +116,19 @@ export default function LoginLogs() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Admin</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Browser</TableHead>
-                  <TableHead>IP Address</TableHead>
+                  <TableHead>{t.auditLogsPage.time}</TableHead>
+                  <TableHead>{t.auditLogsPage.admin}</TableHead>
+                  <TableHead>{t.auditLogsPage.action}</TableHead>
+                  <TableHead>{t.auditLogsPage.device}</TableHead>
+                  <TableHead>{t.auditLogsPage.browser}</TableHead>
+                  <TableHead>{t.auditLogsPage.ipAddress}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered?.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No login logs found
+                      {t.loginLogsPage.noLogsFound}
                     </TableCell>
                   </TableRow>
                 )}
