@@ -335,6 +335,7 @@ export default function NetworkMap() {
     : [23.8103, 90.4125]; // Dhaka default
 
   return (
+    <DashboardLayout>
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
