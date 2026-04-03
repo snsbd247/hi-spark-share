@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, LayoutDashboard, Building2, CreditCard, Globe, LogOut, Loader2,
   Package, MessageSquare, Rocket, BarChart3, Mail, Menu, X, ChevronLeft,
-  Receipt, Palette, Sun, Moon,
+  Receipt, Palette, Sun, Moon, Users, ShieldCheck, Activity,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -22,6 +22,9 @@ const NAV_ITEMS = [
   { label: "SMS Management", icon: MessageSquare, path: "/super/sms" },
   { label: "SMTP / Email", icon: Mail, path: "/super/smtp" },
   { label: "Analytics", icon: BarChart3, path: "/super/analytics" },
+  { label: "Users", icon: Users, path: "/super/users" },
+  { label: "Roles & Permissions", icon: ShieldCheck, path: "/super/roles" },
+  { label: "Activity Logs", icon: Activity, path: "/super/activity-logs" },
 ];
 
 export default function SuperAdminLayout() {
