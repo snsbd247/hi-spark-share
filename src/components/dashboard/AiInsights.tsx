@@ -102,15 +102,6 @@ export default function AiInsights({
       });
     }
 
-    // Security reminder
-    if (customers.length > 100) {
-      result.push({
-        icon: <Shield className="h-4 w-4" />,
-        title: "Enable Auto-Backup",
-        description: "With over 100 customers, ensure regular database backups are configured.",
-        severity: "info",
-      });
-    }
 
     // If no insights, show a positive message
     if (result.length === 0) {
