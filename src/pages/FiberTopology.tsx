@@ -30,7 +30,7 @@ interface Stats { total_olts: number; total_cables: number; total_cores: number;
 // ─── API calls ──────────────────────────
 const fetchTree = async (): Promise<OltData[]> => {
   const { data } = await api.get("/api/fiber-topology/tree");
-  return data;
+  return Array.isArray(data) ? data : [];
 };
 const fetchStats = async (): Promise<Stats> => {
   const { data } = await api.get("/api/fiber-topology/stats");
