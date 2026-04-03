@@ -76,7 +76,7 @@ export default function AdminProfile() {
         .eq("id", user.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
-      toast.success("Profile updated successfully");
+      toast.success(t.profilePage.profileUpdated);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
