@@ -61,6 +61,8 @@ const fetchMapData = async () => {
   return Array.isArray(data) ? data : [];
 };
 
+const normalizeFiberTree = (data: unknown): OltData[] => (Array.isArray(data) ? (data as OltData[]) : []);
+
 // ─── Tree Node ──────────────
 function TreeNode({ label, icon: Icon, iconColor, badge, badgeVariant, children, level = 0, defaultOpen = false, extra }: {
   label: string; icon: any; iconColor?: string; badge?: string; badgeVariant?: "default" | "secondary" | "destructive" | "outline";
@@ -190,15 +192,31 @@ export default function FiberTopology() {
     }
   }, []);
 
-  const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ["fiber-tree"] });
-    queryClient.invalidateQueries({ queryKey: ["fiber-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["fiber-map"] });
-  };
+  const invalidateAll = useCallback(() => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["fiber-tree"] }),
+    queryClient.invalidateQueries({ queryKey: ["fiber-stats"] }),
+    queryClient.invalidateQueries({ queryKey: ["fiber-map"] }),
+  ]), [queryClient]);
+
+  const injectCreatedOltIntoTree = useCallback((payload: any) => {
+    const createdOlt = payload?.data ?? payload;
+    if (!createdOlt?.id) return;
+
+    queryClient.setQueryData<OltData[]>(["fiber-tree"], (current) => {
+      const safeCurrent = normalizeFiberTree(current);
+      return [createdOlt as OltData, ...safeCurrent.filter((olt) => olt.id !== createdOlt.id)];
+    });
+  }, [queryClient]);
 
   const createOlt = useMutation({
     mutationFn: (data: any) => api.post("/fiber-topology/olts", data),
-    onSuccess: () => { toast.success("OLT তৈরি হয়েছে"); invalidateAll(); setDialogType(null); },
+    onSuccess: async (response) => {
+      console.log("Created OLT response", response?.data);
+      injectCreatedOltIntoTree(response);
+      await invalidateAll();
+      toast.success("OLT তৈরি হয়েছে");
+      setDialogType(null);
+    },
     onError: (e: any) => toast.error(e?.response?.data?.message || "ত্রুটি"),
   });
   const createCable = useMutation({
