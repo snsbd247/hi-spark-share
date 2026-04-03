@@ -17,6 +17,7 @@ import {
   Link2, Unlink, Palette, TreePine, Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MapLocationPicker } from "@/components/MapLocationPicker";
 
 // ─── Fiber Color Constants ─────────────
 const FIBER_COLORS: Record<string, string> = {
