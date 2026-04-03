@@ -452,7 +452,37 @@ export default function FiberTopology() {
     }
   };
 
+  // Fetch customers for ONU dialog
+  const { data: customers = [] } = useQuery({
+    queryKey: ["customers-for-onu"],
+    queryFn: async () => {
+      const { data, error } = await db.from("customers").select("id, name, customer_id, phone").order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: dialogType === "onu",
+  });
+
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return customers.slice(0, 50);
+    const q = customerSearch.toLowerCase();
+    return customers.filter(c =>
+      c.name?.toLowerCase().includes(q) ||
+      c.customer_id?.toLowerCase().includes(q) ||
+      c.phone?.includes(q)
+    ).slice(0, 50);
+  }, [customers, customerSearch]);
+
+  const selectedCustomer = useMemo(() =>
+    customers.find(c => c.id === formData.customer_id),
+    [customers, formData.customer_id]
+  );
+
   return (
+    <DashboardLayout>
     <div className="space-y-6 animate-fade-up">
       <PageHeader
         title="ফাইবার নেটওয়ার্ক টপোলজি"
