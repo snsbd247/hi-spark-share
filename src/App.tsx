@@ -116,6 +116,7 @@ import ProductSerials from "@/pages/inventory/ProductSerials";
 import CustomerDevices from "@/pages/inventory/CustomerDevices";
 import InventoryLogs from "@/pages/inventory/InventoryLogs";
 import NetworkMap from "@/pages/NetworkMap";
+import FiberTopology from "@/pages/FiberTopology";
 import SuperAdminLogin from "@/pages/super/SuperAdminLogin";
 import SuperAdminLayout from "@/components/super/SuperAdminLayout";
 import SuperDashboard from "@/pages/super/SuperDashboard";
