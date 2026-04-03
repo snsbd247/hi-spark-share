@@ -13,7 +13,12 @@ class FiberSplitter extends Model
     protected $table = 'fiber_splitters';
 
     protected $fillable = [
-        'tenant_id', 'core_id', 'ratio', 'location', 'label', 'status',
+        'tenant_id', 'core_id', 'ratio', 'location', 'label', 'status', 'lat', 'lng',
+    ];
+
+    protected $casts = [
+        'lat' => 'float',
+        'lng' => 'float',
     ];
 
     public function core()

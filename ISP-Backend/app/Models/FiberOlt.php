@@ -13,7 +13,13 @@ class FiberOlt extends Model
     protected $table = 'fiber_olts';
 
     protected $fillable = [
-        'tenant_id', 'name', 'location', 'total_pon_ports', 'status',
+        'tenant_id', 'name', 'location', 'total_pon_ports', 'status', 'lat', 'lng',
+    ];
+
+    protected $casts = [
+        'total_pon_ports' => 'integer',
+        'lat' => 'float',
+        'lng' => 'float',
     ];
 
     protected $casts = [

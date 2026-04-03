@@ -13,12 +13,27 @@ class FiberCore extends Model
     protected $table = 'fiber_cores';
 
     protected $fillable = [
-        'tenant_id', 'fiber_cable_id', 'core_number', 'color', 'status',
+        'tenant_id', 'fiber_cable_id', 'core_number', 'color', 'status', 'connected_olt_port_id',
     ];
 
     protected $casts = [
         'core_number' => 'integer',
     ];
+
+    public function connectedPort()
+    {
+        return $this->belongsTo(FiberPonPort::class, 'connected_olt_port_id');
+    }
+
+    public function spliceFrom()
+    {
+        return $this->hasMany(CoreConnection::class, 'from_core_id');
+    }
+
+    public function spliceTo()
+    {
+        return $this->hasMany(CoreConnection::class, 'to_core_id');
+    }
 
     public function cable()
     {

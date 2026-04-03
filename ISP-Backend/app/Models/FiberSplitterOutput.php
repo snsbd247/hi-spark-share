@@ -13,7 +13,7 @@ class FiberSplitterOutput extends Model
     protected $table = 'fiber_splitter_outputs';
 
     protected $fillable = [
-        'tenant_id', 'splitter_id', 'output_number', 'status',
+        'tenant_id', 'splitter_id', 'output_number', 'status', 'color', 'connection_type', 'connected_id',
     ];
 
     protected $casts = [

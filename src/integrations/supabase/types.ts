@@ -442,6 +442,55 @@ export type Database = {
         }
         Relationships: []
       }
+      core_connections: {
+        Row: {
+          created_at: string
+          from_core_id: string
+          id: string
+          label: string | null
+          tenant_id: string
+          to_core_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_core_id: string
+          id?: string
+          label?: string | null
+          tenant_id: string
+          to_core_id: string
+        }
+        Update: {
+          created_at?: string
+          from_core_id?: string
+          id?: string
+          label?: string | null
+          tenant_id?: string
+          to_core_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_connections_from_core_id_fkey"
+            columns: ["from_core_id"]
+            isOneToOne: false
+            referencedRelation: "fiber_cores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_connections_to_core_id_fkey"
+            columns: ["to_core_id"]
+            isOneToOne: false
+            referencedRelation: "fiber_cores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -1397,6 +1446,7 @@ export type Database = {
       fiber_cores: {
         Row: {
           color: string | null
+          connected_olt_port_id: string | null
           core_number: number
           created_at: string
           fiber_cable_id: string
@@ -1407,6 +1457,7 @@ export type Database = {
         }
         Insert: {
           color?: string | null
+          connected_olt_port_id?: string | null
           core_number: number
           created_at?: string
           fiber_cable_id: string
@@ -1417,6 +1468,7 @@ export type Database = {
         }
         Update: {
           color?: string | null
+          connected_olt_port_id?: string | null
           core_number?: number
           created_at?: string
           fiber_cable_id?: string
@@ -1426,6 +1478,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fiber_cores_connected_olt_port_id_fkey"
+            columns: ["connected_olt_port_id"]
+            isOneToOne: false
+            referencedRelation: "fiber_pon_ports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fiber_cores_fiber_cable_id_fkey"
             columns: ["fiber_cable_id"]
@@ -1446,6 +1505,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          lat: number | null
+          lng: number | null
           location: string | null
           name: string
           status: string
@@ -1456,6 +1517,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           location?: string | null
           name: string
           status?: string
@@ -1466,6 +1529,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           location?: string | null
           name?: string
           status?: string
@@ -1591,6 +1656,9 @@ export type Database = {
       }
       fiber_splitter_outputs: {
         Row: {
+          color: string | null
+          connected_id: string | null
+          connection_type: string | null
           created_at: string
           id: string
           output_number: number
@@ -1600,6 +1668,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
+          connected_id?: string | null
+          connection_type?: string | null
           created_at?: string
           id?: string
           output_number: number
@@ -1609,6 +1680,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
+          connected_id?: string | null
+          connection_type?: string | null
           created_at?: string
           id?: string
           output_number?: number
@@ -1640,6 +1714,8 @@ export type Database = {
           created_at: string
           id: string
           label: string | null
+          lat: number | null
+          lng: number | null
           location: string | null
           ratio: string
           status: string
@@ -1651,6 +1727,8 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string | null
+          lat?: number | null
+          lng?: number | null
           location?: string | null
           ratio?: string
           status?: string
@@ -1662,6 +1740,8 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string | null
+          lat?: number | null
+          lng?: number | null
           location?: string | null
           ratio?: string
           status?: string
