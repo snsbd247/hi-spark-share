@@ -19,7 +19,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Network, Plus, Search, Server, Cable, Cpu,
   GitBranch, Radio, User, Activity, Layers, CircleDot, Hash, MapPin,
-  Link2, Palette, TreePine, Map as MapIcon,
+  Link2, Palette, TreePine, Map as MapIcon, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MapLocationPicker } from "@/components/MapLocationPicker";
@@ -32,6 +32,11 @@ import {
   createFiberOltInSupabase,
   createFiberSpliceInSupabase,
   createFiberSplitterInSupabase,
+  updateFiberOltInSupabase,
+  updateFiberCableInSupabase,
+  updateFiberSplitterInSupabase,
+  updateFiberOnuInSupabase,
+  updateFiberSpliceInSupabase,
   EMPTY_FIBER_STATS,
   fetchFiberSpliceCountFromSupabase,
   fetchFiberTopologyTreeFromSupabase,
@@ -203,12 +208,17 @@ const NODE_COLORS = {
   customer: "bg-green-600 text-white",
 };
 
-function HNodeLabel({ text, colorClass, icon: Icon, sub }: { text: string; colorClass: string; icon?: any; sub?: string }) {
+function HNodeLabel({ text, colorClass, icon: Icon, sub, onEdit }: { text: string; colorClass: string; icon?: any; sub?: string; onEdit?: () => void }) {
   return (
-    <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap shadow-sm", colorClass)}>
+    <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap shadow-sm group/node", colorClass)}>
       {Icon && <Icon className="h-3 w-3 shrink-0" />}
       <span className="truncate max-w-[180px]">{text}</span>
       {sub && <span className="opacity-70 text-[10px]">{sub}</span>}
+      {onEdit && (
+        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="opacity-0 group-hover/node:opacity-100 transition-opacity ml-0.5 hover:scale-110">
+          <Pencil className="h-2.5 w-2.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -234,10 +244,10 @@ function HTreeItem({ children, isLast }: { children: React.ReactNode; isLast?: b
   );
 }
 
-function OnuHNode({ onu, t }: { onu: FiberOnuData; t: any }) {
+function OnuHNode({ onu, t, onEdit }: { onu: FiberOnuData; t: any; onEdit?: (type: string, data: any) => void }) {
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      <HNodeLabel text={onu.serial_number} colorClass={NODE_COLORS.onu} icon={Radio} />
+      <HNodeLabel text={onu.serial_number} colorClass={NODE_COLORS.onu} icon={Radio} onEdit={onEdit ? () => onEdit("edit_onu", { _edit_id: onu.id, serial_number: onu.serial_number, mac_address: onu.mac_address || "", status: onu.status, customer_id: onu.customer_id || "", lat: onu.lat, lng: onu.lng }) : undefined} />
       {onu.customer && (
         <>
           <span className="text-muted-foreground text-xs">←</span>
@@ -248,7 +258,7 @@ function OnuHNode({ onu, t }: { onu: FiberOnuData; t: any }) {
   );
 }
 
-function OutputHNode({ output, t, isLast }: { output: SplitterOutput; t: any; isLast: boolean }) {
+function OutputHNode({ output, t, isLast, onEdit }: { output: SplitterOutput; t: any; isLast: boolean; onEdit?: (type: string, data: any) => void }) {
   const isFree = output.status === "free";
   const hasChildren = !!(output.onu || output.child_cables?.length || output.child_splitter);
 
@@ -264,30 +274,30 @@ function OutputHNode({ output, t, isLast }: { output: SplitterOutput; t: any; is
         {output.onu && !output.child_cables?.length && !output.child_splitter && (
           <>
             <span className="text-muted-foreground text-xs">→</span>
-            <OnuHNode onu={output.onu} t={t} />
+            <OnuHNode onu={output.onu} t={t} onEdit={onEdit} />
           </>
         )}
       </div>
       {hasChildren && (output.child_cables?.length || output.child_splitter) && (
         <HTreeChildren>
           {output.child_cables?.map((cable, i) => (
-            <CableHNode key={cable.id} cable={cable} t={t} isLast={i === (output.child_cables!.length - 1) && !output.child_splitter} />
+            <CableHNode key={cable.id} cable={cable} t={t} isLast={i === (output.child_cables!.length - 1) && !output.child_splitter} onEdit={onEdit} />
           ))}
           {output.child_splitter && (
-            <SplitterHNode splitter={output.child_splitter} t={t} isLast />
+            <SplitterHNode splitter={output.child_splitter} t={t} isLast onEdit={onEdit} />
           )}
         </HTreeChildren>
       )}
       {hasChildren && output.onu && (output.child_cables?.length || output.child_splitter) && (
         <div className="ml-6 flex items-center gap-1.5 mt-0.5">
-          <OnuHNode onu={output.onu} t={t} />
+          <OnuHNode onu={output.onu} t={t} onEdit={onEdit} />
         </div>
       )}
     </HTreeItem>
   );
 }
 
-function SplitterHNode({ splitter, t, isLast }: { splitter: Splitter; t: any; isLast: boolean }) {
+function SplitterHNode({ splitter, t, isLast, onEdit }: { splitter: Splitter; t: any; isLast: boolean; onEdit?: (type: string, data: any) => void }) {
   const freeCount = (splitter.outputs || []).filter(o => o.status === "free").length;
   const outputs = splitter.outputs || [];
 
@@ -298,6 +308,7 @@ function SplitterHNode({ splitter, t, isLast }: { splitter: Splitter; t: any; is
           text={`${t.fiberTopology.splitter} (${splitter.ratio})${splitter.label ? ` - ${splitter.label}` : ""}`}
           colorClass={NODE_COLORS.splitter}
           icon={GitBranch}
+          onEdit={onEdit ? () => onEdit("edit_splitter", { _edit_id: splitter.id, label: splitter.label || "", location: splitter.location || "", status: splitter.status, lat: splitter.lat, lng: splitter.lng, ratio: splitter.ratio }) : undefined}
         />
         {splitter.lat && <MapPin className="h-3 w-3 text-muted-foreground" />}
         {splitter.source_type === "splitter_output" && <Badge variant="outline" className="text-[9px] h-4 px-1">🔗</Badge>}
@@ -305,7 +316,7 @@ function SplitterHNode({ splitter, t, isLast }: { splitter: Splitter; t: any; is
       {outputs.length > 0 && (
         <HTreeChildren>
           {outputs.map((output, i) => (
-            <OutputHNode key={output.id} output={output} t={t} isLast={i === outputs.length - 1} />
+            <OutputHNode key={output.id} output={output} t={t} isLast={i === outputs.length - 1} onEdit={onEdit} />
           ))}
         </HTreeChildren>
       )}
@@ -313,7 +324,7 @@ function SplitterHNode({ splitter, t, isLast }: { splitter: Splitter; t: any; is
   );
 }
 
-function CoreHNode({ core, t, isLast }: { core: FiberCoreData; t: any; isLast: boolean }) {
+function CoreHNode({ core, t, isLast, onEdit }: { core: FiberCoreData; t: any; isLast: boolean; onEdit?: (type: string, data: any) => void }) {
   const hasSplitter = !!core.splitter;
 
   return (
@@ -331,14 +342,14 @@ function CoreHNode({ core, t, isLast }: { core: FiberCoreData; t: any; isLast: b
       </div>
       {hasSplitter && (
         <HTreeChildren>
-          <SplitterHNode splitter={core.splitter!} t={t} isLast />
+          <SplitterHNode splitter={core.splitter!} t={t} isLast onEdit={onEdit} />
         </HTreeChildren>
       )}
     </HTreeItem>
   );
 }
 
-function CableHNode({ cable, t, isLast }: { cable: FiberCableData; t: any; isLast: boolean }) {
+function CableHNode({ cable, t, isLast, onEdit }: { cable: FiberCableData; t: any; isLast: boolean; onEdit?: (type: string, data: any) => void }) {
   const freeCount = (cable.cores || []).filter(c => c.status === "free").length;
 
   return (
@@ -348,13 +359,14 @@ function CableHNode({ cable, t, isLast }: { cable: FiberCableData; t: any; isLas
           text={`${cable.name} (${cable.total_cores} ${t.fiberTopology.cores})`}
           colorClass={NODE_COLORS.cable}
           icon={Cable}
+          onEdit={onEdit ? () => onEdit("edit_cable", { _edit_id: cable.id, name: cable.name, color: cable.color || "", length_meters: cable.length_meters || "", status: cable.status, lat: cable.lat, lng: cable.lng }) : undefined}
         />
         {cable.source_type === "splitter" && <Badge variant="outline" className="text-[9px] h-4 px-1">🔗</Badge>}
       </div>
       {(cable.cores || []).length > 0 && (
         <HTreeChildren>
           {cable.cores.map((core, i) => (
-            <CoreHNode key={core.id} core={core} t={t} isLast={i === cable.cores.length - 1} />
+            <CoreHNode key={core.id} core={core} t={t} isLast={i === cable.cores.length - 1} onEdit={onEdit} />
           ))}
         </HTreeChildren>
       )}
@@ -469,6 +481,67 @@ export default function FiberTopology() {
     onError: (e: any) => toast.error(e?.message || e?.response?.data?.error || t.fiberTopology.error),
   });
 
+  // ─── Edit Mutations ─────────────────
+  const updateOlt = useMutation({
+    mutationFn: async (data: any) => {
+      const { _edit_id, ...rest } = data;
+      if (IS_LOVABLE) return updateFiberOltInSupabase(_edit_id, rest);
+      const response = await api.put(`/fiber-topology/olts/${_edit_id}`, rest);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("OLT updated"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || "Update failed"),
+  });
+
+  const updateCable = useMutation({
+    mutationFn: async (data: any) => {
+      const { _edit_id, ...rest } = data;
+      if (IS_LOVABLE) return updateFiberCableInSupabase(_edit_id, rest);
+      const response = await api.put(`/fiber-topology/cables/${_edit_id}`, rest);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("Cable updated"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || "Update failed"),
+  });
+
+  const updateSplitter = useMutation({
+    mutationFn: async (data: any) => {
+      const { _edit_id, ...rest } = data;
+      if (IS_LOVABLE) return updateFiberSplitterInSupabase(_edit_id, rest);
+      const response = await api.put(`/fiber-topology/splitters/${_edit_id}`, rest);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("Splitter updated"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || "Update failed"),
+  });
+
+  const updateOnu = useMutation({
+    mutationFn: async (data: any) => {
+      const { _edit_id, ...rest } = data;
+      if (IS_LOVABLE) return updateFiberOnuInSupabase(_edit_id, rest);
+      const response = await api.put(`/fiber-topology/onus/${_edit_id}`, rest);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("ONU updated"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || "Update failed"),
+  });
+
+  const updateSplice = useMutation({
+    mutationFn: async (data: any) => {
+      const { _edit_id, ...rest } = data;
+      if (IS_LOVABLE) return updateFiberSpliceInSupabase(_edit_id, rest);
+      const response = await api.put(`/fiber-topology/splices/${_edit_id}`, rest);
+      return response.data ?? response;
+    },
+    onSuccess: async () => { toast.success("Splice updated"); await invalidateAll(); setDialogType(null); },
+    onError: (e: any) => toast.error(e?.message || "Update failed"),
+  });
+
+  const handleEditNode = useCallback((type: string, data: any) => {
+    setFormData(data);
+    setDialogType(type);
+  }, []);
+
   const allPonPorts = useMemo(() =>
     safeTree.flatMap(olt => (olt.pon_ports || []).map(p => ({ ...p, oltName: olt.name }))),
     [safeTree]
@@ -503,6 +576,7 @@ export default function FiberTopology() {
   const handleSubmit = () => {
     switch (dialogType) {
       case "olt": createOlt.mutate(formData); break;
+      case "edit_olt": updateOlt.mutate(formData); break;
       case "cable": {
         const cablePayload = { ...formData };
         if (cableSourceType === "splitter_output") {
@@ -517,6 +591,7 @@ export default function FiberTopology() {
         createCable.mutate(cablePayload);
         break;
       }
+      case "edit_cable": updateCable.mutate(formData); break;
       case "splitter": {
         const splitterPayload = { ...formData };
         if (splitterSourceType === "splitter_output") {
@@ -531,8 +606,11 @@ export default function FiberTopology() {
         createSplitter.mutate(splitterPayload);
         break;
       }
+      case "edit_splitter": updateSplitter.mutate(formData); break;
       case "onu": createOnu.mutate(formData); break;
+      case "edit_onu": updateOnu.mutate(formData); break;
       case "splice": createSplice.mutate(formData); break;
+      case "edit_splice": updateSplice.mutate(formData); break;
     }
   };
 
@@ -543,7 +621,7 @@ export default function FiberTopology() {
       if (error) throw error;
       return data || [];
     },
-    enabled: dialogType === "onu",
+    enabled: dialogType === "onu" || dialogType === "edit_onu",
   });
 
   const [customerSearch, setCustomerSearch] = useState("");
@@ -654,7 +732,11 @@ export default function FiberTopology() {
                       <div key={olt.id}>
                         {/* OLT root */}
                         <div className="flex items-center gap-1.5 mb-1">
-                          <HNodeLabel text={`${olt.name}${olt.location ? ` (${olt.location})` : ""}`} colorClass={NODE_COLORS.olt} icon={Server} />
+                          <HNodeLabel
+                            text={`${olt.name}${olt.location ? ` (${olt.location})` : ""}`}
+                            colorClass={NODE_COLORS.olt} icon={Server}
+                            onEdit={() => handleEditNode("edit_olt", { _edit_id: olt.id, name: olt.name, location: olt.location || "", status: olt.status, lat: olt.lat, lng: olt.lng, total_pon_ports: olt.total_pon_ports })}
+                          />
                           {olt.lat && <MapPin className="h-3 w-3 text-muted-foreground" />}
                           <Badge variant="secondary" className="text-[9px] h-4 px-1">{olt.total_pon_ports} {t.fiberTopology.ports}</Badge>
                         </div>
@@ -672,7 +754,7 @@ export default function FiberTopology() {
                               {(pp.cables || []).length > 0 && (
                                 <HTreeChildren>
                                   {pp.cables.map((cable, cIdx) => (
-                                    <CableHNode key={cable.id} cable={cable} t={t} isLast={cIdx === pp.cables.length - 1} />
+                                    <CableHNode key={cable.id} cable={cable} t={t} isLast={cIdx === pp.cables.length - 1} onEdit={handleEditNode} />
                                   ))}
                                 </HTreeChildren>
                               )}
@@ -983,6 +1065,157 @@ export default function FiberTopology() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
             <Button onClick={handleSubmit} disabled={createOnu.isPending}>{createOnu.isPending ? t.fiberTopology.assigning : t.fiberTopology.assign}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── EDIT DIALOGS ─────────────────── */}
+
+      {/* Edit OLT Dialog */}
+      <Dialog open={dialogType === "edit_olt"} onOpenChange={(o) => !o && setDialogType(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle><Pencil className="h-4 w-4 inline mr-1" /> Edit OLT</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>{t.fiberTopology.name} *</Label><Input value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+            <div><Label>{t.fiberTopology.location}</Label><Input value={formData.location || ""} onChange={e => setFormData({ ...formData, location: e.target.value })} /></div>
+            <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={formData.status || "active"} onValueChange={v => setFormData({ ...formData, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
+            <Button onClick={handleSubmit} disabled={updateOlt.isPending}>{updateOlt.isPending ? "Updating..." : "Update"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cable Dialog */}
+      <Dialog open={dialogType === "edit_cable"} onOpenChange={(o) => !o && setDialogType(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle><Pencil className="h-4 w-4 inline mr-1" /> Edit Cable</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>{t.fiberTopology.name} *</Label><Input value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+            <div><Label>{t.fiberTopology.lengthMeters}</Label><Input type="number" value={formData.length_meters || ""} onChange={e => setFormData({ ...formData, length_meters: parseFloat(e.target.value) })} /></div>
+            <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={formData.status || "active"} onValueChange={v => setFormData({ ...formData, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="damaged">Damaged</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
+            <Button onClick={handleSubmit} disabled={updateCable.isPending}>{updateCable.isPending ? "Updating..." : "Update"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Splitter Dialog */}
+      <Dialog open={dialogType === "edit_splitter"} onOpenChange={(o) => !o && setDialogType(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle><Pencil className="h-4 w-4 inline mr-1" /> Edit Splitter</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>{t.fiberTopology.label}</Label><Input value={formData.label || ""} onChange={e => setFormData({ ...formData, label: e.target.value })} /></div>
+            <div><Label>{t.fiberTopology.location}</Label><Input value={formData.location || ""} onChange={e => setFormData({ ...formData, location: e.target.value })} /></div>
+            <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={formData.status || "active"} onValueChange={v => setFormData({ ...formData, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
+            <Button onClick={handleSubmit} disabled={updateSplitter.isPending}>{updateSplitter.isPending ? "Updating..." : "Update"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit ONU Dialog */}
+      <Dialog open={dialogType === "edit_onu"} onOpenChange={(o) => !o && setDialogType(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle><Pencil className="h-4 w-4 inline mr-1" /> Edit ONU</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>{t.fiberTopology.serialNumber} *</Label><Input value={formData.serial_number || ""} onChange={e => setFormData({ ...formData, serial_number: e.target.value })} /></div>
+            <div><Label>{t.fiberTopology.macAddress}</Label><Input value={formData.mac_address || ""} onChange={e => setFormData({ ...formData, mac_address: e.target.value })} /></div>
+            <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
+            <div>
+              <Label>{t.fiberTopology.customer}</Label>
+              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    {selectedCustomer
+                      ? `${selectedCustomer.name} (${selectedCustomer.customer_id})`
+                      : t.fiberTopology.selectCustomer}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0" align="start">
+                  <div className="p-2 border-b">
+                    <Input placeholder={t.fiberTopology.searchCustomer} value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="h-9" />
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">{t.fiberTopology.noCustomerFound}</div>
+                    ) : (
+                      filteredCustomers.map(c => (
+                        <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-accent text-sm flex items-center gap-2" onClick={() => { setFormData({ ...formData, customer_id: c.id }); setCustomerPopoverOpen(false); setCustomerSearch(""); }}>
+                          <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{c.name}</span>
+                          <span className="text-muted-foreground ml-auto shrink-0">#{c.customer_id}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={formData.status || "active"} onValueChange={v => setFormData({ ...formData, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>{t.fiberTopology.cancel}</Button>
+            <Button onClick={handleSubmit} disabled={updateOnu.isPending}>{updateOnu.isPending ? "Updating..." : "Update"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

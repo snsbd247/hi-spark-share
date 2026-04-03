@@ -904,3 +904,87 @@ export async function createFiberSpliceInSupabase(payload: Record<string, unknow
   if (error) throw error;
   return splice;
 }
+
+// ─── Update functions ───────────────
+
+export async function updateFiberOltInSupabase(id: string, payload: Record<string, unknown>) {
+  const tenantId = await requireFiberTenantId();
+  const { data, error } = await db
+    .from("fiber_olts")
+    .update({
+      name: safeString(payload.name),
+      location: nullableString(payload.location),
+      status: nullableString(payload.status) || "active",
+      lat: nullableNumber(payload.lat),
+      lng: nullableNumber(payload.lng),
+    })
+    .eq("tenant_id", tenantId).eq("id", id)
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFiberCableInSupabase(id: string, payload: Record<string, unknown>) {
+  const tenantId = await requireFiberTenantId();
+  const { data, error } = await db
+    .from("fiber_cables")
+    .update({
+      name: safeString(payload.name),
+      color: nullableString(payload.color),
+      length_meters: nullableNumber(payload.length_meters),
+      status: nullableString(payload.status) || "active",
+      lat: nullableNumber(payload.lat),
+      lng: nullableNumber(payload.lng),
+    })
+    .eq("tenant_id", tenantId).eq("id", id)
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFiberSplitterInSupabase(id: string, payload: Record<string, unknown>) {
+  const tenantId = await requireFiberTenantId();
+  const { data, error } = await db
+    .from("fiber_splitters")
+    .update({
+      label: nullableString(payload.label),
+      location: nullableString(payload.location),
+      status: nullableString(payload.status) || "active",
+      lat: nullableNumber(payload.lat),
+      lng: nullableNumber(payload.lng),
+    })
+    .eq("tenant_id", tenantId).eq("id", id)
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFiberOnuInSupabase(id: string, payload: Record<string, unknown>) {
+  const tenantId = await requireFiberTenantId();
+  const { data, error } = await db
+    .from("fiber_onus")
+    .update({
+      serial_number: safeString(payload.serial_number),
+      mac_address: nullableString(payload.mac_address),
+      customer_id: nullableString(payload.customer_id),
+      status: nullableString(payload.status) || "active",
+      signal_strength: nullableString(payload.signal_strength),
+      lat: nullableNumber(payload.lat),
+      lng: nullableNumber(payload.lng),
+    })
+    .eq("tenant_id", tenantId).eq("id", id)
+    .select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateFiberSpliceInSupabase(id: string, payload: Record<string, unknown>) {
+  const tenantId = await requireFiberTenantId();
+  const { data, error } = await db
+    .from("core_connections")
+    .update({ label: nullableString(payload.label) })
+    .eq("tenant_id", tenantId).eq("id", id)
+    .select().single();
+  if (error) throw error;
+  return data;
+}
