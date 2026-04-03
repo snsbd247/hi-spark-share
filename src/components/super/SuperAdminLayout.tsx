@@ -10,21 +10,46 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/super/dashboard" },
-  { label: "Tenants", icon: Building2, path: "/super/tenants" },
-  { label: "Onboarding", icon: Rocket, path: "/super/onboarding" },
-  { label: "Plans", icon: Package, path: "/super/plans" },
-  { label: "Subscriptions", icon: CreditCard, path: "/super/subscriptions" },
-  { label: "Billing", icon: Receipt, path: "/super/billing" },
-  { label: "Domains", icon: Globe, path: "/super/domains" },
-  { label: "Branding", icon: Palette, path: "/super/branding" },
-  { label: "SMS Management", icon: MessageSquare, path: "/super/sms" },
-  { label: "SMTP / Email", icon: Mail, path: "/super/smtp" },
-  { label: "Analytics", icon: BarChart3, path: "/super/analytics" },
-  { label: "Users", icon: Users, path: "/super/users" },
-  { label: "Roles & Permissions", icon: ShieldCheck, path: "/super/roles" },
-  { label: "Activity Logs", icon: Activity, path: "/super/activity-logs" },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { label: "Dashboard", icon: LayoutDashboard, path: "/super/dashboard" },
+    ],
+  },
+  {
+    label: "Tenant Management",
+    items: [
+      { label: "Tenants", icon: Building2, path: "/super/tenants" },
+      { label: "Onboarding", icon: Rocket, path: "/super/onboarding" },
+      { label: "Domains", icon: Globe, path: "/super/domains" },
+      { label: "Branding", icon: Palette, path: "/super/branding" },
+    ],
+  },
+  {
+    label: "Billing & Plans",
+    items: [
+      { label: "Plans", icon: Package, path: "/super/plans" },
+      { label: "Subscriptions", icon: CreditCard, path: "/super/subscriptions" },
+      { label: "Billing", icon: Receipt, path: "/super/billing" },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [
+      { label: "SMS Management", icon: MessageSquare, path: "/super/sms" },
+      { label: "SMTP / Email", icon: Mail, path: "/super/smtp" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { label: "Users", icon: Users, path: "/super/users" },
+      { label: "Roles & Permissions", icon: ShieldCheck, path: "/super/roles" },
+      { label: "Analytics", icon: BarChart3, path: "/super/analytics" },
+      { label: "Activity Logs", icon: Activity, path: "/super/activity-logs" },
+    ],
+  },
 ];
 
 export default function SuperAdminLayout() {
@@ -90,35 +115,42 @@ export default function SuperAdminLayout() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2.5 space-y-0.5 overflow-y-auto sidebar-scroll">
-        {(!collapsed || isMobile) && (
-          <p className="px-3 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30">Navigation</p>
-        )}
-        {NAV_ITEMS.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path === "/super/tenants" && location.pathname.startsWith("/super/tenants/"));
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative",
-                isActive
-                  ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/10 text-sidebar-primary shadow-sm"
-                  : "text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-accent/70"
-              )}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />
-              )}
-              <item.icon className={cn(
-                "h-[18px] w-[18px] shrink-0 transition-colors",
-                isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
-              )} />
-              {(!collapsed || isMobile) && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-2.5 space-y-3 overflow-y-auto sidebar-scroll">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="space-y-0.5">
+            {(!collapsed || isMobile) && (
+              <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30">{group.label}</p>
+            )}
+            {collapsed && !isMobile && (
+              <div className="mx-auto w-6 border-t border-sidebar-border/40 my-1" />
+            )}
+            {group.items.map((item) => {
+              const isActive = location.pathname === item.path ||
+                (item.path === "/super/tenants" && location.pathname.startsWith("/super/tenants/"));
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group relative",
+                    isActive
+                      ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/10 text-sidebar-primary shadow-sm"
+                      : "text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-accent/70"
+                  )}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />
+                  )}
+                  <item.icon className={cn(
+                    "h-[18px] w-[18px] shrink-0 transition-colors",
+                    isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
+                  )} />
+                  {(!collapsed || isMobile) && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
