@@ -718,9 +718,9 @@ function TenantLoginHistoryTab({ tenantId }: { tenantId: string }) {
 }
 
 // ─── Tenant Sessions Tab ─────────────────────────────────────
-function TenantSessionsTab({
+function TenantSessionsTab({ tenantId }: { tenantId: string }) {
   const { t } = useLanguage();
-  const sa = t.superAdmin; tenantId }: { tenantId: string }) {
+  const sa = t.superAdmin;
   const qc = useQueryClient();
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["super-tenant-sessions", tenantId],
