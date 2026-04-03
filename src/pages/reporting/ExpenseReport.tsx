@@ -7,10 +7,13 @@ import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { PieChart as PieIcon } from "lucide-react";
 import { format, subDays } from "date-fns";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16"];
 
 export default function ExpenseReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
   const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 90), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(new Date(), "yyyy-MM-dd"));
 
@@ -50,23 +53,23 @@ export default function ExpenseReport() {
   }));
 
   const columns = [
-    { header: "Date", key: "date" },
-    { header: "Category", key: "category" },
-    { header: "Description", key: "description" },
-    { header: "Amount", key: "amount", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Method", key: "method" },
+    { header: t.common.date, key: "date" },
+    { header: r.category, key: "category" },
+    { header: t.common.description, key: "description" },
+    { header: t.common.amount, key: "amount", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.method, key: "method" },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Expense Report</h1>
-          <p className="text-muted-foreground text-sm">Expense breakdown by category and daily trend</p>
+          <h1 className="text-2xl font-bold text-foreground">{r.expenseReport}</h1>
+          <p className="text-muted-foreground text-sm">{r.expenseReportDesc}</p>
         </div>
 
         <ReportToolbar
-          title="Expense Report"
+          title={r.expenseReport}
           data={tableData}
           columns={columns}
           dateFrom={dateFrom}
@@ -78,7 +81,7 @@ export default function ExpenseReport() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Expenses</p>
+              <p className="text-sm text-muted-foreground">{r.totalExpenses}</p>
               <p className="text-3xl font-bold text-destructive">৳{totalExpense.toLocaleString()}</p>
             </div>
           </CardContent>
@@ -86,7 +89,7 @@ export default function ExpenseReport() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PieIcon className="h-4 w-4" /> By Category</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PieIcon className="h-4 w-4" /> {r.byCategory}</CardTitle></CardHeader>
             <CardContent>
               {byCategory.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -97,12 +100,12 @@ export default function ExpenseReport() {
                     <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : <p className="text-center text-muted-foreground py-8">No expense data</p>}
+              ) : <p className="text-center text-muted-foreground py-8">{r.noExpenseData}</p>}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-sm">Daily Expense Trend</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{r.dailyExpenseTrend}</CardTitle></CardHeader>
             <CardContent>
               {daily.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -114,7 +117,7 @@ export default function ExpenseReport() {
                     <Line type="monotone" dataKey="total" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : <p className="text-center text-muted-foreground py-8">No data</p>}
+              ) : <p className="text-center text-muted-foreground py-8">{r.noData}</p>}
             </CardContent>
           </Card>
         </div>

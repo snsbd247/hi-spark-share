@@ -7,8 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Wallet } from "lucide-react";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function CashFlowReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
   const { data: payments = [] } = useQuery({
@@ -31,21 +34,21 @@ export default function CashFlowReport() {
   });
 
   const columns = [
-    { header: "Month", key: "month" },
-    { header: "Inflow", key: "inflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Outflow", key: "outflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Net", key: "net", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.month, key: "month" },
+    { header: r.inflow, key: "inflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.outflow, key: "outflow", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.net, key: "net", format: (v: number) => `Tk ${v.toLocaleString()}` },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Wallet className="h-6 w-6" /> Cash Flow Report</h1>
-          <p className="text-muted-foreground text-sm">Monthly cash inflow vs outflow</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Wallet className="h-6 w-6" /> {r.cashFlowReport}</h1>
+          <p className="text-muted-foreground text-sm">{r.cashFlowDesc}</p>
         </div>
 
-        <ReportToolbar title={`Cash Flow Report - ${year}`} data={months} columns={columns} showDateFilter={false}>
+        <ReportToolbar title={`${r.cashFlowReport} - ${year}`} data={months} columns={columns} showDateFilter={false}>
           <Select value={year} onValueChange={setYear}>
             <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -55,7 +58,7 @@ export default function CashFlowReport() {
         </ReportToolbar>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Monthly Cash Flow - {year}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{r.monthlyCashFlow} - {year}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={months}>
@@ -64,8 +67,8 @@ export default function CashFlowReport() {
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
                 <Legend />
-                <Bar dataKey="inflow" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Inflow" />
-                <Bar dataKey="outflow" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name="Outflow" />
+                <Bar dataKey="inflow" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name={r.inflow} />
+                <Bar dataKey="outflow" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name={r.outflow} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

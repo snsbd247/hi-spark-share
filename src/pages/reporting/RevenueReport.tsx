@@ -7,8 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { BarChart3 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function RevenueReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
   const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(new Date(), "yyyy-MM-dd"));
 
@@ -51,22 +54,22 @@ export default function RevenueReport() {
   }));
 
   const columns = [
-    { header: "Date", key: "date" },
-    { header: "Payment Method", key: "method" },
-    { header: "Amount", key: "amount", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Status", key: "status" },
+    { header: t.common.date, key: "date" },
+    { header: r.paymentMethod, key: "method" },
+    { header: t.common.amount, key: "amount", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: t.common.status, key: "status" },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Revenue Report</h1>
-          <p className="text-muted-foreground text-sm">Daily revenue and payment method breakdown</p>
+          <h1 className="text-2xl font-bold text-foreground">{r.revenueReport}</h1>
+          <p className="text-muted-foreground text-sm">{r.revenueReportDesc}</p>
         </div>
 
         <ReportToolbar
-          title="Revenue Report"
+          title={r.revenueReport}
           data={tableData}
           columns={columns}
           dateFrom={dateFrom}
@@ -78,14 +81,14 @@ export default function RevenueReport() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
+              <p className="text-sm text-muted-foreground">{r.totalRevenue}</p>
               <p className="text-3xl font-bold text-primary">৳{totalRevenue.toLocaleString()}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Daily Revenue</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4" /> {r.dailyRevenue}</CardTitle></CardHeader>
           <CardContent>
             {daily.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -97,19 +100,19 @@ export default function RevenueReport() {
                   <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <p className="text-center text-muted-foreground py-8">No revenue data</p>}
+            ) : <p className="text-center text-muted-foreground py-8">{r.noRevenueData}</p>}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">By Payment Method</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{r.byPaymentMethod}</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {byMethod.map((m, i) => (
                 <div key={i} className="p-4 rounded-lg bg-muted/50 text-center">
                   <p className="text-xs text-muted-foreground capitalize">{m.method}</p>
                   <p className="text-lg font-bold">৳{m.total.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">{m.count} payments</p>
+                  <p className="text-xs text-muted-foreground">{m.count} {r.payments}</p>
                 </div>
               ))}
             </div>

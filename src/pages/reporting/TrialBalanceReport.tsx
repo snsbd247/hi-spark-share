@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Scale } from "lucide-react";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function TrialBalanceReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
+
   const { data: accounts = [] } = useQuery({
     queryKey: ["trial-balance-accounts"],
     queryFn: async () => { const { data } = await (db as any).from("accounts").select("*").order("code"); return data || []; },
@@ -23,33 +27,33 @@ export default function TrialBalanceReport() {
   const totalCredit = items.reduce((s: any, i: any) => s + i.credit, 0);
 
   const columns = [
-    { header: "Code", key: "code" },
-    { header: "Account Name", key: "name" },
-    { header: "Type", key: "type" },
-    { header: "Debit", key: "debit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
-    { header: "Credit", key: "credit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
+    { header: r.code, key: "code" },
+    { header: r.accountName, key: "name" },
+    { header: r.type, key: "type" },
+    { header: r.debit, key: "debit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
+    { header: r.credit, key: "credit", format: (v: number) => v > 0 ? `Tk ${v.toLocaleString()}` : "-" },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Scale className="h-6 w-6" /> Trial Balance</h1>
-          <p className="text-muted-foreground text-sm">Summary of all account balances</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Scale className="h-6 w-6" /> {r.trialBalance}</h1>
+          <p className="text-muted-foreground text-sm">{r.trialBalanceDesc}</p>
         </div>
 
-        <ReportToolbar title="Trial Balance" data={items} columns={columns} showDateFilter={false} />
+        <ReportToolbar title={r.trialBalance} data={items} columns={columns} showDateFilter={false} />
 
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Account Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Debit (৳)</TableHead>
-                  <TableHead className="text-right">Credit (৳)</TableHead>
+                  <TableHead>{r.code}</TableHead>
+                  <TableHead>{r.accountName}</TableHead>
+                  <TableHead>{r.type}</TableHead>
+                  <TableHead className="text-right">{r.debit} (৳)</TableHead>
+                  <TableHead className="text-right">{r.credit} (৳)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -63,7 +67,7 @@ export default function TrialBalanceReport() {
                   </TableRow>
                 ))}
                 <TableRow className="font-bold border-t-2">
-                  <TableCell colSpan={3}>Total</TableCell>
+                  <TableCell colSpan={3}>{t.common.total}</TableCell>
                   <TableCell className="text-right">৳{totalDebit.toLocaleString()}</TableCell>
                   <TableCell className="text-right">৳{totalCredit.toLocaleString()}</TableCell>
                 </TableRow>

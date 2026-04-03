@@ -6,8 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ProfitLossReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
   const { data: payments = [] } = useQuery({
@@ -32,10 +35,10 @@ export default function ProfitLossReport() {
   });
 
   const columns = [
-    { header: "Month", key: "month" },
-    { header: "Revenue", key: "revenue", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Expense", key: "expense", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Profit", key: "profit", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.month, key: "month" },
+    { header: r.revenue, key: "revenue", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.expense, key: "expense", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.profit, key: "profit", format: (v: number) => `Tk ${v.toLocaleString()}` },
   ];
 
   return (
@@ -43,13 +46,13 @@ export default function ProfitLossReport() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Profit & Loss Report</h1>
-            <p className="text-muted-foreground text-sm">Monthly revenue vs expense analysis</p>
+            <h1 className="text-2xl font-bold text-foreground">{r.profitLossReport}</h1>
+            <p className="text-muted-foreground text-sm">{r.profitLossDesc}</p>
           </div>
         </div>
 
         <ReportToolbar
-          title={`Profit & Loss Report - ${year}`}
+          title={`${r.profitLossReport} - ${year}`}
           data={months}
           columns={columns}
           showDateFilter={false}
@@ -63,13 +66,13 @@ export default function ProfitLossReport() {
         </ReportToolbar>
 
         <div className="grid grid-cols-3 gap-4">
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Yearly Revenue</p><p className="text-2xl font-bold text-primary">৳{yearlyRevenue.toLocaleString()}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Yearly Expense</p><p className="text-2xl font-bold text-destructive">৳{yearlyExpense.toLocaleString()}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Net Profit</p><p className={`text-2xl font-bold ${yearlyRevenue - yearlyExpense >= 0 ? "text-primary" : "text-destructive"}`}>৳{(yearlyRevenue - yearlyExpense).toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.yearlyRevenue}</p><p className="text-2xl font-bold text-primary">৳{yearlyRevenue.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.yearlyExpense}</p><p className="text-2xl font-bold text-destructive">৳{yearlyExpense.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.netProfit}</p><p className={`text-2xl font-bold ${yearlyRevenue - yearlyExpense >= 0 ? "text-primary" : "text-destructive"}`}>৳{(yearlyRevenue - yearlyExpense).toLocaleString()}</p></CardContent></Card>
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Monthly P&L - {year}</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{r.monthlyPL} - {year}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={months}>
@@ -78,8 +81,8 @@ export default function ProfitLossReport() {
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
                 <Legend />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Revenue" />
-                <Bar dataKey="expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name="Expense" />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name={r.revenue} />
+                <Bar dataKey="expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name={r.expense} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

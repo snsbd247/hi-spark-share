@@ -2,11 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { BookOpen } from "lucide-react";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function BalanceSheetReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
+
   const { data: accounts = [] } = useQuery({
     queryKey: ["balance-sheet-accounts"],
     queryFn: async () => { const { data } = await (db as any).from("accounts").select("*").eq("is_active", true).order("code"); return data || []; },
@@ -20,7 +24,7 @@ export default function BalanceSheetReport() {
   const totalLiabilities = liabilities.reduce((s: number, a: any) => s + Number(a.balance || 0), 0);
   const totalEquity = equity.reduce((s: number, a: any) => s + Number(a.balance || 0), 0);
 
-  const allItems = [...assets.map((a: any) => ({ ...a, section: "Asset" })), ...liabilities.map((a: any) => ({ ...a, section: "Liability" })), ...equity.map((a: any) => ({ ...a, section: "Equity" }))];
+  const allItems = [...assets.map((a: any) => ({ ...a, section: r.assets })), ...liabilities.map((a: any) => ({ ...a, section: r.liabilities })), ...equity.map((a: any) => ({ ...a, section: r.equity }))];
   const tableData = allItems.map((a: any) => ({
     section: a.section,
     code: a.code,
@@ -29,10 +33,10 @@ export default function BalanceSheetReport() {
   }));
 
   const columns = [
-    { header: "Section", key: "section" },
-    { header: "Code", key: "code" },
-    { header: "Account Name", key: "name" },
-    { header: "Balance", key: "balance", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.section, key: "section" },
+    { header: r.code, key: "code" },
+    { header: r.accountName, key: "name" },
+    { header: r.balance, key: "balance", format: (v: number) => `Tk ${v.toLocaleString()}` },
   ];
 
   const Section = ({ title, items, total, color }: { title: string; items: any[]; total: number; color: string }) => (
@@ -49,7 +53,7 @@ export default function BalanceSheetReport() {
               </TableRow>
             ))}
             <TableRow className="font-bold border-t-2">
-              <TableCell colSpan={2}>Total {title}</TableCell>
+              <TableCell colSpan={2}>{t.common.total} {title}</TableCell>
               <TableCell className={`text-right ${color}`}>৳{total.toLocaleString()}</TableCell>
             </TableRow>
           </TableBody>
@@ -62,21 +66,21 @@ export default function BalanceSheetReport() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><BookOpen className="h-6 w-6" /> Balance Sheet</h1>
-          <p className="text-muted-foreground text-sm">Assets, liabilities, and equity overview</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><BookOpen className="h-6 w-6" /> {r.balanceSheet}</h1>
+          <p className="text-muted-foreground text-sm">{r.balanceSheetDesc}</p>
         </div>
 
-        <ReportToolbar title="Balance Sheet" data={tableData} columns={columns} showDateFilter={false} />
+        <ReportToolbar title={r.balanceSheet} data={tableData} columns={columns} showDateFilter={false} />
 
         <div className="grid grid-cols-3 gap-4">
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Assets</p><p className="text-2xl font-bold text-primary">৳{totalAssets.toLocaleString()}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Liabilities</p><p className="text-2xl font-bold text-destructive">৳{totalLiabilities.toLocaleString()}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Equity</p><p className="text-2xl font-bold">৳{totalEquity.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.totalAssets}</p><p className="text-2xl font-bold text-primary">৳{totalAssets.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.totalLiabilities}</p><p className="text-2xl font-bold text-destructive">৳{totalLiabilities.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.totalEquity}</p><p className="text-2xl font-bold">৳{totalEquity.toLocaleString()}</p></CardContent></Card>
         </div>
 
-        <Section title="Assets" items={assets} total={totalAssets} color="text-primary" />
-        <Section title="Liabilities" items={liabilities} total={totalLiabilities} color="text-destructive" />
-        <Section title="Equity" items={equity} total={totalEquity} color="text-foreground" />
+        <Section title={r.assets} items={assets} total={totalAssets} color="text-primary" />
+        <Section title={r.liabilities} items={liabilities} total={totalLiabilities} color="text-destructive" />
+        <Section title={r.equity} items={equity} total={totalEquity} color="text-foreground" />
       </div>
     </DashboardLayout>
   );

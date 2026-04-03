@@ -3,11 +3,14 @@ import { db } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle } from "lucide-react";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function InventoryReport() {
+  const { t } = useLanguage();
+  const r = t.reportingPages;
+
   const { data: products = [] } = useQuery({
     queryKey: ["inventory-report-products"],
     queryFn: async () => { const { data } = await db.from("products").select("*"); return data || []; },
@@ -27,42 +30,42 @@ export default function InventoryReport() {
   }));
 
   const columns = [
-    { header: "Product", key: "name" },
-    { header: "SKU", key: "sku" },
-    { header: "Stock", key: "stock" },
-    { header: "Cost Price", key: "cost_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Sale Price", key: "sale_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
-    { header: "Value", key: "value", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.product, key: "name" },
+    { header: r.sku, key: "sku" },
+    { header: r.stock, key: "stock" },
+    { header: r.costPrice, key: "cost_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.salePrice, key: "sale_price", format: (v: number) => `Tk ${v.toLocaleString()}` },
+    { header: r.value, key: "value", format: (v: number) => `Tk ${v.toLocaleString()}` },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Package className="h-6 w-6" /> Inventory Report</h1>
-          <p className="text-muted-foreground text-sm">Stock levels, valuation and low stock alerts</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2"><Package className="h-6 w-6" /> {r.inventoryReport}</h1>
+          <p className="text-muted-foreground text-sm">{r.inventoryReportDesc}</p>
         </div>
 
-        <ReportToolbar title="Inventory Report" data={tableData} columns={columns} showDateFilter={false} />
+        <ReportToolbar title={r.inventoryReport} data={tableData} columns={columns} showDateFilter={false} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Products</p><p className="text-2xl font-bold">{products.length}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Total Stock</p><p className="text-2xl font-bold">{totalItems}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Inventory Value</p><p className="text-2xl font-bold text-primary">৳{totalValue.toLocaleString()}</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">Low Stock Items</p><p className="text-2xl font-bold text-destructive">{lowStock.length}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.totalProducts}</p><p className="text-2xl font-bold">{products.length}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.totalStock}</p><p className="text-2xl font-bold">{totalItems}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.inventoryValue}</p><p className="text-2xl font-bold text-primary">৳{totalValue.toLocaleString()}</p></CardContent></Card>
+          <Card><CardContent className="pt-6 text-center"><p className="text-sm text-muted-foreground">{r.lowStockItems}</p><p className="text-2xl font-bold text-destructive">{lowStock.length}</p></CardContent></Card>
         </div>
 
         {lowStock.length > 0 && (
           <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Low Stock Alerts</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> {r.lowStockAlerts}</CardTitle></CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Alert Level</TableHead>
+                    <TableHead>{r.product}</TableHead>
+                    <TableHead>{r.sku}</TableHead>
+                    <TableHead className="text-right">{r.stock}</TableHead>
+                    <TableHead className="text-right">{r.alertLevel}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -81,17 +84,17 @@ export default function InventoryReport() {
         )}
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">All Products</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{r.allProducts}</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-right">Cost Price</TableHead>
-                  <TableHead className="text-right">Sale Price</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>{r.product}</TableHead>
+                  <TableHead>{r.sku}</TableHead>
+                  <TableHead className="text-right">{r.stock}</TableHead>
+                  <TableHead className="text-right">{r.costPrice}</TableHead>
+                  <TableHead className="text-right">{r.salePrice}</TableHead>
+                  <TableHead className="text-right">{r.value}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
