@@ -124,8 +124,8 @@ export default function AccountingDashboard() {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip formatter={(v: number) => `৳${v.toLocaleString()}`} />
-                    <Bar dataKey="income" fill="hsl(var(--primary))" name="Income" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" fill="hsl(var(--destructive))" name="Expense" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" fill="hsl(var(--primary))" name={t.accounting.income} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expense" fill="hsl(var(--destructive))" name={t.accounting.expense} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
