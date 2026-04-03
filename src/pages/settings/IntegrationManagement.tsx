@@ -25,6 +25,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── SMTP Tab ────────────────────────────────────────────────────
 function SmtpTab() {
+  const { t } = useLanguage();
   const { canEdit } = useAdminRole();
   const { settings, isLoading, saveMutation, testMutation } = useSmtpSettings();
   const [testEmail, setTestEmail] = useState("");
@@ -206,6 +207,7 @@ const DEMO_TEMPLATES: Record<string, string> = {
 };
 
 function SmtpEmailTemplates() {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -310,6 +312,7 @@ function SmtpEmailTemplates() {
 
 // ─── SMS Tab ─────────────────────────────────────────────────────
 function SmsTab() {
+  const { t } = useLanguage();
   const { canEdit } = useAdminRole();
   const queryClient = useQueryClient();
   const smsTestMutation = useSmsTestSend();
@@ -455,6 +458,7 @@ function SmsTab() {
 
 // ─── bKash Tab ───────────────────────────────────────────────────
 function BkashTab() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { canEdit } = useAdminRole();
   const queryClient = useQueryClient();
@@ -586,6 +590,7 @@ function BkashTab() {
 
 // ─── Nagad Tab ───────────────────────────────────────────────────
 function NagadTab() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { canEdit } = useAdminRole();
   const queryClient = useQueryClient();
