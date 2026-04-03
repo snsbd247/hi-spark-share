@@ -865,6 +865,8 @@ export async function createFiberOnuInSupabase(payload: Record<string, unknown>)
       customer_id: nullableString(payload.customer_id),
       status: nullableString(payload.status) || "active",
       signal_strength: nullableString(payload.signal_strength),
+      lat: nullableNumber(payload.lat),
+      lng: nullableNumber(payload.lng),
     })
     .select()
     .single();
