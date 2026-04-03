@@ -45,19 +45,19 @@ interface Stats { total_olts: number; total_cables: number; total_cores: number;
 
 // ─── API ──────────────────────────
 const fetchTree = async (): Promise<OltData[]> => {
-  const { data } = await api.get("/api/fiber-topology/tree");
+  const { data } = await api.get("/fiber-topology/tree");
   return Array.isArray(data) ? data : [];
 };
 const fetchStats = async (): Promise<Stats> => {
-  const { data } = await api.get("/api/fiber-topology/stats");
+  const { data } = await api.get("/fiber-topology/stats");
   return data;
 };
 const searchTopology = async (q: string) => {
-  const { data } = await api.get(`/api/fiber-topology/search?q=${q}`);
+  const { data } = await api.get(`/fiber-topology/search?q=${q}`);
   return data;
 };
 const fetchMapData = async () => {
-  const { data } = await api.get("/api/fiber-topology/map-data");
+  const { data } = await api.get("/fiber-topology/map-data");
   return Array.isArray(data) ? data : [];
 };
 
