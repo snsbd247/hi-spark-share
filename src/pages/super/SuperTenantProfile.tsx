@@ -134,11 +134,11 @@ function DomainAddDialog({ tenantId, onSuccess }: { tenantId: string; onSuccess:
 }
 
 // ─── Subscription Assign Dialog ──────────────────────────────
-function SubscriptionDialog({
-  const { t } = useLanguage();
-  const sa = t.superAdmin; tenantId, currentSub, onSuccess }: {
+function SubscriptionDialog({ tenantId, currentSub, onSuccess }: {
   tenantId: string; currentSub: any; onSuccess: () => void;
 }) {
+  const { t } = useLanguage();
+  const sa = t.superAdmin;
   const [open, setOpen] = useState(false);
   const [planId, setPlanId] = useState("");
   const [cycle, setCycle] = useState("monthly");
