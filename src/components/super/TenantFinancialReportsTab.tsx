@@ -51,7 +51,7 @@ function MetricCard({ title, value, icon: Icon, trend, subtitle, color = "text-p
 }
 
 export default function TenantFinancialReportsTab({ tenantId }: { tenantId: string }) {
-  const [reportTab, setReportTab] = useState("overview");
+  const [reportTab, setReportTab] = useState("revenue");
   const [plYear, setPlYear] = useState(String(new Date().getFullYear()));
 
   const { data: overview, isLoading: loadingOverview } = useQuery({
@@ -168,7 +168,6 @@ export default function TenantFinancialReportsTab({ tenantId }: { tenantId: stri
       <Tabs value={reportTab} onValueChange={setReportTab}>
         <ScrollArea className="w-full">
           <TabsList className="inline-flex w-auto min-w-full">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="revenue">Revenue</TabsTrigger>
             <TabsTrigger value="expense">Expense</TabsTrigger>
             <TabsTrigger value="profitloss">P&L</TabsTrigger>
@@ -185,34 +184,6 @@ export default function TenantFinancialReportsTab({ tenantId }: { tenantId: stri
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-
-        {/* Overview */}
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Billing Summary (Current Month)</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total Billed</span><span className="font-semibold">৳{Number(o.total_billed || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Collected</span><span className="font-semibold text-primary">৳{Number(o.total_collected || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Outstanding Due</span><span className="font-semibold text-destructive">৳{Number(o.total_due || 0).toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Inventory Value</span><span className="font-semibold">৳{Number(o.inventory_value || 0).toLocaleString()}</span></div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Customer Breakdown</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{o.total_customers || 0}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Active</span><span className="font-semibold text-primary">{o.active_customers || 0}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Inactive</span><span className="font-semibold text-destructive">{o.inactive_customers || 0}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">ARPU</span><span className="font-semibold">৳{Number(o.arpu || 0).toLocaleString()}</span></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         {/* Revenue */}
         <TabsContent value="revenue">
