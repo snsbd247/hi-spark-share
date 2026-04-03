@@ -17,6 +17,7 @@ import {
   Link2, Unlink, Palette, TreePine, Map as MapIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MapLocationPicker } from "@/components/MapLocationPicker";
 
 // ─── Fiber Color Constants ─────────────
 const FIBER_COLORS: Record<string, string> = {
@@ -453,9 +454,9 @@ export default function FiberTopology() {
           <div className="space-y-4">
             <div><Label>নাম *</Label><Input value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="OLT-1" /></div>
             <div><Label>লোকেশন</Label><Input value={formData.location || ""} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Main POP" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Latitude</Label><Input type="number" step="any" value={formData.lat || ""} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} placeholder="23.8103" /></div>
-              <div><Label>Longitude</Label><Input type="number" step="any" value={formData.lng || ""} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) })} placeholder="90.4125" /></div>
+            <div>
+              <Label>GPS লোকেশন</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
             </div>
             <div><Label>PON পোর্ট সংখ্যা *</Label><Input type="number" value={formData.total_pon_ports || 8} onChange={e => setFormData({ ...formData, total_pon_ports: parseInt(e.target.value) })} /></div>
           </div>
@@ -524,9 +525,9 @@ export default function FiberTopology() {
                 <SelectContent>{["1:2", "1:4", "1:8", "1:16", "1:32"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Latitude</Label><Input type="number" step="any" value={formData.lat || ""} onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) })} placeholder="23.8103" /></div>
-              <div><Label>Longitude</Label><Input type="number" step="any" value={formData.lng || ""} onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) })} placeholder="90.4125" /></div>
+            <div>
+              <Label>GPS লোকেশন</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
             </div>
             <div><Label>লোকেশন</Label><Input value={formData.location || ""} onChange={e => setFormData({ ...formData, location: e.target.value })} /></div>
             <div><Label>লেবেল</Label><Input value={formData.label || ""} onChange={e => setFormData({ ...formData, label: e.target.value })} /></div>
