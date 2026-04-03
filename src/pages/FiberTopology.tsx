@@ -925,6 +925,10 @@ export default function FiberTopology() {
             <div><Label>{t.fiberTopology.serialNumber} *</Label><Input value={formData.serial_number || ""} onChange={e => setFormData({ ...formData, serial_number: e.target.value })} placeholder="HWTC-XXXX" /></div>
             <div><Label>{t.fiberTopology.macAddress}</Label><Input value={formData.mac_address || ""} onChange={e => setFormData({ ...formData, mac_address: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" /></div>
             <div>
+              <Label>{t.fiberTopology.gpsLocation}</Label>
+              <MapLocationPicker lat={formData.lat} lng={formData.lng} onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })} />
+            </div>
+            <div>
               <Label>{t.fiberTopology.customer}</Label>
               <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
                 <PopoverTrigger asChild>
