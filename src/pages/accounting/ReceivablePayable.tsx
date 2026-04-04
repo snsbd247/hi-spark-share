@@ -37,7 +37,7 @@ export default function ReceivablePayable() {
   const { data: purchases = [] } = useQuery({
     queryKey: ["payable-purchases", tenantId],
     queryFn: async () => {
-      const { data } = await ( db as any).from("purchases").select("*, supplier:suppliers(name, company, phone)").order("date", { ascending: true });
+      const { data } = await scopeByTenant(( db as any).from("purchases").select("*, supplier:suppliers(name, company, phone)").order("date", { ascending: true }), tenantId);
       return data || [];
     },
   });

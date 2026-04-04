@@ -42,7 +42,7 @@ export default function EquityChanges() {
   // Also get income & expense for retained earnings calc
   const { data: incExpAccounts = [] } = useQuery({
     queryKey: ["inc-exp-accounts", tenantId],
-    queryFn: async () => { const { data } = await ( db as any).from("accounts").select("id, type").in("type", ["income", "expense"]).eq("is_active", true); return data || []; },
+    queryFn: async () => { const { data } = await scopeByTenant(( db as any).from("accounts").select("id, type").in("type", ["income", "expense"]).eq("is_active", true), tenantId); return data || []; },
   });
 
   const { data: incExpTxns = [] } = useQuery({

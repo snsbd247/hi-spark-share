@@ -34,7 +34,7 @@ export default function ChequeRegister() {
   const { data: cheques = [], isLoading } = useQuery({
     queryKey: ["cheques", tenantId],
     queryFn: async () => {
-      const { data } = await ( db as any).from("transactions").select("*").like("reference", "CHQ-%").order("date", { ascending: false });
+      const { data } = await scopeByTenant(( db as any).from("transactions").select("*").like("reference", "CHQ-%").order("date", { ascending: false }), tenantId);
       return data || [];
     },
   });

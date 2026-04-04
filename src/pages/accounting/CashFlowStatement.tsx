@@ -24,7 +24,7 @@ export default function CashFlowStatement() {
   const { data: transactions = [] } = useQuery({
     queryKey: ["cashflow-txns", dateFrom, dateTo, tenantId],
     queryFn: async () => {
-      let q = ( db as any).from("transactions").select("*, account:accounts(name, code, type)");
+      let q = scopeByTenant(( db as any).from("transactions").select("*, account:accounts(name, code, type)"), tenantId);
       if (dateFrom) q = q.gte("date", dateFrom);
       if (dateTo) q = q.lte("date", dateTo + "T23:59:59");
       const { data } = await q.order("date", { ascending: true });
