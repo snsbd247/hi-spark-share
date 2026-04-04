@@ -56,4 +56,9 @@ class Reseller extends Model
     {
         return $this->hasMany(ResellerZone::class, 'reseller_id');
     }
+
+    public function packageCommissions()
+    {
+        return $this->hasMany(ResellerPackageCommission::class, 'reseller_id');
+    }
 }
