@@ -52,6 +52,7 @@ Route::post('/portal/login', [CustomerAuthController::class, 'login'])->middlewa
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
 Route::post('/impersonate/consume', [ImpersonationController::class, 'consume']);
+Route::post('/reseller/login', [\App\Http\Controllers\Api\ResellerAuthController::class, 'login'])->middleware('throttle:login');
 Route::any('/bkash/callback', [BkashController::class, 'callback']);
 Route::any('/nagad/callback', [NagadController::class, 'callback']);
 
