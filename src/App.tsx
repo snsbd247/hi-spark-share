@@ -345,6 +345,7 @@ function App() {
               </Routes>
               </Suspense>
               </BrandingProvider>
+            </ResellerAuthProvider>
             </CustomerAuthProvider>
             </LanguageProvider>
           </AuthProvider>
