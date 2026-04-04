@@ -243,7 +243,7 @@ export default function ResellerCustomers() {
         perm_post_office: form.perm_post_office || null,
         package_id: form.package_id || null,
         monthly_bill: monthlyBill,
-        discount: parseFloat(form.discount) || 0,
+        discount: 0, // Reseller cannot set discount
         due_date_day: form.due_date_day ? parseInt(form.due_date_day) : null,
         connection_status: form.connection_status,
         zone_id: form.zone_id || null,
