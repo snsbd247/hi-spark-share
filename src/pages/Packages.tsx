@@ -270,7 +270,7 @@ export default function Packages() {
           }
         } else toast.error(data?.error || "Bulk sync failed");
       } else {
-        const data = await mikrotikCall('bulk-sync-packages', {});
+        const data = await mikrotikCall('bulk-sync-packages', { tenant_id: tenantId });
         if (data.success) {
           const r = data.results;
           const parts = [];

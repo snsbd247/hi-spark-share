@@ -81,7 +81,7 @@ export default function Customers() {
           }
         } else toast.error(data?.error || "Sync failed");
       } else {
-        const res = await api.post('/mikrotik/sync-all', {});
+        const res = await api.post('/mikrotik/sync-all', { tenant_id: tenantId });
         const data = res.data;
         if (data.success) {
           const r = data.results;
