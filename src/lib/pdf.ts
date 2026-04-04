@@ -319,7 +319,7 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string, compa
   doc.setFontSize(PDF_FONT.tiny);
   doc.setTextColor(...PDF_COLORS.textLight);
   doc.text(invoiceFooter || "I hereby declare that all information provided above is correct.", m, y);
-  doc.text(`Generated on ${new Date().toLocaleDateString()} - Smart ISP Billing System`, pw / 2, 288, { align: "center" });
+  doc.text(`Generated on ${new Date().toLocaleDateString()} - ${companyName} Billing System`, pw / 2, 288, { align: "center" });
 
   doc.save(`${customer.customer_id || "customer"}-application-form.pdf`);
 }
