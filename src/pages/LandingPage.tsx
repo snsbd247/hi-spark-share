@@ -114,7 +114,12 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
             </a>
           ))}
         </div>
-        <Button onClick={onCta} size="sm">{navMeta.cta_nav || "Demo Request"}</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href="/login">ISP Login</a>
+          </Button>
+          <Button onClick={onCta} size="sm">{navMeta.cta_nav || "Demo Request"}</Button>
+        </div>
       </div>
     </nav>
   );
