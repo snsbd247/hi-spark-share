@@ -32,6 +32,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function MerchantPayments() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
