@@ -15,6 +15,7 @@ class Reseller extends Model
     protected $fillable = [
         'id', 'tenant_id', 'name', 'company_name', 'phone', 'email', 'address',
         'user_id', 'password_hash', 'wallet_balance', 'commission_rate', 'status',
+        'allow_all_packages',
     ];
 
     protected $hidden = ['password_hash'];
