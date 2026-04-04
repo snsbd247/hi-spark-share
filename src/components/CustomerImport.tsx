@@ -91,6 +91,8 @@ function downloadTemplate() {
 type Step = "upload" | "preview" | "result";
 
 export default function CustomerImport({ open, onOpenChange, onComplete }: Props) {
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   const [step, setStep] = useState<Step>("upload");
   const [importing, setImporting] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
