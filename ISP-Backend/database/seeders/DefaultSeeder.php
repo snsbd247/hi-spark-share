@@ -316,7 +316,7 @@ class DefaultSeeder extends Seeder
             'customers', 'billing', 'payments', 'merchant_payments',
             'tickets', 'sms', 'accounting', 'inventory', 'hr',
             'supplier', 'reports', 'settings', 'users', 'roles',
-            'mikrotik', 'packages',
+            'mikrotik', 'packages', 'fiber_network', 'reseller', 'network_map',
         ];
 
         $permissionIds = [];
