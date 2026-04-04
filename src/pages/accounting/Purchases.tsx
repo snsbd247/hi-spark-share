@@ -42,7 +42,7 @@ export default function Purchases() {
   const { data: purchases = [], isLoading } = useQuery({
     queryKey: ["purchases", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("purchases").select("*").order("date", { ascending: false });
+      const { data } = await scopeByTenant((db as any).from("purchases").select("*").order("date", { ascending: false }), tenantId);
       return data || [];
     },
   });
