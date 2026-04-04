@@ -130,8 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       try { await api.post("/admin/logout"); } catch {}
     }
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_user");
+    sessionStore.removeItem("admin_token");
+    sessionStore.removeItem("admin_user");
     setUser(null);
   };
 
