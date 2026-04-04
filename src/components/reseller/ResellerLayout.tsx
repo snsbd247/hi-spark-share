@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useResellerAuth } from "@/contexts/ResellerAuthContext";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X, FileText, User } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X, FileText, User, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import DynamicFooter from "@/components/DynamicFooter";
@@ -16,14 +16,23 @@ const navItems = [
 ];
 
 export default function ResellerLayout({ children }: { children: React.ReactNode }) {
-  const { reseller, signOut } = useResellerAuth();
+  const { reseller, signOut, impersonated } = useResellerAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/reseller/login");
+    if (impersonated) {
+      // Restore admin session and go back to reseller management
+      const savedAdminToken = sessionStorage.getItem("saved_admin_token_for_reseller");
+      if (savedAdminToken) {
+        sessionStorage.removeItem("saved_admin_token_for_reseller");
+      }
+      navigate("/reseller-management");
+    } else {
+      navigate("/reseller/login");
+    }
   };
 
   const sidebar = (
@@ -55,46 +64,61 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
       <div className="p-3 border-t border-border">
         <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={handleSignOut}>
           <LogOut className="h-[18px] w-[18px]" />
-          <span>Sign Out</span>
+          <span>{impersonated ? "Exit Impersonation" : "Sign Out"}</span>
         </Button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card shrink-0">
-        {sidebar}
-      </aside>
-
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border shadow-xl">
-            <div className="absolute top-4 right-4">
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            {sidebar}
-          </aside>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Impersonation Banner */}
+      {impersonated && (
+        <div className="bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between text-sm font-medium z-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>You are viewing as reseller: <strong>{reseller?.name}</strong></span>
+          </div>
+          <Button size="sm" variant="outline" className="bg-amber-600 border-amber-700 text-white hover:bg-amber-700 h-7 text-xs" onClick={handleSignOut}>
+            Exit Impersonation
+          </Button>
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border flex items-center px-4 gap-3 lg:hidden">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <span className="font-semibold text-sm">Reseller Panel</span>
-        </header>
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          {children}
-        </main>
-        <DynamicFooter />
+      <div className="flex-1 flex">
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card shrink-0">
+          {sidebar}
+        </aside>
+
+        {/* Mobile sidebar overlay */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+            <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border shadow-xl">
+              <div className="absolute top-4 right-4">
+                <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {sidebar}
+            </aside>
+          </div>
+        )}
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-14 border-b border-border flex items-center px-4 gap-3 lg:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <span className="font-semibold text-sm">Reseller Panel</span>
+          </header>
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
+            {children}
+          </main>
+          <DynamicFooter />
+        </div>
       </div>
     </div>
   );
