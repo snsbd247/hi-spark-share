@@ -14,11 +14,12 @@ export default function ResellerDashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["reseller-dashboard", reseller?.id],
     queryFn: async () => {
-      const [custRes, walletRes, txnRes, billsRes] = await Promise.all([
+      const [custRes, walletRes, txnRes, billsRes, commBillsRes] = await Promise.all([
         (db as any).from("customers").select("id, monthly_bill, connection_status, status, created_at").eq("reseller_id", reseller!.id),
-        (db as any).from("resellers").select("wallet_balance, commission_rate").eq("id", reseller!.id).single(),
+        (db as any).from("resellers").select("wallet_balance, commission_rate, default_commission").eq("id", reseller!.id).single(),
         (db as any).from("reseller_wallet_transactions").select("type, amount, created_at").eq("reseller_id", reseller!.id).order("created_at", { ascending: false }).limit(50),
         (db as any).from("customers").select("id").eq("reseller_id", reseller!.id),
+        (db as any).from("bills").select("amount, commission_amount, reseller_profit, tenant_amount").eq("reseller_id", reseller!.id),
       ]);
 
       const customers = custRes.data || [];
@@ -28,7 +29,13 @@ export default function ResellerDashboard() {
       const totalRevenue = customers.reduce((sum: number, c: any) => sum + (parseFloat(c.monthly_bill) || 0), 0);
       const walletBalance = parseFloat(walletRes.data?.wallet_balance) || 0;
       const commissionRate = parseFloat(walletRes.data?.commission_rate) || 0;
+      const defaultCommission = parseFloat(walletRes.data?.default_commission) || 0;
       const transactions = txnRes.data || [];
+
+      // Commission profit from bills
+      const commBills = commBillsRes.data || [];
+      const totalProfit = commBills.reduce((s: number, b: any) => s + (parseFloat(b.reseller_profit) || 0), 0);
+      const totalTenantAmount = commBills.reduce((s: number, b: any) => s + (parseFloat(b.tenant_amount) || 0), 0);
 
       // New customers this month
       const now = new Date();
@@ -70,7 +77,7 @@ export default function ResellerDashboard() {
         unpaidBills = billData?.length || 0;
       }
 
-      return { totalCustomers, activeCustomers, totalRevenue, walletBalance, commissionRate, newThisMonth, statusData, monthlyChart, recentTxns, unpaidBills };
+      return { totalCustomers, activeCustomers, totalRevenue, walletBalance, commissionRate, defaultCommission, totalProfit, totalTenantAmount, newThisMonth, statusData, monthlyChart, recentTxns, unpaidBills };
     },
     enabled: !!reseller?.id,
   });
