@@ -135,14 +135,11 @@ export default function Dashboard() {
   const { data: merchantPayments, isLoading: loadingMerchant } = useQuery({
     queryKey: ["merchant-payments-today", todayStr, tenantId],
     queryFn: async () => {
-      if (tenantCustomerIds.length === 0) return [];
-      const { data, error } = await db.from("merchant_payments").select("id, amount, status, customer_id")
-        .in("customer_id", tenantCustomerIds)
+      const { data, error } = await db.from("merchant_payments").select("id, amount, status")
         .gte("created_at", `${todayStr}T00:00:00`).lte("created_at", `${todayStr}T23:59:59`);
       if (error) throw error;
       return data;
     },
-    enabled: tenantCustomerIds.length > 0,
   });
 
   // Accounting queries - scoped by tenant_id where available
