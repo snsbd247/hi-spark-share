@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/lib/apiBaseUrl";
 import { IS_LOVABLE } from "@/lib/environment";
 import { supabase } from "@/integrations/supabase/client";
 import { hashPassword } from "@/lib/passwordHash";
+import { sessionStore } from "@/lib/sessionStore";
 
 const BASE = () => `${API_BASE_URL}/super-admin`;
 
