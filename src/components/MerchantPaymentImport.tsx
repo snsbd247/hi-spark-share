@@ -168,6 +168,7 @@ export default function MerchantPaymentImport({ open, onOpenChange, onComplete }
           amount: parseFloat(row.amount),
           reference: row.reference || null,
           payment_date: row.date ? new Date(row.date).toISOString() : new Date().toISOString(),
+          ...(tenantId ? { tenant_id: tenantId } : {}),
         });
 
         if (error) {
