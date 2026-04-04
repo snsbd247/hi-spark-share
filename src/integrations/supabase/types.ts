@@ -4365,6 +4365,7 @@ export type Database = {
           description: string
           id: string
           reference: string | null
+          tenant_id: string | null
           type: string
         }
         Insert: {
@@ -4377,6 +4378,7 @@ export type Database = {
           description: string
           id?: string
           reference?: string | null
+          tenant_id?: string | null
           type?: string
         }
         Update: {
@@ -4389,6 +4391,7 @@ export type Database = {
           description?: string
           id?: string
           reference?: string | null
+          tenant_id?: string | null
           type?: string
         }
         Relationships: [
@@ -4397,6 +4400,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

@@ -1,0 +1,2 @@
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS tenant_id uuid REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.transactions SET tenant_id = 'b48f2347-3fc4-402c-87ef-7b977a64e075' WHERE tenant_id IS NULL;
