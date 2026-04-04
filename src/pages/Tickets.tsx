@@ -52,12 +52,14 @@ export default function Tickets() {
   const queryClient = useQueryClient();
 
   const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ["tickets"],
+    queryKey: ["tickets", tenantId],
     queryFn: async () => {
-      const { data, error } = await db
+      let query: any = db
         .from("support_tickets")
         .select("*, customers(name, customer_id, phone)")
         .order("created_at", { ascending: false });
+      if (tenantId) query = query.eq("tenant_id", tenantId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

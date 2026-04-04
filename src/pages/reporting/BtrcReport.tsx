@@ -10,16 +10,21 @@ import { Loader2, Printer, FileSpreadsheet } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import * as XLSX from "xlsx";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function BtrcReport() {
   const { t } = useLanguage();
   const { branding } = useBranding();
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   const tableRef = useRef<HTMLDivElement>(null);
 
   const { data: customers = [], isLoading } = useQuery({
-    queryKey: ["customers-btrc"],
+    queryKey: ["customers-btrc", tenantId],
     queryFn: async () => {
-      const { data } = await ( db as any).from("customers").select("*");
+      let q: any = (db as any).from("customers").select("*");
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data } = await q;
       return data || [];
     },
   });
