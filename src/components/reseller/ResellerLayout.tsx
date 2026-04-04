@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useResellerAuth } from "@/contexts/ResellerAuthContext";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import DynamicFooter from "@/components/DynamicFooter";
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/reseller/customers", icon: Users, label: "Customers" },
   { to: "/reseller/billing", icon: Receipt, label: "Billing" },
   { to: "/reseller/wallet", icon: Wallet, label: "Wallet" },
+  { to: "/reseller/reports", icon: FileText, label: "Reports" },
 ];
 
 export default function ResellerLayout({ children }: { children: React.ReactNode }) {

@@ -126,6 +126,7 @@ import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
 import ResellerCustomers from "@/pages/reseller/ResellerCustomers";
 import ResellerBilling from "@/pages/reseller/ResellerBilling";
 import ResellerWallet from "@/pages/reseller/ResellerWallet";
+import ResellerReports from "@/pages/reseller/ResellerReports";
 import SuperAdminLayout from "@/components/super/SuperAdminLayout";
 import SuperDashboard from "@/pages/super/SuperDashboard";
 import SuperTenants from "@/pages/super/SuperTenants";
@@ -347,6 +348,7 @@ function App() {
                 <Route path="/reseller/customers" element={<ResellerProtectedRoute><ResellerCustomers /></ResellerProtectedRoute>} />
                 <Route path="/reseller/billing" element={<ResellerProtectedRoute><ResellerBilling /></ResellerProtectedRoute>} />
                 <Route path="/reseller/wallet" element={<ResellerProtectedRoute><ResellerWallet /></ResellerProtectedRoute>} />
+                <Route path="/reseller/reports" element={<ResellerProtectedRoute><ResellerReports /></ResellerProtectedRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
