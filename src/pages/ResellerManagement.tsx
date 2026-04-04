@@ -271,6 +271,7 @@ export default function ResellerManagement() {
       name: r.name, company_name: r.company_name || "", phone: r.phone || "",
       email: r.email || "", address: r.address || "", user_id: r.user_id || "", password: "",
       status: r.status, commission_rate: r.commission_rate?.toString() || "0",
+      allow_all_packages: r.allow_all_packages || false,
     });
     setDialogOpen(true);
   };
