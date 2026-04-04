@@ -681,9 +681,6 @@ export default function ResellerCustomers() {
                       </Select>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    ⚠️ MikroTik Router, PPPoE, IP Address ইত্যাদি টেন্যান্ট অ্যাডমিন সেট করবেন।
-                  </p>
                 </FormSection>
 
                 {/* ─── Billing Information ─── */}
