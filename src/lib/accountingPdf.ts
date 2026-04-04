@@ -340,7 +340,7 @@ export function generateSalesInvoicePDF(sale: any, companyName = "Smart ISP") {
 // ═══════════════════════════════════════════════════════════════
 // Transaction Voucher
 // ═══════════════════════════════════════════════════════════════
-export function generateTransactionVoucherPDF(txn: any, account?: any) {
+export function generateTransactionVoucherPDF(txn: any, account?: any, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
@@ -351,7 +351,7 @@ export function generateTransactionVoucherPDF(txn: any, account?: any) {
     : "Transaction Voucher";
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: voucherType.toUpperCase(),
     docMeta: [
