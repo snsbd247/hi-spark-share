@@ -52,6 +52,7 @@ Route::post('/portal/login', [CustomerAuthController::class, 'login'])->middlewa
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/customer/verify', [CustomerAuthController::class, 'verify']);
 Route::post('/impersonate/consume', [ImpersonationController::class, 'consume']);
+Route::post('/reseller/login', [\App\Http\Controllers\Api\ResellerAuthController::class, 'login'])->middleware('throttle:login');
 Route::any('/bkash/callback', [BkashController::class, 'callback']);
 Route::any('/nagad/callback', [NagadController::class, 'callback']);
 
@@ -465,6 +466,11 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::delete('/fiber-topology/splices/{id}', [\App\Http\Controllers\Api\FiberTopologyController::class, 'deleteSplice']);
 
     // ══════════════════════════════════════════════════════
+    // ── RESELLER IMPERSONATION — module: resellers ──────
+    // ══════════════════════════════════════════════════════
+    Route::post('/reseller/{resellerId}/impersonate', [\App\Http\Controllers\Api\ResellerImpersonationController::class, 'impersonate']);
+
+    // ══════════════════════════════════════════════════════
     // ── GENERIC CRUD — catches remaining tables ─────────
     // ══════════════════════════════════════════════════════
     Route::get('/{table}', [GenericCrudController::class, 'index']);
@@ -559,6 +565,23 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/tenants/{id}/reports/receivable-payable', [\App\Http\Controllers\Api\TenantReportController::class, 'receivablePayable']);
     Route::get('/tenants/{id}/reports/inventory', [\App\Http\Controllers\Api\TenantReportController::class, 'inventory']);
     Route::get('/tenants/{id}/reports/cash-flow', [\App\Http\Controllers\Api\TenantReportController::class, 'cashFlow']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Reseller Protected Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('reseller.auth')->prefix('reseller')->group(function () {
+    Route::post('/logout', [\App\Http\Controllers\Api\ResellerAuthController::class, 'logout']);
+    Route::get('/me', [\App\Http\Controllers\Api\ResellerAuthController::class, 'me']);
+    Route::get('/dashboard', [\App\Http\Controllers\Api\ResellerController::class, 'dashboard']);
+    Route::get('/customers', [\App\Http\Controllers\Api\ResellerController::class, 'customers']);
+    Route::post('/customers', [\App\Http\Controllers\Api\ResellerController::class, 'storeCustomer']);
+    Route::get('/bills', [\App\Http\Controllers\Api\ResellerController::class, 'bills']);
+    Route::post('/collect-payment', [\App\Http\Controllers\Api\ResellerController::class, 'collectPayment']);
+    Route::get('/wallet-transactions', [\App\Http\Controllers\Api\ResellerController::class, 'walletTransactions']);
+    Route::get('/reports', [\App\Http\Controllers\Api\ResellerController::class, 'reports']);
 });
 
 /*

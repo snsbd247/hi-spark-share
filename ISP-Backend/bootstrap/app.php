@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth'        => \App\Http\Middleware\AdminAuth::class,
             'customer.auth'     => \App\Http\Middleware\CustomerAuth::class,
+            'reseller.auth'     => \App\Http\Middleware\ResellerAuth::class,
             'check.permission'  => \App\Http\Middleware\CheckPermission::class,
             'tenant.resolve'    => \App\Http\Middleware\ResolveTenant::class,
             'super.admin.auth'  => \App\Http\Middleware\SuperAdminAuth::class,

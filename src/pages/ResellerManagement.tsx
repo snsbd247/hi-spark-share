@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { db } from "@/integrations/supabase/client";
+import { db, supabase } from "@/integrations/supabase/client";
 import { useTenantId } from "@/hooks/useTenantId";
+import { useNavigate } from "react-router-dom";
+import { useResellerAuth } from "@/contexts/ResellerAuthContext";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Search, Users, Edit, Wallet, Trash2, Calculator, CheckCircle } from "lucide-react";
+import { Loader2, Plus, Search, Users, Edit, Wallet, Trash2, Calculator, CheckCircle, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import bcrypt from "bcryptjs";
@@ -23,6 +25,7 @@ interface ResellerForm {
   phone: string;
   email: string;
   address: string;
+  user_id: string;
   password: string;
   status: string;
   commission_rate: string;
@@ -30,12 +33,14 @@ interface ResellerForm {
 
 const emptyForm: ResellerForm = {
   name: "", company_name: "", phone: "", email: "", address: "",
-  password: "", status: "active", commission_rate: "0",
+  user_id: "", password: "", status: "active", commission_rate: "0",
 };
 
 export default function ResellerManagement() {
   const tenantId = useTenantId();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { signInAsImpersonation } = useResellerAuth();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [walletDialogOpen, setWalletDialogOpen] = useState(false);
@@ -44,6 +49,7 @@ export default function ResellerManagement() {
   const [walletAmount, setWalletAmount] = useState("");
   const [walletNote, setWalletNote] = useState("");
   const [form, setForm] = useState<ResellerForm>(emptyForm);
+  const [impersonating, setImpersonating] = useState(false);
   const [commissionMonth, setCommissionMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -52,7 +58,7 @@ export default function ResellerManagement() {
   const { data: resellers = [], isLoading } = useQuery({
     queryKey: ["resellers", tenantId],
     queryFn: async () => {
-      let q = (db as any).from("resellers").select("id, tenant_id, name, company_name, phone, email, address, commission_rate, wallet_balance, status, created_at, updated_at").order("name");
+      let q = (db as any).from("resellers").select("id, tenant_id, user_id, name, company_name, phone, email, address, commission_rate, wallet_balance, status, created_at, updated_at").order("name");
       if (tenantId) q = q.eq("tenant_id", tenantId);
       const { data, error } = await q;
       if (error) throw error;
@@ -81,6 +87,7 @@ export default function ResellerManagement() {
         phone: form.phone,
         email: form.email,
         address: form.address,
+        user_id: form.user_id || null,
         status: form.status,
         commission_rate: parseFloat(form.commission_rate) || 0,
         updated_at: new Date().toISOString(),
@@ -257,7 +264,7 @@ export default function ResellerManagement() {
     setEditId(r.id);
     setForm({
       name: r.name, company_name: r.company_name || "", phone: r.phone || "",
-      email: r.email || "", address: r.address || "", password: "",
+      email: r.email || "", address: r.address || "", user_id: r.user_id || "", password: "",
       status: r.status, commission_rate: r.commission_rate?.toString() || "0",
     });
     setDialogOpen(true);
@@ -265,9 +272,25 @@ export default function ResellerManagement() {
 
   const openAdd = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
 
+  const handleImpersonate = async (r: any) => {
+    setImpersonating(true);
+    try {
+      const adminToken = sessionStorage.getItem("admin_token");
+      if (!adminToken) { toast.error("Admin session not found"); return; }
+      await signInAsImpersonation(r.id, adminToken);
+      toast.success(`Logged in as reseller: ${r.name}`);
+      navigate("/reseller/dashboard");
+    } catch (err: any) {
+      toast.error(err.message || "Impersonation failed");
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
   const filtered = resellers.filter((r: any) =>
     r.name?.toLowerCase().includes(search.toLowerCase()) ||
     r.email?.toLowerCase().includes(search.toLowerCase()) ||
+    r.user_id?.toLowerCase().includes(search.toLowerCase()) ||
     r.phone?.includes(search)
   );
 
@@ -307,10 +330,10 @@ export default function ResellerManagement() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>User ID</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Company</TableHead>
                           <TableHead>Phone</TableHead>
-                          <TableHead>Email</TableHead>
                           <TableHead>Wallet</TableHead>
                           <TableHead>Commission</TableHead>
                           <TableHead>Status</TableHead>
@@ -320,10 +343,10 @@ export default function ResellerManagement() {
                       <TableBody>
                         {filtered.map((r: any) => (
                           <TableRow key={r.id}>
+                            <TableCell className="font-mono text-xs">{r.user_id || "—"}</TableCell>
                             <TableCell className="font-medium">{r.name}</TableCell>
                             <TableCell>{r.company_name || "—"}</TableCell>
                             <TableCell>{r.phone || "—"}</TableCell>
-                            <TableCell>{r.email || "—"}</TableCell>
                             <TableCell className="font-medium">৳{parseFloat(r.wallet_balance).toLocaleString()}</TableCell>
                             <TableCell>{r.commission_rate}%</TableCell>
                             <TableCell>
@@ -331,6 +354,11 @@ export default function ResellerManagement() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
+                                {r.status === "active" && (
+                                  <Button variant="outline" size="sm" onClick={() => handleImpersonate(r)} disabled={impersonating}>
+                                    <LogIn className="h-3.5 w-3.5 mr-1" /> Login as Reseller
+                                  </Button>
+                                )}
                                 <Button variant="outline" size="sm" onClick={() => { setSelectedReseller(r); setWalletDialogOpen(true); }}>
                                   <Wallet className="h-3.5 w-3.5 mr-1" /> Add Balance
                                 </Button>
@@ -451,17 +479,23 @@ export default function ResellerManagement() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label>User ID *</Label>
+                <Input value={form.user_id} onChange={(e) => setForm({ ...form, user_id: e.target.value })} placeholder="Unique login ID" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>Phone</Label>
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Email *</Label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Label>Address</Label>
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Address</Label>
-              <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

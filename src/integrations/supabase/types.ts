@@ -3821,6 +3821,7 @@ export type Database = {
           status: string
           tenant_id: string
           updated_at: string
+          user_id: string | null
           wallet_balance: number
         }
         Insert: {
@@ -3836,6 +3837,7 @@ export type Database = {
           status?: string
           tenant_id: string
           updated_at?: string
+          user_id?: string | null
           wallet_balance?: number
         }
         Update: {
@@ -3851,6 +3853,7 @@ export type Database = {
           status?: string
           tenant_id?: string
           updated_at?: string
+          user_id?: string | null
           wallet_balance?: number
         }
         Relationships: [
@@ -5099,6 +5102,7 @@ export type Database = {
           status: string | null
           tenant_id: string | null
           updated_at: string | null
+          user_id: string | null
           wallet_balance: number | null
         }
         Insert: {
@@ -5113,6 +5117,7 @@ export type Database = {
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
           wallet_balance?: number | null
         }
         Update: {
@@ -5127,6 +5132,7 @@ export type Database = {
           status?: string | null
           tenant_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
           wallet_balance?: number | null
         }
         Relationships: [

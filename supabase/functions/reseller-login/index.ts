@@ -13,11 +13,13 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { email, password } = await req.json();
+    const { email, password, user_id } = await req.json();
 
-    if (!email || !password) {
+    // Support login via user_id OR email (user_id takes priority)
+    const loginField = user_id || email;
+    if (!loginField || !password) {
       return new Response(
-        JSON.stringify({ error: "Email and password are required" }),
+        JSON.stringify({ error: "User ID/Email and password are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -33,13 +35,16 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find reseller by email
-    const { data: resellerData, error } = await supabase
-      .from("resellers")
-      .select("*")
-      .eq("email", email)
-      .eq("status", "active")
-      .maybeSingle();
+    // Find reseller by user_id first, then fallback to email
+    let query = supabase.from("resellers").select("*").eq("status", "active");
+    
+    if (user_id) {
+      query = query.eq("user_id", user_id);
+    } else {
+      query = query.eq("email", email);
+    }
+
+    const { data: resellerData, error } = await query.maybeSingle();
 
     if (error || !resellerData) {
       return new Response(
@@ -80,6 +85,7 @@ Deno.serve(async (req: Request) => {
           company_name: resellerData.company_name || "",
           tenant_id: resellerData.tenant_id,
           wallet_balance: parseFloat(resellerData.wallet_balance) || 0,
+          user_id: resellerData.user_id || "",
         },
         token: sessionToken,
       }),
