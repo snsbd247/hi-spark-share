@@ -219,6 +219,8 @@ export default function CustomerImport({ open, onOpenChange, onComplete }: Props
           if (day >= 1 && day <= 31) insertData.due_date_day = day;
         }
 
+        if (tenantId) (insertData as any).tenant_id = tenantId;
+
         const { data: inserted, error } = await db.from("customers").insert(insertData as any).select("id").single();
         if (error) { errors.push({ row: row.rowNum, name: row.name, reason: error.message, data: row.raw }); }
         else {
