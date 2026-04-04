@@ -851,17 +851,36 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         </FormSection>
 
         <FormSection icon={Settings} title="System">
-          <div className="space-y-1">
-            <Label className="text-xs">Status</Label>
-            <Select value={form.status} onValueChange={(v) => update("status", v)}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive (বিল বাকি)</SelectItem>
-                <SelectItem value="suspended">Suspended (ডিউ ডেট পার)</SelectItem>
-                <SelectItem value="left">Left (লাইন ছেড়ে দিয়েছে)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
+              <Select value={form.status} onValueChange={(v) => update("status", v)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive (বিল বাকি)</SelectItem>
+                  <SelectItem value="suspended">Suspended (ডিউ ডেট পার)</SelectItem>
+                  <SelectItem value="left">Left (লাইন ছেড়ে দিয়েছে)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {isEdit && resellers && resellers.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">Assign Reseller</Label>
+                <Select value={form.reseller_id} onValueChange={(v) => update("reseller_id", v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="No reseller (direct)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No Reseller (Direct)</SelectItem>
+                    {resellers.map((r: any) => (
+                      <SelectItem key={r.id} value={r.id}>{r.company_name} — {r.contact_person}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {customer?.reseller_id && form.reseller_id !== customer.reseller_id && (
+                  <p className="text-xs text-warning">⚠️ রিসেলার পরিবর্তন করলে জোন রিসেট হবে এবং মাইগ্রেশন লগ তৈরি হবে।</p>
+                )}
+              </div>
+            )}
           </div>
         </FormSection>
       </div>
