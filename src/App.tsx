@@ -126,6 +126,7 @@ import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
 import ResellerCustomers from "@/pages/reseller/ResellerCustomers";
 import ResellerBilling from "@/pages/reseller/ResellerBilling";
 import ResellerWallet from "@/pages/reseller/ResellerWallet";
+import ResellerReports from "@/pages/reseller/ResellerReports";
 import SuperAdminLayout from "@/components/super/SuperAdminLayout";
 import SuperDashboard from "@/pages/super/SuperDashboard";
 import SuperTenants from "@/pages/super/SuperTenants";
