@@ -72,14 +72,15 @@ interface MonthlyPLRow { month: string; income: number; expense: number; profit:
 
 export function generateProfitLossPDF(
   data: MonthlyPLRow[], year: string,
-  totals: { income: number; expense: number; profit: number }
+  totals: { income: number; expense: number; profit: number },
+  companyName = "Smart ISP"
 ) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: `Financial Year: ${year}`,
     docTitle: "PROFIT & LOSS STATEMENT",
     docMeta: [`Generated: ${new Date().toLocaleDateString("en-GB")}`],
