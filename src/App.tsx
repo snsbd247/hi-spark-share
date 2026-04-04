@@ -131,6 +131,8 @@ const ResellerWallet = lazy(() => import("@/pages/reseller/ResellerWallet"));
 const ResellerReports = lazy(() => import("@/pages/reseller/ResellerReports"));
 const ResellerProfile = lazy(() => import("@/pages/reseller/ResellerProfile"));
 const ResellerZones = lazy(() => import("@/pages/reseller/ResellerZones"));
+const ResellerBandwidth = lazy(() => import("@/pages/reseller/ResellerBandwidth"));
+const BandwidthAnalytics = lazy(() => import("@/pages/BandwidthAnalytics"));
 const SuperAdminLayout = lazy(() => import("@/components/super/SuperAdminLayout"));
 const SuperDashboard = lazy(() => import("@/pages/super/SuperDashboard"));
 const SuperTenants = lazy(() => import("@/pages/super/SuperTenants"));
