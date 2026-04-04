@@ -81,9 +81,11 @@ export default function Dashboard() {
 
   // ── Core data queries (scoped by tenant_id) ──
   const { data: customers, isLoading: loadingCustomers } = useQuery({
-    queryKey: ["customers-stats"],
+    queryKey: ["customers-stats", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("customers").select("id, status, monthly_bill, connection_status");
+      let query = db.from("customers").select("id, status, monthly_bill, connection_status");
+      if (tenantId) query = (query as any).eq("tenant_id", tenantId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
