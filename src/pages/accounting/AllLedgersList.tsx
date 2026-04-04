@@ -56,7 +56,7 @@ export default function AllLedgersList() {
   const { data: salarySheets = [] } = useQuery({
     queryKey: ["salary-summary", tenantId],
     queryFn: async () => {
-      const { data } = await ( db as any).from("salary_sheets").select("employee_id, net_salary, status");
+      const { data } = await scopeByTenant(( db as any).from("salary_sheets").select("employee_id, net_salary, status"), tenantId);
       return data || [];
     },
   });
