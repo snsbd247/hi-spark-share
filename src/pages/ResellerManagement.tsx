@@ -545,6 +545,14 @@ export default function ResellerManagement() {
                 onAllowAllChange={(v) => setForm({ ...form, allow_all_packages: v })}
               />
             )}
+            {/* Package-wise Commission Settings */}
+            {editId && tenantId && (
+              <ResellerPackageCommissions
+                resellerId={editId}
+                tenantId={tenantId}
+                defaultCommission={parseFloat(form.default_commission) || 0}
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
