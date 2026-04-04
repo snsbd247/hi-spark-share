@@ -213,7 +213,8 @@ export default function ResellerCustomers() {
       if (!form.name || !form.phone || !form.area) throw new Error("Name, phone and area are required");
 
       const selectedPkg = packages.find((p: any) => p.id === form.package_id);
-      const monthlyBill = form.is_free ? 0 : (parseFloat(form.monthly_bill) || (selectedPkg ? parseFloat(selectedPkg.price) : 0));
+      // Reseller cannot set free line or discount
+      const monthlyBill = parseFloat(form.monthly_bill) || (selectedPkg ? parseFloat(selectedPkg.price) : 0);
 
       const basePayload: any = {
         name: form.name,
