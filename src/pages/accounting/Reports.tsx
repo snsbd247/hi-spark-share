@@ -35,7 +35,7 @@ export default function Reports() {
 
   const { data: expenses = [] } = useQuery({
     queryKey: ["expenses", tenantId],
-    queryFn: async () => { const { data } = await ( db as any).from("expenses").select("*"); return data || []; },
+    queryFn: async () => { const { data } = await scopeByTenant(( db as any).from("expenses").select("*"), tenantId); return data || []; },
   });
 
   const { data: suppliers = [] } = useQuery({
