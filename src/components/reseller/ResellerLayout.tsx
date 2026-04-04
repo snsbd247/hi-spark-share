@@ -1,7 +1,7 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useResellerAuth } from "@/contexts/ResellerAuthContext";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X, FileText, User, AlertTriangle, MapPin } from "lucide-react";
+import { LayoutDashboard, Users, Receipt, Wallet, LogOut, Wifi, Menu, X, FileText, User, AlertTriangle, MapPin, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import DynamicFooter from "@/components/DynamicFooter";
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/reseller/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/reseller/customers", icon: Users, label: "Customers" },
   { to: "/reseller/zones", icon: MapPin, label: "Zones" },
+  { to: "/reseller/bandwidth", icon: Activity, label: "Bandwidth" },
   { to: "/reseller/billing", icon: Receipt, label: "Billing" },
   { to: "/reseller/wallet", icon: Wallet, label: "Wallet" },
   { to: "/reseller/reports", icon: FileText, label: "Reports" },
