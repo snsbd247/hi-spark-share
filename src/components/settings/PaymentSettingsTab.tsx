@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,16 +25,17 @@ export default function PaymentSettingsTab() {
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const tenantId = useTenantId();
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ["accounts-for-payment-settings"],
+    queryKey: ["accounts-for-payment-settings", tenantId],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await scopeByTenant(db
         .from("accounts")
         .select("id, name, code, type")
         .eq("is_active", true)
         .in("type", ["asset", "income"])
-        .order("code");
+        .order("code"), tenantId);
       if (error) throw error;
       return data;
     },

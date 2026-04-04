@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -51,6 +52,7 @@ interface GroupSmsDialogProps {
 
 export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsDialogProps) {
   const queryClient = useQueryClient();
+  const tenantId = useTenantId();
   const [group, setGroup] = useState<CustomerGroup>("all");
   const [zoneId, setZoneId] = useState("");
   const [packageId, setPackageId] = useState("");
@@ -65,7 +67,7 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
 
   // Fetch zones
   const { data: zones = [] } = useQuery({
-    queryKey: ["zones-list"],
+    queryKey: ["zones-list", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("zones").select("id, area_name").eq("status", "active").order("area_name");
       if (error) throw error;
@@ -76,9 +78,9 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
 
   // Fetch packages
   const { data: packages = [] } = useQuery({
-    queryKey: ["packages-list"],
+    queryKey: ["packages-list", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("packages").select("id, name").eq("is_active", true).order("name");
+      const { data, error } = await scopeByTenant(db.from("packages").select("id, name").eq("is_active", true).order("name"), tenantId);
       if (error) throw error;
       return data;
     },
@@ -98,9 +100,9 @@ export default function GroupSmsDialog({ open, onOpenChange, onSent }: GroupSmsD
 
   // Fetch customers based on group
   const { data: customers = [], isLoading: loadingCustomers } = useQuery({
-    queryKey: ["group-sms-customers", group, zoneId, packageId],
+    queryKey: ["group-sms-customers", group, zoneId, packageId, tenantId],
     queryFn: async () => {
-      let query = db.from("customers").select("id, name, phone, customer_id, area, package_id, connection_status, monthly_bill");
+      let query = scopeByTenant(db.from("customers").select("id, name, phone, customer_id, area, package_id, connection_status, monthly_bill"), tenantId);
 
       if (group === "suspended") {
         query = query.eq("connection_status", "suspended");

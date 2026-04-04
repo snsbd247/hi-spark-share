@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { uploadCompanyLogo } from "@/lib/storage";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function GeneralSettings() {
   const { t } = useLanguage();
+  const tenantId = useTenantId();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -35,9 +37,9 @@ export default function GeneralSettings() {
   });
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ["general-settings"],
+    queryKey: ["general-settings", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("general_settings").select("*").limit(1).single();
+      const { data, error } = await scopeByTenant(db.from("general_settings").select("*"), tenantId).limit(1).single();
       if (error) throw error;
       return data;
     },

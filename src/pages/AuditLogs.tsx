@@ -2,6 +2,7 @@ import { useState } from "react";
 import { safeFormat } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AuditLogs() {
   const { t } = useLanguage();
+  const tenantId = useTenantId();
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -28,13 +30,13 @@ export default function AuditLogs() {
   const [detailLog, setDetailLog] = useState<any>(null);
 
   const { data: logs, isLoading } = useQuery({
-    queryKey: ["audit-logs"],
+    queryKey: ["audit-logs", tenantId],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await scopeByTenant(db
         .from("audit_logs")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(500), tenantId);
       if (error) throw error;
       return data;
     },

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import CustomerInfoCard from "@/components/customers/CustomerInfoCard";
 import CustomerView from "@/components/customers/CustomerView";
@@ -34,6 +35,7 @@ export default function CustomerProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const tenantId = useTenantId();
   const [generating, setGenerating] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editSaleOpen, setEditSaleOpen] = useState(false);

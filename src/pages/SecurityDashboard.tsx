@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,13 +15,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SecurityDashboard() {
   const { t } = useLanguage();
+  const tenantId = useTenantId();
   const sec = t.security;
   const [tab, setTab] = useState<"suspicious" | "geo" | "audit">("suspicious");
   const [search, setSearch] = useState("");
   const [detailLog, setDetailLog] = useState<any>(null);
 
   const { data: logins = [], isLoading: loadingLogins } = useQuery({
-    queryKey: ["login-histories-security"],
+    queryKey: ["login-histories-security", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("login_histories").select("*").order("created_at", { ascending: false }).limit(500);
       if (error) throw error;
@@ -29,9 +31,9 @@ export default function SecurityDashboard() {
   });
 
   const { data: auditLogs = [], isLoading: loadingAudit } = useQuery({
-    queryKey: ["audit-logs-security"],
+    queryKey: ["audit-logs-security", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(500);
+      const { data, error } = await scopeByTenant(db.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(500), tenantId);
       if (error) throw error;
       return data || [];
     },
