@@ -13,6 +13,8 @@ import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PermissionGuard from "@/components/PermissionGuard";
 import CustomerProtectedRoute from "@/components/CustomerProtectedRoute";
+import ResellerProtectedRoute from "@/components/ResellerProtectedRoute";
+import { ResellerAuthProvider } from "@/contexts/ResellerAuthContext";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import Login from "@/pages/Login";
@@ -106,6 +108,7 @@ import DomainManagement from "@/pages/settings/DomainManagement";
 import LandingPage from "@/pages/LandingPage";
 import ForcePasswordChange from "@/pages/ForcePasswordChange";
 import CouponManagement from "@/pages/CouponManagement";
+import ResellerManagement from "@/pages/ResellerManagement";
 import IpPoolManagement from "@/pages/IpPoolManagement";
 import FaqManagement from "@/pages/FaqManagement";
 import AdvancedAnalytics from "@/pages/AdvancedAnalytics";
@@ -118,6 +121,11 @@ import InventoryLogs from "@/pages/inventory/InventoryLogs";
 import NetworkMap from "@/pages/NetworkMap";
 import FiberTopology from "@/pages/FiberTopology";
 import SuperAdminLogin from "@/pages/super/SuperAdminLogin";
+import ResellerLogin from "@/pages/reseller/ResellerLogin";
+import ResellerDashboard from "@/pages/reseller/ResellerDashboard";
+import ResellerCustomers from "@/pages/reseller/ResellerCustomers";
+import ResellerBilling from "@/pages/reseller/ResellerBilling";
+import ResellerWallet from "@/pages/reseller/ResellerWallet";
 import SuperAdminLayout from "@/components/super/SuperAdminLayout";
 import SuperDashboard from "@/pages/super/SuperDashboard";
 import SuperTenants from "@/pages/super/SuperTenants";
@@ -178,6 +186,7 @@ function App() {
           <AuthProvider>
             <LanguageProvider>
             <CustomerAuthProvider>
+            <ResellerAuthProvider>
               <BrandingProvider>
               <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -289,6 +298,7 @@ function App() {
                 <Route path="/ip-pools" element={<PermissionGuard module="settings"><IpPoolManagement /></PermissionGuard>} />
                 <Route path="/faq" element={<PermissionGuard module="settings"><FaqManagement /></PermissionGuard>} />
                 <Route path="/analytics" element={<PermissionGuard module="reports"><AdvancedAnalytics /></PermissionGuard>} />
+                <Route path="/resellers" element={<PermissionGuard module="settings"><ResellerManagement /></PermissionGuard>} />
 
                 {/* Network Topology */}
                 <Route path="/network-map" element={<PermissionGuard module="settings"><NetworkMap /></PermissionGuard>} />
@@ -331,10 +341,18 @@ function App() {
                 <Route path="/portal/tickets" element={<CustomerProtectedRoute><CustomerTickets /></CustomerProtectedRoute>} />
                 <Route path="/portal/payment/callback" element={<CustomerProtectedRoute><PaymentCallback /></CustomerProtectedRoute>} />
 
+                {/* Reseller Portal */}
+                <Route path="/reseller/login" element={<ResellerLogin />} />
+                <Route path="/reseller/dashboard" element={<ResellerProtectedRoute><ResellerDashboard /></ResellerProtectedRoute>} />
+                <Route path="/reseller/customers" element={<ResellerProtectedRoute><ResellerCustomers /></ResellerProtectedRoute>} />
+                <Route path="/reseller/billing" element={<ResellerProtectedRoute><ResellerBilling /></ResellerProtectedRoute>} />
+                <Route path="/reseller/wallet" element={<ResellerProtectedRoute><ResellerWallet /></ResellerProtectedRoute>} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </Suspense>
               </BrandingProvider>
+            </ResellerAuthProvider>
             </CustomerAuthProvider>
             </LanguageProvider>
           </AuthProvider>

@@ -808,6 +808,7 @@ export type Database = {
           pppoe_password: string | null
           pppoe_password_hash: string | null
           pppoe_username: string | null
+          reseller_id: string | null
           road: string | null
           router_id: string | null
           router_mac: string | null
@@ -866,6 +867,7 @@ export type Database = {
           pppoe_password?: string | null
           pppoe_password_hash?: string | null
           pppoe_username?: string | null
+          reseller_id?: string | null
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
@@ -924,6 +926,7 @@ export type Database = {
           pppoe_password?: string | null
           pppoe_password_hash?: string | null
           pppoe_username?: string | null
+          reseller_id?: string | null
           road?: string | null
           router_id?: string | null
           router_mac?: string | null
@@ -942,6 +945,13 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
             referencedColumns: ["id"]
           },
           {
@@ -3610,6 +3620,157 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_sessions: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          last_activity: string | null
+          reseller_id: string
+          session_token: string
+          status: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          last_activity?: string | null
+          reseller_id: string
+          session_token: string
+          status?: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          last_activity?: string | null
+          reseller_id?: string
+          session_token?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_sessions_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          reference: string | null
+          reseller_id: string
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference?: string | null
+          reseller_id: string
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference?: string | null
+          reseller_id?: string
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_wallet_transactions_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_wallet_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resellers: {
+        Row: {
+          address: string | null
+          commission_rate: number | null
+          company_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          password_hash: string | null
+          phone: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+          wallet_balance: number
+        }
+        Insert: {
+          address?: string | null
+          commission_rate?: number | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          password_hash?: string | null
+          phone?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          wallet_balance?: number
+        }
+        Update: {
+          address?: string | null
+          commission_rate?: number | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          password_hash?: string | null
+          phone?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          wallet_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resellers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
