@@ -127,7 +127,7 @@ export default function SuperOnboarding() {
       const id = Array.isArray(data) ? data[0]?.id : data?.id;
       update({ tenantId: id, step: 1 });
       markStep(0);
-      toast.success("Tenant created!");
+      toast.success(sa.tenantCreatedMsg);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -135,14 +135,14 @@ export default function SuperOnboarding() {
   // ── Step 1: Domain ─────────────────────────────────────────
   const assignDomain = useMutation({
     mutationFn: () => superAdminApi.assignDomain({ tenant_id: createdTenantId, domain: domainForm.domain }),
-    onSuccess: () => { update({ step: 2 }); markStep(1); toast.success("Domain assigned!"); },
+    onSuccess: () => { update({ step: 2 }); markStep(1); toast.success(sa.domainAssignedMsg); },
     onError: (e: any) => toast.error(e.message),
   });
 
   // ── Step 2: Plan ───────────────────────────────────────────
   const assignPlan = useMutation({
     mutationFn: () => superAdminApi.assignSubscription({ tenant_id: createdTenantId, ...planForm }),
-    onSuccess: () => { update({ step: 3 }); markStep(2); toast.success("Plan assigned!"); },
+    onSuccess: () => { update({ step: 3 }); markStep(2); toast.success(sa.planAssignedMsg); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -200,7 +200,7 @@ export default function SuperOnboarding() {
       update({ setupProgress: allDone, step: 4 });
       markStep(3);
       setRunningItem(null);
-      toast.success("Full setup completed!");
+      toast.success(sa.fullSetupCompletedMsg);
     },
     onError: (e: any) => { setRunningItem(null); toast.error(e.message || "Setup failed"); },
   });
@@ -221,7 +221,7 @@ export default function SuperOnboarding() {
     },
     onSuccess: () => {
       markStep(4);
-      toast.success("🎉 Tenant activated successfully!");
+      toast.success(sa.tenantActivatedSuccess);
       clearDraft();
       qc.invalidateQueries({ queryKey: ["super-tenants"] });
       setTimeout(() => navigate(`/super/tenants/${createdTenantId}`), 1000);
@@ -250,7 +250,7 @@ export default function SuperOnboarding() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm px-3 py-1">
-            Step {step + 1} of {STEPS.length}
+            ${sa.stepOf.replace("{current}", String(step + 1)).replace("{total}", String(STEPS.length))}
           </Badge>
           {createdTenantId && (
             <Button variant="ghost" size="sm" onClick={() => { clearDraft(); setWs({ ...defaultState }); }}>
@@ -265,7 +265,7 @@ export default function SuperOnboarding() {
         <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
           <div className="flex items-center gap-2">
             <Info className="h-4 w-4 text-primary" />
-            <span>You have an unfinished onboarding in progress.</span>
+            <span>{sa.unfinishedOnboarding}</span>
           </div>
           <Button size="sm" variant="outline" onClick={() => setWs(loadDraft())}>
             Resume
@@ -339,7 +339,7 @@ export default function SuperOnboarding() {
               <div className="flex justify-end">
                 <Button onClick={() => createTenant.mutate(tenantForm)} disabled={isPending || !tenantForm.name || !tenantForm.subdomain || !tenantForm.email} size="lg">
                   {createTenant.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-                  Create & Continue
+                  {sa.createAndContinue}
                 </Button>
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function SuperOnboarding() {
                   </Button>
                   <Button onClick={() => assignDomain.mutate()} disabled={isPending || !domainForm.domain}>
                     {assignDomain.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-                    Assign & Continue
+                    {sa.assignAndContinue}
                   </Button>
                 </div>
               </div>
@@ -435,7 +435,7 @@ export default function SuperOnboarding() {
                 </Button>
                 <Button onClick={() => assignPlan.mutate()} disabled={isPending || !planForm.plan_id}>
                   {assignPlan.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-                  Assign Plan
+                  {sa.assignPlanBtn}
                 </Button>
               </div>
             </div>
@@ -499,13 +499,13 @@ export default function SuperOnboarding() {
                 <div className="flex gap-2">
                   {!allSetupDone && !autoSetup && (
                     <Button variant="outline" onClick={() => { update({ step: 4 }); markStep(3); }}>
-                      Skip (Setup Later)
+                      {sa.skipSetupLater}
                     </Button>
                   )}
                   {autoSetup && !allSetupDone && (
                     <Button onClick={() => runFullSetup.mutate()} disabled={isPending}>
                       {runFullSetup.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                      Run Full Setup
+                      {sa.runFullSetupBtn}
                     </Button>
                   )}
                   {allSetupDone && (
@@ -542,11 +542,11 @@ export default function SuperOnboarding() {
                 </div>
                 <div className="p-3.5 bg-muted/50 rounded-lg space-y-1">
                   <p className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> {sa.customDomain}</p>
-                  <p className="font-medium">{domainForm.domain || "Not configured"}</p>
+                  <p className="font-medium">{domainForm.domain || sa.notConfigured}</p>
                 </div>
                 <div className="p-3.5 bg-muted/50 rounded-lg space-y-1">
                   <p className="text-xs text-muted-foreground flex items-center gap-1"><CreditCard className="h-3 w-3" /> {sa.plan}</p>
-                  <p className="font-medium">{selectedPlan?.name || "Not assigned"} ({planForm.billing_cycle})</p>
+                  <p className="font-medium">{selectedPlan?.name || sa.notAssigned} ({planForm.billing_cycle})</p>
                 </div>
                 <div className="p-3.5 bg-muted/50 rounded-lg space-y-1">
                   <p className="text-xs text-muted-foreground flex items-center gap-1"><Database className="h-3 w-3" /> {sa.dataImport}</p>
@@ -600,7 +600,7 @@ export default function SuperOnboarding() {
                 </Button>
                 <Button size="lg" onClick={() => activateTenant.mutate()} disabled={isPending} className="min-w-[200px]">
                   {activateTenant.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}
-                  Activate Tenant
+                  {sa.activateTenant}
                 </Button>
               </div>
             </div>
