@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import bcrypt from "bcryptjs";
 
+import ResellerPackageAssign from "@/components/reseller/ResellerPackageAssign";
+
 interface ResellerForm {
   name: string;
   company_name: string;
@@ -29,11 +31,13 @@ interface ResellerForm {
   password: string;
   status: string;
   commission_rate: string;
+  allow_all_packages: boolean;
 }
 
 const emptyForm: ResellerForm = {
   name: "", company_name: "", phone: "", email: "", address: "",
   user_id: "", password: "", status: "active", commission_rate: "0",
+  allow_all_packages: false,
 };
 
 export default function ResellerManagement() {
