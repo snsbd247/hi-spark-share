@@ -43,6 +43,8 @@ const statusColors: Record<string, string> = {
 
 export default function Tickets() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const tenantId = user?.tenant_id;
   const [viewTicket, setViewTicket] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
   const [replying, setReplying] = useState(false);
