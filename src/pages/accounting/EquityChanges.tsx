@@ -22,7 +22,7 @@ export default function EquityChanges() {
 
   const { data: equityAccounts = [] } = useQuery({
     queryKey: ["equity-accounts", tenantId],
-    queryFn: async () => { const { data } = await ( db as any).from("accounts").select("*").eq("type", "equity").eq("is_active", true).order("code"); return data || []; },
+    queryFn: async () => { const { data } = await scopeByTenant(( db as any).from("accounts").select("*").eq("type", "equity").eq("is_active", true).order("code"), tenantId); return data || []; },
   });
 
   const { data: transactions = [] } = useQuery({
