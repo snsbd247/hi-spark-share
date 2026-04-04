@@ -41,9 +41,26 @@ export const PDF_SPACING = {
   lineGap: 5.5,
 };
 
-// ─── Company Settings Cache ───
+// ─── System Branding (Super Admin — UI only) ───
 export async function getCompanySettings() {
   try {
+    const { data } = await db.from("general_settings").select("*").limit(1).maybeSingle();
+    return data;
+  } catch { return null; }
+}
+
+// ─── Tenant Company Info (for invoices, reports, PDFs) ───
+export async function getTenantCompanySettings(tenantId?: string | null) {
+  try {
+    if (tenantId) {
+      const { data } = await (db as any)
+        .from("tenant_company_info")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      if (data) return data;
+    }
+    // Fallback to general_settings for backward compat
     const { data } = await db.from("general_settings").select("*").limit(1).maybeSingle();
     return data;
   } catch { return null; }

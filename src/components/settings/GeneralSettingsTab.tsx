@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Upload, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,28 +16,32 @@ export default function GeneralSettingsTab() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [form, setForm] = useState({
-    site_name: "",
+    company_name: "",
     address: "",
     email: "",
-    mobile: "",
+    phone: "",
     logo_url: "",
   });
 
   const tenantId = user?.tenant_id;
 
-  // Fetch tenant-scoped general_settings
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ["general-settings", tenantId],
+  // Fetch tenant_company_info (tenant-specific branding for invoices/PDFs)
+  const { data: companyInfo, isLoading } = useQuery({
+    queryKey: ["tenant-company-info", tenantId],
     queryFn: async () => {
-      let query = db.from("general_settings").select("*");
-      if (tenantId) query = (query as any).eq("tenant_id", tenantId);
-      const { data, error } = await query.limit(1).maybeSingle();
+      if (!tenantId) return null;
+      const { data, error } = await (db as any)
+        .from("tenant_company_info")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
       if (error && error.code !== "PGRST116") throw error;
       return data;
     },
+    enabled: !!tenantId,
   });
 
-  // Fetch tenant info to pre-populate if general_settings is empty
+  // Fallback: fetch tenant info to pre-populate if no tenant_company_info row exists
   const { data: tenantInfo } = useQuery({
     queryKey: ["tenant-info-for-settings", tenantId],
     queryFn: async () => {
@@ -48,31 +52,30 @@ export default function GeneralSettingsTab() {
         .maybeSingle();
       return data as any;
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !companyInfo,
   });
 
   useEffect(() => {
-    if (settings) {
+    if (companyInfo) {
       setForm({
-        site_name: settings.site_name || "",
-        address: settings.address || "",
-        email: settings.email || "",
-        mobile: settings.mobile || "",
-        logo_url: settings.logo_url || "",
+        company_name: companyInfo.company_name || "",
+        address: companyInfo.address || "",
+        email: companyInfo.email || "",
+        phone: companyInfo.phone || "",
+        logo_url: companyInfo.logo_url || "",
       });
-      if (settings.logo_url) setLogoPreview(settings.logo_url);
+      if (companyInfo.logo_url) setLogoPreview(companyInfo.logo_url);
     } else if (tenantInfo) {
-      // Pre-populate from tenant profile if no general_settings row exists
       setForm({
-        site_name: tenantInfo.name || "",
+        company_name: tenantInfo.name || "",
         address: (tenantInfo as any).address || "",
         email: tenantInfo.email || "",
-        mobile: tenantInfo.phone || "",
+        phone: tenantInfo.phone || "",
         logo_url: tenantInfo.logo_url || "",
       });
       if (tenantInfo.logo_url) setLogoPreview(tenantInfo.logo_url);
     }
-  }, [settings, tenantInfo]);
+  }, [companyInfo, tenantInfo]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,7 +96,7 @@ export default function GeneralSettingsTab() {
       if (logoFile) {
         try {
           const ext = logoFile.name.split(".").pop() || "png";
-          const path = `system/company-logo.${ext}`;
+          const path = `tenant/${tenantId}/company-logo.${ext}`;
           const { error: uploadErr } = await db.storage
             .from("avatars")
             .upload(path, logoFile, { upsert: true });
@@ -106,32 +109,31 @@ export default function GeneralSettingsTab() {
       }
 
       const payload = {
-        site_name: form.site_name,
+        company_name: form.company_name,
         address: form.address,
         email: form.email,
-        mobile: form.mobile,
+        phone: form.phone,
         logo_url,
         updated_at: new Date().toISOString(),
       };
 
       let error;
-      if (settings?.id) {
-        ({ error } = await db
-          .from("general_settings")
+      if (companyInfo?.id) {
+        ({ error } = await (db as any)
+          .from("tenant_company_info")
           .update(payload)
-          .eq("id", settings.id));
+          .eq("id", companyInfo.id));
       } else {
-        ({ error } = await db
-          .from("general_settings")
-          .insert({ ...payload, site_name: form.site_name || "Smart ISP", tenant_id: tenantId } as any));
+        ({ error } = await (db as any)
+          .from("tenant_company_info")
+          .insert({ ...payload, tenant_id: tenantId }));
       }
 
       if (error) throw error;
-      toast.success("General settings saved");
-      queryClient.invalidateQueries({ queryKey: ["general-settings"] });
-      queryClient.invalidateQueries({ queryKey: ["tenant-branding"] });
+      toast.success("Company information saved");
+      queryClient.invalidateQueries({ queryKey: ["tenant-company-info"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to save settings");
+      toast.error(err.message || "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -145,12 +147,13 @@ export default function GeneralSettingsTab() {
     <Card className="max-w-2xl">
       <CardHeader>
         <CardTitle>Company Information</CardTitle>
+        <CardDescription>This information is used in invoices, reports, and PDF documents only. System branding is managed by Super Admin.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="space-y-5">
           <div className="space-y-1.5">
-            <Label>Site Name</Label>
-            <Input value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} placeholder="Smart ISP" />
+            <Label>Company Name</Label>
+            <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="Your Company Name" />
           </div>
           <div className="space-y-1.5">
             <Label>Company Address</Label>
@@ -159,11 +162,11 @@ export default function GeneralSettingsTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Email Address</Label>
-              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="admin@smartisp.com" />
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="admin@company.com" />
             </div>
             <div className="space-y-1.5">
               <Label>Mobile Number</Label>
-              <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} placeholder="+880 1234 567890" />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+880 1234 567890" />
             </div>
           </div>
           <div className="space-y-1.5">
