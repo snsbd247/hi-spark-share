@@ -107,7 +107,7 @@ export default function SalarySheet() {
     generatePaySlipPdf({
       employee: emp,
       sheet,
-      companyName: settings?.site_name || "Company",
+      companyName: settings?.company_name || settings?.site_name || "Company",
       companyAddress: settings?.address || "",
     });
     toast.success("Pay Slip downloaded");
