@@ -169,14 +169,18 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
   const syncPPPoE = async (customerId: string) => {
     try {
+      console.log("[MikroTik Sync] Calling /mikrotik/sync for customer:", customerId);
       const { data } = await api.post(`/mikrotik/sync`, { customer_id: customerId });
+      console.log("[MikroTik Sync] Response:", JSON.stringify(data));
       if (data.success) {
         toast.success(`PPPoE synced to MikroTik successfully`);
       } else {
-        toast.warning(`Customer saved but MikroTik sync failed: ${data.error || "Unknown error"}. You can retry later.`);
+        toast.warning(`MikroTik sync failed: ${data.error || "Unknown error"}. You can retry later.`);
       }
     } catch (e: any) {
-      console.error("MikroTik PPPoE sync failed:", e);
+      const status = e?.response?.status;
+      const respData = e?.response?.data;
+      console.error("[MikroTik Sync] Error:", { status, respData, message: e.message, url: e?.config?.url, baseURL: e?.config?.baseURL });
       toast.warning("Customer saved but MikroTik PPPoE sync failed. You can retry later.");
     }
   };
