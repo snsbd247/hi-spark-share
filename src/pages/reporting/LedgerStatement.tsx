@@ -31,7 +31,7 @@ export default function ReportLedgerStatement() {
 
   // Fetch all accounts for dropdown
   const { data: accounts = [] } = useQuery({
-    queryKey: ["all-accounts-for-ledger"],
+    queryKey: ["all-accounts-for-ledger", tenantId],
     queryFn: async () => {
       const { data } = await (db as any)
         .from("accounts")
@@ -46,7 +46,7 @@ export default function ReportLedgerStatement() {
 
   // Fetch transactions for selected account
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["report-ledger-statement", selectedAccountId, dateFrom, dateTo],
+    queryKey: ["report-ledger-statement", selectedAccountId, dateFrom, dateTo, tenantId],
     queryFn: async () => {
       if (!selectedAccountId) return [];
       let query = (db as any)

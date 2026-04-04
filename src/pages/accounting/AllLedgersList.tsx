@@ -22,7 +22,7 @@ export default function AllLedgersList() {
   const [search, setSearch] = useState("");
 
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers-ledger"],
+    queryKey: ["customers-ledger", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("customers").select("id, customer_id, name, phone, monthly_bill, status");
       return data || [];
@@ -30,7 +30,7 @@ export default function AllLedgersList() {
   });
 
   const { data: customerLedger = [] } = useQuery({
-    queryKey: ["customer-ledger-summary"],
+    queryKey: ["customer-ledger-summary", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("customer_ledger").select("customer_id, debit, credit");
       return data || [];
@@ -38,7 +38,7 @@ export default function AllLedgersList() {
   });
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers-ledger"],
+    queryKey: ["suppliers-ledger", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("suppliers").select("id, name, phone, company, total_due, status");
       return data || [];
@@ -46,7 +46,7 @@ export default function AllLedgersList() {
   });
 
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-ledger"],
+    queryKey: ["employees-ledger", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("employees").select("id, employee_id, name, phone, salary, status");
       return data || [];
@@ -54,7 +54,7 @@ export default function AllLedgersList() {
   });
 
   const { data: salarySheets = [] } = useQuery({
-    queryKey: ["salary-summary"],
+    queryKey: ["salary-summary", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("salary_sheets").select("employee_id, net_salary, status");
       return data || [];

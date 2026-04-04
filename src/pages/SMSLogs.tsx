@@ -26,7 +26,7 @@ export default function SMSLogs() {
   const [smsForm, setSmsForm] = useState({ phone: "", message: "" });
 
   const { data: logs = [], isLoading, refetch } = useQuery({
-    queryKey: ["sms-logs"],
+    queryKey: ["sms-logs", tenantId],
     queryFn: async () => {
       const { data, error } = await db
         .from("sms_logs")

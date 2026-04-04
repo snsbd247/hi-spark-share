@@ -11,7 +11,7 @@ export default function FinancialStatement() {
   const tenantId = useTenantId();
   const { t } = useLanguage();
   const { data: accounts = [] } = useQuery({
-    queryKey: ["accounts"],
+    queryKey: ["accounts", tenantId],
     queryFn: async () => { const { data } = await (db as any).from("accounts").select("*").order("code"); return data || []; },
   });
 

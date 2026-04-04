@@ -153,7 +153,7 @@ export default function ChartOfAccounts() {
 
   // Fetch accounts
   const { data: flatAccounts = [], isLoading } = useQuery({
-    queryKey: ["accounts-flat"],
+    queryKey: ["accounts-flat", tenantId],
     queryFn: async () => {
       const res = await ( db as any).from("accounts").select("*").order("code", { ascending: true }).order("name", { ascending: true });
       return res.data || [];
@@ -162,7 +162,7 @@ export default function ChartOfAccounts() {
 
   // Fetch all transactions to compute debit/credit per account
   const { data: transactions = [] } = useQuery({
-    queryKey: ["all-transactions-summary"],
+    queryKey: ["all-transactions-summary", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("transactions").select("account_id, debit, credit");
       return data || [];
@@ -252,7 +252,7 @@ export default function ChartOfAccounts() {
       return unwrapApiResult(await ( db as any).from("accounts").insert(payload));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts-flat", tenantId] });
       toast.success(editAccount ? "Account updated" : "Account created");
       resetForm();
     },
@@ -262,7 +262,7 @@ export default function ChartOfAccounts() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => unwrapApiResult(await ( db as any).from("accounts").delete().eq("id", id)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
+      queryClient.invalidateQueries({ queryKey: ["accounts-flat", tenantId] });
       toast.success("Account deleted");
     },
     onError: (e: any) => toast.error(e.message || "Failed"),
@@ -340,8 +340,8 @@ export default function ChartOfAccounts() {
                       updated++;
                     }
                   }
-                  queryClient.invalidateQueries({ queryKey: ["accounts-flat"] });
-                  queryClient.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+                  queryClient.invalidateQueries({ queryKey: ["accounts-flat", tenantId] });
+                  queryClient.invalidateQueries({ queryKey: ["all-transactions-summary", tenantId] });
                   toast.success(`Balances recalculated! ${updated} account(s) updated.`);
                 } catch (err: any) {
                   toast.error("Failed to recalculate: " + (err.message || "Unknown error"));

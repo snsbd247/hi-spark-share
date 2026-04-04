@@ -21,12 +21,12 @@ export default function EquityChanges() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: equityAccounts = [] } = useQuery({
-    queryKey: ["equity-accounts"],
+    queryKey: ["equity-accounts", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("accounts").select("*").eq("type", "equity").eq("is_active", true).order("code"); return data || []; },
   });
 
   const { data: transactions = [] } = useQuery({
-    queryKey: ["equity-txns", dateFrom, dateTo],
+    queryKey: ["equity-txns", dateFrom, dateTo, tenantId],
     queryFn: async () => {
       const equityIds = equityAccounts.map((a: any) => a.id);
       if (equityIds.length === 0) return [];
@@ -41,12 +41,12 @@ export default function EquityChanges() {
 
   // Also get income & expense for retained earnings calc
   const { data: incExpAccounts = [] } = useQuery({
-    queryKey: ["inc-exp-accounts"],
+    queryKey: ["inc-exp-accounts", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("accounts").select("id, type").in("type", ["income", "expense"]).eq("is_active", true); return data || []; },
   });
 
   const { data: incExpTxns = [] } = useQuery({
-    queryKey: ["inc-exp-txns", dateFrom, dateTo],
+    queryKey: ["inc-exp-txns", dateFrom, dateTo, tenantId],
     queryFn: async () => {
       const ids = incExpAccounts.map((a: any) => a.id);
       if (ids.length === 0) return [];

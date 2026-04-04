@@ -32,7 +32,7 @@ export default function ChequeRegister() {
 
   // Use transactions table with reference prefix "CHQ-" to track cheques
   const { data: cheques = [], isLoading } = useQuery({
-    queryKey: ["cheques"],
+    queryKey: ["cheques", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("transactions").select("*").like("reference", "CHQ-%").order("date", { ascending: false });
       return data || [];
@@ -53,7 +53,7 @@ export default function ChequeRegister() {
     },
     onSuccess: () => {
       toast.success("Cheque entry added");
-      qc.invalidateQueries({ queryKey: ["cheques"] });
+      qc.invalidateQueries({ queryKey: ["cheques", tenantId] });
       setOpen(false);
       setForm({ cheque_no: "", bank_name: "", amount: 0, date: new Date().toISOString().split("T")[0], party_name: "", type: "received", status: "pending", description: "" });
     },

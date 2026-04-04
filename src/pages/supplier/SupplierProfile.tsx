@@ -38,7 +38,7 @@ export default function SupplierProfile() {
   const [editItems, setEditItems] = useState<any[]>([]);
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
       const { data } = await (db as any).from("products").select("id, name, sku, buy_price").order("name");
       return data || [];
@@ -46,7 +46,7 @@ export default function SupplierProfile() {
   });
 
   const { data: supplier, isLoading } = useQuery({
-    queryKey: ["supplier", id],
+    queryKey: ["supplier", id, tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("suppliers").select("*").eq("id", id!).single();
       return data;
@@ -55,7 +55,7 @@ export default function SupplierProfile() {
   });
 
   const { data: payments = [] } = useQuery({
-    queryKey: ["supplier-payments", id],
+    queryKey: ["supplier-payments", id, tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("supplier_payments").select("*").eq("supplier_id", id!).order("paid_date", { ascending: false });
       return data || [];
@@ -64,7 +64,7 @@ export default function SupplierProfile() {
   });
 
   const { data: purchases = [] } = useQuery({
-    queryKey: ["supplier-purchases", id],
+    queryKey: ["supplier-purchases", id, tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("purchases").select("*").eq("supplier_id", id!).order("date", { ascending: false });
       return data || [];
@@ -115,9 +115,9 @@ export default function SupplierProfile() {
       await ( db as any).from("suppliers").update({ total_due: Math.max(0, totalDue - amount) }).eq("id", id!);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["supplier-payments", id] });
-      qc.invalidateQueries({ queryKey: ["supplier-purchases", id] });
-      qc.invalidateQueries({ queryKey: ["supplier", id] });
+      qc.invalidateQueries({ queryKey: ["supplier-payments", id, tenantId] });
+      qc.invalidateQueries({ queryKey: ["supplier-purchases", id, tenantId] });
+      qc.invalidateQueries({ queryKey: ["supplier", id, tenantId] });
       toast.success("Payment recorded");
       // Generate payment advice
       const lastPayment = { amount: Number(payForm.amount), payment_method: payForm.payment_method, reference: payForm.reference, date: new Date().toISOString(), purchase_no: purchases.find((p: any) => p.id === payForm.purchase_id)?.purchase_no };
@@ -155,7 +155,7 @@ export default function SupplierProfile() {
       if (newItems.length) await (db as any).from("purchase_items").insert(newItems);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["supplier-purchases", id] });
+      qc.invalidateQueries({ queryKey: ["supplier-purchases", id, tenantId] });
       toast.success("Purchase updated");
       setEditOpen(false);
     },

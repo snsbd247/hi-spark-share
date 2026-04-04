@@ -45,7 +45,7 @@ export default function MerchantPaymentReports() {
   }, [period, customFrom, customTo]);
 
   const { data: payments, isLoading } = useQuery({
-    queryKey: ["merchant-report", period, dateRange.from.toISOString(), dateRange.to.toISOString()],
+    queryKey: ["merchant-report", period, dateRange.from.toISOString(), dateRange.to.toISOString(), tenantId],
     queryFn: async () => {
       const { data, error } = await db
         .from("merchant_payments")

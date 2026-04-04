@@ -40,7 +40,7 @@ export default function Purchases() {
   const [items, setItems] = useState<PurchaseItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
 
   const { data: purchases = [], isLoading } = useQuery({
-    queryKey: ["purchases"],
+    queryKey: ["purchases", tenantId],
     queryFn: async () => {
       const { data } = await (db as any).from("purchases").select("*").order("date", { ascending: false });
       return data || [];
@@ -48,12 +48,12 @@ export default function Purchases() {
   });
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["suppliers", tenantId],
     queryFn: async () => { const { data } = await (db as any).from("suppliers").select("*"); return data || []; },
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => { const { data } = await (db as any).from("products").select("*"); return data || []; },
   });
 
@@ -103,10 +103,10 @@ export default function Purchases() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["purchases"] });
-      qc.invalidateQueries({ queryKey: ["products"] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      qc.invalidateQueries({ queryKey: ["purchases", tenantId] });
+      qc.invalidateQueries({ queryKey: ["products", tenantId] });
+      qc.invalidateQueries({ queryKey: ["transactions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["suppliers", tenantId] });
       toast.success("Purchase created & posted to ledger");
       closeDialog();
     },
@@ -137,8 +137,8 @@ export default function Purchases() {
       await (db as any).from("purchase_items").insert(itemsToInsert);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["purchases"] });
-      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["purchases", tenantId] });
+      qc.invalidateQueries({ queryKey: ["products", tenantId] });
       toast.success("Purchase updated");
       closeDialog();
     },
@@ -175,9 +175,9 @@ export default function Purchases() {
       await postPurchasePaymentToLedger(purchase.purchase_no, amount, method, new Date().toISOString().split("T")[0]);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["purchases"] });
-      qc.invalidateQueries({ queryKey: ["suppliers"] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["purchases", tenantId] });
+      qc.invalidateQueries({ queryKey: ["suppliers", tenantId] });
+      qc.invalidateQueries({ queryKey: ["transactions", tenantId] });
       toast.success("Payment adjusted successfully");
       setPayOpen(false);
       setPayTarget(null);

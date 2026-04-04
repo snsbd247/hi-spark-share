@@ -14,7 +14,7 @@ export default function BalanceSheetReport() {
   const r = t.reportingPages;
 
   const { data: accounts = [] } = useQuery({
-    queryKey: ["balance-sheet-accounts"],
+    queryKey: ["balance-sheet-accounts", tenantId],
     queryFn: async () => { const { data } = await (db as any).from("accounts").select("*").eq("is_active", true).order("code"); return data || []; },
   });
 

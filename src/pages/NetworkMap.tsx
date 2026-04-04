@@ -173,7 +173,7 @@ export default function NetworkMap() {
 
   // ── Queries ──
   const { data: nodes = [], isLoading: nodesLoading } = useQuery({
-    queryKey: ["network-nodes"],
+    queryKey: ["network-nodes", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("network_nodes").select("*").order("created_at", { ascending: false });
       if (error) throw error;
@@ -182,7 +182,7 @@ export default function NetworkMap() {
   });
 
   const { data: links = [] } = useQuery({
-    queryKey: ["network-links"],
+    queryKey: ["network-links", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("network_links").select("*");
       if (error) throw error;
@@ -198,7 +198,7 @@ export default function NetworkMap() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-nodes"] });
+      queryClient.invalidateQueries({ queryKey: ["network-nodes", tenantId] });
       toast.success("Node created");
     },
     onError: (e: any) => toast.error(e.message || "Failed to create node"),
@@ -210,7 +210,7 @@ export default function NetworkMap() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["network-nodes"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["network-nodes", tenantId] }),
   });
 
   const deleteNode = useMutation({
@@ -219,8 +219,8 @@ export default function NetworkMap() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-nodes"] });
-      queryClient.invalidateQueries({ queryKey: ["network-links"] });
+      queryClient.invalidateQueries({ queryKey: ["network-nodes", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["network-links", tenantId] });
       toast.success("Node deleted");
       setSelectedNode(null);
     },
@@ -233,7 +233,7 @@ export default function NetworkMap() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-links"] });
+      queryClient.invalidateQueries({ queryKey: ["network-links", tenantId] });
       toast.success("Link created");
     },
     onError: (e: any) => toast.error(e.message || "Failed to create link"),
@@ -245,7 +245,7 @@ export default function NetworkMap() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-links"] });
+      queryClient.invalidateQueries({ queryKey: ["network-links", tenantId] });
       toast.success("Link removed");
     },
   });

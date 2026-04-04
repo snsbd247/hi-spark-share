@@ -26,7 +26,7 @@ export default function IncomeHead() {
   const [form, setForm] = useState({ name: "", code: "", description: "", parent_id: "" });
 
   const { data: allAccounts = [] } = useQuery({
-    queryKey: ["accounts-flat"],
+    queryKey: ["accounts-flat", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("accounts").select("*").order("code").order("name");
       return data || [];
@@ -55,7 +55,7 @@ export default function IncomeHead() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["accounts-flat"] });
+      qc.invalidateQueries({ queryKey: ["accounts-flat", tenantId] });
       toast.success("Saved");
       setOpen(false);
       setEditId(null);
@@ -66,7 +66,7 @@ export default function IncomeHead() {
 
   const del = useMutation({
     mutationFn: async (id: string) => { await ( db as any).from("accounts").delete().eq("id", id); },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts-flat"] }); toast.success("Deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts-flat", tenantId] }); toast.success("Deleted"); },
   });
 
   const incomeParents = allAccounts.filter((a: any) => a.type === "income");

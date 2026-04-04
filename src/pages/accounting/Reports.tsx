@@ -24,22 +24,22 @@ export default function Reports() {
   const [year, setYear] = useState(String(currentYear));
 
   const { data: sales = [] } = useQuery({
-    queryKey: ["sales"],
+    queryKey: ["sales", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("sales").select("*"); return data || []; },
   });
 
   const { data: purchases = [] } = useQuery({
-    queryKey: ["purchases"],
+    queryKey: ["purchases", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("purchases").select("*"); return data || []; },
   });
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("expenses").select("*"); return data || []; },
   });
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["suppliers", tenantId],
     queryFn: async () => { const { data } = await ( db as any).from("suppliers").select("*"); return data || []; },
   });
 

@@ -33,7 +33,7 @@ export default function OthersHead() {
   const [form, setForm] = useState({ name: "", type: "asset", code: "", description: "", parent_id: "" });
 
   const { data: allAccounts = [] } = useQuery({
-    queryKey: ["accounts-flat"],
+    queryKey: ["accounts-flat", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("accounts").select("*").order("code").order("name");
       return data || [];
@@ -62,7 +62,7 @@ export default function OthersHead() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["accounts-flat"] });
+      qc.invalidateQueries({ queryKey: ["accounts-flat", tenantId] });
       toast.success("Saved");
       setOpen(false);
       setEditId(null);
@@ -75,7 +75,7 @@ export default function OthersHead() {
     mutationFn: async (id: string) => {
       unwrapApiResult(await ( db as any).from("accounts").delete().eq("id", id));
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts-flat"] }); toast.success("Deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["accounts-flat", tenantId] }); toast.success("Deleted"); },
     onError: (e: any) => toast.error(e?.message || "Failed"),
   });
 

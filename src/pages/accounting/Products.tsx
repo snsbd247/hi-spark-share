@@ -45,7 +45,7 @@ export default function Products() {
   const [search, setSearch] = useState("");
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("products").select("*,categoryRef:categories(name)").order("name");
       return data || [];
@@ -53,7 +53,7 @@ export default function Products() {
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", tenantId],
     queryFn: async () => {
       const { data } = await (db as any).from("categories").select("*").eq("status", "active").order("name");
       return data || [];
@@ -71,7 +71,7 @@ export default function Products() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["products", tenantId] });
       toast.success(editing ? "Product updated" : "Product created");
       closeDialog();
     },
@@ -84,7 +84,7 @@ export default function Products() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["products", tenantId] });
       toast.success("Product deleted");
     },
   });

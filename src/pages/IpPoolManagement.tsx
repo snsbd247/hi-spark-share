@@ -33,7 +33,7 @@ export default function IpPoolManagement() {
   const [form, setForm] = useState(emptyForm);
 
   const { data: pools = [] } = useQuery({
-    queryKey: ["ip-pools"],
+    queryKey: ["ip-pools", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("ip_pools").select("*, mikrotik_routers(name)").order("created_at", { ascending: false });
       if (error) throw error;
@@ -42,7 +42,7 @@ export default function IpPoolManagement() {
   });
 
   const { data: routers = [] } = useQuery({
-    queryKey: ["mikrotik-routers-list"],
+    queryKey: ["mikrotik-routers-list", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("mikrotik_routers").select("id, name, ip_address, status").order("name");
       if (error) throw error;
@@ -63,7 +63,7 @@ export default function IpPoolManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["ip-pools", tenantId] });
       toast.success(t.ipPool.poolCreated);
       setOpen(false);
       setEditingPool(null);
@@ -86,7 +86,7 @@ export default function IpPoolManagement() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["ip-pools", tenantId] });
       toast.success(t.ipPool.poolUpdated || "Pool updated");
       setOpen(false);
       setEditingPool(null);
@@ -100,7 +100,7 @@ export default function IpPoolManagement() {
       const { error } = await db.from("ip_pools").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ip-pools"] }); toast.success(t.ipPool.deleted); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ip-pools", tenantId] }); toast.success(t.ipPool.deleted); },
   });
 
   const handleSyncFromRouter = async (routerId: string) => {
@@ -126,7 +126,7 @@ export default function IpPoolManagement() {
           toast.error(data?.error || t.ipPool.syncFailed);
         }
       }
-      queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["ip-pools", tenantId] });
     } catch (e: any) {
       toast.error(e.message || t.ipPool.syncFailed);
     } finally {

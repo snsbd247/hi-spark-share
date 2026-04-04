@@ -22,7 +22,7 @@ export default function CashFlowStatement() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: transactions = [] } = useQuery({
-    queryKey: ["cashflow-txns", dateFrom, dateTo],
+    queryKey: ["cashflow-txns", dateFrom, dateTo, tenantId],
     queryFn: async () => {
       let q = ( db as any).from("transactions").select("*, account:accounts(name, code, type)");
       if (dateFrom) q = q.gte("date", dateFrom);

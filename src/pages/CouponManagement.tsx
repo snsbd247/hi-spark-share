@@ -24,7 +24,7 @@ export default function CouponManagement() {
   const [form, setForm] = useState({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" });
 
   const { data: coupons = [], isLoading } = useQuery({
-    queryKey: ["coupons"],
+    queryKey: ["coupons", tenantId],
     queryFn: async () => {
       const { data, error } = await db.from("coupons").select("*").order("created_at", { ascending: false });
       if (error) throw error;
@@ -45,7 +45,7 @@ export default function CouponManagement() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success(t.couponPage.couponCreated); setOpen(false); setForm({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons", tenantId] }); toast.success(t.couponPage.couponCreated); setOpen(false); setForm({ code: "", description: "", discount_type: "fixed", discount_value: 0, max_uses: 0, valid_from: "", valid_until: "" }); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -54,7 +54,7 @@ export default function CouponManagement() {
       const { error } = await db.from("coupons").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons"] }); toast.success(t.couponPage.couponDeleted); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["coupons", tenantId] }); toast.success(t.couponPage.couponDeleted); },
   });
 
   const toggleMutation = useMutation({
@@ -62,7 +62,7 @@ export default function CouponManagement() {
       const { error } = await db.from("coupons").update({ is_active }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coupons"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coupons", tenantId] }),
   });
 
   return (

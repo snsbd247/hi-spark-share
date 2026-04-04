@@ -26,7 +26,7 @@ export default function ReceivablePayable() {
 
   // Receivable: unpaid bills
   const { data: bills = [] } = useQuery({
-    queryKey: ["receivable-bills"],
+    queryKey: ["receivable-bills", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("bills").select("*, customer:customers(name, customer_id, phone)").eq("status", "unpaid").order("due_date", { ascending: true });
       return data || [];
@@ -35,7 +35,7 @@ export default function ReceivablePayable() {
 
   // Payable: suppliers with due > 0
   const { data: purchases = [] } = useQuery({
-    queryKey: ["payable-purchases"],
+    queryKey: ["payable-purchases", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("purchases").select("*, supplier:suppliers(name, company, phone)").order("date", { ascending: true });
       return data || [];

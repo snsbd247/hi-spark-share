@@ -31,7 +31,7 @@ export default function ActivityLogs() {
   const [moduleFilter, setModuleFilter] = useState("all");
 
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["activity-logs"],
+    queryKey: ["activity-logs", tenantId],
     queryFn: async () => {
       if (IS_LOVABLE) {
         const { data, error } = await db

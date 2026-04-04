@@ -35,7 +35,7 @@ export default function Expenses() {
   const [search, setSearch] = useState("");
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ["expenses"],
+    queryKey: ["expenses", tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("expenses").select("*").order("date", { ascending: false });
       return data || [];
@@ -55,9 +55,9 @@ export default function Expenses() {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["expenses"] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses", tenantId] });
+      qc.invalidateQueries({ queryKey: ["transactions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["all-transactions-summary", tenantId] });
       toast.success(editing ? "Expense updated" : "Expense recorded & posted to ledger");
       closeDialog();
     },
@@ -100,9 +100,9 @@ export default function Expenses() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["expenses"] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["all-transactions-summary"] });
+      qc.invalidateQueries({ queryKey: ["expenses", tenantId] });
+      qc.invalidateQueries({ queryKey: ["transactions", tenantId] });
+      qc.invalidateQueries({ queryKey: ["all-transactions-summary", tenantId] });
       toast.success("Expense deleted & ledger reversed");
     },
   });

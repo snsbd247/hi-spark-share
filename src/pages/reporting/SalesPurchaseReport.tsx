@@ -25,7 +25,7 @@ export default function SalesPurchaseReport() {
   const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: sales = [] } = useQuery({
-    queryKey: ["sales-report", dateFrom, dateTo],
+    queryKey: ["sales-report", dateFrom, dateTo, tenantId],
     queryFn: async () => {
       let q = ( db as any).from("sales").select("*");
       if (dateFrom) q = q.gte("sale_date", dateFrom);
@@ -36,7 +36,7 @@ export default function SalesPurchaseReport() {
   });
 
   const { data: purchases = [] } = useQuery({
-    queryKey: ["purchases-report", dateFrom, dateTo],
+    queryKey: ["purchases-report", dateFrom, dateTo, tenantId],
     queryFn: async () => {
       let q = ( db as any).from("purchases").select("*, supplier:suppliers(name)");
       if (dateFrom) q = q.gte("date", dateFrom);

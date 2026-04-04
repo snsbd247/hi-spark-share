@@ -24,7 +24,7 @@ export default function Daybook() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["daybook", date],
+    queryKey: ["daybook", date, tenantId],
     queryFn: async () => {
       const { data } = await ( db as any).from("transactions")
         .select("*, account:accounts(id, name, code, type)")
