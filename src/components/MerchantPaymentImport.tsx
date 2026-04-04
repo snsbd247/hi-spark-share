@@ -70,6 +70,7 @@ function downloadTemplate() {
 type Step = "upload" | "preview" | "result";
 
 export default function MerchantPaymentImport({ open, onOpenChange, onComplete }: Props) {
+  const tenantId = useTenantId();
   const [step, setStep] = useState<Step>("upload");
   const [importing, setImporting] = useState(false);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
