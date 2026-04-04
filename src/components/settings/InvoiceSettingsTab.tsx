@@ -41,12 +41,14 @@ export default function InvoiceSettingsTab() {
   const [settings, setSettings] = useState<InvoiceSettings>(DEFAULT_SETTINGS);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["invoice-settings-all"],
+    queryKey: ["invoice-settings-all", tenantId],
     queryFn: async () => {
-      const { data, error } = await (db as any)
+      let q = (db as any)
         .from("system_settings")
         .select("setting_key, setting_value")
         .like("setting_key", "invoice_%");
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data, error } = await q;
       if (error) throw error;
       const map: Record<string, string> = {};
       (data || []).forEach((r: any) => { map[r.setting_key] = r.setting_value; });
