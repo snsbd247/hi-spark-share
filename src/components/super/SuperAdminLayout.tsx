@@ -216,7 +216,10 @@ export default function SuperAdminLayout() {
           <Shield className="h-3.5 w-3.5 text-primary-foreground" />
         </div>
         <span className="font-bold text-sm text-sidebar-foreground">Super Admin</span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground" onClick={toggleLang}>
+            <Languages className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground" onClick={toggleTheme}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
