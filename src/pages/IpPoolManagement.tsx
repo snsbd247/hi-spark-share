@@ -111,7 +111,7 @@ export default function IpPoolManagement() {
         const router = routers.find((r: any) => r.id === routerId);
         if (!router) throw new Error("Router not found");
         const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/sync-ip-pools', {
-          body: { router_id: routerId, ip_address: router.ip_address },
+          body: { router_id: routerId, ip_address: router.ip_address, tenant_id: tenantId },
         });
         if (error) throw error;
         if (data?.success) {
@@ -120,7 +120,7 @@ export default function IpPoolManagement() {
           toast.error(data?.error || t.ipPool.syncFailed);
         }
       } else {
-        const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: routerId });
+        const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: routerId, tenant_id: tenantId });
         if (data?.success) {
           toast.success(`${data.synced} ${t.ipPool.syncSuccess}`);
         } else {

@@ -60,7 +60,7 @@ export default function Customers() {
         const router = routerData?.[0];
         if (!router) { toast.error("কোনো রাউটার কনফিগার করা নেই"); setBulkSyncing(false); return; }
         const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/sync-all', {
-          body: { router_id: router.id, ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port },
+          body: { router_id: router.id, ip_address: router.ip_address, username: router.username, password: router.password, api_port: router.api_port, tenant_id: tenantId },
         });
         if (error) throw error;
         if (data?.success) {
@@ -81,7 +81,7 @@ export default function Customers() {
           }
         } else toast.error(data?.error || "Sync failed");
       } else {
-        const res = await api.post('/mikrotik/sync-all', {});
+        const res = await api.post('/mikrotik/sync-all', { tenant_id: tenantId });
         const data = res.data;
         if (data.success) {
           const r = data.results;

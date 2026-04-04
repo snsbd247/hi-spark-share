@@ -739,12 +739,15 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST" && path === "bulk-sync-packages") {
       const body = await req.json().catch(() => ({}));
       const requestedRouterId = body?.router_id || null;
+      const tenantId = body?.tenant_id || null;
       const providedRouter = getProvidedRouter(body);
       const supabase = getSupabaseAdmin();
-      const { data: packages } = await supabase
+      let pkgQuery = supabase
         .from("packages")
         .select("*")
         .eq("is_active", true);
+      if (tenantId) pkgQuery = pkgQuery.eq("tenant_id", tenantId);
+      const { data: packages } = await pkgQuery;
 
       let routers = providedRouter ? [providedRouter] : null;
       if (!routers) {
@@ -852,7 +855,7 @@ Deno.serve(async (req: Request) => {
 
                 const speedLabel = downloadSpeed > 0 ? `${downloadSpeed} Mbps` : pName;
 
-                const { error: insertErr } = await supabase.from("packages").insert({
+                const insertData: any = {
                   name: pName,
                   speed: speedLabel,
                   monthly_price: 0,
@@ -861,7 +864,9 @@ Deno.serve(async (req: Request) => {
                   mikrotik_profile_name: pName,
                   router_id: routerId,
                   is_active: true,
-                });
+                };
+                if (tenantId) insertData.tenant_id = tenantId;
+                const { error: insertErr } = await supabase.from("packages").insert(insertData);
 
                 if (insertErr) {
                   if (insertErr.message?.includes("duplicate")) continue;
@@ -934,6 +939,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST" && path === "sync-all") {
       const body = await req.json().catch(() => ({}));
       const requestedRouterId = body?.router_id || null;
+      const tenantId = body?.tenant_id || null;
       const providedRouter = getProvidedRouter(body);
       const supabase = getSupabaseAdmin();
 
@@ -979,8 +985,10 @@ Deno.serve(async (req: Request) => {
       let failed = 0;
       const errors: string[] = [];
 
-      // Get all packages for profile mapping
-      const { data: packageRows } = await supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed, router_id");
+      // Get all packages for profile mapping (tenant-scoped)
+      let pkgQuery = supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed, router_id");
+      if (tenantId) pkgQuery = pkgQuery.eq("tenant_id", tenantId);
+      const { data: packageRows } = await pkgQuery;
       const allPackages = requestedRouterId
         ? (packageRows || []).filter((pkg: any) => !pkg.router_id || pkg.router_id === requestedRouterId)
         : packageRows;
@@ -1018,7 +1026,8 @@ Deno.serve(async (req: Request) => {
 
             // ── Step 3: Get all software customers for this router ──
             const routerFilter = requestedRouterId || (router.id !== "env-default" && router.id !== "provided-router" ? router.id : null);
-            let query = supabase.from("customers").select("id, pppoe_username, pppoe_password, router_id, name, status, package_id").neq("status", "disconnected");
+            let query = supabase.from("customers").select("id, pppoe_username, pppoe_password, router_id, name, status, package_id, tenant_id").neq("status", "disconnected");
+            if (tenantId) query = query.eq("tenant_id", tenantId);
             if (routerFilter) {
               query = query.eq("router_id", routerFilter);
             }
@@ -1112,6 +1121,9 @@ Deno.serve(async (req: Request) => {
                 if (routerFilter) {
                   newCustomer.router_id = routerFilter;
                 }
+                if (tenantId) {
+                  newCustomer.tenant_id = tenantId;
+                }
 
                 const { error: insertErr } = await supabase.from("customers").insert(newCustomer);
                 if (insertErr) {
@@ -1151,6 +1163,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST" && path === "sync-ip-pools") {
       const body = await req.json().catch(() => ({}));
       const routerId = body?.router_id;
+      const tenantId = body?.tenant_id || null;
       if (!routerId) return jsonResponse({ success: false, error: "Missing router_id" }, 400);
 
       const supabase = getSupabaseAdmin();
@@ -1203,11 +1216,13 @@ Deno.serve(async (req: Request) => {
               total_ips: totalIps, mikrotik_id: mikrotikId, status: "active",
             }).eq("id", existing.id);
           } else {
-            await supabase.from("ip_pools").insert({
+            const insertData: any = {
               name, router_id: routerId, ranges, subnet: subnet || ranges,
               start_ip: startIp, end_ip: endIp, total_ips: totalIps,
               mikrotik_id: mikrotikId, status: "active", used_ips: 0,
-            });
+            };
+            if (tenantId) insertData.tenant_id = tenantId;
+            await supabase.from("ip_pools").insert(insertData);
           }
           synced++;
         }
