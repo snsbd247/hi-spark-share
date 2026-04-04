@@ -177,7 +177,7 @@ export async function generatePaymentReceiptPDF(payment: any, customer: any, inv
 }
 
 // ─── Customer Application Form PDF ───
-export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
+export function generateCustomerPDF(customer: any, invoiceFooter?: string, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = 14;
@@ -191,7 +191,7 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   doc.setTextColor(...PDF_COLORS.white);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Smart ISP", m, 14);
+  doc.text(companyName, m, 14);
   doc.setFontSize(PDF_FONT.small);
   doc.setFont("helvetica", "normal");
   doc.text("Internet Service Provider", m, 20);
