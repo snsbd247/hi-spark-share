@@ -42,6 +42,12 @@ class Kernel extends ConsoleKernel
         // ── Accounting / Reports ─────────────────────────
         // Calculate daily profit at end of day (11:55 PM)
         $schedule->command('reports:daily-profit')->dailyAt('23:55');
+
+        // ── Auto Backup ──────────────────────────────────
+        // Daily auto backup at 2:30 AM
+        $schedule->command('backup:auto')->dailyAt('02:30');
+        // Weekly full backup on Sunday at 3 AM
+        $schedule->command('backup:auto')->weeklyOn(0, '03:00');
     }
 
     /**
