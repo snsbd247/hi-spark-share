@@ -466,6 +466,11 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::delete('/fiber-topology/splices/{id}', [\App\Http\Controllers\Api\FiberTopologyController::class, 'deleteSplice']);
 
     // ══════════════════════════════════════════════════════
+    // ── RESELLER IMPERSONATION — module: resellers ──────
+    // ══════════════════════════════════════════════════════
+    Route::post('/reseller/{resellerId}/impersonate', [\App\Http\Controllers\Api\ResellerImpersonationController::class, 'impersonate']);
+
+    // ══════════════════════════════════════════════════════
     // ── GENERIC CRUD — catches remaining tables ─────────
     // ══════════════════════════════════════════════════════
     Route::get('/{table}', [GenericCrudController::class, 'index']);
