@@ -63,7 +63,7 @@ export default function ResellerCustomers() {
   const { data: packages = [] } = useQuery({
     queryKey: ["reseller-packages", reseller?.tenant_id, allowAll, assignedPkgIds],
     queryFn: async () => {
-      let q = (db as any).from("packages").select("id, name, price").eq("tenant_id", reseller!.tenant_id).eq("status", "active").order("name");
+      let q = (db as any).from("packages").select("id, name, monthly_price").eq("tenant_id", reseller!.tenant_id).eq("is_active", true).order("name");
       // If not allow_all, filter by assigned packages only
       if (!allowAll && assignedPkgIds && assignedPkgIds.length > 0) {
         q = q.in("id", assignedPkgIds);
@@ -72,7 +72,7 @@ export default function ResellerCustomers() {
         return [];
       }
       const { data } = await q;
-      return data || [];
+      return (data || []).map((p: any) => ({ ...p, price: p.monthly_price }));
     },
     enabled: !!reseller?.tenant_id && (allowAll || assignedPkgIds !== undefined),
   });
