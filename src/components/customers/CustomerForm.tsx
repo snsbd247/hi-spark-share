@@ -124,6 +124,17 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
     },
   });
 
+  // Fetch resellers for tenant (assignment/migration)
+  const { data: resellers } = useQuery({
+    queryKey: ["resellers-for-assign", tenantId],
+    queryFn: async () => {
+      const { data, error } = await (db as any).from("resellers").select("id, company_name, contact_person").eq("tenant_id", tenantId).eq("status", "active").order("company_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tenantId,
+  });
+
   // ─── Geo data from DB (cascading) ───
   const [divisionId, setDivisionId] = useState("");
   const [districtId, setDistrictId] = useState("");
