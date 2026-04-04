@@ -14,6 +14,7 @@ import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings, Ch
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
+import { syncCustomerPppoe, toggleCustomerPppoe } from "@/lib/mikrotikClient";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
 import { useGeoDivisions, useGeoDistricts, useGeoUpazilas, useGeoDivisionByName, useGeoDistrictByName } from "@/hooks/useGeoData";
 
@@ -21,8 +22,6 @@ interface CustomerFormProps {
   customer?: any;
   onSuccess: () => void;
 }
-
-import api from "@/lib/api";
 
 // --- Section wrapper ---
 function FormSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
@@ -169,8 +168,19 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
 
   const syncPPPoE = async (customerId: string) => {
     try {
-      console.log("[MikroTik Sync] Calling /mikrotik/sync for customer:", customerId);
-      const { data } = await api.post(`/mikrotik/sync`, { customer_id: customerId });
+      const pkg = packages?.find((p) => p.id === form.package_id);
+      console.log("[MikroTik Sync] Syncing PPPoE for customer:", customerId);
+      const data = await syncCustomerPppoe({
+        customerId,
+        pppoeUsername: form.pppoe_username,
+        pppoePassword: form.pppoe_password,
+        profileName: pkg?.mikrotik_profile_name || pkg?.name || "default",
+        routerId: form.router_id || null,
+        oldPppoeUsername: customer?.pppoe_username || null,
+        customerCode: customer?.customer_id || null,
+        customerName: form.name,
+        isEdit,
+      });
       console.log("[MikroTik Sync] Response:", JSON.stringify(data));
       if (data.success) {
         toast.success(`PPPoE synced to MikroTik successfully`);
@@ -295,11 +305,19 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
         if (customer.status !== form.status && form.pppoe_username && form.router_id) {
           if (form.status === "suspended" || form.status === "disconnected") {
             try {
-              await api.post('/mikrotik/disable-pppoe', { pppoe_username: form.pppoe_username, router_id: form.router_id, customer_id: customer.id });
+              await toggleCustomerPppoe("disable-pppoe", {
+                customerId: customer.id,
+                pppoeUsername: form.pppoe_username,
+                routerId: form.router_id,
+              });
             } catch { /* handled by edge function */ }
           } else if (form.status === "active" && (customer.status === "suspended" || customer.status === "disconnected")) {
             try {
-              await api.post('/mikrotik/enable-pppoe', { pppoe_username: form.pppoe_username, router_id: form.router_id, customer_id: customer.id });
+              await toggleCustomerPppoe("enable-pppoe", {
+                customerId: customer.id,
+                pppoeUsername: form.pppoe_username,
+                routerId: form.router_id,
+              });
             } catch { /* handled by edge function */ }
           }
         }
