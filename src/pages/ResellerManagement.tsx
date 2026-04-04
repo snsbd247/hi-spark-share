@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Search, Users, Edit, Wallet, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Plus, Search, Users, Edit, Wallet, Trash2, Calculator, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import bcrypt from "bcryptjs";
 
 interface ResellerForm {
@@ -42,11 +44,28 @@ export default function ResellerManagement() {
   const [walletAmount, setWalletAmount] = useState("");
   const [walletNote, setWalletNote] = useState("");
   const [form, setForm] = useState<ResellerForm>(emptyForm);
+  const [commissionMonth, setCommissionMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const { data: resellers = [], isLoading } = useQuery({
     queryKey: ["resellers", tenantId],
     queryFn: async () => {
       let q = (db as any).from("resellers").select("*").order("name");
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: commissions = [], isLoading: loadingComm } = useQuery({
+    queryKey: ["reseller-commissions", tenantId],
+    queryFn: async () => {
+      let q = (db as any).from("reseller_commissions")
+        .select("*, resellers(name, company_name)")
+        .order("month", { ascending: false });
       if (tenantId) q = q.eq("tenant_id", tenantId);
       const { data, error } = await q;
       if (error) throw error;
@@ -135,6 +154,105 @@ export default function ResellerManagement() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  // Calculate and generate commissions for all resellers for a given month
+  const generateCommissions = useMutation({
+    mutationFn: async () => {
+      if (!commissionMonth) throw new Error("Select a month");
+
+      for (const r of resellers) {
+        if (r.status !== "active") continue;
+        const rate = parseFloat(r.commission_rate) || 0;
+        if (rate <= 0) continue;
+
+        // Get total billing of reseller's customers for this month
+        const { data: custIds } = await (db as any)
+          .from("customers")
+          .select("id")
+          .eq("reseller_id", r.id);
+
+        if (!custIds || custIds.length === 0) continue;
+
+        const ids = custIds.map((c: any) => c.id);
+        const { data: bills } = await (db as any)
+          .from("bills")
+          .select("amount, paid_amount")
+          .in("customer_id", ids)
+          .eq("month", commissionMonth);
+
+        const totalBilling = (bills || []).reduce((s: number, b: any) => s + (parseFloat(b.paid_amount) || 0), 0);
+        const commissionAmount = (totalBilling * rate) / 100;
+
+        if (totalBilling <= 0) continue;
+
+        // Upsert commission record
+        const { data: existing } = await (db as any)
+          .from("reseller_commissions")
+          .select("id")
+          .eq("reseller_id", r.id)
+          .eq("month", commissionMonth)
+          .maybeSingle();
+
+        if (existing) {
+          await (db as any).from("reseller_commissions").update({
+            total_billing: totalBilling,
+            commission_rate: rate,
+            commission_amount: commissionAmount,
+            updated_at: new Date().toISOString(),
+          }).eq("id", existing.id);
+        } else {
+          await (db as any).from("reseller_commissions").insert({
+            reseller_id: r.id,
+            tenant_id: tenantId,
+            month: commissionMonth,
+            total_billing: totalBilling,
+            commission_rate: rate,
+            commission_amount: commissionAmount,
+            status: "pending",
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success(`Commissions calculated for ${commissionMonth}`);
+      queryClient.invalidateQueries({ queryKey: ["reseller-commissions"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Pay a commission (add to reseller wallet)
+  const payCommission = useMutation({
+    mutationFn: async (comm: any) => {
+      const r = resellers.find((rs: any) => rs.id === comm.reseller_id);
+      if (!r) throw new Error("Reseller not found");
+
+      const amount = parseFloat(comm.commission_amount);
+      const newBalance = parseFloat(r.wallet_balance) + amount;
+
+      await (db as any).from("reseller_wallet_transactions").insert({
+        reseller_id: r.id,
+        tenant_id: tenantId,
+        type: "credit",
+        amount,
+        balance_after: newBalance,
+        description: `Commission payout for ${comm.month}`,
+      });
+
+      await (db as any).from("resellers")
+        .update({ wallet_balance: newBalance, updated_at: new Date().toISOString() })
+        .eq("id", r.id);
+
+      await (db as any).from("reseller_commissions")
+        .update({ status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", comm.id);
+    },
+    onSuccess: () => {
+      toast.success("Commission paid to wallet");
+      queryClient.invalidateQueries({ queryKey: ["reseller-commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["resellers"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const openEdit = (r: any) => {
     setEditId(r.id);
     setForm({
@@ -145,11 +263,7 @@ export default function ResellerManagement() {
     setDialogOpen(true);
   };
 
-  const openAdd = () => {
-    setEditId(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  };
+  const openAdd = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
 
   const filtered = resellers.filter((r: any) =>
     r.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -163,7 +277,7 @@ export default function ResellerManagement() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6 text-primary" /> Reseller Management</h1>
-            <p className="text-muted-foreground mt-1">Manage your resellers and their wallets</p>
+            <p className="text-muted-foreground mt-1">Manage resellers, wallets, and commissions</p>
           </div>
           <div className="flex gap-2">
             <div className="relative">
@@ -174,58 +288,148 @@ export default function ResellerManagement() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : filtered.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12">No resellers found</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Wallet</TableHead>
-                      <TableHead>Commission</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.name}</TableCell>
-                        <TableCell>{r.company_name || "—"}</TableCell>
-                        <TableCell>{r.phone || "—"}</TableCell>
-                        <TableCell>{r.email || "—"}</TableCell>
-                        <TableCell className="font-medium">৳{parseFloat(r.wallet_balance).toLocaleString()}</TableCell>
-                        <TableCell>{r.commission_rate}%</TableCell>
-                        <TableCell>
-                          <Badge variant={r.status === "active" ? "default" : "destructive"}>{r.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="outline" size="sm" onClick={() => { setSelectedReseller(r); setWalletDialogOpen(true); }}>
-                              <Wallet className="h-3.5 w-3.5 mr-1" /> Add Balance
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => {
-                              if (confirm(`Delete reseller "${r.name}"?`)) deleteMutation.mutate(r.id);
-                            }}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="resellers">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="resellers"><Users className="h-4 w-4 mr-1.5" />Resellers</TabsTrigger>
+            <TabsTrigger value="commissions"><Calculator className="h-4 w-4 mr-1.5" />Commissions</TabsTrigger>
+          </TabsList>
+
+          {/* Resellers Tab */}
+          <TabsContent value="resellers" className="mt-4">
+            <Card>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : filtered.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-12">No resellers found</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Company</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Wallet</TableHead>
+                          <TableHead>Commission</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map((r: any) => (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">{r.name}</TableCell>
+                            <TableCell>{r.company_name || "—"}</TableCell>
+                            <TableCell>{r.phone || "—"}</TableCell>
+                            <TableCell>{r.email || "—"}</TableCell>
+                            <TableCell className="font-medium">৳{parseFloat(r.wallet_balance).toLocaleString()}</TableCell>
+                            <TableCell>{r.commission_rate}%</TableCell>
+                            <TableCell>
+                              <Badge variant={r.status === "active" ? "default" : "destructive"}>{r.status}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="outline" size="sm" onClick={() => { setSelectedReseller(r); setWalletDialogOpen(true); }}>
+                                  <Wallet className="h-3.5 w-3.5 mr-1" /> Add Balance
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => {
+                                  if (confirm(`Delete reseller "${r.name}"?`)) deleteMutation.mutate(r.id);
+                                }}><Trash2 className="h-4 w-4" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Commissions Tab */}
+          <TabsContent value="commissions" className="mt-4 space-y-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row items-end gap-3">
+                  <div className="space-y-1.5 flex-1">
+                    <Label>Month</Label>
+                    <Input type="month" value={commissionMonth} onChange={(e) => setCommissionMonth(e.target.value)} />
+                  </div>
+                  <Button onClick={() => generateCommissions.mutate()} disabled={generateCommissions.isPending}>
+                    {generateCommissions.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Calculator className="h-4 w-4 mr-2" />}
+                    Calculate Commissions
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  This will calculate commission for all active resellers based on their customers' paid bills for the selected month.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Commission Records</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                {loadingComm ? (
+                  <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+                ) : commissions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-12">No commission records yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Reseller</TableHead>
+                          <TableHead>Month</TableHead>
+                          <TableHead>Total Billing</TableHead>
+                          <TableHead>Rate</TableHead>
+                          <TableHead>Commission</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {commissions.map((c: any) => (
+                          <TableRow key={c.id}>
+                            <TableCell className="font-medium">{c.resellers?.name || "—"}</TableCell>
+                            <TableCell>{c.month}</TableCell>
+                            <TableCell>৳{parseFloat(c.total_billing).toLocaleString()}</TableCell>
+                            <TableCell>{c.commission_rate}%</TableCell>
+                            <TableCell className="font-medium text-primary">৳{parseFloat(c.commission_amount).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge variant={c.status === "paid" ? "default" : "secondary"}>
+                                {c.status === "paid" ? "Paid" : "Pending"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {c.status === "pending" && (
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  if (confirm(`Pay ৳${parseFloat(c.commission_amount).toLocaleString()} commission to wallet?`)) {
+                                    payCommission.mutate(c);
+                                  }
+                                }} disabled={payCommission.isPending}>
+                                  <CheckCircle className="h-3.5 w-3.5 mr-1" /> Pay to Wallet
+                                </Button>
+                              )}
+                              {c.status === "paid" && c.paid_at && (
+                                <span className="text-xs text-muted-foreground">
+                                  Paid {format(new Date(c.paid_at), "dd MMM yyyy")}
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Add/Edit Dialog */}

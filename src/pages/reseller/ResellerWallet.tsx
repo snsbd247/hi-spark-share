@@ -80,7 +80,7 @@ export default function ResellerWallet() {
                             {t.type}
                           </Badge>
                         </TableCell>
-                        <TableCell className={t.type === "credit" ? "text-emerald-600 font-medium" : "text-destructive font-medium"}>
+                        <TableCell className={t.type === "credit" ? "text-primary font-medium" : "text-destructive font-medium"}>
                           {t.type === "credit" ? "+" : "-"}৳{parseFloat(t.amount).toLocaleString()}
                         </TableCell>
                         <TableCell>৳{parseFloat(t.balance_after).toLocaleString()}</TableCell>
