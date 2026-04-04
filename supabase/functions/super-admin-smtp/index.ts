@@ -168,7 +168,9 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "SMTP settings are not configured yet" }, 400);
       }
 
-      const smtpPassword = smtp.password || "";
+      // Gmail app passwords are displayed with spaces but must be used without them
+      const rawPassword = smtp.password || "";
+      const smtpPassword = smtp.host?.includes("gmail") ? rawPassword.replace(/\s/g, '') : rawPassword;
       if (!smtpPassword) {
         return jsonResponse({ error: "SMTP password is missing" }, 400);
       }
