@@ -3,7 +3,7 @@ import { formatAddress } from "./bangladeshGeo";
 import { format } from "date-fns";
 import {
   PDF_COLORS, PDF_FONT, PDF_SPACING,
-  getCompanySettings, getInvoiceSettings,
+  getTenantCompanySettings, getInvoiceSettings,
   drawFooter, getPaymentMethodLines, fmtAmount,
 } from "./pdfTheme";
 import { db } from "@/integrations/supabase/client";
@@ -22,11 +22,12 @@ async function getPreviousBalance(customerId: string, billMonth: string): Promis
   } catch { return 0; }
 }
 
-export async function generateBillInvoicePDF(bill: any, customer: any) {
-  const [settings, invoiceSettings] = await Promise.all([getCompanySettings(), getInvoiceSettings()]);
-  const companyName = settings?.site_name || "Smart ISP";
+export async function generateBillInvoicePDF(bill: any, customer: any, tenantId?: string | null) {
+  const resolvedTenantId = tenantId || customer?.tenant_id || null;
+  const [settings, invoiceSettings] = await Promise.all([getTenantCompanySettings(resolvedTenantId), getInvoiceSettings()]);
+  const companyName = settings?.company_name || settings?.site_name || "Smart ISP";
   const companyAddress = settings?.address || "";
-  const companyPhone = settings?.mobile || settings?.support_phone || "";
+  const companyPhone = settings?.phone || settings?.mobile || settings?.support_phone || "";
   const companyEmail = settings?.email || settings?.support_email || "";
   const previousBalance = await getPreviousBalance(customer?.id || bill.customer_id, bill.month);
 

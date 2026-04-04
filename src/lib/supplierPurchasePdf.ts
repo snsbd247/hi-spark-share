@@ -2,13 +2,13 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { PDF_COLORS, PDF_FONT, PDF_SPACING, drawCompanyHeader, drawSectionHeader, drawFooter, fmtCurrency } from "./pdfTheme";
 
-export function generateSupplierPurchaseInvoicePDF(purchase: any, supplier: any, items: any[]) {
+export function generateSupplierPurchaseInvoicePDF(purchase: any, supplier: any, items: any[], companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: "PURCHASE INVOICE",
     docMeta: [

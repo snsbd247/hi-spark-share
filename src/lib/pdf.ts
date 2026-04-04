@@ -1,18 +1,19 @@
 import jsPDF from "jspdf";
 import {
   PDF_COLORS, PDF_FONT, PDF_SPACING,
-  getCompanySettings, getInvoiceSettings,
+  getTenantCompanySettings, getInvoiceSettings,
   drawFooter, getPaymentMethodLines,
 } from "./pdfTheme";
 import { db } from "@/integrations/supabase/client";
 import { formatAddress, formatPermanentAddress } from "./bangladeshGeo";
 
 // ─── Payment Receipt ───
-export async function generatePaymentReceiptPDF(payment: any, customer: any, invoiceFooter?: string) {
-  const [settings, invoiceSettings] = await Promise.all([getCompanySettings(), getInvoiceSettings()]);
-  const companyName = settings?.site_name || "Smart ISP";
+export async function generatePaymentReceiptPDF(payment: any, customer: any, invoiceFooter?: string, tenantId?: string | null) {
+  const resolvedTenantId = tenantId || customer?.tenant_id || null;
+  const [settings, invoiceSettings] = await Promise.all([getTenantCompanySettings(resolvedTenantId), getInvoiceSettings()]);
+  const companyName = settings?.company_name || settings?.site_name || "Smart ISP";
   const companyAddress = settings?.address || "";
-  const companyPhone = settings?.mobile || settings?.support_phone || "";
+  const companyPhone = settings?.phone || settings?.mobile || settings?.support_phone || "";
   const companyEmail = settings?.email || settings?.support_email || "";
   const techSupport = invoiceSettings.invoice_tech_support || settings?.support_phone || companyPhone || "";
 
@@ -176,7 +177,7 @@ export async function generatePaymentReceiptPDF(payment: any, customer: any, inv
 }
 
 // ─── Customer Application Form PDF ───
-export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
+export function generateCustomerPDF(customer: any, invoiceFooter?: string, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = 14;
@@ -190,7 +191,7 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   doc.setTextColor(...PDF_COLORS.white);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("Smart ISP", m, 14);
+  doc.text(companyName, m, 14);
   doc.setFontSize(PDF_FONT.small);
   doc.setFont("helvetica", "normal");
   doc.text("Internet Service Provider", m, 20);
@@ -318,7 +319,7 @@ export function generateCustomerPDF(customer: any, invoiceFooter?: string) {
   doc.setFontSize(PDF_FONT.tiny);
   doc.setTextColor(...PDF_COLORS.textLight);
   doc.text(invoiceFooter || "I hereby declare that all information provided above is correct.", m, y);
-  doc.text(`Generated on ${new Date().toLocaleDateString()} - Smart ISP Billing System`, pw / 2, 288, { align: "center" });
+  doc.text(`Generated on ${new Date().toLocaleDateString()} - ${companyName} Billing System`, pw / 2, 288, { align: "center" });
 
   doc.save(`${customer.customer_id || "customer"}-application-form.pdf`);
 }

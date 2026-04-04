@@ -4,13 +4,13 @@ import { PDF_COLORS, PDF_FONT, PDF_SPACING, drawCompanyHeader, drawSectionHeader
 // ═══════════════════════════════════════════════════════════════
 // Payment Advice
 // ═══════════════════════════════════════════════════════════════
-export function generatePaymentAdvicePDF(supplier: any, payment: any, remainingDue: number) {
+export function generatePaymentAdvicePDF(supplier: any, payment: any, remainingDue: number, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: "PAYMENT ADVICE",
     docMeta: [`Date: ${new Date(payment.paid_date || payment.date || new Date()).toLocaleDateString("en-GB")}`],
@@ -72,14 +72,15 @@ interface MonthlyPLRow { month: string; income: number; expense: number; profit:
 
 export function generateProfitLossPDF(
   data: MonthlyPLRow[], year: string,
-  totals: { income: number; expense: number; profit: number }
+  totals: { income: number; expense: number; profit: number },
+  companyName = "Smart ISP"
 ) {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: `Financial Year: ${year}`,
     docTitle: "PROFIT & LOSS STATEMENT",
     docMeta: [`Generated: ${new Date().toLocaleDateString("en-GB")}`],
@@ -152,13 +153,13 @@ export function generateProfitLossPDF(
 // ═══════════════════════════════════════════════════════════════
 // Purchase Invoice
 // ═══════════════════════════════════════════════════════════════
-export function generatePurchaseInvoicePDF(purchase: any, supplier?: any) {
+export function generatePurchaseInvoicePDF(purchase: any, supplier?: any, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: "PURCHASE INVOICE",
     docMeta: [`Invoice: ${purchase.purchase_no || "-"}`, `Date: ${purchase.date ? new Date(purchase.date).toLocaleDateString("en-GB") : "-"}`],
@@ -243,13 +244,13 @@ export function generatePurchaseInvoicePDF(purchase: any, supplier?: any) {
 // ═══════════════════════════════════════════════════════════════
 // Sales Invoice
 // ═══════════════════════════════════════════════════════════════
-export function generateSalesInvoicePDF(sale: any) {
+export function generateSalesInvoicePDF(sale: any, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: "SALES INVOICE",
     docMeta: [`Invoice: ${sale.invoice_number || sale.sale_no || "-"}`, `Date: ${sale.sale_date || "-"}`],
@@ -339,7 +340,7 @@ export function generateSalesInvoicePDF(sale: any) {
 // ═══════════════════════════════════════════════════════════════
 // Transaction Voucher
 // ═══════════════════════════════════════════════════════════════
-export function generateTransactionVoucherPDF(txn: any, account?: any) {
+export function generateTransactionVoucherPDF(txn: any, account?: any, companyName = "Smart ISP") {
   const doc = new jsPDF();
   const pw = doc.internal.pageSize.getWidth();
   const m = PDF_SPACING.margin;
@@ -350,7 +351,7 @@ export function generateTransactionVoucherPDF(txn: any, account?: any) {
     : "Transaction Voucher";
 
   let y = drawCompanyHeader(doc, {
-    companyName: "Smart ISP",
+    companyName,
     subtitle: "Internet Service Provider",
     docTitle: voucherType.toUpperCase(),
     docMeta: [

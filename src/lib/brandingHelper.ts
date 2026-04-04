@@ -1,7 +1,9 @@
 import { db } from "@/integrations/supabase/client";
 
 // ═══════════════════════════════════════════════════════════════
-// Global Branding Helper — White-label SaaS branding system
+// Global Branding Helper — Super Admin controlled system branding
+// Used for: Login page, Sidebar, Footer, Dashboard UI
+// NOT for invoices/reports/PDFs — use tenantBranding.ts instead
 // ═══════════════════════════════════════════════════════════════
 
 export interface BrandingData {
