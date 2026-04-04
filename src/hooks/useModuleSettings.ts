@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId } from "@/hooks/useTenantId";
 
 export interface ModuleConfig {
   key: string;
@@ -33,6 +34,7 @@ const SETTING_KEY = "enabled_modules";
 
 export function useModuleSettings() {
   const queryClient = useQueryClient();
+  const tenantId = useTenantId();
 
   // Fetch modules from DB dynamically
   const { data: dbModules } = useQuery({
@@ -62,13 +64,14 @@ export function useModuleSettings() {
     : ALL_MODULES;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["module-settings"],
+    queryKey: ["module-settings", tenantId],
     queryFn: async () => {
-      const { data, error } = await (db as any)
+      let q = (db as any)
         .from("system_settings")
         .select("setting_value")
-        .eq("setting_key", SETTING_KEY)
-        .maybeSingle();
+        .eq("setting_key", SETTING_KEY);
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data, error } = await q.maybeSingle();
 
       if (error || !data?.setting_value) {
         return resolvedModules.map((m) => m.key);
@@ -91,16 +94,16 @@ export function useModuleSettings() {
 
   const updateModules = useMutation({
     mutationFn: async (modules: string[]) => {
+      const payload: any = {
+        setting_key: SETTING_KEY,
+        setting_value: JSON.stringify(modules),
+        updated_at: new Date().toISOString(),
+      };
+      if (tenantId) payload.tenant_id = tenantId;
+
       const { error } = await (db as any)
         .from("system_settings")
-        .upsert(
-          [{
-            setting_key: SETTING_KEY,
-            setting_value: JSON.stringify(modules),
-            updated_at: new Date().toISOString(),
-          }],
-          { onConflict: "setting_key" }
-        );
+        .upsert([payload], { onConflict: "setting_key,tenant_id" });
 
       if (error) throw error;
     },

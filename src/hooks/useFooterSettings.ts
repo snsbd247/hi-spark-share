@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId } from "@/hooks/useTenantId";
 
 export interface FooterSettings {
   footer_text: string;
@@ -22,10 +23,11 @@ const DEFAULTS: FooterSettings = {
 };
 
 export function useFooterSettings() {
+  const tenantId = useTenantId();
   return useQuery({
-    queryKey: ["footer-settings"],
+    queryKey: ["footer-settings", tenantId],
     queryFn: async (): Promise<FooterSettings> => {
-      const { data, error } = await (db as any)
+      let q = (db as any)
         .from("system_settings")
         .select("setting_key, setting_value")
         .in("setting_key", [
@@ -33,6 +35,8 @@ export function useFooterSettings() {
           "footer_developer", "system_version", "auto_update_year",
           "branding_copyright_text",
         ]);
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data, error } = await q;
       if (error) throw error;
 
       const map: Record<string, string> = {};
