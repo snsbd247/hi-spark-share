@@ -128,7 +128,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
   const { data: resellers } = useQuery({
     queryKey: ["resellers-for-assign", tenantId],
     queryFn: async () => {
-      const { data, error } = await (db as any).from("resellers").select("id, company_name, contact_person").eq("tenant_id", tenantId).eq("status", "active").order("company_name");
+      const { data, error } = await (db as any).from("resellers").select("id, company_name, name").eq("tenant_id", tenantId).eq("status", "active").order("company_name");
       if (error) throw error;
       return data || [];
     },
