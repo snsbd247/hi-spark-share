@@ -47,7 +47,7 @@ export default function SystemSettings() {
         <TabsContent value="payment"><PaymentSettingsTab /></TabsContent>
         <TabsContent value="ledger"><LedgerSettingsTab /></TabsContent>
         <TabsContent value="language"><LanguageSettingsTab /></TabsContent>
-        <TabsContent value="footer"><FooterSettingsTab /></TabsContent>
+        
         <TabsContent value="invoice"><InvoiceSettingsTab /></TabsContent>
         <TabsContent value="sms-templates"><SmsTemplatesTab /></TabsContent>
       </Tabs>
