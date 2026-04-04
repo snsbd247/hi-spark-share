@@ -104,6 +104,7 @@ export default function MikroTikRouters() {
         toast.success("Router updated");
       } else {
         payload.password = form.password;
+        if (tenantId) payload.tenant_id = tenantId;
         const { error } = await db.from("mikrotik_routers").insert(payload);
         if (error) throw error;
         toast.success("Router added");
