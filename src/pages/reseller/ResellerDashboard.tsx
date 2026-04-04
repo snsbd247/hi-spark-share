@@ -14,11 +14,10 @@ export default function ResellerDashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["reseller-dashboard", reseller?.id],
     queryFn: async () => {
-      const [custRes, walletRes, txnRes, billsRes, commBillsRes] = await Promise.all([
+      const [custRes, walletRes, txnRes, commBillsRes] = await Promise.all([
         (db as any).from("customers").select("id, monthly_bill, connection_status, status, created_at").eq("reseller_id", reseller!.id),
         (db as any).from("resellers").select("wallet_balance, commission_rate, default_commission").eq("id", reseller!.id).single(),
         (db as any).from("reseller_wallet_transactions").select("type, amount, created_at").eq("reseller_id", reseller!.id).order("created_at", { ascending: false }).limit(50),
-        (db as any).from("customers").select("id").eq("reseller_id", reseller!.id),
         (db as any).from("bills").select("amount, commission_amount, reseller_profit, tenant_amount").eq("reseller_id", reseller!.id),
       ]);
 
