@@ -644,8 +644,11 @@ export const superAdminApi = {
       const payments = allPayments.filter((p: any) => customerIds.has(p.customer_id));
       const expenses = allExpenses; // expenses are global per-tenant via backend, show proportionally or empty for preview
 
-      const activeCustomers = customers.filter((c: any) => c.connection_status === "active");
-      const inactiveCustomers = customers.filter((c: any) => c.connection_status !== "active");
+      const activeCustomers = customers.filter((c: any) => c.status === "active");
+      const suspendedCustomers = customers.filter((c: any) => c.status === "suspended");
+      const inactiveCustomers = customers.filter((c: any) => c.status === "inactive");
+      const onlineCustomers = customers.filter((c: any) => c.connection_status === "online");
+      const offlineCustomers = customers.filter((c: any) => c.connection_status === "offline");
       const currentBills = bills.filter((b: any) => b.month === currentMonth);
       const totalBilled = currentBills.reduce((s: number, b: any) => s + Number(b.amount || 0), 0);
       const paidBills = currentBills.filter((b: any) => b.status === "paid");
