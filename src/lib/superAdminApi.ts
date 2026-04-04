@@ -688,7 +688,7 @@ export const superAdminApi = {
 
   getTenantReportExpense: async (tenantId: string, from?: string, to?: string) => {
     if (IS_LOVABLE) {
-      const expenses = await sbSelect("expenses");
+      const expenses = await sbSelect("expenses"); // expenses don't have tenant_id yet, show all for now
       const catMap: Record<string, number> = {};
       expenses.forEach((e: any) => {
         const cat = e.category || "other";
@@ -717,7 +717,7 @@ export const superAdminApi = {
     if (IS_LOVABLE) {
       const yr = year || new Date().getFullYear();
       const [payments, expenses] = await Promise.all([
-        sbSelect("payments"),
+        sbSelectByTenantCustomers("payments", tenantId),
         sbSelect("expenses"),
       ]);
       const completed = payments.filter((p: any) => p.status === "completed");
@@ -745,7 +745,7 @@ export const superAdminApi = {
   getTenantReportInvoices: async (tenantId: string, month?: string) => {
     if (IS_LOVABLE) {
       const m = month || new Date().toISOString().substring(0, 7);
-      const bills = await sbSelect("bills");
+      const bills = await sbSelectByTenantCustomers("bills", tenantId);
       const filtered = bills.filter((b: any) => b.month === m);
       return { month: m, bills: filtered };
     }
