@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId } from "@/hooks/useTenantId";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
