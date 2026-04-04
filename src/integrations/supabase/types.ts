@@ -375,6 +375,8 @@ export type Database = {
       bills: {
         Row: {
           amount: number
+          base_amount: number | null
+          commission_amount: number | null
           coupon_id: string | null
           created_at: string
           customer_id: string
@@ -385,11 +387,16 @@ export type Database = {
           paid_amount: number
           paid_date: string | null
           payment_link_token: string | null
+          reseller_id: string | null
+          reseller_profit: number | null
           status: string
+          tenant_amount: number | null
           updated_at: string
         }
         Insert: {
           amount?: number
+          base_amount?: number | null
+          commission_amount?: number | null
           coupon_id?: string | null
           created_at?: string
           customer_id: string
@@ -400,11 +407,16 @@ export type Database = {
           paid_amount?: number
           paid_date?: string | null
           payment_link_token?: string | null
+          reseller_id?: string | null
+          reseller_profit?: number | null
           status?: string
+          tenant_amount?: number | null
           updated_at?: string
         }
         Update: {
           amount?: number
+          base_amount?: number | null
+          commission_amount?: number | null
           coupon_id?: string | null
           created_at?: string
           customer_id?: string
@@ -415,7 +427,10 @@ export type Database = {
           paid_amount?: number
           paid_date?: string | null
           payment_link_token?: string | null
+          reseller_id?: string | null
+          reseller_profit?: number | null
           status?: string
+          tenant_amount?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -431,6 +446,20 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3862,6 +3891,65 @@ export type Database = {
           },
         ]
       }
+      reseller_package_commissions: {
+        Row: {
+          commission_amount: number
+          created_at: string
+          id: string
+          package_id: string
+          reseller_id: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          package_id: string
+          reseller_id: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          package_id?: string
+          reseller_id?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_package_commissions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_package_commissions_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_package_commissions_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_package_commissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reseller_packages: {
         Row: {
           created_at: string
@@ -4086,6 +4174,7 @@ export type Database = {
           commission_rate: number | null
           company_name: string | null
           created_at: string
+          default_commission: number | null
           email: string | null
           id: string
           name: string
@@ -4103,6 +4192,7 @@ export type Database = {
           commission_rate?: number | null
           company_name?: string | null
           created_at?: string
+          default_commission?: number | null
           email?: string | null
           id?: string
           name: string
@@ -4120,6 +4210,7 @@ export type Database = {
           commission_rate?: number | null
           company_name?: string | null
           created_at?: string
+          default_commission?: number | null
           email?: string | null
           id?: string
           name?: string
