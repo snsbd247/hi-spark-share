@@ -346,7 +346,8 @@ export default function ResellerManagement() {
                           <TableHead>Company</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Wallet</TableHead>
-                          <TableHead>Commission</TableHead>
+                          <TableHead>Commission (%)</TableHead>
+                          <TableHead>Default Commission (৳)</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -360,6 +361,7 @@ export default function ResellerManagement() {
                             <TableCell>{r.phone || "—"}</TableCell>
                             <TableCell className="font-medium">৳{parseFloat(r.wallet_balance).toLocaleString()}</TableCell>
                             <TableCell>{r.commission_rate}%</TableCell>
+                            <TableCell>৳{parseFloat(r.default_commission || 0).toLocaleString()}</TableCell>
                             <TableCell>
                               <Badge variant={r.status === "active" ? "default" : "destructive"}>{r.status}</Badge>
                             </TableCell>
