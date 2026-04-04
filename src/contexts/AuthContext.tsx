@@ -3,6 +3,7 @@ import { IS_LOVABLE } from "@/lib/environment";
 import { supabaseDirect } from "@/integrations/supabase/client";
 import { db } from "@/integrations/supabase/client";
 import api from "@/lib/api";
+import { sessionStore } from "@/lib/sessionStore";
 
 interface AdminUser {
   id: string;
