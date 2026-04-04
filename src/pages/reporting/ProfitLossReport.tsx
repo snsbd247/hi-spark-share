@@ -7,17 +7,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import ReportToolbar from "@/components/reports/ReportToolbar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTenantCustomerIds } from "@/hooks/useTenantCustomerIds";
 
 export default function ProfitLossReport() {
   const { t } = useLanguage();
   const r = t.reportingPages;
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const { customerIds, tenantId } = useTenantCustomerIds();
 
   const { data: payments = [] } = useQuery({
-    queryKey: ["pl-payments"], queryFn: async () => { const { data } = await db.from("payments").select("amount, status, paid_at, created_at"); return data || []; },
+    queryKey: ["pl-payments", tenantId], queryFn: async () => {
+      if (customerIds.length === 0) return [];
+      let q: any = db.from("payments").select("amount, status, paid_at, created_at");
+      if (customerIds.length > 0) q = q.in("customer_id", customerIds);
+      const { data } = await q; return data || [];
+    }, enabled: customerIds.length > 0,
   });
   const { data: expenses = [] } = useQuery({
-    queryKey: ["pl-expenses"], queryFn: async () => { const { data } = await db.from("expenses").select("amount, date, created_at"); return data || []; },
+    queryKey: ["pl-expenses", tenantId], queryFn: async () => { const { data } = await db.from("expenses").select("amount, date, created_at"); return data || []; },
   });
 
   const completed = payments.filter((p: any) => p.status === "completed");

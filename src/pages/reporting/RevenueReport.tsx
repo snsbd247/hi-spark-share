@@ -8,22 +8,26 @@ import { BarChart3 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import ReportToolbar from "@/components/reports/ReportToolbar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTenantCustomerIds } from "@/hooks/useTenantCustomerIds";
 
 export default function RevenueReport() {
   const { t } = useLanguage();
   const r = t.reportingPages;
   const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const { customerIds, tenantId } = useTenantCustomerIds();
 
   const { data: payments = [] } = useQuery({
-    queryKey: ["revenue-report-payments", dateFrom, dateTo],
+    queryKey: ["revenue-report-payments", dateFrom, dateTo, tenantId],
     queryFn: async () => {
-      let q = db.from("payments").select("*");
+      if (customerIds.length === 0) return [];
+      let q: any = db.from("payments").select("*");
       if (dateFrom) q = q.gte("paid_at", `${dateFrom}T00:00:00`);
       if (dateTo) q = q.lte("paid_at", `${dateTo}T23:59:59`);
+      if (customerIds.length > 0) q = q.in("customer_id", customerIds);
       const { data } = await q;
       return data || [];
-    },
+    }, enabled: customerIds.length > 0,
   });
 
   const completed = payments.filter((p: any) => p.status === "completed");

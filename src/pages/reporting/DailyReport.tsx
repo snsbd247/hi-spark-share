@@ -6,23 +6,39 @@ import { db } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ReportToolbar from "@/components/reports/ReportToolbar";
+import { useTenantCustomerIds } from "@/hooks/useTenantCustomerIds";
 
 export default function DailyReport() {
   const { t } = useLanguage();
   const [dateFrom, setDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const { customerIds, tenantId } = useTenantCustomerIds();
 
   const { data: payments = [] } = useQuery({
-    queryKey: ["daily-payments", dateFrom, dateTo],
-    queryFn: async () => { const { data } = await (db as any).from("payments").select("*").gte("paid_at", `${dateFrom}T00:00:00`).lte("paid_at", `${dateTo}T23:59:59`); return data || []; },
+    queryKey: ["daily-payments", dateFrom, dateTo, tenantId],
+    queryFn: async () => {
+      if (customerIds.length === 0) return [];
+      let q: any = (db as any).from("payments").select("*").gte("paid_at", `${dateFrom}T00:00:00`).lte("paid_at", `${dateTo}T23:59:59`);
+      if (customerIds.length > 0) q = q.in("customer_id", customerIds);
+      const { data } = await q; return data || [];
+    }, enabled: customerIds.length > 0,
   });
   const { data: bills = [] } = useQuery({
-    queryKey: ["daily-bills", dateFrom, dateTo],
-    queryFn: async () => { const { data } = await (db as any).from("bills").select("*").gte("created_at", `${dateFrom}T00:00:00`).lte("created_at", `${dateTo}T23:59:59`); return data || []; },
+    queryKey: ["daily-bills", dateFrom, dateTo, tenantId],
+    queryFn: async () => {
+      if (customerIds.length === 0) return [];
+      let q: any = (db as any).from("bills").select("*").gte("created_at", `${dateFrom}T00:00:00`).lte("created_at", `${dateTo}T23:59:59`);
+      if (customerIds.length > 0) q = q.in("customer_id", customerIds);
+      const { data } = await q; return data || [];
+    }, enabled: customerIds.length > 0,
   });
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers-summary"],
-    queryFn: async () => { const { data } = await (db as any).from("customers").select("*"); return data || []; },
+    queryKey: ["customers-summary", tenantId],
+    queryFn: async () => {
+      let q: any = (db as any).from("customers").select("*");
+      if (tenantId) q = q.eq("tenant_id", tenantId);
+      const { data } = await q; return data || [];
+    },
   });
 
   const totalCollection = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
