@@ -54,16 +54,31 @@ export default function Payments() {
   const canEditPayment = isSuperAdmin || hasPermission("payments", "edit");
   const canDeletePayment = isSuperAdmin || hasPermission("payments", "delete");
 
-  const { data: payments, isLoading } = useQuery({
-    queryKey: ["admin-payments"],
+  // First get tenant customer IDs
+  const { data: tenantCustomerIds } = useQuery({
+    queryKey: ["tenant-customer-ids", tenantId],
     queryFn: async () => {
-      const { data, error } = await db
+      let q = db.from("customers").select("id");
+      if (tenantId) q = (q as any).eq("tenant_id", tenantId);
+      const { data } = await q;
+      return (data || []).map((c: any) => c.id) as string[];
+    },
+  });
+
+  const { data: payments, isLoading } = useQuery({
+    queryKey: ["admin-payments", tenantId],
+    queryFn: async () => {
+      if (tenantCustomerIds && tenantCustomerIds.length === 0) return [];
+      let query: any = db
         .from("payments")
         .select("*, customers(customer_id, name)")
         .order("created_at", { ascending: false });
+      if (tenantCustomerIds) query = query.in("customer_id", tenantCustomerIds);
+      const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data as any[];
     },
+    enabled: !!tenantCustomerIds,
   });
 
   const filtered = payments?.filter((p) => {
