@@ -4,13 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, ArrowUp, ArrowDown, Users, Play, Pause, Wifi } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Activity, ArrowUp, ArrowDown, Users, Play, Pause, Wifi, Zap, Moon, Crown } from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar,
+} from "recharts";
 import { useTenantId } from "@/hooks/useTenantId";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
 
-const MAX_HISTORY = 30; // keep last 30 data points
+const MAX_HISTORY = 30;
 
 interface LiveUser {
   pppoe_username: string;
@@ -18,11 +21,17 @@ interface LiveUser {
   customer_id: string;
   upload_bps: number;
   download_bps: number;
+  total_bps: number;
+  upload_mbps: number;
+  download_mbps: number;
+  total_mbps: number;
   upload_formatted: string;
   download_formatted: string;
+  total_formatted: string;
   uptime: string;
   ip_address: string;
   router_name: string;
+  status: "normal" | "heavy" | "idle";
 }
 
 interface SpeedPoint {
@@ -32,28 +41,40 @@ interface SpeedPoint {
 }
 
 function formatBps(bps: number): string {
+  if (bps >= 1_000_000_000) return `${(bps / 1_000_000_000).toFixed(2)} Gbps`;
   if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(1)} Mbps`;
   if (bps >= 1_000) return `${(bps / 1_000).toFixed(0)} Kbps`;
   return `${bps} bps`;
 }
 
+const STATUS_BADGE: Record<string, { variant: "default" | "destructive" | "secondary"; icon: typeof Zap; label: string }> = {
+  heavy: { variant: "destructive", icon: Zap, label: "Heavy" },
+  idle: { variant: "secondary", icon: Moon, label: "Idle" },
+  normal: { variant: "default", icon: Activity, label: "Normal" },
+};
+
 export default function LiveBandwidth() {
   const tenantId = useTenantId();
   const [isPolling, setIsPolling] = useState(true);
-  const [interval, setInterval_] = useState(10);
+  const [pollInterval, setPollInterval] = useState(5);
   const [users, setUsers] = useState<LiveUser[]>([]);
   const [totalUpload, setTotalUpload] = useState(0);
   const [totalDownload, setTotalDownload] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
+  const [heavyCount, setHeavyCount] = useState(0);
+  const [idleCount, setIdleCount] = useState(0);
+  const [peakUser, setPeakUser] = useState<any>(null);
   const [history, setHistory] = useState<SpeedPoint[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [lastUpdate, setLastUpdate] = useState("");
+  const [isCached, setIsCached] = useState(false);
   const [routerFilter, setRouterFilter] = useState("all");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: routers = [] } = useQuery({
     queryKey: ["routers-live", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("mikrotik_routers").select("id, name").eq("status", "active").eq("tenant_id", tenantId);
+      const { data } = await (db as any).from("mikrotik_routers").select("id, name")
+        .eq("status", "active").eq("tenant_id", tenantId);
       return data || [];
     },
     enabled: !!tenantId,
@@ -67,9 +88,7 @@ export default function LiveBandwidth() {
       let url = `https://${projectId}.supabase.co/functions/v1/live-bandwidth?tenant_id=${tenantId}`;
       if (routerFilter !== "all") url += `&router_id=${routerFilter}`;
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${anonKey}` },
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${anonKey}` } });
       if (!res.ok) return;
       const data = await res.json();
 
@@ -77,6 +96,10 @@ export default function LiveBandwidth() {
       setTotalUpload(data.total_upload || 0);
       setTotalDownload(data.total_download || 0);
       setActiveCount(data.active_count || 0);
+      setHeavyCount(data.heavy_users || 0);
+      setIdleCount(data.idle_users || 0);
+      setPeakUser(data.peak_user || null);
+      setIsCached(!!data.cached);
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -101,11 +124,16 @@ export default function LiveBandwidth() {
       return;
     }
     fetchLive();
-    timerRef.current = setInterval(fetchLive, interval * 1000);
+    timerRef.current = setInterval(fetchLive, pollInterval * 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isPolling, interval, fetchLive]);
+  }, [isPolling, pollInterval, fetchLive]);
 
   const top5 = users.slice(0, 5);
+  const top5Chart = top5.map((u) => ({
+    name: u.customer_name.length > 12 ? u.customer_name.slice(0, 12) + "…" : u.customer_name,
+    upload: u.upload_mbps,
+    download: u.download_mbps,
+  }));
 
   return (
     <div className="space-y-6">
@@ -115,7 +143,7 @@ export default function LiveBandwidth() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" /> Live Bandwidth Monitor
           </h1>
-          <p className="text-muted-foreground mt-1">Real-time bandwidth usage from MikroTik routers</p>
+          <p className="text-muted-foreground mt-1">Real-time bandwidth from MikroTik routers</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={routerFilter} onValueChange={setRouterFilter}>
@@ -127,7 +155,7 @@ export default function LiveBandwidth() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={String(interval)} onValueChange={(v) => setInterval_(Number(v))}>
+          <Select value={String(pollInterval)} onValueChange={(v) => setPollInterval(Number(v))}>
             <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="5">5s</SelectItem>
@@ -147,148 +175,180 @@ export default function LiveBandwidth() {
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
         <Badge variant={isPolling ? "default" : "secondary"} className="gap-1 text-xs">
           <Wifi className="h-3 w-3" /> {isPolling ? "LIVE" : "PAUSED"}
         </Badge>
-        {lastUpdate && <span>Last: {lastUpdate}</span>}
+        {isCached && <Badge variant="outline" className="text-xs">Cached</Badge>}
+        {lastUpdate && <span>Updated: {lastUpdate}</span>}
         <span>•</span>
-        <span>Refresh: {interval}s</span>
+        <span>Refresh: {pollInterval}s</span>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Active Users</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Active</p>
             <p className="text-2xl font-bold text-primary">{activeCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowUp className="h-3 w-3 text-emerald-500" /> Total Upload</p>
-            <p className="text-xl font-bold">{formatBps(totalUpload)}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowUp className="h-3 w-3" /> Upload</p>
+            <p className="text-lg font-bold">{formatBps(totalUpload)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowDown className="h-3 w-3 text-blue-500" /> Total Download</p>
-            <p className="text-xl font-bold">{formatBps(totalDownload)}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><ArrowDown className="h-3 w-3" /> Download</p>
+            <p className="text-lg font-bold">{formatBps(totalDownload)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total Throughput</p>
-            <p className="text-xl font-bold text-primary">{formatBps(totalUpload + totalDownload)}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3 text-destructive" /> Heavy</p>
+            <p className="text-2xl font-bold text-destructive">{heavyCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Moon className="h-3 w-3" /> Idle</p>
+            <p className="text-2xl font-bold text-muted-foreground">{idleCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Crown className="h-3 w-3 text-warning" /> Peak User</p>
+            <p className="text-sm font-bold truncate">{peakUser?.customer_name || "—"}</p>
+            <p className="text-xs text-muted-foreground">{peakUser?.total_formatted || ""}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Live Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Speed Over Time (Mbps)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {history.length < 2 ? (
-            <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-              <div className="text-center">
-                <Activity className="h-8 w-8 mx-auto mb-2 animate-pulse" />
-                <p>Collecting data points...</p>
-              </div>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={history}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="time" className="text-xs" tick={{ fontSize: 10 }} />
-                <YAxis className="text-xs" tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}`} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(2)} Mbps`} />
-                <Legend />
-                <Line type="monotone" dataKey="upload" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Upload" />
-                <Line type="monotone" dataKey="download" stroke="hsl(210, 70%, 55%)" strokeWidth={2} dot={false} name="Download" />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* Charts Row */}
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Top 5 Users */}
-        <Card>
+        {/* Live Line Chart */}
+        <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Top 5 Active Users</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" /> Speed Over Time (Mbps)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {top5.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No active users</p>
-            ) : (
-              top5.map((u, i) => (
-                <div key={u.pppoe_username} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">{i + 1}</span>
-                    <div>
-                      <p className="font-medium text-foreground truncate max-w-[120px]">{u.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">{u.customer_id}</p>
-                    </div>
-                  </div>
-                  <div className="text-right text-xs">
-                    <p className="text-emerald-600">↑ {u.upload_formatted}</p>
-                    <p className="text-blue-600">↓ {u.download_formatted}</p>
-                  </div>
+          <CardContent>
+            {history.length < 2 ? (
+              <div className="flex items-center justify-center h-[260px] text-muted-foreground">
+                <div className="text-center">
+                  <Activity className="h-8 w-8 mx-auto mb-2 animate-pulse" />
+                  <p>Collecting data points...</p>
                 </div>
-              ))
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={history}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => `${v.toFixed(2)} Mbps`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="upload" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={false} name="Upload" />
+                  <Line type="monotone" dataKey="download" stroke="hsl(210, 70%, 55%)" strokeWidth={2} dot={false} name="Download" />
+                </LineChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Active Users Table */}
-        <Card className="md:col-span-2">
+        {/* Top 5 Users Bar Chart */}
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">All Active Users ({activeCount})</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Crown className="h-4 w-4 text-warning" /> Top 5 Users (Mbps)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="max-h-[400px] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>PPPoE</TableHead>
-                    <TableHead>IP</TableHead>
-                    <TableHead className="text-right">Upload</TableHead>
-                    <TableHead className="text-right">Download</TableHead>
-                    <TableHead>Uptime</TableHead>
-                    <TableHead>Router</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        No active PPP sessions found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    users.slice(0, 100).map((u) => (
-                      <TableRow key={u.pppoe_username}>
-                        <TableCell className="font-medium text-sm">{u.customer_name}</TableCell>
-                        <TableCell className="font-mono text-xs">{u.pppoe_username}</TableCell>
-                        <TableCell className="font-mono text-xs">{u.ip_address}</TableCell>
-                        <TableCell className="text-right text-xs text-emerald-600 font-medium">{u.upload_formatted}</TableCell>
-                        <TableCell className="text-right text-xs text-blue-600 font-medium">{u.download_formatted}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{u.uptime}</TableCell>
-                        <TableCell className="text-xs">{u.router_name}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent>
+            {top5Chart.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8 text-sm">No active users</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={top5Chart} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={80} />
+                  <Tooltip formatter={(v: number) => `${v.toFixed(2)} Mbps`} />
+                  <Bar dataKey="upload" name="Upload" fill="hsl(150, 60%, 45%)" stackId="a" />
+                  <Bar dataKey="download" name="Download" fill="hsl(210, 70%, 55%)" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Active Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            <span>All Active Users ({activeCount})</span>
+            <div className="flex gap-2 text-xs">
+              <Badge variant="destructive" className="gap-1"><Zap className="h-3 w-3" /> Heavy: {heavyCount}</Badge>
+              <Badge variant="secondary" className="gap-1"><Moon className="h-3 w-3" /> Idle: {idleCount}</Badge>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="max-h-[500px] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">#</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>PPPoE</TableHead>
+                  <TableHead>IP</TableHead>
+                  <TableHead className="text-right">Upload</TableHead>
+                  <TableHead className="text-right">Download</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Uptime</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Router</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                      No active PPP sessions found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.slice(0, 100).map((u, i) => {
+                    const sb = STATUS_BADGE[u.status] || STATUS_BADGE.normal;
+                    const StatusIcon = sb.icon;
+                    return (
+                      <TableRow key={u.pppoe_username} className={u.status === "heavy" ? "bg-destructive/5" : u.status === "idle" ? "bg-muted/30" : ""}>
+                        <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className="font-medium text-sm">{u.customer_name}</TableCell>
+                        <TableCell className="font-mono text-xs">{u.pppoe_username}</TableCell>
+                        <TableCell className="font-mono text-xs">{u.ip_address}</TableCell>
+                        <TableCell className="text-right text-xs font-medium" style={{ color: "hsl(150, 60%, 45%)" }}>{u.upload_formatted}</TableCell>
+                        <TableCell className="text-right text-xs font-medium" style={{ color: "hsl(210, 70%, 55%)" }}>{u.download_formatted}</TableCell>
+                        <TableCell className="text-right text-xs font-bold">{u.total_formatted}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{u.uptime}</TableCell>
+                        <TableCell>
+                          <Badge variant={sb.variant} className="gap-1 text-xs">
+                            <StatusIcon className="h-3 w-3" />{sb.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{u.router_name}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
