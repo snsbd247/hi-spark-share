@@ -3,32 +3,26 @@ import { superAdminApi } from "@/lib/superAdminApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  TrendingUp, TrendingDown, Users, DollarSign, Receipt, MessageSquare,
-  BarChart3
+  Users, DollarSign, MessageSquare, Wifi, WifiOff,
+  UserX, TrendingUp, CircleDollarSign, TicketCheck
 } from "lucide-react";
 
-function MetricCard({ title, value, icon: Icon, trend, subtitle, color = "text-primary" }: {
-  title: string; value: string | number; icon: any; trend?: string; subtitle?: string; color?: string;
+function StatCard({ title, value, icon: Icon, iconBg = "bg-primary/10", iconColor = "text-primary", subtitle }: {
+  title: string; value: string | number; icon: any; iconBg?: string; iconColor?: string; subtitle?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
+    <Card className="border-primary/20">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">{title}</p>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold mt-1">{value}</p>
+            {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-            <Icon className="h-5 w-5 text-muted-foreground" />
+          <div className={`h-9 w-9 rounded-lg ${iconBg} flex items-center justify-center`}>
+            <Icon className={`h-4 w-4 ${iconColor}`} />
           </div>
         </div>
-        {trend && (
-          <p className={`text-xs mt-2 flex items-center gap-1 ${trend.startsWith("+") ? "text-green-600" : "text-destructive"}`}>
-            {trend.startsWith("+") ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {trend}
-          </p>
-        )}
       </CardContent>
     </Card>
   );
@@ -43,9 +37,9 @@ export default function TenantFinancialReportsTab({ tenantId }: { tenantId: stri
 
   if (loadingOverview) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[...Array(11)].map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
       </div>
     );
@@ -54,16 +48,24 @@ export default function TenantFinancialReportsTab({ tenantId }: { tenantId: stri
   const o = overview || {};
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <MetricCard title="Total Revenue" value={`৳${Number(o.total_revenue || 0).toLocaleString()}`} icon={DollarSign} color="text-primary" subtitle={`This month: ৳${Number(o.monthly_revenue || 0).toLocaleString()}`} />
-        <MetricCard title="Total Expense" value={`৳${Number(o.total_expense || 0).toLocaleString()}`} icon={TrendingDown} color="text-destructive" subtitle={`This month: ৳${Number(o.monthly_expense || 0).toLocaleString()}`} />
-        <MetricCard title="Net Profit" value={`৳${Number(o.net_profit || 0).toLocaleString()}`} icon={TrendingUp} color={o.net_profit >= 0 ? "text-primary" : "text-destructive"} subtitle={`Monthly: ৳${Number(o.monthly_profit || 0).toLocaleString()}`} />
-        <MetricCard title="Collection Rate" value={`${o.collection_rate || 0}%`} icon={Receipt} subtitle={`Due: ৳${Number(o.total_due || 0).toLocaleString()}`} />
-        <MetricCard title="Active Customers" value={o.active_customers || 0} icon={Users} subtitle={`Total: ${o.total_customers || 0}`} />
-        <MetricCard title="ARPU" value={`৳${Number(o.arpu || 0).toLocaleString()}`} icon={BarChart3} subtitle="Avg Revenue Per User" />
-        <MetricCard title="Churn Rate" value={`${o.churn_rate || 0}%`} icon={TrendingDown} color={o.churn_rate > 5 ? "text-destructive" : "text-primary"} subtitle={`${o.churn_count || 0} inactive`} />
-        <MetricCard title="SMS This Month" value={o.monthly_sms || 0} icon={MessageSquare} subtitle={`Total: ${o.total_sms || 0}`} />
+    <div className="space-y-3">
+      {/* Row 1: Customer Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard title="Total Customers" value={o.total_customers || 0} icon={Users} iconBg="bg-primary/10" iconColor="text-primary" />
+        <StatCard title="Active" value={o.active_customers || 0} icon={Users} iconBg="bg-primary/10" iconColor="text-primary" />
+        <StatCard title="Suspended" value={o.suspended_customers || 0} icon={UserX} iconBg="bg-destructive/10" iconColor="text-destructive" />
+        <StatCard title="Online Now" value={o.online_customers || 0} icon={Wifi} iconBg="bg-green-100" iconColor="text-green-600" />
+        <StatCard title="Offline Now" value={o.offline_customers || 0} icon={WifiOff} iconBg="bg-amber-100" iconColor="text-amber-600" />
+        <StatCard title="Support Tickets" value={o.support_tickets || 0} icon={TicketCheck} iconBg="bg-primary/10" iconColor="text-primary" />
+      </div>
+
+      {/* Row 2: Financial Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard title="Month Collection" value={`৳${Number(o.monthly_revenue || 0).toLocaleString()}`} icon={CircleDollarSign} iconBg="bg-primary/10" iconColor="text-primary" />
+        <StatCard title="Total Due" value={`৳${Number(o.total_due || 0).toLocaleString()}`} icon={DollarSign} iconBg="bg-primary/10" iconColor="text-primary" />
+        <StatCard title="All-Time Due" value={`৳${Number(o.alltime_due || 0).toLocaleString()}`} icon={DollarSign} iconBg="bg-amber-100" iconColor="text-amber-600" />
+        <StatCard title="Total Collection" value={`৳${Number(o.total_revenue || 0).toLocaleString()}`} icon={TrendingUp} iconBg="bg-primary/10" iconColor="text-primary" />
+        <StatCard title="SMS Balance" value={o.sms_balance ?? "—"} icon={MessageSquare} iconBg="bg-primary/10" iconColor="text-primary" subtitle="Assigned by Super Admin" />
       </div>
     </div>
   );
