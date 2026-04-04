@@ -213,8 +213,10 @@ export default function ResellerCustomers() {
       if (!form.name || !form.phone || !form.area) throw new Error("Name, phone and area are required");
 
       const selectedPkg = packages.find((p: any) => p.id === form.package_id);
-      // Reseller cannot set free line or discount
-      const monthlyBill = parseFloat(form.monthly_bill) || (selectedPkg ? parseFloat(selectedPkg.price) : 0);
+      if (!selectedPkg) throw new Error("প্যাকেজ সিলেক্ট করুন");
+      // Reseller cannot override monthly bill — always use package price
+      const monthlyBill = parseFloat(selectedPkg.price) || 0;
+      if (monthlyBill <= 0) throw new Error("প্যাকেজের মূল্য সঠিক নয়");
 
       const basePayload: any = {
         name: form.name,
