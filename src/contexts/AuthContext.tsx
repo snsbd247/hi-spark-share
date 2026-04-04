@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (IS_LOVABLE) {
-      const token = localStorage.getItem("admin_token");
+      const token = sessionStore.getItem("admin_token");
       if (token) {
         try {
           await db
