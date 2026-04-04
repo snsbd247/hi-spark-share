@@ -3624,6 +3624,66 @@ export type Database = {
           },
         ]
       }
+      reseller_commissions: {
+        Row: {
+          commission_amount: number | null
+          commission_rate: number | null
+          created_at: string | null
+          id: string
+          month: string
+          notes: string | null
+          paid_at: string | null
+          reseller_id: string
+          status: string | null
+          tenant_id: string | null
+          total_billing: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          commission_amount?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          id?: string
+          month: string
+          notes?: string | null
+          paid_at?: string | null
+          reseller_id: string
+          status?: string | null
+          tenant_id?: string | null
+          total_billing?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          commission_amount?: number | null
+          commission_rate?: number | null
+          created_at?: string | null
+          id?: string
+          month?: string
+          notes?: string | null
+          paid_at?: string | null
+          reseller_id?: string
+          status?: string | null
+          tenant_id?: string | null
+          total_billing?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_commissions_reseller_id_fkey"
+            columns: ["reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reseller_commissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reseller_sessions: {
         Row: {
           browser: string | null
