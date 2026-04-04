@@ -162,6 +162,12 @@ export default function SuperAdminLayout() {
 
       {/* Footer */}
       <div className="p-3 border-t border-sidebar-border/60 space-y-1 shrink-0">
+        {/* Language toggle */}
+        <button onClick={toggleLang} className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium w-full text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 transition-all duration-200">
+          <Languages className="h-4 w-4 shrink-0" />
+          {(!collapsed || isMobile) && <span>{language === "en" ? "বাংলা" : "English"}</span>}
+        </button>
+
         {/* Theme toggle */}
         <button onClick={toggleTheme} className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium w-full text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 transition-all duration-200">
           {theme === "dark" ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
