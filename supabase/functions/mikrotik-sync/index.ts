@@ -1116,6 +1116,9 @@ Deno.serve(async (req: Request) => {
                 if (routerFilter) {
                   newCustomer.router_id = routerFilter;
                 }
+                if (tenantId) {
+                  newCustomer.tenant_id = tenantId;
+                }
 
                 const { error: insertErr } = await supabase.from("customers").insert(newCustomer);
                 if (insertErr) {
