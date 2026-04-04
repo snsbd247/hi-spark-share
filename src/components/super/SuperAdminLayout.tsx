@@ -61,11 +61,13 @@ export default function SuperAdminLayout() {
   const { user, loading, logout } = useSuperAdmin();
   const navigate = useNavigate();
   const location = useLocation();
+  const { language, setLanguage, t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  const toggleLang = () => setLanguage(language === "en" ? "bn" : "en");
 
   useEffect(() => {
     if (!loading && !user) {
