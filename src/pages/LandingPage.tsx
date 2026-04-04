@@ -13,12 +13,14 @@ import {
   Zap, Shield, BarChart3, MessageSquare, Router, CreditCard,
   Check, ChevronDown, ChevronUp, ArrowRight, Loader2, Globe,
   Users, Clock, Star, Play, Wifi, Server, Receipt, Package,
-  Phone, Mail, MapPin,
+  Phone, Mail, MapPin, Briefcase, Truck, Ticket, Activity,
+  Building2, Network, Tag, UserCircle, DatabaseBackup, Cable, Calculator,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, any> = {
   Zap, Shield, BarChart3, MessageSquare, Router, CreditCard,
   Globe, Users, Clock, Star, Wifi, Server, Receipt, Package, Phone, Mail, MapPin,
+  Briefcase, Truck, Ticket, Activity, Building2, Network, Tag, UserCircle, DatabaseBackup, Cable, Calculator,
 };
 function getIcon(name: string | null) {
   if (!name) return Zap;
