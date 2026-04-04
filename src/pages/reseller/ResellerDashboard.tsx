@@ -64,10 +64,10 @@ export default function ResellerDashboard() {
       // Recent transactions
       const recentTxns = transactions.slice(0, 5);
 
-      // Unpaid bills count
+      // Unpaid bills count - reuse custRes instead of extra query
       let unpaidBills = 0;
-      if (billsRes.data && billsRes.data.length > 0) {
-        const custIds = billsRes.data.map((c: any) => c.id);
+      if (customers.length > 0) {
+        const custIds = customers.map((c: any) => c.id);
         const { data: billData } = await (db as any)
           .from("bills")
           .select("id")
