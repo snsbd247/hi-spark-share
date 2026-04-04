@@ -156,7 +156,7 @@ function HeroSection({ sections, onCta }: { sections: any[]; onCta: () => void }
             {meta.cta_primary || "Start Free Trial"} <ArrowRight className="h-5 w-5 ml-2" />
           </Button>
           {meta.cta_secondary && (
-            <Button size="lg" variant="outline" className="text-base px-8 py-6 rounded-xl border-white/20 text-white hover:bg-white/10">
+            <Button size="lg" variant="outline" className="text-base px-8 py-6 rounded-xl bg-white/10 border-white/40 text-white hover:bg-white/20 hover:border-white/60 cursor-pointer shadow-md">
               <Play className="h-5 w-5 mr-2" /> {meta.cta_secondary}
             </Button>
           )}
