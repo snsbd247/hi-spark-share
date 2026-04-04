@@ -128,12 +128,24 @@ export default function ResellerCustomers() {
   const update = (key: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  // Fetch reseller's allow_all_packages flag
+  // Fetch reseller's allow_all_packages flag and default_commission
   const { data: resellerInfo } = useQuery({
     queryKey: ["reseller-info", reseller?.id],
     queryFn: async () => {
-      const { data } = await (db as any).from("resellers").select("allow_all_packages").eq("id", reseller!.id).single();
+      const { data } = await (db as any).from("resellers").select("allow_all_packages, default_commission").eq("id", reseller!.id).single();
       return data;
+    },
+    enabled: !!reseller?.id,
+  });
+
+  // Fetch per-package commissions for this reseller
+  const { data: packageCommissions = [] } = useQuery({
+    queryKey: ["reseller-pkg-commissions", reseller?.id],
+    queryFn: async () => {
+      const { data } = await (db as any).from("reseller_package_commissions")
+        .select("package_id, commission_amount")
+        .eq("reseller_id", reseller!.id);
+      return data || [];
     },
     enabled: !!reseller?.id,
   });
