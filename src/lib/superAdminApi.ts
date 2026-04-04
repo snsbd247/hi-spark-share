@@ -657,7 +657,7 @@ export const superAdminApi = {
 
   getTenantReportRevenue: async (tenantId: string, from?: string, to?: string) => {
     if (IS_LOVABLE) {
-      const payments = await sbSelect("payments");
+      const payments = await sbSelectByTenantCustomers("payments", tenantId);
       const completed = payments.filter((p: any) => p.status === "completed");
       const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const recent = completed.filter((p: any) => new Date(p.paid_at || p.created_at) >= thirtyDaysAgo);
