@@ -84,7 +84,7 @@ export default function Dashboard() {
     queryKey: ["customers-stats", tenantId],
     queryFn: async () => {
       let query = db.from("customers").select("id, status, monthly_bill, connection_status");
-      if (tenantId) query = query.eq("tenant_id", tenantId);
+      if (tenantId) query = (query as any).eq("tenant_id", tenantId);
       const { data, error } = await query;
       if (error) throw error;
       return data;
