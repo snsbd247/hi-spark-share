@@ -788,7 +788,7 @@ export default function SuperSmsManagement() {
       <Dialog open={rechargeOpen} onOpenChange={setRechargeOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>>{sa.rechargeSmsBalanceTitle}</DialogTitle>
+            <DialogTitle>{sa.rechargeSmsBalanceTitle}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-muted">
@@ -807,7 +807,7 @@ export default function SuperSmsManagement() {
                 placeholder="e.g., 500" min="1" step="0.01" />
             </div>
             <div className="space-y-2">
-              <Label>>{sa.smsRateLabel}</Label>
+              <Label>{sa.smsRateLabel}</Label>
               <Input type="number" value={smsRateInput}
                 onChange={(e) => setSmsRateInput(e.target.value)}
                 placeholder={`Current: ৳${Number(selectedTenant?.sms_rate ?? 0.50).toFixed(2)}`}
@@ -815,7 +815,7 @@ export default function SuperSmsManagement() {
               <p className="text-xs text-muted-foreground">Leave empty to keep current rate</p>
             </div>
             <div className="space-y-2">
-              <Label>>{sa.descriptionOptional}</Label>
+              <Label>{sa.descriptionOptional}</Label>
               <Input value={rechargeDesc}
                 onChange={(e) => setRechargeDesc(e.target.value)}
                 placeholder="e.g., Monthly recharge" />
