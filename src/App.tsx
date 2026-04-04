@@ -106,6 +106,7 @@ import DomainManagement from "@/pages/settings/DomainManagement";
 import LandingPage from "@/pages/LandingPage";
 import ForcePasswordChange from "@/pages/ForcePasswordChange";
 import CouponManagement from "@/pages/CouponManagement";
+import ResellerManagement from "@/pages/ResellerManagement";
 import IpPoolManagement from "@/pages/IpPoolManagement";
 import FaqManagement from "@/pages/FaqManagement";
 import AdvancedAnalytics from "@/pages/AdvancedAnalytics";
