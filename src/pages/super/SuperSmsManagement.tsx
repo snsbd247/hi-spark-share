@@ -815,7 +815,7 @@ export default function SuperSmsManagement() {
               <p className="text-xs text-muted-foreground">Leave empty to keep current rate</p>
             </div>
             <div className="space-y-2">
-              <Label>>{sa.descriptionOptional}</Label>
+              <Label>{sa.descriptionOptional}</Label>
               <Input value={rechargeDesc}
                 onChange={(e) => setRechargeDesc(e.target.value)}
                 placeholder="e.g., Monthly recharge" />
