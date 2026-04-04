@@ -762,6 +762,7 @@ export type Database = {
           static_ip: string | null
           status: string
           subnet: string | null
+          tenant_id: string | null
           upazila: string | null
           updated_at: string
           username: string | null
@@ -819,6 +820,7 @@ export type Database = {
           static_ip?: string | null
           status?: string
           subnet?: string | null
+          tenant_id?: string | null
           upazila?: string | null
           updated_at?: string
           username?: string | null
@@ -876,6 +878,7 @@ export type Database = {
           static_ip?: string | null
           status?: string
           subnet?: string | null
+          tenant_id?: string | null
           upazila?: string | null
           updated_at?: string
           username?: string | null
@@ -894,6 +897,13 @@ export type Database = {
             columns: ["router_id"]
             isOneToOne: false
             referencedRelation: "mikrotik_routers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
