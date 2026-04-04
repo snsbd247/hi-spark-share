@@ -186,6 +186,7 @@ function App() {
           <AuthProvider>
             <LanguageProvider>
             <CustomerAuthProvider>
+            <ResellerAuthProvider>
               <BrandingProvider>
               <Suspense fallback={<PageLoader />}>
               <Routes>
