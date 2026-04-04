@@ -146,7 +146,7 @@ class ResellerController extends Controller
             'name' => $request->name,
             'phone' => $request->phone,
             'area' => $request->area,
-            'monthly_bill' => $request->monthly_bill,
+            'monthly_bill' => $monthlyBill, // Forced from package price
             'package_id' => $request->package_id,
             'connection_status' => 'online',
             'status' => 'active',
