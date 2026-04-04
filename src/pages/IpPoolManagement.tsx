@@ -120,7 +120,7 @@ export default function IpPoolManagement() {
           toast.error(data?.error || t.ipPool.syncFailed);
         }
       } else {
-        const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: routerId });
+        const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: routerId, tenant_id: tenantId });
         if (data?.success) {
           toast.success(`${data.synced} ${t.ipPool.syncSuccess}`);
         } else {
