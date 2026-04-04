@@ -10,28 +10,30 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, CheckCircle, Download } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { format } from "date-fns";
 import { generatePaySlipPdf } from "@/lib/salaryPaySlipPdf";
 
 export default function SalarySheet() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const now = new Date();
   const [month, setMonth] = useState(format(now, "yyyy-MM"));
 
   const { data: sheets = [], isLoading } = useQuery({
-    queryKey: ["salary-sheets", month],
-    queryFn: async () => { const { data } = await ( db as any).from("salary_sheets").select("*").eq("month", month); return data || []; },
+    queryKey: ["salary-sheets", month, tenantId],
+    queryFn: async () => { const { data } = await scopeByTenant((db as any).from("salary_sheets").select("*").eq("month", month), tenantId); return data || []; },
   });
 
   const { data: employees = [] } = useQuery({
-    queryKey: ["employees-active"],
-    queryFn: async () => { const { data } = await ( db as any).from("employees").select("*").eq("status", "active"); return data || []; },
+    queryKey: ["employees-active", tenantId],
+    queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employees").select("*").eq("status", "active"), tenantId); return data || []; },
   });
 
   const { data: salaryStructures = [] } = useQuery({
-    queryKey: ["all-salary-structures"],
-    queryFn: async () => { const { data } = await ( db as any).from("employee_salary_structure").select("*").order("effective_from", { ascending: false }); return data || []; },
+    queryKey: ["all-salary-structures", tenantId],
+    queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employee_salary_structure").select("*").order("effective_from", { ascending: false }), tenantId); return data || []; },
   });
 
   const { data: settings } = useQuery({
@@ -43,7 +45,7 @@ export default function SalarySheet() {
 
   const generate = useMutation({
     mutationFn: async () => {
-      const { data: loans } = await ( db as any).from("loans").select("*").eq("status", "active");
+      const { data: loans } = await scopeByTenant((db as any).from("loans").select("*").eq("status", "active"), tenantId);
       for (const emp of employees) {
         const structure = getStructure(emp.id);
         const basic = structure ? Number(structure.basic_salary) : Number(emp.salary);
@@ -55,9 +57,8 @@ export default function SalarySheet() {
         const ld = (loans || []).filter((l: any) => l.employee_id === emp.id).reduce((s: number, l: any) => s + Number(l.monthly_deduction), 0);
         const net = gross - ld;
 
-        // Check if already exists
         const { data: existing } = await ( db as any).from("salary_sheets").select("id").eq("employee_id", emp.id).eq("month", month).maybeSingle();
-        const payload = {
+        const payload: any = {
           employee_id: emp.id,
           month,
           basic_salary: basic,
@@ -74,6 +75,7 @@ export default function SalarySheet() {
         if (existing) {
           await ( db as any).from("salary_sheets").update(payload).eq("id", existing.id);
         } else {
+          if (tenantId) payload.tenant_id = tenantId;
           await ( db as any).from("salary_sheets").insert(payload);
         }
       }

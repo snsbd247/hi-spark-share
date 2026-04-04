@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ interface Device {
 export default function CustomerDevices() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -40,28 +42,28 @@ export default function CustomerDevices() {
   });
 
   const { data: devices = [], isLoading } = useQuery({
-    queryKey: ["customer_devices"],
+    queryKey: ["customer_devices", tenantId],
     queryFn: async () => {
-      const { data, error } = await (db as any).from("customer_devices")
+      const { data, error } = await scopeByTenant((db as any).from("customer_devices")
         .select("*,customer:customers(name,customer_id),product:products(name)")
-        .order("assigned_at", { ascending: false });
+        .order("assigned_at", { ascending: false }), tenantId);
       if (error) throw error;
       return data || [];
     },
   });
 
   const { data: customers = [] } = useQuery({
-    queryKey: ["customers_list"],
+    queryKey: ["customers_list", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("customers").select("id,name,customer_id").order("name");
+      const { data } = await scopeByTenant((db as any).from("customers").select("id,name,customer_id").order("name"), tenantId);
       return data || [];
     },
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("products").select("id,name,stock").order("name");
+      const { data } = await scopeByTenant((db as any).from("products").select("id,name,stock").order("name"), tenantId);
       return data || [];
     },
   });

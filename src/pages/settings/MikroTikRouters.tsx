@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db, supabaseDirect } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import api from "@/lib/api";
 import { IS_LOVABLE } from "@/lib/environment";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -28,6 +29,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function MikroTikRouters() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const tenantId = useTenantId();
   const [formOpen, setFormOpen] = useState(false);
   const [editRouter, setEditRouter] = useState<any>(null);
   const [deleteRouter, setDeleteRouter] = useState<any>(null);
@@ -40,9 +42,9 @@ export default function MikroTikRouters() {
   });
 
   const { data: routers, isLoading } = useQuery({
-    queryKey: ["mikrotik-routers"],
+    queryKey: ["mikrotik-routers", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("mikrotik_routers").select("*").order("created_at", { ascending: false });
+      const { data, error } = await scopeByTenant(db.from("mikrotik_routers").select("*").order("created_at", { ascending: false }), tenantId);
       if (error) throw error;
       return data;
     },
@@ -102,6 +104,7 @@ export default function MikroTikRouters() {
         toast.success("Router updated");
       } else {
         payload.password = form.password;
+        if (tenantId) payload.tenant_id = tenantId;
         const { error } = await db.from("mikrotik_routers").insert(payload);
         if (error) throw error;
         toast.success("Router added");

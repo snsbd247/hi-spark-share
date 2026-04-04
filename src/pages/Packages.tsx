@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { db, supabaseDirect } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ async function mikrotikEdge(action: string, body: any) {
 export default function Packages() {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
+  const tenantId = useTenantId();
   const [formOpen, setFormOpen] = useState(false);
   const [editPkg, setEditPkg] = useState<any>(null);
   const [deletePkg, setDeletePkg] = useState<any>(null);
@@ -55,27 +57,27 @@ export default function Packages() {
   });
 
   const { data: packages, isLoading } = useQuery({
-    queryKey: ["packages-all"],
+    queryKey: ["packages-all", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("packages").select("*, mikrotik_routers(name), ip_pools(name, gateway)").order("created_at", { ascending: false });
+      const { data, error } = await scopeByTenant(db.from("packages").select("*, mikrotik_routers(name), ip_pools(name, gateway)").order("created_at", { ascending: false }), tenantId);
       if (error) throw error;
       return data;
     },
   });
 
   const { data: routers } = useQuery({
-    queryKey: ["mikrotik-routers-active"],
+    queryKey: ["mikrotik-routers-active", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("mikrotik_routers").select("*").eq("status", "active");
+      const { data, error } = await scopeByTenant(db.from("mikrotik_routers").select("*").eq("status", "active"), tenantId);
       if (error) throw error;
       return data;
     },
   });
 
   const { data: ipPools } = useQuery({
-    queryKey: ["ip-pools-active"],
+    queryKey: ["ip-pools-active", tenantId],
     queryFn: async () => {
-      const { data, error } = await db.from("ip_pools").select("*").eq("status", "active");
+      const { data, error } = await scopeByTenant(db.from("ip_pools").select("*").eq("status", "active"), tenantId);
       if (error) throw error;
       return data;
     },

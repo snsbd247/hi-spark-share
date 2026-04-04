@@ -7,16 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { format, endOfMonth } from "date-fns";
 
 export default function MonthlyAttendance() {
   const { t } = useLanguage();
   const now = new Date();
+  const tenantId = useTenantId();
   const [month, setMonth] = useState(format(now, "yyyy-MM"));
-  const { data: employees = [] } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await ( db as any).from("employees").select("*").eq("status", "active").order("employee_id"); return data || []; } });
+  const { data: employees = [] } = useQuery({ queryKey: ["employees-active", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employees").select("*").eq("status", "active").order("employee_id"), tenantId); return data || []; } });
   const { data: attendance = [], isLoading } = useQuery({
-    queryKey: ["attendance-monthly", month],
-    queryFn: async () => { const { data } = await ( db as any).from("attendance").select("*").gte("date", `${month}-01`).lte("date", format(endOfMonth(new Date(`${month}-01`)), "yyyy-MM-dd")); return data || []; },
+    queryKey: ["attendance-monthly", month, tenantId],
+    queryFn: async () => { const { data } = await scopeByTenant((db as any).from("attendance").select("*").gte("date", `${month}-01`).lte("date", format(endOfMonth(new Date(`${month}-01`)), "yyyy-MM-dd")), tenantId); return data || []; },
   });
   const getSummary = (empId: string) => {
     const a = attendance.filter((x: any) => x.employee_id === empId);

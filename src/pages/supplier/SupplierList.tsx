@@ -13,12 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2, Search, Eye, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SupplierList() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -26,12 +28,11 @@ export default function SupplierList() {
   const [form, setForm] = useState(emptyForm);
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["suppliers", tenantId],
     queryFn: async () => {
-      const { data: suppliers } = await (db as any).from("suppliers").select("*").order("created_at", { ascending: false });
+      const { data: suppliers } = await scopeByTenant((db as any).from("suppliers").select("*").order("created_at", { ascending: false }), tenantId);
       if (!suppliers?.length) return [];
-      // Calculate due dynamically from purchases
-      const { data: purchases } = await (db as any).from("purchases").select("supplier_id, total_amount, paid_amount");
+      const { data: purchases } = await scopeByTenant((db as any).from("purchases").select("supplier_id, total_amount, paid_amount"), tenantId);
       const dueMap: Record<string, number> = {};
       (purchases || []).forEach((p: any) => {
         const due = Number(p.total_amount || 0) - Number(p.paid_amount || 0);
@@ -44,7 +45,7 @@ export default function SupplierList() {
   const save = useMutation({
     mutationFn: async () => {
       if (editId) await ( db as any).from("suppliers").update(form).eq("id", editId);
-      else await ( db as any).from("suppliers").insert(form);
+      else await ( db as any).from("suppliers").insert({ ...form, ...(tenantId ? { tenant_id: tenantId } : {}) });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,27 +13,28 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function InventoryDashboard() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const tenantId = useTenantId();
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("products").select("*").order("name");
+      const { data } = await scopeByTenant((db as any).from("products").select("*").order("name"), tenantId);
       return data || [];
     },
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ["inventory_logs_recent"],
+    queryKey: ["inventory_logs_recent", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("inventory_logs").select("*,product:products(name)").order("created_at", { ascending: false }).limit(10);
+      const { data } = await scopeByTenant((db as any).from("inventory_logs").select("*,product:products(name)").order("created_at", { ascending: false }).limit(10), tenantId);
       return data || [];
     },
   });
 
   const { data: devices = [] } = useQuery({
-    queryKey: ["customer_devices_count"],
+    queryKey: ["customer_devices_count", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("customer_devices").select("*").eq("status", "active");
+      const { data } = await scopeByTenant((db as any).from("customer_devices").select("*").eq("status", "active"), tenantId);
       return data || [];
     },
   });

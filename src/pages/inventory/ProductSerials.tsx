@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ interface Serial {
 export default function ProductSerials() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,17 +37,17 @@ export default function ProductSerials() {
   const [bulkSerials, setBulkSerials] = useState("");
 
   const { data: serials = [], isLoading } = useQuery({
-    queryKey: ["product_serials"],
+    queryKey: ["product_serials", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("product_serials").select("*,product:products(name)").order("created_at", { ascending: false });
+      const { data } = await scopeByTenant((db as any).from("product_serials").select("*,product:products(name)").order("created_at", { ascending: false }), tenantId);
       return data || [];
     },
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("products").select("id,name").order("name");
+      const { data } = await scopeByTenant((db as any).from("products").select("id,name").order("name"), tenantId);
       return data || [];
     },
   });

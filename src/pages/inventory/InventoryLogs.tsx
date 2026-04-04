@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -9,13 +10,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function InventoryLogs() {
   const { t } = useLanguage();
+  const tenantId = useTenantId();
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["inventory_logs_all"],
+    queryKey: ["inventory_logs_all", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("inventory_logs")
+      const { data } = await scopeByTenant((db as any).from("inventory_logs")
         .select("*,product:products(name)")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(200), tenantId);
       return data || [];
     },
   });

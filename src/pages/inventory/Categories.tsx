@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +18,16 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function Categories() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", description: "" });
   const [search, setSearch] = useState("");
 
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ["categories"],
+    queryKey: ["categories", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("categories").select("*").order("name");
+      const { data } = await scopeByTenant((db as any).from("categories").select("*").order("name"), tenantId);
       return data || [];
     },
   });
@@ -35,7 +37,7 @@ export default function Categories() {
       if (editing) {
         await (db as any).from("categories").update({ name: form.name, description: form.description || null }).eq("id", editing.id);
       } else {
-        await (db as any).from("categories").insert({ name: form.name, description: form.description || null });
+        await (db as any).from("categories").insert({ name: form.name, description: form.description || null, ...(tenantId ? { tenant_id: tenantId } : {}) });
       }
     },
     onSuccess: () => {

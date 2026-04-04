@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, Search, Printer, Pencil, Wallet } from "lucide-react";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { generateSupplierPurchaseInvoicePDF } from "@/lib/supplierPurchasePdf";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -22,6 +23,7 @@ interface PurchaseItem { product_id: string; description: string; quantity: numb
 export default function SupplierPurchases() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
@@ -40,25 +42,25 @@ export default function SupplierPurchases() {
   const [items, setItems] = useState<PurchaseItem[]>([{ product_id: "", description: "", quantity: 1, unit_price: 0 }]);
 
   const { data: purchases = [], isLoading } = useQuery({
-    queryKey: ["supplier-purchases"],
+    queryKey: ["supplier-purchases", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("purchases").select("*").order("date", { ascending: false });
+      const { data } = await scopeByTenant((db as any).from("purchases").select("*").order("date", { ascending: false }), tenantId);
       return data || [];
     },
   });
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["suppliers", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("suppliers").select("id, name, company, phone").order("name");
+      const { data } = await scopeByTenant((db as any).from("suppliers").select("id, name, company, phone").order("name"), tenantId);
       return data || [];
     },
   });
 
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", tenantId],
     queryFn: async () => {
-      const { data } = await (db as any).from("products").select("id, name, sku, buy_price").order("name");
+      const { data } = await scopeByTenant((db as any).from("products").select("id, name, sku, buy_price").order("name"), tenantId);
       return data || [];
     },
   });

@@ -10,20 +10,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { format } from "date-fns";
 
 export default function DailyAttendance() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [records, setRecords] = useState<Record<string, { status: string; check_in: string; check_out: string }>>({});
 
-  const { data: employees = [] } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await ( db as any).from("employees").select("*").eq("status", "active").order("employee_id"); return data || []; } });
+  const { data: employees = [] } = useQuery({ queryKey: ["employees-active", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employees").select("*").eq("status", "active").order("employee_id"), tenantId); return data || []; } });
 
   useQuery({
-    queryKey: ["attendance", selectedDate],
+    queryKey: ["attendance", selectedDate, tenantId],
     queryFn: async () => {
-      const { data } = await ( db as any).from("attendance").select("*").eq("date", selectedDate);
+      const { data } = await scopeByTenant((db as any).from("attendance").select("*").eq("date", selectedDate), tenantId);
       const rec: Record<string, any> = {};
       (data || []).forEach((a: any) => { rec[a.employee_id] = { status: a.status, check_in: a.check_in || "", check_out: a.check_out || "" }; });
       setRecords(rec);
@@ -38,7 +40,7 @@ export default function DailyAttendance() {
     mutationFn: async () => {
       for (const emp of employees) {
         const r = getR(emp.id);
-        await ( db as any).from("attendance").upsert({ employee_id: emp.id, date: selectedDate, status: r.status, check_in: r.check_in || null, check_out: r.check_out || null });
+        await ( db as any).from("attendance").upsert({ employee_id: emp.id, date: selectedDate, status: r.status, check_in: r.check_in || null, check_out: r.check_out || null, ...(tenantId ? { tenant_id: tenantId } : {}) });
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["attendance"] }); toast.success("Attendance saved"); },

@@ -13,22 +13,24 @@ import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 
 export default function EmployeeList() {
   const { t } = useLanguage();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const emptyForm = { employee_id: "", name: "", phone: "", email: "", designation_id: "", joining_date: "", salary: "", address: "" };
   const [form, setForm] = useState(emptyForm);
 
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["employees"], queryFn: async () => { const { data } = await ( db as any).from("employees").select("*").order("employee_id"); return data || []; } });
-  const { data: desigs = [] } = useQuery({ queryKey: ["designations"], queryFn: async () => { const { data } = await ( db as any).from("designations").select("*").eq("status", "active"); return data || []; } });
+  const { data: rows = [], isLoading } = useQuery({ queryKey: ["employees", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employees").select("*").order("employee_id"), tenantId); return data || []; } });
+  const { data: desigs = [] } = useQuery({ queryKey: ["designations", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("designations").select("*").eq("status", "active"), tenantId); return data || []; } });
 
   const save = useMutation({
     mutationFn: async () => {
-      const p: any = { ...form, salary: Number(form.salary) || 0 };
+      const p: any = { ...form, salary: Number(form.salary) || 0, ...(tenantId ? { tenant_id: tenantId } : {}) };
       if (!p.designation_id) delete p.designation_id;
       if (editId) await ( db as any).from("employees").update(p).eq("id", editId);
       else await ( db as any).from("employees").insert(p);

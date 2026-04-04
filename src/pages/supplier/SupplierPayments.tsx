@@ -12,19 +12,21 @@ import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 import { format } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SupplierPayments() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ supplier_id: "", amount: "", payment_method: "cash", reference: "", notes: "" });
-  const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers"], queryFn: async () => { const { data } = await ( db as any).from("suppliers").select("*"); return data || []; } });
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["supplier_payments"], queryFn: async () => { const { data } = await ( db as any).from("supplier_payments").select("*").order("paid_date", { ascending: false }); return data || []; } });
+  const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("suppliers").select("*"), tenantId); return data || []; } });
+  const { data: rows = [], isLoading } = useQuery({ queryKey: ["supplier_payments", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("supplier_payments").select("*").order("paid_date", { ascending: false }), tenantId); return data || []; } });
 
   const save = useMutation({
-    mutationFn: async () => { await ( db as any).from("supplier_payments").insert({ ...form, amount: Number(form.amount), paid_date: new Date().toISOString() }); },
+    mutationFn: async () => { await ( db as any).from("supplier_payments").insert({ ...form, amount: Number(form.amount), paid_date: new Date().toISOString(), ...(tenantId ? { tenant_id: tenantId } : {}) }); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["supplier_payments"] }); toast.success("Payment recorded"); setOpen(false); setForm({ supplier_id: "", amount: "", payment_method: "cash", reference: "", notes: "" }); },
     onError: () => toast.error("Failed"),
   });
