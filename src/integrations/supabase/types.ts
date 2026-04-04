@@ -807,6 +807,82 @@ export type Database = {
           },
         ]
       }
+      customer_reseller_migrations: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          new_reseller_id: string | null
+          old_reseller_id: string | null
+          reason: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          new_reseller_id?: string | null
+          old_reseller_id?: string | null
+          reason?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          new_reseller_id?: string | null
+          old_reseller_id?: string | null
+          reason?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_reseller_migrations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reseller_migrations_new_reseller_id_fkey"
+            columns: ["new_reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reseller_migrations_new_reseller_id_fkey"
+            columns: ["new_reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reseller_migrations_old_reseller_id_fkey"
+            columns: ["old_reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reseller_migrations_old_reseller_id_fkey"
+            columns: ["old_reseller_id"]
+            isOneToOne: false
+            referencedRelation: "resellers_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reseller_migrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_sessions: {
         Row: {
           created_at: string
