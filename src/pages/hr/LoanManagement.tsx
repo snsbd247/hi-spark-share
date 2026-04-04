@@ -12,17 +12,19 @@ import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 
 export default function LoanManagement() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ employee_id: "", amount: "", monthly_deduction: "", reason: "" });
-  const { data: employees = [] } = useQuery({ queryKey: ["employees-active"], queryFn: async () => { const { data } = await ( db as any).from("employees").select("*").eq("status", "active"); return data || []; } });
-  const { data: loans = [], isLoading } = useQuery({ queryKey: ["loans"], queryFn: async () => { const { data } = await ( db as any).from("loans").select("*").order("created_at", { ascending: false }); return data || []; } });
+  const { data: employees = [] } = useQuery({ queryKey: ["employees-active", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("employees").select("*").eq("status", "active"), tenantId); return data || []; } });
+  const { data: loans = [], isLoading } = useQuery({ queryKey: ["loans", tenantId], queryFn: async () => { const { data } = await scopeByTenant((db as any).from("loans").select("*").order("created_at", { ascending: false }), tenantId); return data || []; } });
 
   const save = useMutation({
-    mutationFn: async () => { await ( db as any).from("loans").insert({ employee_id: form.employee_id, amount: Number(form.amount), monthly_deduction: Number(form.monthly_deduction), reason: form.reason, approved_date: new Date().toISOString().split("T")[0] }); },
+    mutationFn: async () => { await ( db as any).from("loans").insert({ employee_id: form.employee_id, amount: Number(form.amount), monthly_deduction: Number(form.monthly_deduction), reason: form.reason, approved_date: new Date().toISOString().split("T")[0], ...(tenantId ? { tenant_id: tenantId } : {}) }); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["loans"] }); toast.success("Loan added"); setOpen(false); setForm({ employee_id: "", amount: "", monthly_deduction: "", reason: "" }); },
     onError: () => toast.error("Failed"),
   });

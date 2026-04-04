@@ -11,23 +11,25 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/integrations/supabase/client";
+import { useTenantId, scopeByTenant } from "@/hooks/useTenantId";
 
 export default function DesignationList() {
   const { t } = useLanguage();
   const qc = useQueryClient();
+  const tenantId = useTenantId();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "" });
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["designations"],
-    queryFn: async () => { const { data } = await ( db as any).from("designations").select("*").order("created_at", { ascending: false }); return data || []; },
+    queryKey: ["designations", tenantId],
+    queryFn: async () => { const { data } = await scopeByTenant((db as any).from("designations").select("*").order("created_at", { ascending: false }), tenantId); return data || []; },
   });
 
   const save = useMutation({
     mutationFn: async () => {
       if (editId) await ( db as any).from("designations").update(form).eq("id", editId);
-      else await ( db as any).from("designations").insert(form);
+      else await ( db as any).from("designations").insert({ ...form, ...(tenantId ? { tenant_id: tenantId } : {}) });
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["designations"] }); toast.success("Saved"); setOpen(false); setEditId(null); setForm({ name: "", description: "" }); },
     onError: () => toast.error("Failed"),
