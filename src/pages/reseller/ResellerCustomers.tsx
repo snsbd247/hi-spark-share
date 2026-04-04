@@ -687,8 +687,8 @@ export default function ResellerCustomers() {
                 <FormSection icon={Receipt} title="Billing Information">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Monthly Bill (৳) *</Label>
-                      <Input type="number" value={form.monthly_bill} onChange={(e) => update("monthly_bill", e.target.value)} className="h-9" placeholder="Auto from package" />
+                      <Label className="text-xs">Monthly Bill (৳)</Label>
+                      <Input type="number" value={form.monthly_bill} className="h-9 bg-muted" disabled title="প্যাকেজ অনুযায়ী অটো সেট হয়" placeholder="Select a package" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Discount (৳)</Label>
