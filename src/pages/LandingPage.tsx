@@ -104,11 +104,8 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
           {branding.logo_url ? (
             <img src={branding.logo_url} alt={branding.site_name} className="h-8 w-auto" />
           ) : (
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <span className="text-lg font-bold text-foreground">{branding.site_name}</span>
           )}
-          <span className="text-lg font-bold text-foreground">{branding.site_name}</span>
         </div>
         <div className="hidden md:flex items-center gap-6 text-sm">
           {navLinks.map((link: any, i: number) => (
