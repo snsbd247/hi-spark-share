@@ -23,6 +23,7 @@ class Reseller extends Model
     protected $casts = [
         'wallet_balance' => 'decimal:2',
         'commission_rate' => 'decimal:2',
+        'allow_all_packages' => 'boolean',
     ];
 
     public function customers()
