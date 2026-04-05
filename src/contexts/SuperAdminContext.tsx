@@ -30,10 +30,17 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedToken = sessionStore.getItem("super_admin_token");
     const savedUser = sessionStore.getItem("super_admin_user");
+
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch {
+        sessionStore.removeItem("super_admin_token");
+        sessionStore.removeItem("super_admin_user");
+      }
     }
+
     setLoading(false);
   }, []);
 

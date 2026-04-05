@@ -17,25 +17,41 @@ function headers(): Record<string, string> {
   };
 }
 
+async function parseApiResponse(res: Response) {
+  const text = await res.text();
+
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (/<!doctype|<html|<body/i.test(text)) {
+      return { error: "Invalid server response" };
+    }
+    return { message: text };
+  }
+}
+
 async function request(path: string, options: RequestInit = {}) {
   const res = await fetch(`${BASE()}${path}`, {
     ...options,
     headers: { ...headers(), ...(options.headers || {}) },
   });
 
+  const data = await parseApiResponse(res);
+
   if (res.status === 401) {
     sessionStore.removeItem("super_admin_token");
     sessionStore.removeItem("super_admin_user");
     window.location.href = "/super/login";
-    throw new Error("Session expired");
+    throw new Error((data as any)?.error || "Session expired");
   }
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || data.message || "Request failed");
+    throw new Error((data as any)?.error || (data as any)?.message || "Request failed");
   }
 
-  return res.json();
+  return data;
 }
 
 async function invokeSuperAdminEdge<T = any>(functionName: string, options: { method?: string; body?: any } = {}): Promise<T> {
@@ -62,17 +78,17 @@ async function invokeSuperAdminEdge<T = any>(functionName: string, options: { me
       : JSON.stringify(options.body),
   });
 
-  const data = await res.json().catch(() => ({}));
+  const data = await parseApiResponse(res);
 
   if (res.status === 401) {
     sessionStore.removeItem("super_admin_token");
     sessionStore.removeItem("super_admin_user");
     window.location.href = "/super/login";
-    throw new Error(data.error || "Session expired");
+    throw new Error((data as any)?.error || "Session expired");
   }
 
   if (!res.ok) {
-    throw new Error(data.error || data.message || "Request failed");
+    throw new Error((data as any)?.error || (data as any)?.message || "Request failed");
   }
 
   return data as T;
