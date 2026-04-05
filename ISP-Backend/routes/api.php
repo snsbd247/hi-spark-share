@@ -82,13 +82,15 @@ Route::get('/system_settings', [GenericCrudController::class, 'index'])->default
 Route::get('/system-settings', [GenericCrudController::class, 'index'])->defaults('table', 'system_settings');
 
 // ── HTTP Setup Routes (secured by APP_KEY token) ─────
-Route::get('/setup/status', [\App\Http\Controllers\Api\SetupController::class, 'status']);
-Route::post('/setup/migrate', [\App\Http\Controllers\Api\SetupController::class, 'migrate']);
-Route::post('/setup/seed', [\App\Http\Controllers\Api\SetupController::class, 'seed']);
-Route::post('/setup/cache-clear', [\App\Http\Controllers\Api\SetupController::class, 'cacheClear']);
-Route::post('/setup/storage-link', [\App\Http\Controllers\Api\SetupController::class, 'storageLink']);
-Route::post('/setup/full', [\App\Http\Controllers\Api\SetupController::class, 'full']);
-Route::post('/setup/reset-all', [\App\Http\Controllers\Api\SetupController::class, 'resetAll']);
+Route::middleware('throttle:sensitive')->group(function () {
+    Route::get('/setup/status', [\App\Http\Controllers\Api\SetupController::class, 'status']);
+    Route::post('/setup/migrate', [\App\Http\Controllers\Api\SetupController::class, 'migrate']);
+    Route::post('/setup/seed', [\App\Http\Controllers\Api\SetupController::class, 'seed']);
+    Route::post('/setup/cache-clear', [\App\Http\Controllers\Api\SetupController::class, 'cacheClear']);
+    Route::post('/setup/storage-link', [\App\Http\Controllers\Api\SetupController::class, 'storageLink']);
+    Route::post('/setup/full', [\App\Http\Controllers\Api\SetupController::class, 'full']);
+    Route::post('/setup/reset-all', [\App\Http\Controllers\Api\SetupController::class, 'resetAll']);
+});
 
 // ── Tenant Info (public — needed for login page branding per tenant) ──
 Route::get('/tenant/current', function () {
@@ -190,7 +192,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // ══════════════════════════════════════════════════════
     // ── SMS & EMAIL — module: sms ───────────────────────
     // ══════════════════════════════════════════════════════
-    Route::middleware(['check.plan_module:sms', 'check.permission:sms,create'])->group(function () {
+    Route::middleware(['check.plan_module:sms', 'check.permission:sms,create', 'throttle:messaging'])->group(function () {
         Route::post('/sms/send', [SmsController::class, 'send']);
         Route::post('/sms/send-bulk', [SmsController::class, 'sendBulk']);
         Route::get('/sms/balance', [SmsBalanceController::class, 'check']);

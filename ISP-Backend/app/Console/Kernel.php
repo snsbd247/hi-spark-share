@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\DB;
 
 class Kernel extends ConsoleKernel
 {
@@ -26,31 +27,52 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // ── ISP Billing ──────────────────────────────────
-        // Generate monthly bills on 1st of each month at midnight
         $schedule->command('bills:generate')->monthlyOn(1, '00:00');
-
-        // Auto-suspend customers with overdue bills (7+ days) every day at 2 AM
         $schedule->command('customers:auto-suspend --days=7')->dailyAt('02:00');
-
-        // Send bill reminders daily at 9 AM
         $schedule->command('bills:send-reminders')->dailyAt('09:00');
 
         // ── Sessions ─────────────────────────────────────
-        // Cleanup expired sessions every hour
         $schedule->command('sessions:cleanup')->hourly();
 
         // ── Accounting / Reports ─────────────────────────
-        // Calculate daily profit at end of day (11:55 PM)
         $schedule->command('reports:daily-profit')->dailyAt('23:55');
 
-        // ── Auto Backup ──────────────────────────────────
-        // Frequency is controlled via system_settings (auto_backup_frequency)
-        // Daily auto backup at 2:30 AM
-        $schedule->command('backup:auto --type=full')->dailyAt('02:30');
-        // Weekly full backup on Sunday at 3 AM
-        $schedule->command('backup:auto --type=full')->weeklyOn(0, '03:00');
-        // Monthly full backup on 1st at 3 AM
-        $schedule->command('backup:auto --type=full')->monthlyOn(1, '03:00');
+        // ── Auto Backup (respects system_settings) ──────
+        // Only run the frequency that matches the saved setting
+        $schedule->call(function () {
+            $this->runAutoBackupIfEnabled();
+        })->dailyAt('02:30');
+    }
+
+    /**
+     * Run auto backup only if enabled and matching the configured frequency.
+     */
+    private function runAutoBackupIfEnabled(): void
+    {
+        try {
+            $settings = DB::table('system_settings')
+                ->whereIn('setting_key', ['auto_backup_enabled', 'auto_backup_frequency'])
+                ->pluck('setting_value', 'setting_key');
+
+            $enabled = ($settings['auto_backup_enabled'] ?? 'false') === 'true';
+            if (!$enabled) return;
+
+            $frequency = $settings['auto_backup_frequency'] ?? 'daily';
+            $now = now();
+
+            $shouldRun = match ($frequency) {
+                'daily' => true,
+                'weekly' => $now->dayOfWeek === 0, // Sunday
+                'monthly' => $now->day === 1,
+                default => false,
+            };
+
+            if ($shouldRun) {
+                \Artisan::call('backup:auto', ['--type' => 'full']);
+            }
+        } catch (\Exception $e) {
+            report($e);
+        }
     }
 
     /**
