@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
     if (error || !resellerData) {
       return new Response(
-        JSON.stringify({ error: "Invalid credentials or account suspended" }),
+        JSON.stringify({ error: "Wrong User ID & Password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -60,7 +60,7 @@ Deno.serve(async (req: Request) => {
 
     if (!valid) {
       return new Response(
-        JSON.stringify({ error: "Invalid credentials" }),
+        JSON.stringify({ error: "Wrong User ID & Password" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

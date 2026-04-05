@@ -84,7 +84,7 @@ export default function ResellerLogin() {
           </form>
 
           <div className="mt-6 pt-5 border-t border-border text-center">
-            <Link to="/admin" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            <Link to="/admin/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
               ← Admin Login
             </Link>
           </div>
