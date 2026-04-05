@@ -976,7 +976,22 @@ export const superAdminApi = {
   // ── Backup & Recovery ──────────────────────────────
   getBackupLogs: async () => {
     if (IS_LOVABLE) {
-      const { data } = await supabase.from("backup_logs").select("*").order("created_at", { ascending: false }).limit(100);
+      try {
+        const data = await request("/backups/logs");
+        if (Array.isArray(data)) return data;
+        if (Array.isArray((data as any)?.data)) return (data as any).data;
+        if (Array.isArray((data as any)?.logs)) return (data as any).logs;
+      } catch (error) {
+        console.warn("Falling back to Supabase backup logs in Lovable preview", error);
+      }
+
+      const { data, error } = await supabase
+        .from("backup_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw new Error(error.message);
       return data || [];
     }
     return request("/backups/logs");
