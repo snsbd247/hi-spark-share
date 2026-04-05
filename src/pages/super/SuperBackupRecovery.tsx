@@ -69,7 +69,9 @@ export default function SuperBackupRecovery() {
     setActionLoading("full");
     try {
       const res = await superAdminApi.createFullBackup();
-      toast.success(`Full backup created: ${res.file_name}`);
+      const fileName = res?.file_name || "backup";
+      const size = res?.size ? ` (${formatSize(res.size)})` : "";
+      toast.success(`Full backup created: ${fileName}${size}`);
       loadData();
     } catch (e: any) {
       toast.error(e?.message || "Backup failed");
@@ -83,7 +85,9 @@ export default function SuperBackupRecovery() {
     setActionLoading("tenant");
     try {
       const res = await superAdminApi.createTenantBackup(selectedTenant);
-      toast.success(`Tenant backup created: ${res.file_name}`);
+      const fileName = res?.file_name || "backup";
+      const tenantName = res?.tenant_name ? ` [${res.tenant_name}]` : "";
+      toast.success(`Tenant backup created: ${fileName}${tenantName}`);
       loadData();
     } catch (e: any) {
       toast.error(e?.message || "Backup failed");
@@ -569,6 +573,7 @@ export default function SuperBackupRecovery() {
                     <SelectContent>
                       <SelectItem value="daily">Daily (2:30 AM)</SelectItem>
                       <SelectItem value="weekly">Weekly (Sunday 3 AM)</SelectItem>
+                      <SelectItem value="monthly">Monthly (1st, 3 AM)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
