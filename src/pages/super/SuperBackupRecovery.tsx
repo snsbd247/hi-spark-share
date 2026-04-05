@@ -69,10 +69,12 @@ export default function SuperBackupRecovery() {
     setActionLoading("full");
     try {
       const res = await superAdminApi.createFullBackup();
-      const fileName = res?.file_name || "backup";
-      const size = res?.size ? ` (${formatSize(res.size)})` : "";
-      toast.success(`Full backup created: ${fileName}${size}`);
-      loadData();
+      const d = res?.data || res;
+      const fileName = d?.file_name || d?.filename || "backup";
+      const size = d?.size || d?.file_size;
+      const sizeStr = size ? ` (${formatSize(size)})` : "";
+      toast.success(`Full backup created: ${fileName}${sizeStr}`);
+      await loadData();
     } catch (e: any) {
       toast.error(e?.message || "Backup failed");
     } finally {
@@ -85,10 +87,11 @@ export default function SuperBackupRecovery() {
     setActionLoading("tenant");
     try {
       const res = await superAdminApi.createTenantBackup(selectedTenant);
-      const fileName = res?.file_name || "backup";
-      const tenantName = res?.tenant_name ? ` [${res.tenant_name}]` : "";
+      const d = res?.data || res;
+      const fileName = d?.file_name || d?.filename || "backup";
+      const tenantName = d?.tenant_name ? ` [${d.tenant_name}]` : "";
       toast.success(`Tenant backup created: ${fileName}${tenantName}`);
-      loadData();
+      await loadData();
     } catch (e: any) {
       toast.error(e?.message || "Backup failed");
     } finally {
@@ -111,7 +114,7 @@ export default function SuperBackupRecovery() {
         await superAdminApi.restoreTenantBackup(tenantId, filePath);
       }
       toast.success("Restore completed successfully!");
-      loadData();
+      await loadData();
     } catch (e: any) {
       toast.error(e?.message || "Restore failed");
     } finally {
@@ -124,7 +127,7 @@ export default function SuperBackupRecovery() {
     try {
       await superAdminApi.rollbackBackup(type, type === "tenant" ? selectedTenant : undefined);
       toast.success("Rollback completed!");
-      loadData();
+      await loadData();
     } catch (e: any) {
       toast.error(e?.message || "Rollback failed");
     } finally {
@@ -159,7 +162,7 @@ export default function SuperBackupRecovery() {
     try {
       await superAdminApi.deleteBackup(filePath);
       toast.success("Backup deleted");
-      loadData();
+      await loadData();
     } catch {
       toast.error("Delete failed");
     } finally {

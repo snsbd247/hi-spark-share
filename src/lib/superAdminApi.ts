@@ -974,7 +974,13 @@ export const superAdminApi = {
   },
 
   // ── Backup & Recovery ──────────────────────────────
-  getBackupLogs: () => request("/backups/logs"),
+  getBackupLogs: async () => {
+    if (IS_LOVABLE) {
+      const { data } = await supabase.from("backup_logs").select("*").order("created_at", { ascending: false }).limit(100);
+      return data || [];
+    }
+    return request("/backups/logs");
+  },
   createFullBackup: () => request("/backups/full", { method: "POST" }),
   createTenantBackup: (tenantId: string) => request("/backups/tenant", { method: "POST", body: JSON.stringify({ tenant_id: tenantId }) }),
   restoreFullBackup: (filePath: string) => request("/backups/restore-full", { method: "POST", body: JSON.stringify({ file_path: filePath }) }),
