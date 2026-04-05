@@ -30,21 +30,52 @@ class BackupRecoveryController extends Controller
     // ── Create full backup ────────────────────────────────
     public function createFull(Request $request)
     {
-        $admin = $request->get('super_admin');
-        $result = $this->fullBackup->create($admin->id ?? 'system');
-        return response()->json(['success' => true, ...$result]);
+        try {
+            $admin = $request->get('super_admin');
+            $result = $this->fullBackup->create($admin->id ?? 'system');
+
+            return response()->json([
+                'success' => true,
+                'file_name' => $result['file_name'],
+                'file_path' => $result['file_path'],
+                'size' => $result['size'],
+                'total_rows' => $result['total_rows'] ?? 0,
+                'tables_count' => $result['tables_count'] ?? 0,
+                'timestamp' => $result['timestamp'] ?? now()->toIso8601String(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Backup creation failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     // ── Create tenant backup ──────────────────────────────
     public function createTenant(Request $request)
     {
         $request->validate(['tenant_id' => 'required|uuid']);
-        $admin = $request->get('super_admin');
-        $result = $this->tenantBackup->create(
-            $request->input('tenant_id'),
-            $admin->id ?? 'system'
-        );
-        return response()->json(['success' => true, ...$result]);
+
+        try {
+            $admin = $request->get('super_admin');
+            $result = $this->tenantBackup->create(
+                $request->input('tenant_id'),
+                $admin->id ?? 'system'
+            );
+
+            return response()->json([
+                'success' => true,
+                'file_name' => $result['file_name'],
+                'file_path' => $result['file_path'],
+                'size' => $result['size'],
+                'total_rows' => $result['total_rows'] ?? 0,
+                'tenant_name' => $result['tenant_name'] ?? '',
+                'timestamp' => $result['timestamp'] ?? now()->toIso8601String(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Tenant backup failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     // ── Download backup ───────────────────────────────────
@@ -52,6 +83,12 @@ class BackupRecoveryController extends Controller
     {
         $request->validate(['file_path' => 'required|string']);
         $filePath = $request->input('file_path');
+
+        // Security: prevent path traversal
+        if (str_contains($filePath, '..')) {
+            return response()->json(['error' => 'Invalid file path'], 400);
+        }
+
         $fullPath = storage_path("app/{$filePath}");
 
         if (!file_exists($fullPath)) {
@@ -68,7 +105,14 @@ class BackupRecoveryController extends Controller
 
         // Safety: create a backup before restore
         $admin = $request->get('super_admin');
-        $safetyBackup = $this->fullBackup->create($admin->id ?? 'system');
+
+        try {
+            $safetyBackup = $this->fullBackup->create($admin->id ?? 'system');
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Could not create safety backup: ' . $e->getMessage(),
+            ], 500);
+        }
 
         try {
             $this->fullBackup->restore($request->input('file_path'));
@@ -85,7 +129,7 @@ class BackupRecoveryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Full restore completed',
+                'message' => 'Full restore completed successfully',
                 'safety_backup' => $safetyBackup['file_name'],
             ]);
         } catch (\Exception $e) {
@@ -104,18 +148,20 @@ class BackupRecoveryController extends Controller
             'file_path' => 'required|string',
         ]);
 
-        // Safety backup first
         $admin = $request->get('super_admin');
-        $safetyBackup = $this->tenantBackup->create(
-            $request->input('tenant_id'),
-            $admin->id ?? 'system'
-        );
+        $tenantId = $request->input('tenant_id');
+
+        // Safety backup first
+        try {
+            $safetyBackup = $this->tenantBackup->create($tenantId, $admin->id ?? 'system');
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Could not create safety backup: ' . $e->getMessage(),
+            ], 500);
+        }
 
         try {
-            $this->tenantBackup->restore(
-                $request->input('tenant_id'),
-                $request->input('file_path')
-            );
+            $this->tenantBackup->restore($tenantId, $request->input('file_path'));
 
             DB::table('backup_logs')->insert([
                 'id' => Str::uuid()->toString(),
@@ -129,7 +175,7 @@ class BackupRecoveryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Tenant restore completed',
+                'message' => 'Tenant restore completed successfully',
                 'safety_backup' => $safetyBackup['file_name'],
             ]);
         } catch (\Exception $e) {
@@ -144,6 +190,11 @@ class BackupRecoveryController extends Controller
     public function verify(Request $request)
     {
         $request->validate(['file_path' => 'required|string']);
+
+        if (str_contains($request->input('file_path'), '..')) {
+            return response()->json(['error' => 'Invalid file path'], 400);
+        }
+
         $result = $this->fullBackup->verify($request->input('file_path'));
         return response()->json($result);
     }
@@ -189,17 +240,26 @@ class BackupRecoveryController extends Controller
     public function delete(Request $request)
     {
         $request->validate(['file_path' => 'required|string']);
+
+        if (str_contains($request->input('file_path'), '..')) {
+            return response()->json(['error' => 'Invalid file path'], 400);
+        }
+
         $fullPath = storage_path("app/{$request->input('file_path')}");
+        $fileName = basename($request->input('file_path'));
 
         if (file_exists($fullPath)) {
             unlink($fullPath);
         }
 
         DB::table('backup_logs')
-            ->where('file_name', basename($request->input('file_path')))
+            ->where('file_name', $fileName)
             ->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => "Backup {$fileName} deleted",
+        ]);
     }
 
     // ── Cleanup old backups ───────────────────────────────
@@ -225,7 +285,6 @@ class BackupRecoveryController extends Controller
             }
         }
 
-        // Clean log entries too
         DB::table('backup_logs')
             ->where('created_at', '<', now()->subDays($keepDays))
             ->delete();
@@ -255,7 +314,7 @@ class BackupRecoveryController extends Controller
     {
         $request->validate([
             'enabled' => 'required|boolean',
-            'frequency' => 'required|in:daily,weekly',
+            'frequency' => 'required|in:daily,weekly,monthly',
             'keep_count' => 'required|integer|min:1|max:100',
         ]);
 
@@ -272,6 +331,9 @@ class BackupRecoveryController extends Controller
             );
         }
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Auto backup settings updated',
+        ]);
     }
 }
