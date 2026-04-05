@@ -108,6 +108,7 @@ const ApiHealthMonitor = lazy(() => import("@/pages/settings/ApiHealthMonitor"))
 const GeoManagement = lazy(() => import("@/pages/settings/GeoManagement"));
 const DomainManagement = lazy(() => import("@/pages/settings/DomainManagement"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const DemoRequestPage = lazy(() => import("@/pages/DemoRequestPage"));
 const ForcePasswordChange = lazy(() => import("@/pages/ForcePasswordChange"));
 const CouponManagement = lazy(() => import("@/pages/CouponManagement"));
 const ResellerManagement = lazy(() => import("@/pages/ResellerManagement"));

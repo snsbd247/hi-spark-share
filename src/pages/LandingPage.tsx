@@ -456,24 +456,24 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
 
 // ─── Main Page ───────────────────────────────────────────────
 export default function LandingPage() {
+  const [modalOpen, setModalOpen] = useState(false);
   const { data: sections = [] } = useLandingSections();
   const { data: branding = { site_name: "", logo_url: null, email: "", mobile: "", address: "", support_email: "", support_phone: "", copyright_text: "", footer_text: "" } } = useBranding();
 
-  const scrollToSignup = () => {
-    document.getElementById("signup")?.scrollIntoView({ behavior: "smooth" });
-  };
+  const demoMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
+  const openModal = () => setModalOpen(true);
 
   return (
     <div className="min-h-screen bg-background">
       <TopBar branding={branding} />
-      <Navbar branding={branding} onCta={scrollToSignup} sections={sections} />
-      <HeroSection sections={sections} onCta={scrollToSignup} />
+      <Navbar branding={branding} onCta={openModal} sections={sections} />
+      <HeroSection sections={sections} onCta={openModal} />
       <FeaturesSection sections={sections} />
-      <PricingSection sections={sections} onCta={scrollToSignup} />
+      <PricingSection sections={sections} onCta={openModal} />
       <TestimonialsSection sections={sections} />
       <FaqSection sections={sections} />
-      <DemoRequestSection sections={sections} />
       <LandingFooter sections={sections} branding={branding} />
+      <DemoQuickModal open={modalOpen} onOpenChange={setModalOpen} meta={demoMeta} />
     </div>
   );
 }
