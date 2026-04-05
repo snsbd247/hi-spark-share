@@ -4,18 +4,16 @@ import DemoQuickModal from "@/components/demo/DemoQuickModal";
 import { db } from "@/integrations/supabase/client";
 import { superAdminApi } from "@/lib/superAdminApi";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 import {
   Zap, Shield, BarChart3, MessageSquare, Router, CreditCard,
-  Check, ChevronDown, ChevronUp, ArrowRight, Loader2, Globe,
+  Check, ChevronDown, ChevronUp, ArrowRight, Globe,
   Users, Clock, Star, Play, Wifi, Server, Receipt, Package,
   Phone, Mail, MapPin, Briefcase, Truck, Ticket, Activity,
   Building2, Network, Tag, UserCircle, DatabaseBackup, Cable, Calculator,
+  Menu, X, Layers, Settings, CheckCircle2,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, any> = {
@@ -73,57 +71,73 @@ function useLandingSections() {
   });
 }
 
-// ─── Top Bar ─────────────────────────────────────────────────
-function TopBar({ branding }: { branding: any }) {
-  return (
-    <div className="bg-[hsl(210,80%,15%)] text-white/80 text-xs py-2">
-      <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-4">
-          {branding.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {branding.email}</span>}
-          {branding.support_phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {branding.support_phone}</span>}
-        </div>
-        <div className="flex items-center gap-3">
-          {branding.mobile && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {branding.mobile}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Navbar ──────────────────────────────────────────────────
 function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => void; sections: any[] }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
   const navLinks = (navMeta.nav_links as { label: string; href: string }[] | undefined) || [
-    { label: "FEATURES", href: "#features" },
-    { label: "PRICING", href: "#pricing" },
+    { label: "Features", href: "#features" },
+    { label: "How It Works", href: "#how-it-works" },
+    { label: "Pricing", href: "#pricing" },
     { label: "FAQ", href: "#faq" },
-    { label: "CONTACT", href: "#signup" },
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-card/95 backdrop-blur border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
-        <div className="flex items-center gap-2">
+    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        <div className="flex items-center gap-2.5">
           {branding.logo_url ? (
             <img src={branding.logo_url} alt={branding.site_name} className="h-8 w-auto" />
           ) : (
-            <span className="text-lg font-bold text-foreground">{branding.site_name}</span>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Wifi className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="text-lg font-bold text-foreground">{branding.site_name}</span>
+            </div>
           )}
         </div>
-        <div className="hidden md:flex items-center gap-6 text-sm">
+
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link: any, i: number) => (
-            <a key={i} href={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
+            <a key={i} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
               {link.label}
             </a>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href="/admin/login">ISP Login</a>
+
+        <div className="hidden md:flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
+            <a href="/admin/login">Login</a>
           </Button>
-          <Button onClick={onCta} size="sm">{navMeta.cta_nav || "Demo Request"}</Button>
+          <Button onClick={onCta} size="sm" className="rounded-full px-5">
+            {navMeta.cta_nav || "Get Started"} <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
+
+        <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      {mobileOpen && (
+        <div className="md:hidden border-t border-border/50 bg-background pb-4 px-4 space-y-2">
+          {navLinks.map((link: any, i: number) => (
+            <a key={i} href={link.href} onClick={() => setMobileOpen(false)}
+              className="block py-2.5 text-sm text-muted-foreground hover:text-foreground font-medium">
+              {link.label}
+            </a>
+          ))}
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" size="sm" asChild className="flex-1">
+              <a href="/admin/login">Login</a>
+            </Button>
+            <Button size="sm" className="flex-1 rounded-full" onClick={() => { setMobileOpen(false); onCta(); }}>
+              Get Started
+            </Button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
@@ -135,51 +149,65 @@ function HeroSection({ sections, onCta }: { sections: any[]; onCta: () => void }
   const meta = hero?.metadata || {};
   const badges = (meta.hero_badges as string[]) || [];
 
-  if (!hero) return null;
-
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-[hsl(210,80%,20%)] via-[hsl(210,70%,25%)] to-[hsl(200,60%,30%)] pt-20 pb-24 sm:pt-28 sm:pb-32">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.15),transparent_60%)]" />
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 text-center">
-        {meta.badge && (
-          <Badge className="mb-6 px-4 py-1.5 text-sm bg-primary/20 text-primary-foreground border-primary/30">
-            {meta.badge}
-          </Badge>
-        )}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight max-w-4xl mx-auto">
-          {hero.title}
-        </h1>
-        {hero.description && (
-          <p className="mt-6 text-lg sm:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
-            {hero.description}
+    <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32 lg:pb-36">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-background to-accent/[0.03]" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/[0.06] rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/[0.05] rounded-full blur-[100px] translate-y-1/2 -translate-x-1/3" />
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-4xl mx-auto">
+          {meta.badge && (
+            <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm font-medium rounded-full border-primary/20 bg-primary/10 text-primary">
+              <Zap className="h-3.5 w-3.5 mr-1.5" /> {meta.badge}
+            </Badge>
+          )}
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight leading-[1.1]">
+            {hero?.title || (
+              <>Smart ISP Management <span className="gradient-text">Made Easy</span></>
+            )}
+          </h1>
+
+          <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            {hero?.description || "Billing, SMS, Network, Inventory — all in one powerful platform. Manage your ISP business smarter."}
           </p>
-        )}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="text-base px-8 py-6 rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90" onClick={onCta}>
-            {meta.cta_primary || "Start Free Trial"} <ArrowRight className="h-5 w-5 ml-2" />
-          </Button>
-          {meta.cta_secondary && (
-            <Button size="lg" variant="outline" className="text-base px-8 py-6 rounded-xl bg-white/10 border-white/40 text-white hover:bg-white/20 hover:border-white/60 cursor-pointer shadow-md">
-              <Play className="h-5 w-5 mr-2" /> {meta.cta_secondary}
+
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" className="text-base px-8 h-12 rounded-full shadow-lg shadow-primary/20" onClick={onCta}>
+              {meta.cta_primary || "Start Free Trial"} <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
+            {(meta.cta_secondary || true) && (
+              <Button size="lg" variant="outline" className="text-base px-8 h-12 rounded-full">
+                <Play className="h-4 w-4 mr-2" /> {meta.cta_secondary || "Watch Demo"}
+              </Button>
+            )}
+          </div>
+
+          {badges.length > 0 && (
+            <div className="mt-10 flex items-center justify-center gap-6 sm:gap-8 text-sm text-muted-foreground flex-wrap">
+              {badges.map((b: string, i: number) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  <Check className="h-4 w-4 text-primary" /> {b}
+                </span>
+              ))}
+            </div>
           )}
         </div>
-        {badges.length > 0 && (
-          <div className="mt-12 flex items-center justify-center gap-8 text-sm text-white/60 flex-wrap">
-            {badges.map((b: string, i: number) => (
-              <span key={i} className="flex items-center gap-1.5"><Check className="h-4 w-4 text-primary" /> {b}</span>
-            ))}
-          </div>
-        )}
+
+        {/* Trust Stats */}
         {stats.length > 0 && (
-          <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
+          <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 max-w-3xl mx-auto">
             {stats.map((s: any, i: number) => {
               const Icon = getIcon(s.icon);
               return (
-                <div key={i} className="p-4 rounded-xl bg-white/5 backdrop-blur border border-white/10">
-                  <Icon className="h-5 w-5 text-primary mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-white">{s.title}</p>
-                  <p className="text-xs text-white/60">{s.subtitle}</p>
+                <div key={i} className="text-center p-5 rounded-2xl bg-card border border-border/60 shadow-sm hover-lift">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{s.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.subtitle}</p>
                 </div>
               );
             })}
@@ -195,27 +223,28 @@ function FeaturesSection({ sections }: { sections: any[] }) {
   const features = sections.filter((s: any) => s.section_type === "feature");
   if (features.length === 0) return null;
 
-  // Get section heading from first feature's metadata or use defaults from CMS
   const sectionMeta = features[0]?.metadata || {};
-  const heading = sectionMeta.section_title || "Features";
-  const subtitle = sectionMeta.section_subtitle || "";
+  const heading = sectionMeta.section_title || "Everything You Need to Run Your ISP";
+  const subtitle = sectionMeta.section_subtitle || "Powerful modules designed for modern ISP businesses";
 
   return (
-    <section id="features" className="py-20 sm:py-28 bg-background">
+    <section id="features" className="py-20 sm:py-28 bg-muted/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">
+            <Layers className="h-3 w-3 mr-1" /> Features
+          </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{heading}</h2>
-          <div className="w-16 h-1 bg-primary mx-auto mt-3 rounded-full" />
-          {subtitle && <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>}
+          <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">{subtitle}</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {features.map((f: any, i: number) => {
             const Icon = getIcon(f.icon);
             return (
-              <Card key={i} className="group hover:shadow-lg hover:border-primary/20 transition-all duration-300 bg-card text-center">
+              <Card key={i} className="group border-border/60 hover:border-primary/30 hover:shadow-md transition-all duration-300 bg-card">
                 <CardContent className="p-6 space-y-3">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <Icon className="h-7 w-7 text-primary" />
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                    <Icon className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
                   {f.description && <p className="text-xs text-muted-foreground leading-relaxed">{f.description}</p>}
@@ -229,12 +258,53 @@ function FeaturesSection({ sections }: { sections: any[] }) {
   );
 }
 
+// ─── How It Works ────────────────────────────────────────────
+function HowItWorks() {
+  const steps = [
+    { icon: Settings, title: "Setup Your ISP", description: "Register and configure your ISP settings, packages, and payment methods in minutes." },
+    { icon: Users, title: "Add Customers", description: "Import or add customers, assign packages, and set up their connections effortlessly." },
+    { icon: BarChart3, title: "Manage & Grow", description: "Automate billing, monitor network, track revenue, and scale your business." },
+  ];
+
+  return (
+    <section id="how-it-works" className="py-20 sm:py-28 bg-background">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">
+            <CheckCircle2 className="h-3 w-3 mr-1" /> How It Works
+          </Badge>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">Get Started in 3 Simple Steps</h2>
+          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">From setup to full operation in under 30 minutes</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {steps.map((step, i) => (
+            <div key={i} className="relative text-center group">
+              {i < steps.length - 1 && (
+                <div className="hidden md:block absolute top-10 left-[60%] w-[calc(100%-20%)] h-px border-t-2 border-dashed border-border" />
+              )}
+              <div className="relative z-10 mx-auto h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+                <step.icon className="h-8 w-8 text-primary" />
+                <span className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">
+                  {i + 1}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">{step.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Pricing ─────────────────────────────────────────────────
 function PricingSection({ sections, onCta }: { sections: any[]; onCta: () => void }) {
   const { data: plans = [] } = useQuery({ queryKey: ["landing-plans"], queryFn: superAdminApi.getPlans });
   const pricingMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
-  const heading = pricingMeta.pricing_title || "Package & Pricing";
-  const subtitle = pricingMeta.pricing_subtitle || "";
+  const heading = pricingMeta.pricing_title || "Simple, Transparent Pricing";
+  const subtitle = pricingMeta.pricing_subtitle || "Choose the plan that fits your business";
 
   if (plans.length === 0) return null;
 
@@ -242,30 +312,42 @@ function PricingSection({ sections, onCta }: { sections: any[]; onCta: () => voi
     <section id="pricing" className="py-20 sm:py-28 bg-muted/30">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">
+            <CreditCard className="h-3 w-3 mr-1" /> Pricing
+          </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{heading}</h2>
-          <div className="w-16 h-1 bg-primary mx-auto mt-3 rounded-full" />
-          {subtitle && <p className="mt-4 text-muted-foreground">{subtitle}</p>}
+          <p className="mt-4 text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {plans.slice(0, 4).map((plan: any) => (
-            <Card key={plan.id} className="relative overflow-hidden hover:shadow-xl transition-all bg-card text-center">
-              <CardContent className="p-6 space-y-4">
-                <h3 className="text-xl font-extrabold text-foreground uppercase tracking-wide">{plan.name}</h3>
-                {plan.setup_fee > 0 && (
-                  <p className="text-sm text-primary font-medium">
-                    Initial Setup - {plan.setup_fee} Tk
-                  </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {plans.slice(0, 4).map((plan: any, idx: number) => {
+            const isPopular = idx === 1;
+            return (
+              <Card key={plan.id} className={`relative overflow-hidden transition-all duration-300 bg-card ${isPopular ? "border-primary shadow-lg shadow-primary/10 scale-[1.02]" : "border-border/60 hover:border-primary/30 hover:shadow-md"}`}>
+                {isPopular && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-accent" />
                 )}
-                <p className="text-lg font-semibold text-foreground">
-                  {plan.max_customers ? `0 - ${plan.max_customers} Users` : "Unlimited Users"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  ৳{plan.price_monthly} /month
-                </p>
-                <Button className="w-full" onClick={onCta}>Order Now</Button>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="p-6 space-y-5">
+                  {isPopular && (
+                    <Badge className="bg-primary/10 text-primary border-0 text-xs">Most Popular</Badge>
+                  )}
+                  <h3 className="text-lg font-bold text-foreground uppercase tracking-wide">{plan.name}</h3>
+                  <div>
+                    <span className="text-3xl font-extrabold text-foreground">৳{plan.price_monthly}</span>
+                    <span className="text-sm text-muted-foreground">/month</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {plan.max_customers ? `Up to ${plan.max_customers} customers` : "Unlimited customers"}
+                  </p>
+                  {plan.setup_fee > 0 && (
+                    <p className="text-xs text-muted-foreground">Setup fee: ৳{plan.setup_fee}</p>
+                  )}
+                  <Button className={`w-full rounded-full ${isPopular ? "" : "variant-outline"}`} variant={isPopular ? "default" : "outline"} onClick={onCta}>
+                    Get Started
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -282,25 +364,27 @@ function TestimonialsSection({ sections }: { sections: any[] }) {
     <section className="py-20 sm:py-28 bg-background">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{sectionMeta.section_title || "What Our Clients Say"}</h2>
-          <div className="w-16 h-1 bg-primary mx-auto mt-3 rounded-full" />
+          <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">
+            <Star className="h-3 w-3 mr-1" /> Testimonials
+          </Badge>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{sectionMeta.section_title || "Trusted by ISP Owners"}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t: any, i: number) => (
-            <Card key={i} className="bg-card hover:shadow-md transition-shadow">
+            <Card key={i} className="border-border/60 hover:shadow-md transition-all bg-card">
               <CardContent className="p-6 space-y-4">
-                <div className="flex gap-1">
+                <div className="flex gap-0.5">
                   {[...Array(t.metadata?.rating || 5)].map((_, si) => (
-                    <Star key={si} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <Star key={si} className="h-4 w-4 fill-warning text-warning" />
                   ))}
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">"{t.description}"</p>
-                <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground leading-relaxed italic">"{t.description}"</p>
+                <div className="flex items-center gap-3 pt-2">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
                     {t.metadata?.avatar || t.title?.[0] || "?"}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground text-sm">{t.title}</p>
+                    <p className="font-semibold text-foreground text-sm">{t.title}</p>
                     <p className="text-xs text-muted-foreground">{t.subtitle}</p>
                   </div>
                 </div>
@@ -324,18 +408,20 @@ function FaqSection({ sections }: { sections: any[] }) {
     <section id="faq" className="py-20 sm:py-28 bg-muted/30">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">FAQ</Badge>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{sectionMeta.section_title || "Frequently Asked Questions"}</h2>
-          <div className="w-16 h-1 bg-primary mx-auto mt-3 rounded-full" />
         </div>
         <div className="space-y-3">
           {faqs.map((faq: any, i: number) => (
-            <div key={i} className="rounded-xl border bg-card overflow-hidden">
-              <button className="w-full flex items-center justify-between p-4 sm:p-5 text-left" onClick={() => setOpen(open === i ? null : i)}>
-                <span className="font-medium text-foreground text-sm sm:text-base">{faq.title}</span>
-                {open === i ? <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />}
+            <div key={i} className="rounded-xl border border-border/60 bg-card overflow-hidden transition-shadow hover:shadow-sm">
+              <button className="w-full flex items-center justify-between p-5 text-left" onClick={() => setOpen(open === i ? null : i)}>
+                <span className="font-medium text-foreground text-sm sm:text-base pr-4">{faq.title}</span>
+                <div className={`shrink-0 h-7 w-7 rounded-full flex items-center justify-center transition-colors ${open === i ? "bg-primary/10" : "bg-muted"}`}>
+                  {open === i ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </div>
               </button>
               {open === i && (
-                <div className="px-4 sm:px-5 pb-4 sm:pb-5 text-sm text-muted-foreground leading-relaxed">
+                <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed animate-fade-in">
                   {faq.description}
                 </div>
               )}
@@ -347,7 +433,34 @@ function FaqSection({ sections }: { sections: any[] }) {
   );
 }
 
-// DemoRequestSection removed — now lives at /demo-request page and DemoQuickModal
+// ─── Final CTA ───────────────────────────────────────────────
+function FinalCta({ onCta }: { onCta: () => void }) {
+  return (
+    <section className="py-20 sm:py-28 bg-background">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+        <div className="relative rounded-3xl bg-gradient-to-br from-primary/[0.08] to-accent/[0.05] border border-primary/10 p-10 sm:p-16 overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.06] rounded-full blur-[80px]" />
+          <div className="relative">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Ready to Transform Your ISP?
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mb-8 text-lg">
+              Join hundreds of ISP owners who trust Smart ISP to manage their business. Start your free trial today.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" className="text-base px-8 h-12 rounded-full shadow-lg shadow-primary/20" onClick={onCta}>
+                Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+              <Button size="lg" variant="outline" className="text-base px-8 h-12 rounded-full" asChild>
+                <a href="/demo-request">Request Full Demo</a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 // ─── Footer ──────────────────────────────────────────────────
 function LandingFooter({ sections, branding }: { sections: any[]; branding: any }) {
@@ -361,45 +474,46 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
   const paymentMeta = payment?.metadata || {};
   const linksMeta = quickLinks?.metadata || {};
 
-  // Use branding as fallback
   const companyName = aboutMeta.company_name || branding.site_name;
   const contactEmail = contactMeta.email || branding.support_email || branding.email;
   const contactPhone = contactMeta.phone || branding.support_phone || branding.mobile;
   const contactAddress = contactMeta.address || branding.address;
 
-  // Quick links from CMS or defaults
   const links = (linksMeta.links as { label: string; href: string }[]) ||
-    [{ label: "Home", href: "#" }, { label: "Features", href: "#features" }, { label: "Package & Pricing", href: "#pricing" }, { label: "Demo Request", href: "#signup" }];
+    [{ label: "Home", href: "#" }, { label: "Features", href: "#features" }, { label: "Pricing", href: "#pricing" }, { label: "Demo", href: "/demo-request" }];
 
-  // Copyright from branding
   const copyright = branding.copyright_text
     ? branding.copyright_text.replace("{year}", new Date().getFullYear().toString())
-    : `© Copyright ${new Date().getFullYear()} | ${aboutMeta.developer || companyName} | All Rights Reserved`;
+    : `© ${new Date().getFullYear()} ${aboutMeta.developer || companyName}. All rights reserved.`;
 
   return (
-    <footer className="bg-[hsl(210,80%,15%)] text-white/80 pt-16 pb-6">
+    <footer className="bg-foreground text-background/70 pt-16 pb-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           {/* About */}
           <div className="space-y-4">
-            <h3 className="text-white font-bold text-lg">{about?.subtitle || "About Company"}</h3>
             <div className="flex items-center gap-2">
               {branding.logo_url ? (
-                <img src={branding.logo_url} alt={companyName} className="h-8 w-auto" />
+                <img src={branding.logo_url} alt={companyName} className="h-8 w-auto brightness-200" />
               ) : (
-                <span className="font-bold text-white text-lg">{companyName}</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                    <Wifi className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                  <span className="font-bold text-background text-lg">{companyName}</span>
+                </div>
               )}
             </div>
-            {about?.description && <p className="text-sm text-white/60 leading-relaxed">{about.description}</p>}
+            {about?.description && <p className="text-sm leading-relaxed">{about.description}</p>}
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="text-white font-bold text-lg">{quickLinks?.subtitle || "Quick Links"}</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="text-background font-semibold">{quickLinks?.subtitle || "Quick Links"}</h3>
+            <ul className="space-y-2.5 text-sm">
               {links.map((link: any, i: number) => (
                 <li key={i}>
-                  <a href={link.href} className="text-white/60 hover:text-primary transition-colors">{link.label}</a>
+                  <a href={link.href} className="hover:text-primary transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -408,25 +522,25 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
           {/* Payment Methods */}
           {payment && (
             <div className="space-y-4">
-              <h3 className="text-white font-bold text-lg">{payment.subtitle || "Payment Method"}</h3>
-              <div className="text-sm text-white/60 space-y-3">
+              <h3 className="text-background font-semibold">{payment.subtitle || "Payment Methods"}</h3>
+              <div className="text-sm space-y-3">
                 {paymentMeta.bank_name && (
-                  <div>
-                    <p className="font-semibold text-primary">═══ Bank Payment ═══</p>
-                    {paymentMeta.account_name && <p>Account Name: <strong className="text-white/80">{paymentMeta.account_name}</strong></p>}
-                    {paymentMeta.account_no && <p>Account No: <strong className="text-white/80">{paymentMeta.account_no}</strong></p>}
-                    <p>Bank Name: {paymentMeta.bank_name}</p>
+                  <div className="space-y-1">
+                    <p className="text-primary font-medium text-xs uppercase tracking-wide">Bank Transfer</p>
+                    {paymentMeta.account_name && <p>A/C: <span className="text-background/80">{paymentMeta.account_name}</span></p>}
+                    {paymentMeta.account_no && <p>No: <span className="text-background/80">{paymentMeta.account_no}</span></p>}
+                    <p>{paymentMeta.bank_name}</p>
                   </div>
                 )}
                 {paymentMeta.bkash && (
                   <div>
-                    <p className="font-semibold text-primary">═══ bKash Payment ═══</p>
+                    <p className="text-primary font-medium text-xs uppercase tracking-wide">bKash</p>
                     <p>{paymentMeta.bkash}</p>
                   </div>
                 )}
                 {paymentMeta.nagad && (
                   <div>
-                    <p className="font-semibold text-primary">═══ Nagad Payment ═══</p>
+                    <p className="text-primary font-medium text-xs uppercase tracking-wide">Nagad</p>
                     <p>{paymentMeta.nagad}</p>
                   </div>
                 )}
@@ -436,17 +550,17 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
 
           {/* Contact */}
           <div className="space-y-4">
-            <h3 className="text-white font-bold text-lg">{contact?.subtitle || "Let's Connect"}</h3>
-            <div className="text-sm text-white/60 space-y-2">
-              {contactEmail && <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> {contactEmail}</p>}
-              {contactPhone && <p className="flex items-center gap-2"><Phone className="h-4 w-4" /> {contactPhone}</p>}
-              {contactAddress && <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {contactAddress}</p>}
+            <h3 className="text-background font-semibold">{contact?.subtitle || "Contact"}</h3>
+            <div className="text-sm space-y-2.5">
+              {contactEmail && <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary shrink-0" /> {contactEmail}</p>}
+              {contactPhone && <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary shrink-0" /> {contactPhone}</p>}
+              {contactAddress && <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary shrink-0" /> {contactAddress}</p>}
             </div>
           </div>
         </div>
 
-        <Separator className="bg-white/10" />
-        <div className="pt-6 text-center text-xs text-white/40">
+        <Separator className="bg-background/10" />
+        <div className="pt-6 text-center text-xs text-background/40">
           {copyright}
         </div>
       </div>
@@ -465,13 +579,14 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopBar branding={branding} />
       <Navbar branding={branding} onCta={openModal} sections={sections} />
       <HeroSection sections={sections} onCta={openModal} />
       <FeaturesSection sections={sections} />
+      <HowItWorks />
       <PricingSection sections={sections} onCta={openModal} />
       <TestimonialsSection sections={sections} />
       <FaqSection sections={sections} />
+      <FinalCta onCta={openModal} />
       <LandingFooter sections={sections} branding={branding} />
       <DemoQuickModal open={modalOpen} onOpenChange={setModalOpen} meta={demoMeta} />
     </div>
