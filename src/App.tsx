@@ -108,6 +108,7 @@ const ApiHealthMonitor = lazy(() => import("@/pages/settings/ApiHealthMonitor"))
 const GeoManagement = lazy(() => import("@/pages/settings/GeoManagement"));
 const DomainManagement = lazy(() => import("@/pages/settings/DomainManagement"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const DemoRequestPage = lazy(() => import("@/pages/DemoRequestPage"));
 const ForcePasswordChange = lazy(() => import("@/pages/ForcePasswordChange"));
 const CouponManagement = lazy(() => import("@/pages/CouponManagement"));
 const ResellerManagement = lazy(() => import("@/pages/ResellerManagement"));
@@ -206,6 +207,7 @@ function App() {
                 <Route path="/admin/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/landing" element={<LandingPage />} />
+                <Route path="/demo-request" element={<DemoRequestPage />} />
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/customers" element={<PermissionGuard module="customers"><Customers /></PermissionGuard>} />

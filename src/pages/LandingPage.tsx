@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import DemoQuickModal from "@/components/demo/DemoQuickModal";
 import { db } from "@/integrations/supabase/client";
 import { superAdminApi } from "@/lib/superAdminApi";
 import { Button } from "@/components/ui/button";
@@ -346,96 +347,7 @@ function FaqSection({ sections }: { sections: any[] }) {
   );
 }
 
-// ─── Demo Request ────────────────────────────────────────────
-function DemoRequestSection({ sections }: { sections: any[] }) {
-  const [form, setForm] = useState({ company_name: "", contact_name: "", email: "", phone: "", message: "" });
-  const [submitted, setSubmitted] = useState(false);
-
-  // Get CMS content for demo section
-  const demoMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
-
-  const submit = useMutation({
-    mutationFn: async () => {
-      const { error } = await (db as any).from("demo_requests").insert({
-        company_name: form.company_name,
-        contact_name: form.contact_name,
-        email: form.email,
-        phone: form.phone || null,
-        message: form.message || null,
-        status: "pending",
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setSubmitted(true);
-      toast.success(demoMeta.demo_success_toast || "🎉 Demo request submitted! We'll contact you soon.");
-    },
-    onError: (e: any) => toast.error(e.message || "Failed to submit"),
-  });
-
-  const valid = form.company_name && form.contact_name && form.email;
-
-  if (submitted) {
-    return (
-      <section id="signup" className="py-20 sm:py-28 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="max-w-lg mx-auto px-4 sm:px-6 text-center">
-          <Card className="shadow-xl border-primary/10">
-            <CardContent className="p-8 space-y-4">
-              <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
-                <Check className="h-8 w-8 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">{demoMeta.demo_success_title || "Request Submitted!"}</h2>
-              <p className="text-muted-foreground">{demoMeta.demo_success_message || "আপনার ডেমো রিকুয়েস্ট সফলভাবে জমা হয়েছে। আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।"}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section id="signup" className="py-20 sm:py-28 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <div className="max-w-lg mx-auto px-4 sm:px-6">
-        <Card className="shadow-xl border-primary/10">
-          <CardContent className="p-6 sm:p-8 space-y-6">
-            <div className="text-center space-y-2">
-              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Zap className="h-7 w-7 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground">{demoMeta.demo_form_title || "Request a Free Demo"}</h2>
-              <p className="text-sm text-muted-foreground">{demoMeta.demo_form_subtitle || "ডেমো রিকুয়েস্ট করুন, আমরা আপনার জন্য ডেমো সেটআপ করে দিব।"}</p>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{demoMeta.label_company || "ISP / Company Name"} *</Label>
-                <Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} placeholder={demoMeta.placeholder_company || "e.g. SpeedNet BD"} />
-              </div>
-              <div className="space-y-2">
-                <Label>{demoMeta.label_contact || "Contact Person"} *</Label>
-                <Input value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder={demoMeta.placeholder_contact || "Your Name"} />
-              </div>
-              <div className="space-y-2">
-                <Label>{demoMeta.label_email || "Email"} *</Label>
-                <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder={demoMeta.placeholder_email || "you@example.com"} />
-              </div>
-              <div className="space-y-2">
-                <Label>{demoMeta.label_phone || "Phone"}</Label>
-                <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder={demoMeta.placeholder_phone || "01XXXXXXXXX"} />
-              </div>
-              <div className="space-y-2">
-                <Label>{demoMeta.label_message || "Message (optional)"}</Label>
-                <Input value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder={demoMeta.placeholder_message || "আপনার ISP সম্পর্কে কিছু বলুন..."} />
-              </div>
-            </div>
-            <Button className="w-full py-6" disabled={!valid || submit.isPending} onClick={() => submit.mutate()}>
-              {submit.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting...</> : <>{demoMeta.demo_submit_text || "Submit Demo Request"} <ArrowRight className="h-4 w-4 ml-2" /></>}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
-  );
-}
+// DemoRequestSection removed — now lives at /demo-request page and DemoQuickModal
 
 // ─── Footer ──────────────────────────────────────────────────
 function LandingFooter({ sections, branding }: { sections: any[]; branding: any }) {
@@ -544,24 +456,24 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
 
 // ─── Main Page ───────────────────────────────────────────────
 export default function LandingPage() {
+  const [modalOpen, setModalOpen] = useState(false);
   const { data: sections = [] } = useLandingSections();
   const { data: branding = { site_name: "", logo_url: null, email: "", mobile: "", address: "", support_email: "", support_phone: "", copyright_text: "", footer_text: "" } } = useBranding();
 
-  const scrollToSignup = () => {
-    document.getElementById("signup")?.scrollIntoView({ behavior: "smooth" });
-  };
+  const demoMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
+  const openModal = () => setModalOpen(true);
 
   return (
     <div className="min-h-screen bg-background">
       <TopBar branding={branding} />
-      <Navbar branding={branding} onCta={scrollToSignup} sections={sections} />
-      <HeroSection sections={sections} onCta={scrollToSignup} />
+      <Navbar branding={branding} onCta={openModal} sections={sections} />
+      <HeroSection sections={sections} onCta={openModal} />
       <FeaturesSection sections={sections} />
-      <PricingSection sections={sections} onCta={scrollToSignup} />
+      <PricingSection sections={sections} onCta={openModal} />
       <TestimonialsSection sections={sections} />
       <FaqSection sections={sections} />
-      <DemoRequestSection sections={sections} />
       <LandingFooter sections={sections} branding={branding} />
+      <DemoQuickModal open={modalOpen} onOpenChange={setModalOpen} meta={demoMeta} />
     </div>
   );
 }
