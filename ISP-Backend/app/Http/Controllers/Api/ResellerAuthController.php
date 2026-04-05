@@ -27,11 +27,11 @@ class ResellerAuthController extends Controller
             ->first();
 
         if (!$reseller) {
-            return response()->json(['error' => 'Invalid credentials or account suspended'], 401);
+            return response()->json(['error' => 'Wrong User ID & Password'], 401);
         }
 
         if (!$reseller->password_hash || !password_verify($request->password, $reseller->password_hash)) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
+            return response()->json(['error' => 'Wrong User ID & Password'], 401);
         }
 
         $sessionToken = Str::uuid()->toString();
