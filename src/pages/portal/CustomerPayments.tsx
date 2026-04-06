@@ -50,7 +50,7 @@ export default function CustomerPayments() {
         .from("customers")
         .select("*, packages(name, speed)")
         .eq("id", customer!.id)
-        .single();
+        .maybeSingle();
       return data;
     },
     enabled: !!customer?.id,

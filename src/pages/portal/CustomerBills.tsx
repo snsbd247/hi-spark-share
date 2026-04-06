@@ -59,7 +59,7 @@ export default function CustomerBills() {
         .from("customers")
         .select("*, packages(name, speed)")
         .eq("id", customer!.id)
-        .single();
+        .maybeSingle();
       return data;
     },
     enabled: !!customer?.id,

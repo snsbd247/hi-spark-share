@@ -43,7 +43,7 @@ export default function AdminProfile() {
         .from("profiles")
         .select("*")
         .eq("id", user!.id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

@@ -132,7 +132,7 @@ export default function ResellerCustomers() {
   const { data: resellerInfo } = useQuery({
     queryKey: ["reseller-info", reseller?.id],
     queryFn: async () => {
-      const { data } = await (db as any).from("resellers").select("allow_all_packages, default_commission").eq("id", reseller!.id).single();
+      const { data } = await (db as any).from("resellers").select("allow_all_packages, default_commission").eq("id", reseller!.id).maybeSingle();
       return data;
     },
     enabled: !!reseller?.id,

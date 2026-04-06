@@ -49,7 +49,7 @@ export default function CustomerDashboard() {
         .from("packages")
         .select("*")
         .eq("id", customer.package_id)
-        .single();
+        .maybeSingle();
       if (error) return null;
       return data;
     },

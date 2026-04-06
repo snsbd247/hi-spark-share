@@ -33,7 +33,7 @@ export default function CustomerProfile() {
         .from("customers")
         .select("id, customer_id, name, phone, area, road, house, city, email, package_id, monthly_bill, ip_address, pppoe_username, onu_mac, router_mac, installation_date, status, username, father_name, mother_name, occupation, nid, alt_phone, permanent_address, gateway, subnet, discount, connectivity_fee, due_date_day, photo_url")
         .eq("id", customer!.id)
-        .single();
+        .maybeSingle();
       return data as CustomerProfileType | null;
     },
     enabled: !!customer?.id,
@@ -47,7 +47,7 @@ export default function CustomerProfile() {
         .from("packages")
         .select("*")
         .eq("id", customer.package_id)
-        .single();
+        .maybeSingle();
       if (error) return null;
       return data;
     },
