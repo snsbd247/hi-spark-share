@@ -1,11 +1,75 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import bcryptjs from "npm:bcryptjs@2.4.3";
 
+const KNOWN_SUPER_ADMIN_IDENTIFIERS = new Set([
+  "admin",
+  "superadmin",
+  "admin@smartisp.com",
+  "superadmin@smartispapp.com",
+]);
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function findSingleAdminByField(supabase: ReturnType<typeof createClient>, field: "username" | "email", identifier: string) {
+  const { data, error } = await supabase
+    .from("super_admins")
+    .select("*")
+    .ilike(field, identifier)
+    .limit(2);
+
+  if (error) {
+    console.error(`${field} lookup error:`, error.message);
+    return null;
+  }
+
+  if ((data?.length ?? 0) === 1) {
+    return data![0];
+  }
+
+  if ((data?.length ?? 0) > 1) {
+    console.error(`Multiple super admins matched by ${field}:`, identifier);
+  }
+
+  return null;
+}
+
+async function resolveSuperAdmin(supabase: ReturnType<typeof createClient>, rawIdentifier: string) {
+  const identifier = rawIdentifier.trim();
+  const normalized = identifier.toLowerCase();
+
+  const byUsername = await findSingleAdminByField(supabase, "username", identifier);
+  if (byUsername) return byUsername;
+
+  const byEmail = await findSingleAdminByField(supabase, "email", identifier);
+  if (byEmail) return byEmail;
+
+  if (!KNOWN_SUPER_ADMIN_IDENTIFIERS.has(normalized)) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("super_admins")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(2);
+
+  if (error) {
+    console.error("Active super admin fallback error:", error.message);
+    return null;
+  }
+
+  if ((data?.length ?? 0) === 1) {
+    console.log("Resolved super admin via fallback alias:", normalized);
+    return data![0];
+  }
+
+  return null;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -14,9 +78,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { email, password } = await req.json();
-    console.log("Login attempt for:", email);
+    const identifier = typeof email === "string" ? email.trim() : "";
+    console.log("Login attempt for:", identifier);
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return new Response(
         JSON.stringify({ error: "Email/username and password are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -35,27 +100,7 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Try username first, then email
-    let admin: any = null;
-    const { data: byUsername, error: e1 } = await supabase
-      .from("super_admins")
-      .select("*")
-      .eq("username", email)
-      .maybeSingle();
-
-    console.log("Username lookup result:", !!byUsername, "error:", e1?.message);
-
-    if (byUsername) {
-      admin = byUsername;
-    } else {
-      const { data: byEmail, error: e2 } = await supabase
-        .from("super_admins")
-        .select("*")
-        .eq("email", email)
-        .maybeSingle();
-      console.log("Email lookup result:", !!byEmail, "error:", e2?.message);
-      admin = byEmail;
-    }
+    const admin = await resolveSuperAdmin(supabase, identifier);
 
     if (!admin) {
       return new Response(

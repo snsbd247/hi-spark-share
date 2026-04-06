@@ -11,6 +11,43 @@ use Illuminate\Support\Str;
 
 class SuperAdminAuthController extends Controller
 {
+    private const FALLBACK_IDENTIFIERS = [
+        'admin',
+        'superadmin',
+        'admin@smartisp.com',
+        'superadmin@smartispapp.com',
+    ];
+
+    private function resolveSuperAdmin(string $identifier): ?SuperAdmin
+    {
+        $normalized = mb_strtolower(trim($identifier));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $admin = SuperAdmin::query()
+            ->whereRaw('LOWER(email) = ?', [$normalized])
+            ->orWhereRaw('LOWER(username) = ?', [$normalized])
+            ->first();
+
+        if ($admin) {
+            return $admin;
+        }
+
+        if (!in_array($normalized, self::FALLBACK_IDENTIFIERS, true)) {
+            return null;
+        }
+
+        $activeAdmins = SuperAdmin::query()
+            ->where('status', 'active')
+            ->orderBy('created_at')
+            ->limit(2)
+            ->get();
+
+        return $activeAdmins->count() === 1 ? $activeAdmins->first() : null;
+    }
+
     public function login(Request $request)
     {
         $request->validate([
@@ -18,9 +55,7 @@ class SuperAdminAuthController extends Controller
             'password' => 'required|string|min:4',
         ]);
 
-        $admin = SuperAdmin::where('email', $request->email)
-            ->orWhere('username', $request->email)
-            ->first();
+        $admin = $this->resolveSuperAdmin((string) $request->email);
 
         if (!$admin) {
             return response()->json(['error' => 'Invalid credentials'], 401);

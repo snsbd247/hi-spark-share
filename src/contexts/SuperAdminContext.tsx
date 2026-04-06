@@ -45,12 +45,18 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    const identifier = email.trim();
+
+    if (!identifier) {
+      throw new Error("Email or username is required");
+    }
+
     let data: any;
 
     if (IS_LOVABLE) {
       try {
         const { data: fnData, error: fnError } = await supabase.functions.invoke("super-admin-login", {
-          body: { email, password },
+          body: { email: identifier, password },
         });
         if (fnError) {
           // Edge function may return HTML instead of JSON on error
@@ -78,7 +84,7 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API_BASE_URL}/${adminPath}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: identifier, password }),
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));

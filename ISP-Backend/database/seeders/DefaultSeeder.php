@@ -8,6 +8,7 @@ use App\Models\GeneralSetting;
 use App\Models\Package;
 use App\Models\Permission;
 use App\Models\SmsTemplate;
+use App\Models\SuperAdmin;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\SmsSetting;
@@ -17,9 +18,14 @@ use Illuminate\Support\Facades\Hash;
 
 class DefaultSeeder extends Seeder
 {
+    private const DEFAULT_SUPER_ADMIN_EMAIL = 'admin@smartisp.com';
+    private const DEFAULT_SUPER_ADMIN_USERNAME = 'admin';
+    private const DEFAULT_SUPER_ADMIN_PASSWORD = 'admin123';
+
     public function run(): void
     {
         $this->seedRoles();
+        $this->seedSuperAdmin();
         $this->seedAdminUsers();
         $this->seedGeneralSettings();
         $this->seedSystemSettings();
@@ -32,6 +38,7 @@ class DefaultSeeder extends Seeder
         $this->seedPermissions();
 
         $this->command->info('Default data seeded!');
+        $this->command->info('Super Admin Panel → username: ' . self::DEFAULT_SUPER_ADMIN_USERNAME . ' / email: ' . self::DEFAULT_SUPER_ADMIN_EMAIL . ' / password: ' . self::DEFAULT_SUPER_ADMIN_PASSWORD);
         $this->command->info('Admin #1 → username: admin / password: admin123');
         $this->command->info('Admin #2 → username: ismail / password: Admin@123');
     }
@@ -51,6 +58,21 @@ class DefaultSeeder extends Seeder
         foreach ($roles as $role) {
             CustomRole::firstOrCreate(['name' => $role['name']], $role);
         }
+    }
+
+    private function seedSuperAdmin(): void
+    {
+        SuperAdmin::updateOrCreate(
+            ['email' => self::DEFAULT_SUPER_ADMIN_EMAIL],
+            [
+                'name' => 'Super Admin',
+                'username' => self::DEFAULT_SUPER_ADMIN_USERNAME,
+                'password_hash' => Hash::make(self::DEFAULT_SUPER_ADMIN_PASSWORD),
+                'status' => 'active',
+                'failed_attempts' => 0,
+                'locked_until' => null,
+            ]
+        );
     }
 
     // ── Admin Users ──────────────────────────────────────
