@@ -1,0 +1,16 @@
+[Unit]
+Description=Smart ISP Queue Worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=3
+WorkingDirectory=/var/www/smartisp/backend
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+StandardOutput=append:/var/log/smartisp-queue.log
+StandardError=append:/var/log/smartisp-queue-error.log
+
+[Install]
+WantedBy=multi-user.target
