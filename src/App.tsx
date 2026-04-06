@@ -344,6 +344,7 @@ function App() {
                   <Route path="analytics" element={<SuperAnalytics />} />
                   <Route path="users" element={<SuperUsers />} />
                   <Route path="roles" element={<SuperRoles />} />
+                  <Route path="roles-permissions" element={<SuperRoles />} />
                   <Route path="activity-logs" element={<SuperActivityLogs />} />
                   <Route path="landing-cms" element={<SuperLandingCMS />} />
                   <Route path="demo-requests" element={<SuperDemoRequests />} />
@@ -352,6 +353,7 @@ function App() {
 
                 {/* Customer Portal */}
                 <Route path="/login" element={<CustomerLogin />} />
+                <Route path="/portal/login" element={<CustomerLogin />} />
                 <Route path="/portal/dashboard" element={<CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>} />
                 <Route path="/portal/bills" element={<CustomerProtectedRoute><CustomerBills /></CustomerProtectedRoute>} />
                 <Route path="/portal/payments" element={<CustomerProtectedRoute><CustomerPayments /></CustomerProtectedRoute>} />
