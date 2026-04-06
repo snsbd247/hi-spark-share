@@ -354,6 +354,7 @@ function App() {
                 {/* Customer Portal */}
                 <Route path="/login" element={<CustomerLogin />} />
                 <Route path="/portal/login" element={<CustomerLogin />} />
+                <Route path="/portal" element={<Navigate to="/portal/dashboard" replace />} />
                 <Route path="/portal/dashboard" element={<CustomerProtectedRoute><CustomerDashboard /></CustomerProtectedRoute>} />
                 <Route path="/portal/bills" element={<CustomerProtectedRoute><CustomerBills /></CustomerProtectedRoute>} />
                 <Route path="/portal/payments" element={<CustomerProtectedRoute><CustomerPayments /></CustomerProtectedRoute>} />

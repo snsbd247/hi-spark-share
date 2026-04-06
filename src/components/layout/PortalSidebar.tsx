@@ -16,7 +16,7 @@ export default function PortalSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
-    { to: "/portal", icon: LayoutDashboard, label: t.portal.dashboard },
+    { to: "/portal/dashboard", icon: LayoutDashboard, label: t.portal.dashboard },
     { to: "/portal/bills", icon: Receipt, label: t.portal.myBills },
     { to: "/portal/payments", icon: History, label: t.portal.paymentHistory },
     { to: "/portal/tickets", icon: Ticket, label: t.portal.support },
@@ -75,8 +75,8 @@ export default function PortalSidebar() {
       <nav className="flex-1 py-4 px-2 space-y-1">
         {navItems.map((item) => {
           const isActive =
-            item.to === "/portal"
-              ? location.pathname === "/portal"
+            item.to === "/portal/dashboard"
+              ? location.pathname === "/portal/dashboard" || location.pathname === "/portal"
               : location.pathname.startsWith(item.to);
           return (
             <NavLink
