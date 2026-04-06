@@ -1,0 +1,150 @@
+name: "🚀 Deploy to VPS"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment target"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ─── Pre-deploy checks ───────────────────────────────
+  pre-check:
+    name: "✅ Pre-deploy Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install & type check
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+      - name: Build check
+        run: |
+          VITE_DEPLOY_TARGET=vps npm run build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+  # ─── Deploy to VPS ───────────────────────────────────
+  deploy:
+    name: "🚀 Deploy"
+    runs-on: ubuntu-latest
+    needs: [pre-check]
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: https://smartispapp.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          timeout: 300s
+          script: |
+            set -e
+            cd /var/www/smartisp
+
+            echo "📦 Pulling latest code..."
+            git pull origin main
+
+            echo "🔧 Backend: Installing dependencies..."
+            cd backend
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "🎨 Frontend: Building..."
+            cd /var/www/smartisp/frontend
+            npm ci --production=false
+            VITE_DEPLOY_TARGET=vps npm run build
+
+            echo "📂 Copying build to public_html..."
+            rm -rf /var/www/smartisp/public_html/assets
+            cp -r dist/* /var/www/smartisp/public_html/
+
+            echo "🔄 Restarting services..."
+            sudo systemctl reload php8.2-fpm
+            sudo systemctl reload nginx
+
+            echo "✅ Deployment complete!"
+
+      - name: Health check
+        run: |
+          sleep 10
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://smartispapp.com)
+          if [ "$STATUS" -ne 200 ]; then
+            echo "❌ Health check failed (HTTP $STATUS)"
+            exit 1
+          fi
+          echo "✅ Site is live (HTTP $STATUS)"
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/smartisp
+            echo "⚠️ Rolling back to previous commit..."
+            git reset --hard HEAD~1
+            cd backend
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan config:cache
+            cd /var/www/smartisp/frontend
+            VITE_DEPLOY_TARGET=vps npm run build
+            cp -r dist/* /var/www/smartisp/public_html/
+            sudo systemctl reload php8.2-fpm
+            sudo systemctl reload nginx
+            echo "✅ Rollback complete"
+
+  # ─── Notify ──────────────────────────────────────────
+  notify:
+    name: "📢 Notifications"
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    steps:
+      - name: Slack notification
+        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.deploy.result }}
+          fields: repo,message,commit,author,action,eventName,workflow
+          text: |
+            ${{ needs.deploy.result == 'success' && '✅ Deployment successful!' || '❌ Deployment failed!' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Email notification (via commit status)
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Deployment failed for commit ${{ github.sha }}"
+          echo "Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

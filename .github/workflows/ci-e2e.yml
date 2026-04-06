@@ -1,0 +1,114 @@
+name: "🎭 E2E Tests — Playwright"
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: "🎭 Playwright E2E"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: isp_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_mysql, bcmath, gd, zip
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ── Backend Setup ──
+      - name: Prepare Laravel backend
+        working-directory: ISP-Backend
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env 2>/dev/null || true
+          php artisan key:generate --force
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_DATABASE=isp_test" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=password" >> .env
+          echo "APP_URL=http://localhost:8000" >> .env
+          php artisan migrate --force
+          php artisan db:seed --class=DefaultSeeder --force 2>/dev/null || true
+
+      - name: Start Laravel server
+        working-directory: ISP-Backend
+        run: php artisan serve --port=8000 &
+
+      # ── Frontend Setup ──
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_DEPLOY_TARGET: vps
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+      - name: Start preview server
+        run: npx vite preview --port 4173 &
+
+      - name: Wait for servers
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000 > /dev/null 2>&1 && break || sleep 2
+          done
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4173 > /dev/null 2>&1 && break || sleep 2
+          done
+
+      # ── Run E2E Tests ──
+      - name: Run Playwright tests
+        run: npx playwright test --reporter=html
+        env:
+          BASE_URL: http://localhost:4173
+          API_URL: http://localhost:8000/api
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: test-results/
+          retention-days: 7
