@@ -317,6 +317,7 @@ Deno.serve(async (req) => {
     const tenantId = url.searchParams.get("tenant_id");
     const resellerId = url.searchParams.get("reseller_id");
     const routerId = url.searchParams.get("router_id");
+    const customerId = url.searchParams.get("customer_id");
 
     if (!tenantId) {
       return new Response(JSON.stringify({ error: "tenant_id required" }), {
@@ -340,6 +341,29 @@ Deno.serve(async (req) => {
     );
 
     const result = await fetchLiveBandwidth(supabase, tenantId, resellerId, routerId);
+
+    // If customer_id filter is provided, filter the results to only that customer
+    if (customerId) {
+      const filteredUsers = result.users.filter(
+        (u: any) => u.db_customer_id === customerId || u.pppoe_username === customerId
+      );
+      const filteredUpload = filteredUsers.reduce((s: number, u: any) => s + u.upload_bps, 0);
+      const filteredDownload = filteredUsers.reduce((s: number, u: any) => s + u.download_bps, 0);
+      result.users = filteredUsers;
+      result.total_upload = filteredUpload;
+      result.total_download = filteredDownload;
+      result.total_upload_formatted = formatSpeed(filteredUpload);
+      result.total_download_formatted = formatSpeed(filteredDownload);
+      result.active_count = filteredUsers.length;
+      result.heavy_users = filteredUsers.filter((u: any) => u.status === "heavy").length;
+      result.idle_users = filteredUsers.filter((u: any) => u.status === "idle").length;
+      result.peak_user = filteredUsers.length > 0 ? {
+        customer_name: filteredUsers[0].customer_name,
+        customer_id: filteredUsers[0].customer_id,
+        total_formatted: filteredUsers[0].total_formatted,
+        total_bps: filteredUsers[0].total_bps,
+      } : null;
+    }
 
     // Cache result
     setCache(cacheKey, result);
