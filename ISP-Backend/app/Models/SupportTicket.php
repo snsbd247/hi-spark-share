@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class SupportTicket extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'ticket_id', 'customer_id', 'subject', 'category',
+        'id', 'tenant_id', 'ticket_id', 'customer_id', 'subject', 'category',
         'priority', 'status', 'assigned_to',
     ];
 

@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class MerchantPayment extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'transaction_id', 'sender_phone', 'amount', 'reference',
+        'id', 'tenant_id', 'transaction_id', 'sender_phone', 'amount', 'reference',
         'payment_date', 'status', 'matched_customer_id', 'matched_bill_id',
         'notes', 'sms_text',
     ];
