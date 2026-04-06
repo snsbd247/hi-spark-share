@@ -129,6 +129,14 @@ export default function Tickets() {
 
   const filtered = filterStatus === "all" ? tickets : tickets.filter((t: any) => t.status === filterStatus);
 
+  const stats = {
+    total: tickets.length,
+    open: tickets.filter((t: any) => t.status === "open").length,
+    inProgress: tickets.filter((t: any) => t.status === "in_progress").length,
+    resolved: tickets.filter((t: any) => t.status === "resolved").length,
+    urgent: tickets.filter((t: any) => t.priority === "urgent" || t.priority === "high").length,
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -149,6 +157,24 @@ export default function Tickets() {
                <SelectItem value="closed">{t.tickets.closed}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: t.tickets.allTickets, value: stats.total, color: "bg-primary/10 text-primary" },
+            { label: t.tickets.open, value: stats.open, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+            { label: t.tickets.inProgress, value: stats.inProgress, color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" },
+            { label: t.tickets.resolved, value: stats.resolved, color: "bg-green-500/10 text-green-600 dark:text-green-400" },
+            { label: "Urgent/High", value: stats.urgent, color: "bg-destructive/10 text-destructive" },
+          ].map((s, i) => (
+            <Card key={i} className="border-border/50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold">{s.value}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {isLoading ? (
