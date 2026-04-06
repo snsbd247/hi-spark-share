@@ -137,6 +137,7 @@ const ResellerBandwidth = lazy(() => import("@/pages/reseller/ResellerBandwidth"
 const BandwidthAnalytics = lazy(() => import("@/pages/BandwidthAnalytics"));
 const LiveBandwidth = lazy(() => import("@/pages/LiveBandwidth"));
 const ResellerLiveBandwidth = lazy(() => import("@/pages/reseller/ResellerLiveBandwidth"));
+const CustomerPortalBandwidth = lazy(() => import("@/pages/portal/CustomerPortalBandwidth"));
 const SuperAdminLayout = lazy(() => import("@/components/super/SuperAdminLayout"));
 const SuperDashboard = lazy(() => import("@/pages/super/SuperDashboard"));
 const SuperTenants = lazy(() => import("@/pages/super/SuperTenants"));
@@ -356,6 +357,7 @@ function App() {
                 <Route path="/portal/payments" element={<CustomerProtectedRoute><CustomerPayments /></CustomerProtectedRoute>} />
                 <Route path="/portal/profile" element={<CustomerProtectedRoute><CustomerProfile /></CustomerProtectedRoute>} />
                 <Route path="/portal/tickets" element={<CustomerProtectedRoute><CustomerTickets /></CustomerProtectedRoute>} />
+                <Route path="/portal/bandwidth" element={<CustomerProtectedRoute><CustomerPortalBandwidth /></CustomerProtectedRoute>} />
                 <Route path="/portal/payment/callback" element={<CustomerProtectedRoute><PaymentCallback /></CustomerProtectedRoute>} />
 
                 {/* Reseller Portal */}
