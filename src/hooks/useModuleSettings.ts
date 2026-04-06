@@ -14,9 +14,9 @@ export interface ModuleConfig {
 // Hardcoded fallback (used if DB modules not yet loaded)
 export const ALL_MODULES: ModuleConfig[] = [
   { key: "dashboard", label: "Dashboard", description: "Main dashboard & statistics", defaultEnabled: true, is_core: true },
-  { key: "customers", label: "Customer Management", description: "Customer profiles, connection status, due tracking & filtering", defaultEnabled: true },
-  { key: "billing", label: "Billing", description: "Monthly bill generation, billing cycles & invoice management", defaultEnabled: true },
-  { key: "payments", label: "Payments", description: "Payment collection, tracking & receipts", defaultEnabled: true },
+  { key: "customers", label: "Customer Management", description: "Customer profiles, connection status, due tracking & filtering", defaultEnabled: true, is_core: true },
+  { key: "billing", label: "Billing", description: "Monthly bill generation, billing cycles & invoice management", defaultEnabled: true, is_core: true },
+  { key: "payments", label: "Payments", description: "Payment collection, tracking & receipts", defaultEnabled: true, is_core: true },
   { key: "merchant_payments", label: "Merchant Payments", description: "bKash/Nagad merchant payment auto-matching & reconciliation", defaultEnabled: true },
   { key: "tickets", label: "Support Tickets", description: "Customer support ticket system with replies & tracking", defaultEnabled: true },
   { key: "sms", label: "SMS & Reminders", description: "SMS notifications, bill reminders & WhatsApp integration", defaultEnabled: true },
@@ -25,9 +25,15 @@ export const ALL_MODULES: ModuleConfig[] = [
   { key: "hr", label: "Human Resource (HR)", description: "Employee management, attendance, salary sheets, loans & provident fund", defaultEnabled: true },
   { key: "supplier", label: "Supplier Management", description: "Supplier profiles, purchase orders & supplier payments", defaultEnabled: true },
   { key: "reports", label: "Reports & Analytics", description: "Daily, financial, BTRC, sales & traffic reports", defaultEnabled: true },
-  { key: "users", label: "User Management", description: "Admin user accounts, roles assignment & access control", defaultEnabled: true },
-  { key: "roles", label: "Roles & Permissions", description: "Create roles with granular per-module permissions (View/Create/Edit/Delete)", defaultEnabled: true },
-  { key: "settings", label: "System Settings", description: "General settings, packages, zones, MikroTik, integrations, backup & API health", defaultEnabled: true },
+  { key: "users", label: "User Management", description: "Admin user accounts, roles assignment & access control", defaultEnabled: true, is_core: true },
+  { key: "roles", label: "Roles & Permissions", description: "Create roles with granular per-module permissions (View/Create/Edit/Delete)", defaultEnabled: true, is_core: true },
+  { key: "settings", label: "System Settings", description: "General settings, packages, zones, MikroTik, integrations, backup & API health", defaultEnabled: true, is_core: true },
+  { key: "mikrotik", label: "MikroTik", description: "MikroTik router management, PPPoE sync & monitoring", defaultEnabled: true },
+  { key: "packages", label: "Packages", description: "Internet package management", defaultEnabled: true, is_core: true },
+  { key: "fiber_network", label: "Fiber Network", description: "Fiber optic network topology management", defaultEnabled: true },
+  { key: "reseller", label: "Reseller", description: "Reseller management, commissions & profit sharing", defaultEnabled: true },
+  { key: "network_map", label: "Network Map", description: "Network topology visualization", defaultEnabled: true },
+  { key: "live_bandwidth", label: "Live Bandwidth", description: "Real-time bandwidth monitoring for customers", defaultEnabled: true },
 ];
 
 const SETTING_KEY = "enabled_modules";

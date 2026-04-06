@@ -29,6 +29,12 @@ class ScanModules extends Command
         ['name' => 'User Management',     'slug' => 'users',             'description' => 'Admin users & access control',            'icon' => 'Shield',          'is_core' => true,  'sort_order' => 13],
         ['name' => 'Roles & Permissions', 'slug' => 'roles',             'description' => 'Role-based access control',               'icon' => 'Lock',            'is_core' => true,  'sort_order' => 14],
         ['name' => 'System Settings',     'slug' => 'settings',          'description' => 'General & system configuration',          'icon' => 'Settings',        'is_core' => true,  'sort_order' => 15],
+        ['name' => 'MikroTik',            'slug' => 'mikrotik',          'description' => 'MikroTik router management & sync',       'icon' => 'Router',          'is_core' => false, 'sort_order' => 16],
+        ['name' => 'Packages',            'slug' => 'packages',          'description' => 'Internet package management',             'icon' => 'Package',         'is_core' => true,  'sort_order' => 17],
+        ['name' => 'Fiber Network',       'slug' => 'fiber_network',     'description' => 'Fiber optic network topology',            'icon' => 'Network',         'is_core' => false, 'sort_order' => 18],
+        ['name' => 'Reseller',            'slug' => 'reseller',          'description' => 'Reseller management & commissions',       'icon' => 'Users',           'is_core' => false, 'sort_order' => 19],
+        ['name' => 'Network Map',         'slug' => 'network_map',       'description' => 'Network topology visualization',          'icon' => 'Map',             'is_core' => false, 'sort_order' => 20],
+        ['name' => 'Live Bandwidth',      'slug' => 'live_bandwidth',    'description' => 'Real-time bandwidth monitoring',          'icon' => 'Activity',        'is_core' => false, 'sort_order' => 21],
     ];
 
     public function handle(): int
