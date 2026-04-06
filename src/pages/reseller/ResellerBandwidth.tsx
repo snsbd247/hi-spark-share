@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Activity, ArrowUp, ArrowDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { IS_LOVABLE } from "@/lib/environment";
+import { API_BASE_URL } from "@/lib/apiBaseUrl";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -32,15 +34,28 @@ export default function ResellerBandwidth() {
   const { data: rawData = [], isLoading } = useQuery({
     queryKey: ["reseller-bandwidth", reseller?.id, dateFrom, dateTo],
     queryFn: async () => {
-      const { data, error } = await (db as any)
-        .from("customer_bandwidth_usages")
-        .select("upload_mb, download_mb, total_mb, date, zone_id, reseller_zones(name)")
-        .eq("reseller_id", reseller!.id)
-        .gte("date", dateFrom)
-        .lte("date", dateTo)
-        .order("date");
-      if (error) throw error;
-      return data || [];
+      if (IS_LOVABLE) {
+        const { data, error } = await (db as any)
+          .from("customer_bandwidth_usages")
+          .select("upload_mb, download_mb, total_mb, date, zone_id, reseller_zones(name)")
+          .eq("reseller_id", reseller!.id)
+          .gte("date", dateFrom)
+          .lte("date", dateTo)
+          .order("date");
+        if (error) throw error;
+        return data || [];
+      } else {
+        const token = sessionStorage.getItem("reseller_session_token");
+        const res = await fetch(`${API_BASE_URL}/reseller/bandwidth?date_from=${dateFrom}&date_to=${dateTo}`, {
+          headers: { "X-Session-Token": token || "" },
+        });
+        if (!res.ok) throw new Error("Failed to fetch bandwidth data");
+        const data = await res.json();
+        return (data || []).map((r: any) => ({
+          ...r,
+          reseller_zones: r.zone ? { name: r.zone.name } : null,
+        }));
+      }
     },
     enabled: !!reseller?.id,
   });

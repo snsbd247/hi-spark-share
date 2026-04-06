@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Activity, ArrowUp, ArrowDown, Users, Play, Pause, Wifi, Zap, Moon, Crown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from "recharts";
 import { useResellerAuth } from "@/contexts/ResellerAuthContext";
+import { IS_LOVABLE } from "@/lib/environment";
+import { API_BASE_URL } from "@/lib/apiBaseUrl";
 
 const MAX_HISTORY = 30;
 
@@ -61,14 +63,25 @@ export default function ResellerLiveBandwidth() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchLive = useCallback(async () => {
-    if (!reseller?.id || !reseller?.tenant_id) return;
+    if (!reseller?.id) return;
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const url = `https://${projectId}.supabase.co/functions/v1/live-bandwidth?tenant_id=${reseller.tenant_id}&reseller_id=${reseller.id}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${anonKey}` } });
-      if (!res.ok) return;
-      const data = await res.json();
+      let data: any;
+
+      if (IS_LOVABLE) {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const url = `https://${projectId}.supabase.co/functions/v1/live-bandwidth?tenant_id=${reseller.tenant_id}&reseller_id=${reseller.id}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${anonKey}` } });
+        if (!res.ok) return;
+        data = await res.json();
+      } else {
+        const token = sessionStorage.getItem("reseller_session_token");
+        const res = await fetch(`${API_BASE_URL}/reseller/live-bandwidth`, {
+          headers: { "X-Session-Token": token || "" },
+        });
+        if (!res.ok) return;
+        data = await res.json();
+      }
 
       setUsers(data.users || []);
       setTotalUpload(data.total_upload || 0);
