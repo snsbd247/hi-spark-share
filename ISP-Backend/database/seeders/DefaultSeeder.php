@@ -112,6 +112,38 @@ class DefaultSeeder extends Seeder
         }
     }
 
+    // ── Reseller ─────────────────────────────────────────
+    private function seedReseller(): void
+    {
+        // Create reseller user account
+        $resellerUser = User::firstOrCreate(
+            ['username' => 'sagorkhan'],
+            [
+                'full_name' => 'Sagor Khan',
+                'email' => 'sagor@smartisp.com',
+                'password_hash' => Hash::make('123456'),
+                'status' => 'active',
+            ]
+        );
+
+        // Create reseller record (tenant_id will be assigned when tenant exists)
+        Reseller::firstOrCreate(
+            ['phone' => '01700000001'],
+            [
+                'name' => 'Sagor Khan',
+                'company_name' => 'Sagor Networks',
+                'email' => 'sagor@smartisp.com',
+                'user_id' => $resellerUser->id,
+                'password_hash' => Hash::make('123456'),
+                'wallet_balance' => 0,
+                'commission_rate' => 10,
+                'default_commission' => 10,
+                'status' => 'active',
+                'allow_all_packages' => true,
+            ]
+        );
+    }
+
     // ── General Settings ─────────────────────────────────
     private function seedGeneralSettings(): void
     {
