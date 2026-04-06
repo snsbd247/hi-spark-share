@@ -598,6 +598,11 @@ Route::middleware('reseller.auth')->prefix('reseller')->group(function () {
     Route::get('/wallet-transactions', [\App\Http\Controllers\Api\ResellerController::class, 'walletTransactions']);
     Route::get('/reports', [\App\Http\Controllers\Api\ResellerController::class, 'reports']);
 
+    // Profile & Password
+    Route::get('/profile', [\App\Http\Controllers\Api\ResellerController::class, 'profile']);
+    Route::put('/profile', [\App\Http\Controllers\Api\ResellerController::class, 'updateProfile']);
+    Route::post('/change-password', [\App\Http\Controllers\Api\ResellerController::class, 'changePassword']);
+
     // Zones CRUD
     Route::get('/zones', [\App\Http\Controllers\Api\ResellerController::class, 'zones']);
     Route::post('/zones', [\App\Http\Controllers\Api\ResellerController::class, 'storeZone']);

@@ -335,4 +335,41 @@ class ResellerController extends Controller
         $zone->delete();
         return response()->json(['message' => 'Zone deleted']);
     }
+
+    // ── Profile ──────────────────────────────────────────
+    public function profile(Request $request)
+    {
+        $reseller = $request->get('reseller_user');
+        return response()->json($reseller);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $reseller = $request->get('reseller_user');
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'company_name' => 'sometimes|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'address' => 'sometimes|string|max:500',
+        ]);
+
+        $reseller->update($request->only(['name', 'company_name', 'phone', 'address']));
+        return response()->json($reseller->fresh());
+    }
+
+    public function changePassword(Request $request)
+    {
+        $reseller = $request->get('reseller_user');
+        $request->validate([
+            'old_password' => 'required|string',
+            'new_password' => 'required|string|min:6',
+        ]);
+
+        if (!$reseller->password_hash || !password_verify($request->old_password, $reseller->password_hash)) {
+            return response()->json(['error' => 'Current password is incorrect'], 422);
+        }
+
+        $reseller->update(['password_hash' => bcrypt($request->new_password)]);
+        return response()->json(['message' => 'Password changed successfully']);
+    }
 }
