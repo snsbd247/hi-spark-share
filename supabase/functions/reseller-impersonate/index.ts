@@ -47,9 +47,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get admin user's tenant_id
+    // Get admin user's tenant_id (profiles table in Supabase, users in VPS)
     const { data: adminUser } = await supabase
-      .from("users")
+      .from("profiles")
       .select("tenant_id")
       .eq("id", session.admin_id)
       .maybeSingle();
