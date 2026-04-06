@@ -8,7 +8,7 @@ export default function CustomerPortalBandwidth() {
   const { t } = useLanguage();
   const { customer } = useCustomerAuth();
 
-  if (!customer?.tenant_id || !customer?.id) {
+  if (!customer?.id) {
     return (
       <PortalLayout>
         <div className="flex items-center justify-center h-64">
@@ -28,7 +28,7 @@ export default function CustomerPortalBandwidth() {
       </div>
 
       <CustomerLiveBandwidthWidget
-        tenantId={customer.tenant_id}
+        tenantId={customer.tenant_id || ""}
         customerId={customer.id}
       />
     </PortalLayout>
