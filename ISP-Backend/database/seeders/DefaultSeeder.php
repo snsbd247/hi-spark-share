@@ -7,6 +7,7 @@ use App\Models\CustomRole;
 use App\Models\GeneralSetting;
 use App\Models\Package;
 use App\Models\Permission;
+use App\Models\Reseller;
 use App\Models\SmsTemplate;
 use App\Models\SuperAdmin;
 use App\Models\SystemSetting;
