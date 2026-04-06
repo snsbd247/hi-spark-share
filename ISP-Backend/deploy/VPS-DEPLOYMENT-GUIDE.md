@@ -1,4 +1,4 @@
-# Smart ISP — VPS Deployment Guide (v5)
+# Smart ISP — VPS Deployment Guide (v6)
 
 > **Last Updated:** April 2026  
 > **Architecture:** React (Frontend) + Laravel (Backend) — Mono-Repo  
@@ -167,9 +167,13 @@ php artisan key:generate
 # Composer dependencies
 composer install --no-dev --optimize-autoloader
 
-# Database migration ও seeding
+# Database migration
 php artisan migrate --force
+
+# Default data seed (Super Admin, Tenant Admin, Reseller, Roles, Permissions, etc.)
 php artisan db:seed --class=DefaultSeeder --force
+
+# Geo data seed (বাংলাদেশের বিভাগ/জেলা/উপজেলা)
 php artisan db:seed --class=GeoSeeder --force
 
 # Module scan (21টি মডিউল রেজিস্টার করবে)
@@ -183,6 +187,40 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
+
+### ✅ Seed সফল হলে এই আউটপুট দেখবেন:
+
+```
+╔════════════════════════════════════════════════════╗
+║          ✅  Default Data Seeded Successfully      ║
+╠════════════════════════════════════════════════════╣
+║  Super Admin Login:                                ║
+║    Username: superadmin                            ║
+║    Password: Admin@123                             ║
+╠════════════════════════════════════════════════════╣
+║  Tenant Admin Login:                               ║
+║    Username: snb_admin                             ║
+║    Password: 123456                                ║
+╠════════════════════════════════════════════════════╣
+║  Reseller Login:                                   ║
+║    Username: sagorkhan                             ║
+║    Password: 123456                                ║
+╚════════════════════════════════════════════════════╝
+```
+
+**DefaultSeeder যা সিড করে:**
+- ✅ 7টি কোর রোল (Super Admin, Admin, Owner, Manager, Staff, Technician, Accountant)
+- ✅ 80টি পারমিশন (20 মডিউল × 4 অ্যাকশন)
+- ✅ 330+ রোল-পারমিশন ম্যাপিং
+- ✅ Super Admin ইউজার (`superadmin` / `Admin@123`)
+- ✅ Tenant Admin ইউজার (`snb_admin` / `123456`)
+- ✅ Reseller ইউজার (`sagorkhan` / `123456`)
+- ✅ General Settings, System Settings
+- ✅ SMS Settings ও 8টি SMS Template
+- ✅ 5টি Email Template
+- ✅ 4টি ডিফল্ট Internet Package
+- ✅ Chart of Accounts (ISP-specific hierarchy)
+- ✅ Ledger Mappings ও Payment Settings
 
 ---
 
@@ -435,17 +473,6 @@ php artisan tinker
 
 ---
 
-## 🔑 গুরুত্বপূর্ণ নোট
-
-1. **`VITE_DEPLOY_TARGET=vps`** — এই env ছাড়া frontend Supabase ব্যবহার করবে
-2. **`.env` ফাইল** — কখনো git-এ push করবেন না
-3. **SSL** — HTTPS ছাড়া session token কাজ করবে না
-4. **`php artisan storage:link`** — ফাইল আপলোড/ডাউনলোডের জন্য আবশ্যক
-5. **`php artisan modules:scan`** — নতুন মডিউল যোগ হলে রান করুন
-6. **Super Admin URL** — `/super/login` (পরিবর্তন করা যাবে না)
-
----
-
 ## 📊 সিস্টেম মডিউল তালিকা (21টি)
 
 | # | Module | Slug | Core |
@@ -474,7 +501,7 @@ php artisan tinker
 
 ---
 
-## 👥 ডিফল্ট রোল ও পারমিশন (7 Roles, 84 Permissions)
+## 👥 ডিফল্ট রোল ও পারমিশন (7 Roles, 80 Permissions, 330+ Mappings)
 
 | Role | Access Level |
 |------|-------------|
@@ -499,3 +526,69 @@ php artisan tinker
 | Customer | `/login` | কাস্টমার পোর্টাল |
 | Demo Request | `/demo-request` | ডেমো রিকোয়েস্ট ফর্ম |
 | Public Payment | `/pay?token=xxx` | পাবলিক পেমেন্ট লিংক |
+
+---
+
+## 🔌 API Endpoints সারাংশ
+
+### Public (No Auth)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/admin/login` | Tenant Admin Login |
+| POST | `/api/super-admin/login` | Super Admin Login |
+| POST | `/api/reseller/login` | Reseller Login |
+| POST | `/api/customer/login` | Customer Login |
+| GET | `/api/health` | Health Check |
+| GET | `/api/general-settings` | Branding Settings |
+
+### Admin Protected (Token Required)
+- **Customers:** CRUD + filters
+- **Billing:** Generate, update, delete bills
+- **Payments:** Record, update payments
+- **Merchant Payments:** bKash/Nagad import & match
+- **SMS/Email:** Send, bulk send
+- **MikroTik:** Sync, import, bill control
+- **Accounting:** Full double-entry system
+- **HR:** Employee, attendance, salary, loans
+- **Inventory:** Products, sales, stock
+- **Supplier:** CRUD + payments
+- **Reports:** Revenue, expense, P&L, BTRC
+- **Fiber Topology:** OLT, cable, splitter management
+
+### Reseller Protected
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reseller/dashboard` | Dashboard stats |
+| GET | `/api/reseller/customers` | Customer list |
+| POST | `/api/reseller/customers` | Create customer |
+| GET | `/api/reseller/bills` | Bill list |
+| POST | `/api/reseller/collect-payment` | Collect payment |
+| GET | `/api/reseller/wallet-transactions` | Wallet history |
+| GET | `/api/reseller/reports` | Reports |
+| GET | `/api/reseller/zones` | Zone list |
+| POST | `/api/reseller/zones` | Create zone |
+| GET | `/api/reseller/bandwidth` | Bandwidth analytics |
+| GET | `/api/reseller/live-bandwidth` | Live bandwidth |
+| GET | `/api/reseller/profile` | Profile |
+| PUT | `/api/reseller/profile` | Update profile |
+| POST | `/api/reseller/change-password` | Change password |
+
+### Customer Portal Protected
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/portal/dashboard` | Customer dashboard |
+| GET | `/api/portal/bills` | Bill history |
+| GET | `/api/portal/payments` | Payment history |
+| GET/POST | `/api/portal/tickets` | Support tickets |
+
+---
+
+## 🔑 গুরুত্বপূর্ণ নোট
+
+1. **`VITE_DEPLOY_TARGET=vps`** — এই env ছাড়া frontend Supabase ব্যবহার করবে
+2. **`.env` ফাইল** — কখনো git-এ push করবেন না
+3. **SSL** — HTTPS ছাড়া session token কাজ করবে না
+4. **`php artisan storage:link`** — ফাইল আপলোড/ডাউনলোডের জন্য আবশ্যক
+5. **`php artisan modules:scan`** — নতুন মডিউল যোগ হলে রান করুন
+6. **Super Admin URL** — `/super/login` (পরিবর্তন করা যাবে না)
+7. **DefaultSeeder** — সিড করলে existing data overwrite হবে না (`firstOrCreate` ব্যবহার করা হয়)
