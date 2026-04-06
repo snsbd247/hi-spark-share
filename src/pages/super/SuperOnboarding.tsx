@@ -250,7 +250,7 @@ export default function SuperOnboarding() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-sm px-3 py-1">
-            ${sa.stepOf.replace("{current}", String(step + 1)).replace("{total}", String(STEPS.length))}
+            {sa.stepOf.replace("{current}", String(step + 1)).replace("{total}", String(STEPS.length))}
           </Badge>
           {createdTenantId && (
             <Button variant="ghost" size="sm" onClick={() => { clearDraft(); setWs({ ...defaultState }); }}>
