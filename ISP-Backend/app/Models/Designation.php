@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Designation extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
-    protected $fillable = ['id', 'name', 'description', 'status'];
+    protected $fillable = ['id', 'tenant_id', 'name', 'description', 'status'];
 
     public function employees()
     {

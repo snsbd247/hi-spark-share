@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class MikrotikRouter extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'name', 'ip_address', 'username', 'password',
+        'id', 'tenant_id', 'name', 'ip_address', 'username', 'password',
         'api_port', 'status', 'description',
     ];
 
