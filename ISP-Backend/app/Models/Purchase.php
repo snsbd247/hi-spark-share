@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Purchase extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'purchase_no', 'supplier_id', 'date',
+        'id', 'tenant_id', 'purchase_no', 'supplier_id', 'date',
         'total_amount', 'paid_amount', 'status', 'notes',
     ];
 

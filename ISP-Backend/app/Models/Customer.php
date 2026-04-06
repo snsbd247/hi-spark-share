@@ -25,6 +25,7 @@ class Customer extends Model
         'router_id', 'installation_date', 'installed_by',
         'status', 'connection_status', 'mikrotik_sync_status',
         'username', 'photo_url', 'mac_address', 'static_ip',
+        'reseller_id', 'zone_id',
     ];
 
     protected $hidden = ['pppoe_password', 'pppoe_password_hash'];
@@ -79,5 +80,20 @@ class Customer extends Model
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function reseller()
+    {
+        return $this->belongsTo(Reseller::class);
+    }
+
+    public function zone()
+    {
+        return $this->belongsTo(ResellerZone::class, 'zone_id');
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(CustomerDevice::class);
     }
 }

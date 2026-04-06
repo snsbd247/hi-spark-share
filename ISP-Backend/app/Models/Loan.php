@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Loan extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'employee_id', 'amount', 'paid_amount',
+        'id', 'tenant_id', 'employee_id', 'amount', 'paid_amount',
         'monthly_deduction', 'approved_date', 'reason', 'status',
     ];
 

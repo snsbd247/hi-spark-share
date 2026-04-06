@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class SalarySheet extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'employee_id', 'month', 'basic_salary',
+        'id', 'tenant_id', 'employee_id', 'month', 'basic_salary',
         'house_rent', 'medical', 'conveyance', 'other_allowance',
         'bonus', 'deduction', 'loan_deduction',
         'pf_deduction', 'savings_deduction',

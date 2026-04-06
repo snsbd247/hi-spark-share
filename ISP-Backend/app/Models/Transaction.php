@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'type', 'category', 'amount', 'debit', 'credit',
+        'id', 'tenant_id', 'type', 'category', 'amount', 'debit', 'credit',
         'date', 'description', 'reference', 'reference_type', 'reference_id',
         'account_id', 'customer_id', 'vendor_id', 'created_by',
         'journal_ref',

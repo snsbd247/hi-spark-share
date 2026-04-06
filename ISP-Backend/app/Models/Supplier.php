@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Supplier extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'name', 'company', 'phone', 'email',
+        'id', 'tenant_id', 'name', 'company', 'phone', 'email',
         'address', 'total_due', 'status',
     ];
 

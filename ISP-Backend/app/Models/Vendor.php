@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'name', 'phone', 'email', 'company', 'address',
+        'id', 'tenant_id', 'name', 'phone', 'email', 'company', 'address',
         'total_due', 'balance', 'status', 'notes',
     ];
 

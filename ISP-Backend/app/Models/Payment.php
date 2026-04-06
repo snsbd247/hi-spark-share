@@ -13,7 +13,7 @@ class Payment extends Model
     protected $fillable = [
         'id', 'tenant_id', 'customer_id', 'bill_id', 'amount', 'payment_method',
         'status', 'transaction_id', 'bkash_payment_id', 'bkash_trx_id',
-        'month', 'paid_at',
+        'month', 'paid_at', 'collected_by', 'reseller_id', 'notes',
     ];
 
     protected $casts = [
@@ -29,5 +29,10 @@ class Payment extends Model
     public function bill()
     {
         return $this->belongsTo(Bill::class);
+    }
+
+    public function reseller()
+    {
+        return $this->belongsTo(Reseller::class);
     }
 }

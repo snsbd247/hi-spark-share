@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class ProductSerial extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'product_id', 'serial_number', 'status', 'notes',
+        'id', 'tenant_id', 'product_id', 'serial_number', 'status', 'notes',
     ];
 
     public function product()

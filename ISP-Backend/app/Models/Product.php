@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
-        'id', 'name', 'sku', 'category', 'category_id', 'description',
+        'id', 'tenant_id', 'name', 'sku', 'category', 'category_id', 'description',
         'buy_price', 'sell_price', 'stock', 'unit', 'status',
         'brand', 'model',
     ];
