@@ -199,10 +199,10 @@ export default function Payments() {
 
   const methodColor = (method: string) => {
     switch (method) {
-      case "bkash": return "bg-pink-50 text-pink-700 border-pink-200";
-      case "nagad": return "bg-orange-50 text-orange-700 border-orange-200";
-      case "bank": return "bg-blue-50 text-blue-700 border-blue-200";
-      case "cash": return "bg-green-50 text-green-700 border-green-200";
+      case "bkash": return "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/30 dark:text-pink-300 dark:border-pink-800";
+      case "nagad": return "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800";
+      case "bank": return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800";
+      case "cash": return "bg-success/10 text-success border-success/20";
       default: return "bg-muted text-muted-foreground";
     }
   };

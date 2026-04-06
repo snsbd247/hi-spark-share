@@ -116,7 +116,7 @@ export default function SMSLogs() {
                       </TableCell>
                       <TableCell className="max-w-xs truncate">{log.message}</TableCell>
                       <TableCell>
-                        <Badge className={log.status === "sent" ? "bg-green-100 text-green-800" : "bg-destructive text-destructive-foreground"}>
+                        <Badge className={log.status === "sent" ? "bg-success/15 text-success dark:bg-success/20 dark:text-success" : "bg-destructive/15 text-destructive"}>
                           {log.status}
                         </Badge>
                       </TableCell>
