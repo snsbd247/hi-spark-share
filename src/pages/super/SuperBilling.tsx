@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -216,7 +216,7 @@ export default function SuperBilling() {
   // Run plan check
   const runPlanCheck = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("plan-check");
+      const { data, error } = await db.functions.invoke("plan-check");
       if (error) throw error;
       return data;
     },

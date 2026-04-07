@@ -352,6 +352,7 @@ const functionRouteMap: Record<string, { method: 'get' | 'post'; path: string }>
   'reseller-login': { method: 'post', path: '/reseller/login' },
   'reseller-impersonate': { method: 'post', path: '/reseller/impersonate' },
   'reseller-change-password': { method: 'post', path: '/reseller/change-password' },
+  'plan-check': { method: 'post', path: '/super-admin/plan-check' },
   'bkash-payment/create': { method: 'post', path: '/bkash/create-payment' },
   'bkash-payment/execute': { method: 'post', path: '/bkash/query-transaction' },
   'nagad-payment': { method: 'post', path: '/nagad/create-payment' },
