@@ -385,7 +385,7 @@ export async function fetchFiberTopologyTreeFromSupabase(): Promise<OltData[]> {
       customer_id: onu.customer_id || "",
       lat: (onu as any).lat ?? undefined,
       lng: (onu as any).lng ?? undefined,
-      customer: onu.customer_id ? customersById.get(onu.customer_id) : undefined,
+      customer: onu.customer_id ? (customersById.get(onu.customer_id) as FiberCustomer | undefined) : undefined,
     });
   });
 
@@ -724,7 +724,7 @@ export async function createFiberOltInSupabase(payload: Record<string, unknown>)
     id: olt.id, name: olt.name, location: olt.location || "",
     total_pon_ports: olt.total_pon_ports, status: olt.status || "active",
     lat: olt.lat ?? undefined, lng: olt.lng ?? undefined,
-    pon_ports: sortByNumber(ponPorts || [], (p) => p.port_number).map((port) => ({
+    pon_ports: sortByNumber(ponPorts || [], (p: any) => p.port_number).map((port: any) => ({
       id: port.id, port_number: port.port_number,
       status: port.status || "active", cables: [],
     })),
