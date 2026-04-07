@@ -34,10 +34,10 @@ return new class extends Migration {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->index();
             $table->string('company_name')->nullable();
-            $table->string('company_address')->nullable();
-            $table->string('company_phone')->nullable();
-            $table->string('company_email')->nullable();
-            $table->string('company_website')->nullable();
+            $table->string('address')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('website')->nullable();
             $table->string('logo_url')->nullable();
             $table->string('footer_text')->nullable();
             $table->string('invoice_prefix')->nullable();
