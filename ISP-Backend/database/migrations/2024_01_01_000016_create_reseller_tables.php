@@ -84,7 +84,7 @@ return new class extends Migration {
         Schema::create('reseller_zones', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->nullable()->index();
-            $table->uuid('reseller_id')->index();
+            $table->uuid('reseller_id')->nullable()->index();
             $table->string('name');
             $table->string('status')->default('active');
             $table->timestamps();
