@@ -13,8 +13,16 @@ const api = axios.create({
 });
 
 // Attach admin auth token + start timer
+// Determine the correct auth token based on current page context
+function getContextToken(): string | null {
+  const path = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (path.startsWith('/super')) return sessionStore.getItem('super_admin_token');
+  if (path.startsWith('/reseller')) return sessionStore.getItem('reseller_token');
+  return sessionStore.getItem('admin_token');
+}
+
 api.interceptors.request.use((config: any) => {
-  const token = sessionStore.getItem('admin_token');
+  const token = getContextToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -59,10 +67,22 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
-      sessionStore.removeItem('admin_token');
-      sessionStore.removeItem('admin_user');
-      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/portal')) {
-        window.location.href = '/admin/login';
+      const path = window.location.pathname;
+      // Don't redirect if already on a login page or portal
+      if (!path.includes('/login') && !path.startsWith('/portal')) {
+        if (path.startsWith('/super')) {
+          sessionStore.removeItem('super_admin_token');
+          sessionStore.removeItem('super_admin_user');
+          window.location.href = '/super/login';
+        } else if (path.startsWith('/reseller')) {
+          sessionStore.removeItem('reseller_token');
+          sessionStore.removeItem('reseller_user');
+          window.location.href = '/reseller/login';
+        } else {
+          sessionStore.removeItem('admin_token');
+          sessionStore.removeItem('admin_user');
+          window.location.href = '/admin/login';
+        }
       }
     }
 

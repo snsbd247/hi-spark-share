@@ -13,19 +13,25 @@ type FilterOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "like" | "ilike" | 
 interface QueryFilter { column: string; op: FilterOp; value: any; }
 interface QueryOrder { column: string; ascending: boolean; }
 
-const clearLocalAdminAuth = () => {
-  sessionStore.removeItem('admin_token');
-  sessionStore.removeItem('admin_user');
-};
-
 const handleAuthFailure = () => {
-  clearLocalAdminAuth();
-  if (typeof window !== 'undefined') {
-    const onAdminLogin = window.location.pathname.startsWith('/admin/login');
-    const onCustomerPortal = window.location.pathname.startsWith('/portal') || window.location.pathname.startsWith('/login');
-    if (!onAdminLogin && !onCustomerPortal) {
-      window.location.href = '/admin/login';
-    }
+  if (typeof window === 'undefined') return;
+  const path = window.location.pathname;
+  // Don't redirect if already on a login page or portal/landing
+  if (path.includes('/login') || path === '/' || path === '/landing' || path === '/demo-request') return;
+  if (path.startsWith('/portal')) return;
+
+  if (path.startsWith('/super')) {
+    sessionStore.removeItem('super_admin_token');
+    sessionStore.removeItem('super_admin_user');
+    window.location.href = '/super/login';
+  } else if (path.startsWith('/reseller')) {
+    sessionStore.removeItem('reseller_token');
+    sessionStore.removeItem('reseller_user');
+    window.location.href = '/reseller/login';
+  } else {
+    sessionStore.removeItem('admin_token');
+    sessionStore.removeItem('admin_user');
+    window.location.href = '/admin/login';
   }
 };
 

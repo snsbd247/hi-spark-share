@@ -49,6 +49,13 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Skip branding fetch on super admin pages (uses different auth)
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (path.startsWith('/super')) {
+      setLoading(false);
+      return;
+    }
+
     const load = async () => {
       try {
         const { data } = await db
