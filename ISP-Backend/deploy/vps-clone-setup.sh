@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — VPS Clone Setup Script (v1.0.4)
+# Smart ISP — VPS Clone Setup Script (v1.0.5)
 # Maps GitHub repo files → /var/www/smartisp directory structure
 # ═══════════════════════════════════════════════════════════════
 #
@@ -207,7 +207,7 @@ log "Services restarted"
 # ── Summary ───────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Smart ISP Clone Setup Complete! (v1.0.4)${NC}"
+echo -e "${GREEN}  ✅ Smart ISP Clone Setup Complete! (v1.0.5)${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "  ${YELLOW}Directories:${NC}"

@@ -200,7 +200,7 @@ class DefaultSeeder extends Seeder
             'company_name' => 'ISP Billing System',
             'footer_link' => '#',
             'footer_developer' => 'Sync & Solutions IT',
-            'system_version' => '1.0.4',
+            'system_version' => '1.0.5',
             'auto_update_year' => 'true',
             'enabled_modules' => '["dashboard","customers","billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","mikrotik","packages","fiber_network","reseller","network_map","live_bandwidth"]',
             'invoice_footer' => 'Thank you for using our internet service.',
