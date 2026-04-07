@@ -44,6 +44,16 @@ rsync -a --exclude='.git' --exclude='.env' --exclude='storage/app' \
     "${REPO_DIR}/ISP-Backend/" "${BACKEND_DIR}/"
 echo -e "${GREEN}  ✓ Backend synced${NC}"
 
+if [ -f "${BACKEND_DIR}/deploy/nginx-smartispapp.conf" ] && [ -f "${BACKEND_DIR}/deploy/nginx-rate-limits.conf" ]; then
+    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled /etc/nginx/conf.d
+    cp "${BACKEND_DIR}/deploy/nginx-smartispapp.conf" /etc/nginx/sites-available/smartispapp.com
+    cp "${BACKEND_DIR}/deploy/nginx-rate-limits.conf" /etc/nginx/conf.d/smartisp-rate-limits.conf
+    rm -f /etc/nginx/sites-enabled/smartisp
+    ln -sf /etc/nginx/sites-available/smartispapp.com /etc/nginx/sites-enabled/smartispapp.com
+    rm -f /etc/nginx/sites-enabled/default
+    echo -e "${GREEN}  ✓ Nginx config synced${NC}"
+fi
+
 # ── 4. Sync Frontend files ──────────────────────────
 echo -e "${YELLOW}[4/8] Syncing frontend files...${NC}"
 FRONTEND_DIRS=("src" "public" "supabase")
@@ -102,6 +112,7 @@ chown -R www-data:www-data ${BACKEND_DIR}/storage ${BACKEND_DIR}/bootstrap/cache
 chmod -R 775 ${BACKEND_DIR}/storage ${BACKEND_DIR}/bootstrap/cache
 
 systemctl restart php${PHP_VERSION}-fpm
+nginx -t
 systemctl reload nginx
 
 cd ${BACKEND_DIR}
