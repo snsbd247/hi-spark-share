@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DemoQuickModal from "@/components/demo/DemoQuickModal";
 import { db } from "@/integrations/supabase/client";
-import { superAdminApi } from "@/lib/superAdminApi";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
