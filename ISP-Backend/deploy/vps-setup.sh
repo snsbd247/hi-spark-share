@@ -29,6 +29,7 @@ DB_USER="smartisp_user"
 DB_PASS="$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 32)"
 PHP_VERSION="8.2"
 NODE_VERSION="20"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -188,157 +189,15 @@ log "Application directories created"
 section "7/8 — Configuring Nginx"
 apt install -y nginx
 
-# Main server block — handles ALL domains (wildcard + custom)
-cat > /etc/nginx/sites-available/smartisp << 'NGINXCONF'
-# ═══════════════════════════════════════════════════════════════
-# Smart ISP — Nginx Configuration
-# Handles: *.smartispapp.com + custom client domains
-# ═══════════════════════════════════════════════════════════════
+# Install shared rate-limit zones once at the http level
+cp "${SCRIPT_DIR}/nginx-rate-limits.conf" /etc/nginx/conf.d/smartisp-rate-limits.conf
 
-# Rate limiting
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;
-limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
-
-# Upstream PHP-FPM
-upstream php_fpm {
-    server unix:/var/run/php/php8.2-fpm-smartisp.sock;
-}
-
-# ── HTTP → HTTPS Redirect ────────────────────────────────────
-server {
-    listen 80;
-    server_name _;
-
-    # Let's Encrypt challenge (keep accessible over HTTP)
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-        allow all;
-    }
-
-    # Redirect everything else to HTTPS
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# ── Main HTTPS Server Block ──────────────────────────────────
-server {
-    listen 443 ssl http2;
-    server_name _;
-
-    # ── SSL (Cloudflare or Let's Encrypt) ─────────────────────
-    # Replace with your actual certificate paths
-    ssl_certificate     /etc/ssl/smartisp/fullchain.pem;
-    ssl_certificate_key /etc/ssl/smartisp/privkey.pem;
-
-    # SSL Security
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-    ssl_session_tickets off;
-
-    # Security Headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # ── Roots ─────────────────────────────────────────────────
-    # Frontend: React SPA
-    root /var/www/smartisp/public_html;
-    index index.html;
-
-    # Request size
-    client_max_body_size 50M;
-
-    # ── Gzip Compression ──────────────────────────────────────
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
-
-    # ── API Routes → Laravel Backend ──────────────────────────
-    location /api {
-        alias /var/www/smartisp/backend/public;
-
-        # Rewrite /api/xxx to /index.php with the path
-        location ~ ^/api/(.+\.php)$ {
-            alias /var/www/smartisp/backend/public/$1;
-            fastcgi_pass php_fpm;
-            fastcgi_param SCRIPT_FILENAME $request_filename;
-            include fastcgi_params;
-            fastcgi_param HTTP_HOST $host;
-
-            # Rate limiting for API
-            limit_req zone=api_limit burst=20 nodelay;
-        }
-
-        # All /api/* requests → Laravel's index.php
-        location ~ ^/api(/.*)?$ {
-            try_files $uri $uri/ @laravel_api;
-        }
-    }
-
-    location @laravel_api {
-        fastcgi_pass php_fpm;
-        fastcgi_param SCRIPT_FILENAME /var/www/smartisp/backend/public/index.php;
-        include fastcgi_params;
-        fastcgi_param REQUEST_URI $request_uri;
-        fastcgi_param HTTP_HOST $host;
-        fastcgi_param HTTPS on;
-
-        # Rate limiting
-        limit_req zone=api_limit burst=20 nodelay;
-    }
-
-    # ── Login rate limiting ───────────────────────────────────
-    location ~ ^/api/(admin/login|portal/login|customer/login) {
-        limit_req zone=login_limit burst=3 nodelay;
-        try_files $uri @laravel_api;
-    }
-
-    # ── Static assets caching ─────────────────────────────────
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        try_files $uri =404;
-    }
-
-    # ── Laravel Storage (uploaded files) ──────────────────────
-    location /storage {
-        alias /var/www/smartisp/backend/storage/app/public;
-        expires 7d;
-        add_header Cache-Control "public";
-    }
-
-    # ── React SPA Fallback ────────────────────────────────────
-    # All non-API, non-file requests → React's index.html
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # ── Block hidden files ────────────────────────────────────
-    location ~ /\.(?!well-known) {
-        deny all;
-    }
-
-    # ── PHP files in frontend root (deny) ─────────────────────
-    location ~ \.php$ {
-        deny all;
-    }
-
-    # ── Logs ──────────────────────────────────────────────────
-    access_log /var/log/nginx/smartisp-access.log;
-    error_log /var/log/nginx/smartisp-error.log;
-}
-NGINXCONF
+# Install main server block from the shared template
+cp "${SCRIPT_DIR}/nginx-smartispapp.conf" /etc/nginx/sites-available/smartispapp.com
 
 # Enable site
-ln -sf /etc/nginx/sites-available/smartisp /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/smartisp
+ln -sf /etc/nginx/sites-available/smartispapp.com /etc/nginx/sites-enabled/smartispapp.com
 rm -f /etc/nginx/sites-enabled/default
 
 # Create SSL directory (placeholder)

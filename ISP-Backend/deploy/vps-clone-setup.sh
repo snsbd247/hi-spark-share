@@ -60,11 +60,23 @@ rsync -a --exclude='.git' --exclude='.env' --exclude='vendor' \
 log "Backend files synced to ${BACKEND_DIR}"
 
 # ── Copy deploy scripts ──────────────────────────────────────
-section "2/7 — Copying Deploy Scripts"
+section "2/7 — Copying Deploy Scripts & Nginx Config"
 cp "${REPO_DIR}/ISP-Backend/deploy/deploy-update.sh" "${APP_DIR}/deploy-update.sh"
 cp "${REPO_DIR}/ISP-Backend/deploy/vps-setup.sh" "${APP_DIR}/vps-setup.sh" 2>/dev/null || true
 cp "${REPO_DIR}/ISP-Backend/deploy/vps-clone-setup.sh" "${APP_DIR}/vps-clone-setup.sh" 2>/dev/null || true
 chmod +x ${APP_DIR}/*.sh
+
+if [ -f "${REPO_DIR}/ISP-Backend/deploy/nginx-smartispapp.conf" ] && [ -f "${REPO_DIR}/ISP-Backend/deploy/nginx-rate-limits.conf" ]; then
+    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled /etc/nginx/conf.d
+    cp "${REPO_DIR}/ISP-Backend/deploy/nginx-smartispapp.conf" /etc/nginx/sites-available/smartispapp.com
+    cp "${REPO_DIR}/ISP-Backend/deploy/nginx-rate-limits.conf" /etc/nginx/conf.d/smartisp-rate-limits.conf
+    rm -f /etc/nginx/sites-enabled/smartisp
+    ln -sf /etc/nginx/sites-available/smartispapp.com /etc/nginx/sites-enabled/smartispapp.com
+    rm -f /etc/nginx/sites-enabled/default
+    log "Nginx config refreshed"
+else
+    warn "Nginx templates missing in deploy directory; skipped Nginx sync"
+fi
 
 if [ -f "${REPO_DIR}/ISP-Backend/deploy/smartisp-queue.service" ]; then
     cp "${REPO_DIR}/ISP-Backend/deploy/smartisp-queue.service" /etc/systemd/system/
@@ -183,6 +195,7 @@ chown -R www-data:www-data ${BACKEND_DIR}/storage ${BACKEND_DIR}/bootstrap/cache
 chmod -R 775 ${BACKEND_DIR}/storage ${BACKEND_DIR}/bootstrap/cache
 
 # Restart services
+nginx -t
 systemctl restart php${PHP_VERSION}-fpm
 systemctl reload nginx
 systemctl start smartisp-queue 2>/dev/null || true
