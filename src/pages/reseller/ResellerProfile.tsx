@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { db, supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/client";
 import { useResellerAuth } from "@/contexts/ResellerAuthContext";
 import ResellerLayout from "@/components/reseller/ResellerLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
