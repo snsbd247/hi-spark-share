@@ -125,8 +125,8 @@ class DefaultSeeder extends Seeder
             ['tenant_id' => $tenant->id],
             [
                 'company_name' => 'SNB Networks',
-                'company_phone' => '01700000000',
-                'company_email' => 'snb@smartisp.com',
+                'phone' => '01700000000',
+                'email' => 'snb@smartisp.com',
                 'invoice_prefix' => 'SNB',
             ]
         );
@@ -200,7 +200,7 @@ class DefaultSeeder extends Seeder
             'company_name' => 'ISP Billing System',
             'footer_link' => '#',
             'footer_developer' => 'Sync & Solutions IT',
-            'system_version' => '1.0.3',
+            'system_version' => '1.0.4',
             'auto_update_year' => 'true',
             'enabled_modules' => '["dashboard","customers","billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","mikrotik","packages","fiber_network","reseller","network_map","live_bandwidth"]',
             'invoice_footer' => 'Thank you for using our internet service.',
