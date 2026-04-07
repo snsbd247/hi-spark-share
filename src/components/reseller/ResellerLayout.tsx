@@ -30,9 +30,10 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
       // Restore admin session and go back to reseller management
       const savedAdminToken = sessionStorage.getItem("saved_admin_token_for_reseller");
       if (savedAdminToken) {
+        sessionStorage.setItem("admin_token", savedAdminToken);
         sessionStorage.removeItem("saved_admin_token_for_reseller");
       }
-      navigate("/reseller-management");
+      navigate("/resellers");
     } else {
       navigate("/reseller/login");
     }
