@@ -7,7 +7,7 @@
  * Geo tables (geo_divisions, geo_districts, geo_upazilas) and sms_templates are global.
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/supabase/client";
 import { unwrapApiResult } from "@/lib/apiResult";
 import { DIVISIONS, DISTRICTS, UPAZILAS } from "@/lib/bangladeshGeo";
 
