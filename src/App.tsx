@@ -327,28 +327,30 @@ function App() {
                 {/* Force Password Change */}
                 <Route path="/force-password-change" element={<ForcePasswordChange />} />
 
-                {/* Super Admin Routes */}
-                <Route path="/super/login" element={<SuperAdminProvider><SuperAdminLogin /></SuperAdminProvider>} />
-                <Route path="/super" element={<SuperAdminProvider><SuperAdminLayout /></SuperAdminProvider>}>
-                  <Route path="dashboard" element={<SuperDashboard />} />
-                  <Route path="tenants" element={<SuperTenants />} />
-                  <Route path="tenants/:id" element={<SuperTenantProfile />} />
-                  <Route path="onboarding" element={<SuperOnboarding />} />
-                  <Route path="plans" element={<SuperPlans />} />
-                  <Route path="subscriptions" element={<SuperSubscriptions />} />
-                  <Route path="billing" element={<SuperBilling />} />
-                  <Route path="domains" element={<SuperDomains />} />
-                  <Route path="branding" element={<SuperBranding />} />
-                  <Route path="sms" element={<SuperSmsManagement />} />
-                  <Route path="smtp" element={<SuperSmtpSettings />} />
-                  <Route path="analytics" element={<SuperAnalytics />} />
-                  <Route path="users" element={<SuperUsers />} />
-                  <Route path="roles" element={<SuperRoles />} />
-                  <Route path="roles-permissions" element={<SuperRoles />} />
-                  <Route path="activity-logs" element={<SuperActivityLogs />} />
-                  <Route path="landing-cms" element={<SuperLandingCMS />} />
-                  <Route path="demo-requests" element={<SuperDemoRequests />} />
-                  <Route path="backup-recovery" element={<SuperBackupRecovery />} />
+                {/* Super Admin Routes — single shared provider */}
+                <Route path="/super" element={<SuperAdminProvider><Outlet /></SuperAdminProvider>}>
+                  <Route path="login" element={<SuperAdminLogin />} />
+                  <Route element={<SuperAdminLayout />}>
+                    <Route path="dashboard" element={<SuperDashboard />} />
+                    <Route path="tenants" element={<SuperTenants />} />
+                    <Route path="tenants/:id" element={<SuperTenantProfile />} />
+                    <Route path="onboarding" element={<SuperOnboarding />} />
+                    <Route path="plans" element={<SuperPlans />} />
+                    <Route path="subscriptions" element={<SuperSubscriptions />} />
+                    <Route path="billing" element={<SuperBilling />} />
+                    <Route path="domains" element={<SuperDomains />} />
+                    <Route path="branding" element={<SuperBranding />} />
+                    <Route path="sms" element={<SuperSmsManagement />} />
+                    <Route path="smtp" element={<SuperSmtpSettings />} />
+                    <Route path="analytics" element={<SuperAnalytics />} />
+                    <Route path="users" element={<SuperUsers />} />
+                    <Route path="roles" element={<SuperRoles />} />
+                    <Route path="roles-permissions" element={<SuperRoles />} />
+                    <Route path="activity-logs" element={<SuperActivityLogs />} />
+                    <Route path="landing-cms" element={<SuperLandingCMS />} />
+                    <Route path="demo-requests" element={<SuperDemoRequests />} />
+                    <Route path="backup-recovery" element={<SuperBackupRecovery />} />
+                  </Route>
                 </Route>
 
                 {/* Customer Portal */}
