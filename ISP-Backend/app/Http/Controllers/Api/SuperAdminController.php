@@ -637,4 +637,51 @@ class SuperAdminController extends Controller
             'user'    => $user->fresh(),
         ], 201);
     }
+
+    // ══════════════════════════════════════════
+    // PLAN CHECK — suspend/warn expired tenants
+    // ══════════════════════════════════════════
+    public function planCheck()
+    {
+        $now = now()->toDateString();
+        $checked = 0;
+        $suspended = 0;
+        $warned = 0;
+
+        $tenants = Tenant::where('status', 'active')->get();
+
+        foreach ($tenants as $tenant) {
+            $checked++;
+            $activeSub = Subscription::where('tenant_id', $tenant->id)
+                ->where('status', 'active')
+                ->where('end_date', '>=', $now)
+                ->first();
+
+            if (!$activeSub) {
+                // Check if there's any subscription that recently expired
+                $expiredSub = Subscription::where('tenant_id', $tenant->id)
+                    ->where('status', 'active')
+                    ->where('end_date', '<', $now)
+                    ->first();
+
+                if ($expiredSub) {
+                    $expiredSub->update(['status' => 'expired']);
+                    $tenant->update(['status' => 'suspended']);
+                    $suspended++;
+                }
+            } else {
+                // Warn if expiring within 7 days
+                $daysLeft = now()->diffInDays($activeSub->end_date, false);
+                if ($daysLeft <= 7 && $daysLeft > 0) {
+                    $warned++;
+                }
+            }
+        }
+
+        return response()->json([
+            'checked' => $checked,
+            'suspended' => $suspended,
+            'warned' => $warned,
+        ]);
+    }
 }

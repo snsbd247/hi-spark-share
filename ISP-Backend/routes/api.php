@@ -497,6 +497,7 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
 
     // Dashboard
     Route::get('/dashboard', [SuperAdminController::class, 'dashboard']);
+    Route::post('/plan-check', [SuperAdminController::class, 'planCheck']);
 
     // Tenant Management
     Route::get('/tenants', [SuperAdminController::class, 'tenants']);
