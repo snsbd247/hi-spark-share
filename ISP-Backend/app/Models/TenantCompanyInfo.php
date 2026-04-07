@@ -13,8 +13,8 @@ class TenantCompanyInfo extends Model
     protected $table = 'tenant_company_info';
 
     protected $fillable = [
-        'id', 'tenant_id', 'company_name', 'company_address', 'company_phone',
-        'company_email', 'company_website', 'logo_url', 'footer_text',
+        'id', 'tenant_id', 'company_name', 'address', 'phone',
+        'email', 'website', 'logo_url', 'footer_text',
         'invoice_prefix', 'invoice_notes', 'tax_id', 'registration_no',
     ];
 }
