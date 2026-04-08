@@ -585,11 +585,36 @@ class GenericCrudController extends Controller
         }
     }
 
-    public function destroy(Request $request, string $table, string $id)
+    public function destroy(Request $request, string $table, string $id = null)
     {
         try {
             $normalizedTable = str_replace('-', '_', $table);
 
+            // ── Bulk delete (no id, filters via query params) ──
+            if (!$id) {
+                $model = $this->getModel($table);
+                $query = $model->newQuery();
+                $fillable = $model->getFillable();
+
+                foreach ($request->except(['paginate', 'per_page', 'page']) as $key => $value) {
+                    if (str_contains($key, '__')) {
+                        [$col, $op] = explode('__', $key, 2);
+                        if (!in_array($col, $fillable) && $col !== 'id') continue;
+                        switch ($op) {
+                            case 'neq': $query->where($col, '!=', $value); break;
+                            case 'in': $query->whereIn($col, is_array($value) ? $value : explode(',', $value)); break;
+                            default: $query->where($col, $value); break;
+                        }
+                    } elseif (in_array($key, $fillable) || $key === 'id') {
+                        $query->where($key, $value);
+                    }
+                }
+
+                $deleted = $query->delete();
+                return response()->json(['success' => true, 'deleted' => $deleted]);
+            }
+
+            // ── Single delete ──
             if ($normalizedTable === 'accounts') {
                 return $this->destroyAccount($id);
             }
