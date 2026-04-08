@@ -319,7 +319,42 @@ export const superAdminApi = {
     return request(`/tenants/${id}/activate`, { method: "POST" });
   },
   deleteTenant: async (id: string) => {
-    if (IS_LOVABLE) return sbDelete("tenants", id);
+    if (IS_LOVABLE) {
+      // Cascade delete all dependent records in correct order (deepest children first)
+      const childTables = [
+        // Deep children first
+        "customer_ledger", "customer_sessions", "customer_devices",
+        "customer_bandwidth_usages", "customer_reseller_migrations",
+        "employee_education", "employee_emergency_contacts", "employee_experience",
+        "employee_provident_fund", "employee_salary_structure", "employee_savings_fund",
+        "core_connections", "fiber_cores", "fiber_cables", "fiber_pon_ports", "fiber_olts",
+        "attendance", "payroll",
+        // Mid-level
+        "bills", "payments", "invoices",
+        "customers", "reseller_zones", "resellers",
+        "employees", "designations",
+        "expenses", "expense_heads", "income_heads",
+        "accounts", "journal_entries",
+        "packages", "ip_pools",
+        "mikrotik_routers", "customer_devices",
+        "categories", "products",
+        "payment_gateways", "sms_templates", "sms_logs",
+        "activity_logs", "audit_logs", "admin_login_logs", "admin_sessions",
+        "custom_roles", "role_permissions", "permissions",
+        "notification_settings", "notification_templates",
+        "support_tickets", "support_messages",
+        "company_info",
+        "domains", "profiles",
+      ];
+      for (const table of childTables) {
+        try {
+          await (supabase.from as any)(table).delete().eq("tenant_id", id);
+        } catch (e) {
+          console.warn(`Cascade delete ${table}:`, e);
+        }
+      }
+      return sbDelete("tenants", id);
+    }
     return request(`/tenants/${id}`, { method: "DELETE" });
   },
 
