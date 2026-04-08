@@ -11,9 +11,12 @@ function getToken(): string {
 }
 
 function headers(): Record<string, string> {
+  const token = getToken();
+
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${getToken()}`,
+    Authorization: `Bearer ${token}`,
+    "X-Session-Token": token,
   };
 }
 
@@ -72,6 +75,7 @@ async function invokeSuperAdminEdge<T = any>(functionName: string, options: { me
       "Content-Type": "application/json",
       apikey: publishableKey,
       Authorization: `Bearer ${token}`,
+      "X-Session-Token": token,
     },
     body: options.body === undefined || (options.method || "POST") === "GET"
       ? undefined

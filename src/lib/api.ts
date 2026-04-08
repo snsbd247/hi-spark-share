@@ -25,6 +25,11 @@ api.interceptors.request.use((config: any) => {
   const token = getContextToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (path.startsWith('/super')) {
+      config.headers['X-Session-Token'] = token;
+    }
   }
   config._startTime = Date.now();
   return config;
