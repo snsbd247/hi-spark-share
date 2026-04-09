@@ -164,9 +164,15 @@ class QueryBuilder<T = any> {
           const { data: response } = await api.put(buildTableApiPath(tablePath, String(idFilter.value)), this._data);
           return { data: response, error: null };
         }
+        // Collection-level update with filters
+        const filterParams: Record<string, any> = {};
+        for (const f of this._filters) {
+          if (f.op === "eq") filterParams[f.column] = f.value;
+          else filterParams[`${f.column}__${f.op}`] = f.value;
+        }
         const { data: response } = await api.put(collectionPath, {
           ...this._data,
-          _filters: this._filters,
+          ...filterParams,
         });
         return { data: response, error: null };
       }

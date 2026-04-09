@@ -89,6 +89,11 @@ export async function getBranding(): Promise<BrandingData> {
  */
 export async function getDomainBranding(): Promise<Partial<BrandingData>> {
   try {
+    // Skip domain branding on super admin pages — not relevant
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/super')) {
+      return {};
+    }
+
     const currentDomain = window.location.hostname;
     const { data } = await (db as any)
       .from("domains")
@@ -97,7 +102,6 @@ export async function getDomainBranding(): Promise<Partial<BrandingData>> {
       .maybeSingle();
 
     if (data?.tenant_id) {
-      // Get tenant info for domain-specific branding
       const { data: tenant } = await (db as any)
         .from("tenants")
         .select("name, logo_url")

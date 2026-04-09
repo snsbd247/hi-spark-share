@@ -525,35 +525,41 @@ class GenericCrudController extends Controller
             $normalizedTable = str_replace('-', '_', $table);
             $fillable = $model->getFillable();
 
-            // ── Batch insert: request body is a JSON array ──
+            // ── Batch insert: detect JSON array from multiple sources ──
             $content = $request->getContent();
             $decoded = json_decode($content, true);
 
-            // Debug logging for plan_modules
-            if ($table === 'plan_modules') {
-                \Illuminate\Support\Facades\Log::info("plan_modules debug", [
-                    'raw_content' => substr($content, 0, 500),
-                    'decoded_type' => gettype($decoded),
-                    'decoded_sample' => is_array($decoded) ? array_slice($decoded, 0, 2) : $decoded,
-                    'fillable' => $fillable,
-                    'is_batch' => is_array($decoded) && isset($decoded[0]) && is_array($decoded[0]),
-                    'request_all' => array_slice($request->all(), 0, 5),
-                ]);
-            }
+            // Fallback: if json_decode fails, check $request->all() for numeric-keyed array
+            $allInput = $request->all();
+            $isBatch = false;
+            $batchData = null;
 
             if (is_array($decoded) && isset($decoded[0]) && is_array($decoded[0])) {
+                $isBatch = true;
+                $batchData = $decoded;
+            } elseif (is_array($allInput) && isset($allInput[0]) && is_array($allInput[0])) {
+                $isBatch = true;
+                $batchData = $allInput;
+            }
+
+            if ($isBatch && $batchData) {
                 $created = [];
-                foreach (array_chunk($decoded, 50) as $chunk) {
-                    $rows = array_map(fn($row) => array_intersect_key($row, array_flip($fillable)), $chunk);
-                    foreach ($rows as $row) {
-                        $created[] = $model->newInstance()->create($row);
+                foreach (array_chunk($batchData, 50) as $chunk) {
+                    foreach ($chunk as $row) {
+                        $filtered = array_intersect_key($row, array_flip($fillable));
+                        if (!empty($filtered)) {
+                            $created[] = $model->newInstance()->create($filtered);
+                        }
                     }
                 }
                 return response()->json($created, 201);
             }
 
             // ── Single record flow ──
-            $input = $request->only($fillable);
+            // For single JSON objects, prefer decoded content over $request->only()
+            $input = is_array($decoded) && !isset($decoded[0])
+                ? array_intersect_key($decoded, array_flip($fillable))
+                : $request->only($fillable);
 
             // Singleton upsert
             if (in_array($normalizedTable, $this->singletonTables)) {
@@ -590,12 +596,48 @@ class GenericCrudController extends Controller
         }
     }
 
-    public function update(Request $request, string $table, string $id)
+    public function update(Request $request, string $table, string $id = null)
     {
         try {
             $model = $this->getModel($table);
-            $record = $model->findOrFail($id);
             $fillable = $model->getFillable();
+
+            // ── Collection-level update (no ID, uses filters) ──
+            if (!$id) {
+                $query = $model->newQuery();
+                $data = $request->except(['_filters', 'paginate', 'per_page', 'page']);
+
+                // Apply filters from _filters array or query params
+                $filters = $request->get('_filters', []);
+                if (!empty($filters)) {
+                    foreach ($filters as $filter) {
+                        $col = $filter['column'] ?? null;
+                        $op = $filter['op'] ?? 'eq';
+                        $val = $filter['value'] ?? null;
+                        if (!$col || !in_array($col, array_merge($fillable, ['id']))) continue;
+                        switch ($op) {
+                            case 'eq': $query->where($col, $val); break;
+                            case 'neq': $query->where($col, '!=', $val); break;
+                            case 'in': $query->whereIn($col, is_array($val) ? $val : [$val]); break;
+                            default: $query->where($col, $val); break;
+                        }
+                    }
+                }
+
+                // Also check direct filter params
+                foreach ($request->except(['_filters', 'paginate', 'per_page', 'page'] + $fillable) as $key => $value) {
+                    if (in_array($key, $fillable) || $key === 'id') {
+                        $query->where($key, $value);
+                    }
+                }
+
+                $updateData = array_intersect_key($data, array_flip($fillable));
+                $updated = $query->update($updateData);
+                return response()->json(['success' => true, 'updated' => $updated]);
+            }
+
+            // ── Single record update ──
+            $record = $model->findOrFail($id);
             $record->update(array_intersect_key($request->all(), array_flip($fillable)));
             return response()->json($record->fresh());
         } catch (\Exception $e) {

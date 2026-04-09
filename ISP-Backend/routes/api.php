@@ -641,6 +641,8 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin/db')->group(functio
         ->where('table', GenericCrudController::routeTablePattern());
     Route::post('/{table}', [GenericCrudController::class, 'store'])
         ->where('table', GenericCrudController::routeTablePattern());
+    Route::put('/{table}', [GenericCrudController::class, 'update'])
+        ->where('table', GenericCrudController::routeTablePattern());
     Route::put('/{table}/{id}', [GenericCrudController::class, 'update'])
         ->where('table', GenericCrudController::routeTablePattern());
     Route::delete('/{table}', [GenericCrudController::class, 'destroy'])
@@ -655,6 +657,8 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::get('/{table}/{id}', [GenericCrudController::class, 'show'])
         ->where('table', GenericCrudController::routeTablePattern());
     Route::post('/{table}', [GenericCrudController::class, 'store'])
+        ->where('table', GenericCrudController::routeTablePattern());
+    Route::put('/{table}', [GenericCrudController::class, 'update'])
         ->where('table', GenericCrudController::routeTablePattern());
     Route::put('/{table}/{id}', [GenericCrudController::class, 'update'])
         ->where('table', GenericCrudController::routeTablePattern());
