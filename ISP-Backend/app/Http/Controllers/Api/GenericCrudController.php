@@ -528,6 +528,19 @@ class GenericCrudController extends Controller
             // ── Batch insert: request body is a JSON array ──
             $content = $request->getContent();
             $decoded = json_decode($content, true);
+
+            // Debug logging for plan_modules
+            if ($table === 'plan_modules') {
+                \Illuminate\Support\Facades\Log::info("plan_modules debug", [
+                    'raw_content' => substr($content, 0, 500),
+                    'decoded_type' => gettype($decoded),
+                    'decoded_sample' => is_array($decoded) ? array_slice($decoded, 0, 2) : $decoded,
+                    'fillable' => $fillable,
+                    'is_batch' => is_array($decoded) && isset($decoded[0]) && is_array($decoded[0]),
+                    'request_all' => array_slice($request->all(), 0, 5),
+                ]);
+            }
+
             if (is_array($decoded) && isset($decoded[0]) && is_array($decoded[0])) {
                 $created = [];
                 foreach (array_chunk($decoded, 50) as $chunk) {
