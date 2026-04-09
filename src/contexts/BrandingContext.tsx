@@ -31,77 +31,80 @@ const defaultBranding: Branding = {
 interface BrandingContextType {
   branding: Branding;
   loading: boolean;
+  refresh: () => void;
 }
 
 const BrandingContext = createContext<BrandingContextType>({
   branding: defaultBranding,
   loading: true,
+  refresh: () => {},
 });
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(true);
 
+  const load = async () => {
+    try {
+      const { data } = await db
+        .from("general_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        const d = data as any;
+        setBranding({
+          site_name: d.site_name || "Smart ISP",
+          logo_url: d.logo_url || null,
+          login_logo_url: d.login_logo_url || null,
+          favicon_url: d.favicon_url || null,
+          primary_color: d.primary_color || "#2563eb",
+          support_email: d.support_email || null,
+          support_phone: d.support_phone || null,
+          address: d.address || null,
+          email: d.email || null,
+          mobile: d.mobile || null,
+        });
+
+        applyPrimaryColor(d.primary_color || "#2563eb");
+
+        if (d.favicon_url) {
+          const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+          if (link) link.href = d.favicon_url;
+        }
+        if (d.site_name) {
+          document.title = d.site_name;
+        }
+      }
+    } catch (err) {
+      console.warn("Branding: using defaults (backend unavailable)");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // In Lovable preview OR production with backend, load branding
     if (!HAS_BACKEND && !IS_LOVABLE) {
       setLoading(false);
       return;
     }
 
-    // Skip branding fetch on super admin pages (uses different auth)
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     if (path.startsWith('/super')) {
       setLoading(false);
       return;
     }
 
-    const load = async () => {
-      try {
-        const { data } = await db
-          .from("general_settings")
-          .select("*")
-          .limit(1)
-          .maybeSingle();
-
-        if (data) {
-          const d = data as any;
-          setBranding({
-            site_name: d.site_name || "Smart ISP",
-            logo_url: d.logo_url || null,
-            login_logo_url: d.login_logo_url || null,
-            favicon_url: d.favicon_url || null,
-            primary_color: d.primary_color || "#2563eb",
-            support_email: d.support_email || null,
-            support_phone: d.support_phone || null,
-            address: d.address || null,
-            email: d.email || null,
-            mobile: d.mobile || null,
-          });
-
-          if (d.primary_color && d.primary_color !== "#2563eb") {
-            applyPrimaryColor(d.primary_color);
-          }
-          if (d.favicon_url) {
-            const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-            if (link) link.href = d.favicon_url;
-          }
-          if (d.site_name) {
-            document.title = d.site_name;
-          }
-        }
-      } catch (err) {
-        console.warn("Branding: using defaults (backend unavailable)");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     load();
   }, []);
 
+  const refresh = () => {
+    load();
+  };
+
   return (
-    <BrandingContext.Provider value={{ branding, loading }}>
+    <BrandingContext.Provider value={{ branding, loading, refresh }}>
       {children}
     </BrandingContext.Provider>
   );
