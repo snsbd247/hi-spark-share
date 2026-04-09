@@ -9,12 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Palette, Save, Upload, X, Globe, Mail, Phone, MapPin, FileText, Building2 } from "lucide-react";
 import { clearBrandingCache } from "@/lib/brandingHelper";
+import { useBranding } from "@/contexts/BrandingContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SuperBranding() {
   const { t } = useLanguage();
   const sa = t.superAdmin;
   const qc = useQueryClient();
+  const { refresh: refreshBranding } = useBranding();
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["super-general-settings"],
@@ -101,6 +103,8 @@ export default function SuperBranding() {
       toast.success(sa.brandingSaved);
       qc.invalidateQueries({ queryKey: ["super-general-settings"] });
       qc.invalidateQueries({ queryKey: ["super-footer-settings"] });
+      qc.invalidateQueries({ queryKey: ["landing-branding"] });
+      refreshBranding();
     },
     onError: (e: any) => toast.error(sa.failedToSaveBranding + ": " + e.message),
   });
