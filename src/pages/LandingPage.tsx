@@ -166,13 +166,11 @@ function HeroSection({ sections, onCta }: { sections: any[]; onCta: () => void }
           )}
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight leading-[1.1]">
-            {hero?.title || (
-              <>Smart ISP Management <span className="gradient-text">Made Easy</span></>
-            )}
+            {hero?.title || ""}
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            {hero?.description || "Billing, SMS, Network, Inventory — all in one powerful platform. Manage your ISP business smarter."}
+            {hero?.description || ""}
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
