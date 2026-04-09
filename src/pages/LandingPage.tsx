@@ -260,12 +260,17 @@ function FeaturesSection({ sections }: { sections: any[] }) {
 }
 
 // ─── How It Works ────────────────────────────────────────────
-function HowItWorks() {
-  const steps = [
+function HowItWorks({ sections }: { sections: any[] }) {
+  const howSteps = sections.filter((s: any) => s.section_type === "how_it_works");
+  const defaultSteps = [
     { icon: Settings, title: "Setup Your ISP", description: "Register and configure your ISP settings, packages, and payment methods in minutes." },
     { icon: Users, title: "Add Customers", description: "Import or add customers, assign packages, and set up their connections effortlessly." },
     { icon: BarChart3, title: "Manage & Grow", description: "Automate billing, monitor network, track revenue, and scale your business." },
   ];
+  const sectionMeta = howSteps[0]?.metadata || {};
+  const steps = howSteps.length > 0
+    ? howSteps.map((s: any) => ({ icon: getIcon(s.icon), title: s.title, description: s.description }))
+    : defaultSteps;
 
   return (
     <section id="how-it-works" className="py-20 sm:py-28 bg-background">
@@ -274,26 +279,29 @@ function HowItWorks() {
           <Badge variant="secondary" className="mb-4 rounded-full px-4 py-1 text-xs font-medium">
             <CheckCircle2 className="h-3 w-3 mr-1" /> How It Works
           </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">Get Started in 3 Simple Steps</h2>
-          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">From setup to full operation in under 30 minutes</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{sectionMeta.section_title || "Get Started in 3 Simple Steps"}</h2>
+          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">{sectionMeta.section_subtitle || "From setup to full operation in under 30 minutes"}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {steps.map((step, i) => (
-            <div key={i} className="relative text-center group">
-              {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-10 left-[60%] w-[calc(100%-20%)] h-px border-t-2 border-dashed border-border" />
-              )}
-              <div className="relative z-10 mx-auto h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
-                <step.icon className="h-8 w-8 text-primary" />
-                <span className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">
-                  {i + 1}
-                </span>
+          {steps.map((step: any, i: number) => {
+            const Icon = typeof step.icon === 'function' ? step.icon : getIcon(step.icon);
+            return (
+              <div key={i} className="relative text-center group">
+                {i < steps.length - 1 && (
+                  <div className="hidden md:block absolute top-10 left-[60%] w-[calc(100%-20%)] h-px border-t-2 border-dashed border-border" />
+                )}
+                <div className="relative z-10 mx-auto h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+                  <Icon className="h-8 w-8 text-primary" />
+                  <span className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">
+                    {i + 1}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">{step.description}</p>
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">{step.description}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -490,14 +498,14 @@ function ContactSection({ branding }: { branding: any }) {
               </p>
             </div>
             <div className="space-y-5">
-              {(branding.address || "Dhaka, Bangladesh") && (
+              {branding.address && (
                 <div className="flex items-start gap-4">
                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <MapPin className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground text-sm">Address</p>
-                    <p className="text-sm text-muted-foreground">{branding.address || "Dhaka, Bangladesh"}</p>
+                    <p className="text-sm text-muted-foreground">{branding.address}</p>
                   </div>
                 </div>
               )}
@@ -590,7 +598,9 @@ function ContactSection({ branding }: { branding: any }) {
 }
 
 // ─── Final CTA ───────────────────────────────────────────────
-function FinalCta({ onCta }: { onCta: () => void }) {
+function FinalCta({ onCta, sections, branding }: { onCta: () => void; sections: any[]; branding: any }) {
+  const cta = sections.find((s: any) => s.section_type === "cta");
+  const meta = cta?.metadata || {};
   return (
     <section className="py-20 sm:py-28 bg-background">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
@@ -598,17 +608,17 @@ function FinalCta({ onCta }: { onCta: () => void }) {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.06] rounded-full blur-[80px]" />
           <div className="relative">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Ready to Transform Your ISP?
+              {cta?.title || "Ready to Transform Your ISP?"}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8 text-lg">
-              Join hundreds of ISP owners who trust Smart ISP to manage their business. Start your free trial today.
+              {cta?.description || `Join hundreds of ISP owners who trust ${branding.site_name || "us"} to manage their business. Start your free trial today.`}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" className="text-base px-8 h-12 rounded-full shadow-lg shadow-primary/20" onClick={onCta}>
-                Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
+                {meta.cta_primary || "Get Started Free"} <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
               <Button size="lg" variant="outline" className="text-base px-8 h-12 rounded-full" asChild>
-                <a href="/demo-request">Request Full Demo</a>
+                <a href="/demo-request">{meta.cta_secondary || "Request Full Demo"}</a>
               </Button>
             </div>
           </div>
@@ -738,12 +748,12 @@ export default function LandingPage() {
       <Navbar branding={branding} onCta={openModal} sections={sections} />
       <HeroSection sections={sections} onCta={openModal} />
       <FeaturesSection sections={sections} />
-      <HowItWorks />
+      <HowItWorks sections={sections} />
       <PricingSection sections={sections} onCta={openModal} />
       <TestimonialsSection sections={sections} />
       <FaqSection sections={sections} />
       <ContactSection branding={branding} />
-      <FinalCta onCta={openModal} />
+      <FinalCta onCta={openModal} sections={sections} branding={branding} />
       <LandingFooter sections={sections} branding={branding} />
       <DemoQuickModal open={modalOpen} onOpenChange={setModalOpen} meta={demoMeta} />
     </div>
