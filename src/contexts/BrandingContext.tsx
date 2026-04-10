@@ -115,6 +115,8 @@ export function useBranding() {
 }
 
 function applyPrimaryColor(hex: string) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
@@ -136,10 +138,15 @@ function applyPrimaryColor(hex: string) {
   const hDeg = Math.round(h * 360);
   const sPct = Math.round(s * 100);
   const lPct = Math.round(l * 100);
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   const root = document.documentElement;
   root.style.setProperty("--primary", `${hDeg} ${sPct}% ${lPct}%`);
+  root.style.setProperty("--accent", `${hDeg} ${clamp(sPct - 8, 32, 100)}% ${clamp(lPct - 8, 18, 58)}%`);
+  root.style.setProperty("--success", `${hDeg} ${clamp(sPct, 36, 100)}% ${clamp(lPct, 24, 60)}%`);
   root.style.setProperty("--ring", `${hDeg} ${sPct}% ${lPct}%`);
-  root.style.setProperty("--sidebar-primary", `${hDeg} ${sPct}% ${lPct}%`);
+  root.style.setProperty("--sidebar-primary", `${hDeg} ${clamp(sPct + 4, 40, 100)}% ${clamp(lPct + 6, 28, 68)}%`);
   root.style.setProperty("--sidebar-ring", `${hDeg} ${sPct}% ${lPct}%`);
+  root.style.setProperty("--gradient-start", `${hDeg} ${clamp(sPct, 36, 100)}% ${clamp(lPct - 10, 18, 58)}%`);
+  root.style.setProperty("--gradient-end", `${hDeg} ${clamp(sPct + 4, 40, 100)}% ${clamp(lPct + 8, 28, 72)}%`);
 }

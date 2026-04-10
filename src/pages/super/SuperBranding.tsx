@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db, supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { Loader2, Palette, Save, Upload, X, Globe, Mail, Phone, MapPin, FileText
 import { clearBrandingCache } from "@/lib/brandingHelper";
 import { useBranding } from "@/contexts/BrandingContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { IS_LOVABLE } from "@/lib/environment";
+import { uploadFile } from "@/lib/storage";
 
 export default function SuperBranding() {
   const { t } = useLanguage();
@@ -21,7 +23,8 @@ export default function SuperBranding() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["super-general-settings"],
     queryFn: async () => {
-      const { data } = await (supabase as any).from("general_settings").select("*").limit(1).maybeSingle();
+      const { data, error } = await (db as any).from("general_settings").select("*").limit(1).maybeSingle();
+      if (error) throw error;
       return data || {};
     },
   });
@@ -35,9 +38,10 @@ export default function SuperBranding() {
   const { data: footerSettings } = useQuery({
     queryKey: ["super-footer-settings"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (db as any)
         .from("system_settings").select("setting_key, setting_value")
         .in("setting_key", ["branding_footer_text", "branding_copyright_text"]);
+      if (error) throw error;
       const map: Record<string, string> = {};
       (data || []).forEach((r: any) => { map[r.setting_key] = r.setting_value || ""; });
       return map;
@@ -69,34 +73,57 @@ export default function SuperBranding() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const brandingPayload = {
+        site_name: form.site_name,
+        address: form.address,
+        email: form.email,
+        mobile: form.mobile,
+        support_email: form.support_email,
+        support_phone: form.support_phone,
+        primary_color: form.primary_color,
+        logo_url: form.logo_url || null,
+        login_logo_url: form.login_logo_url || null,
+        favicon_url: form.favicon_url || null,
+      };
+
       if (settings?.id) {
-        const { error } = await (supabase as any).from("general_settings").update({
-          site_name: form.site_name, address: form.address, email: form.email,
-          mobile: form.mobile, support_email: form.support_email, support_phone: form.support_phone,
-          primary_color: form.primary_color, logo_url: form.logo_url || null,
-          login_logo_url: form.login_logo_url || null, favicon_url: form.favicon_url || null,
+        const { error } = await (db as any).from("general_settings").update({
+          ...brandingPayload,
           updated_at: new Date().toISOString(),
         }).eq("id", settings.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from("general_settings").insert({
-          site_name: form.site_name, address: form.address, email: form.email,
-          mobile: form.mobile, support_email: form.support_email, support_phone: form.support_phone,
-          primary_color: form.primary_color, logo_url: form.logo_url || null,
-          login_logo_url: form.login_logo_url || null, favicon_url: form.favicon_url || null,
-        });
+        const { error } = await (db as any).from("general_settings").insert(brandingPayload);
         if (error) throw error;
       }
-      for (const [key, value] of [
-        ["branding_footer_text", footerText], ["branding_copyright_text", copyrightText],
-      ] as [string, string][]) {
-        const { data: existing } = await (supabase as any).from("system_settings").select("id").eq("setting_key", key).maybeSingle();
+
+      await Promise.all(([
+        ["branding_footer_text", footerText],
+        ["branding_copyright_text", copyrightText],
+      ] as [string, string][]).map(async ([key, value]) => {
+        const { data: existing, error: existingError } = await (db as any)
+          .from("system_settings")
+          .select("id")
+          .eq("setting_key", key)
+          .maybeSingle();
+
+        if (existingError) throw existingError;
+
         if (existing?.id) {
-          await (supabase as any).from("system_settings").update({ setting_value: value }).eq("id", existing.id);
-        } else {
-          await (supabase as any).from("system_settings").insert({ setting_key: key, setting_value: value });
+          const { error } = await (db as any)
+            .from("system_settings")
+            .update({ setting_value: value })
+            .eq("id", existing.id);
+          if (error) throw error;
+          return;
         }
-      }
+
+        const { error } = await (db as any)
+          .from("system_settings")
+          .insert({ setting_key: key, setting_value: value });
+        if (error) throw error;
+      }));
+
       clearBrandingCache();
     },
     onSuccess: () => {
@@ -114,12 +141,19 @@ export default function SuperBranding() {
   const handleLogoUpload = async (file: File, field: "logo_url" | "login_logo_url" | "favicon_url") => {
     setUploading(field);
     try {
-      const ext = file.name.split(".").pop();
+      const ext = file.name.split(".").pop() || "png";
       const fileName = `branding/${field}-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
-      setForm((prev) => ({ ...prev, [field]: urlData.publicUrl }));
+
+      const publicUrl = IS_LOVABLE
+        ? await (async () => {
+            const { error: uploadError } = await supabase.storage.from("avatars").upload(fileName, file, { upsert: true });
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+            return urlData.publicUrl;
+          })()
+        : (await uploadFile("avatars", fileName, file, { upsert: true })).publicUrl;
+
+      setForm((prev) => ({ ...prev, [field]: publicUrl }));
       toast.success(sa.imageUploaded);
     } catch (err: any) {
       toast.error(sa.uploadFailed + ": " + err.message);

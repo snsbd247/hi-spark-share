@@ -735,14 +735,14 @@ function LandingFooter({ sections, branding }: { sections: any[]; branding: any 
 // ─── Main Page ───────────────────────────────────────────────
 export default function LandingPage() {
   const [modalOpen, setModalOpen] = useState(false);
-  const { data: sections = [], isLoading: sectionsLoading } = useLandingSections();
-  const { data: branding = { site_name: "", logo_url: null, email: "", mobile: "", address: "", support_email: "", support_phone: "", copyright_text: "", footer_text: "" }, isLoading: brandingLoading } = useBranding();
+  const { data: sections = [], isLoading: sectionsLoading, isFetching: sectionsFetching } = useLandingSections();
+  const { data: branding = { site_name: "", logo_url: null, email: "", mobile: "", address: "", support_email: "", support_phone: "", copyright_text: "", footer_text: "" }, isLoading: brandingLoading, isFetching: brandingFetching } = useBranding();
 
   const demoMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
   const openModal = () => setModalOpen(true);
 
   // Show minimal loader until CMS data loads to prevent language/content flash
-  if (sectionsLoading || brandingLoading) {
+  if (sectionsLoading || brandingLoading || sectionsFetching || brandingFetching) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

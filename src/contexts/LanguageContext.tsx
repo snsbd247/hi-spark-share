@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { db } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { translations, type Language, type Translations } from "@/i18n";
+import { sessionStore } from "@/lib/sessionStore";
 
 interface LanguageContextType {
   language: Language;
@@ -11,40 +12,73 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const PUBLIC_LANGUAGE_KEY = "app_language_public";
+
+function isValidLanguage(value: unknown): value is Language {
+  return value === "en" || value === "bn";
+}
+
+function getLangKey(userId?: string | null) {
+  return userId ? `app_language_${userId}` : PUBLIC_LANGUAGE_KEY;
+}
+
+function getCachedAdminUserId() {
+  const rawUser = sessionStore.getItem("admin_user");
+  if (!rawUser) return null;
+
+  try {
+    const parsedUser = JSON.parse(rawUser);
+    return parsedUser?.id ? String(parsedUser.id) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredLanguage(userId?: string | null): Language | null {
+  if (typeof window === "undefined") return null;
+
+  const scopedLanguage = localStorage.getItem(getLangKey(userId));
+  if (isValidLanguage(scopedLanguage)) return scopedLanguage;
+
+  if (userId) {
+    const publicLanguage = localStorage.getItem(PUBLIC_LANGUAGE_KEY);
+    if (isValidLanguage(publicLanguage)) return publicLanguage;
+  }
+
+  return null;
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
-  // User-specific localStorage key to isolate language per user
-  const getLangKey = (userId?: string) => userId ? `app_language_${userId}` : null;
-
-  const [language, setLang] = useState<Language>("en");
+  const [language, setLang] = useState<Language>(() => readStoredLanguage(getCachedAdminUserId()) || "en");
 
   // Load language from user-specific localStorage or DB when user is available
   useEffect(() => {
-    if (!user?.id) {
-      setLang("en");
+    const resolvedUserId = user?.id || getCachedAdminUserId();
+    const cachedLanguage = readStoredLanguage(resolvedUserId);
+
+    if (cachedLanguage) {
+      setLang(cachedLanguage);
       return;
     }
 
-    const key = getLangKey(user.id);
-    if (key) {
-      const cached = localStorage.getItem(key) as Language;
-      if (cached === "en" || cached === "bn") {
-        setLang(cached);
-        return;
-      }
+    if (!resolvedUserId) {
+      setLang("en");
+      return;
     }
 
     // Fallback: load from DB
     db
       .from("profiles")
       .select("language")
-      .eq("id", user.id)
+      .eq("id", resolvedUserId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.language && (data.language === "en" || data.language === "bn")) {
+        if (data?.language && isValidLanguage(data.language)) {
           setLang(data.language as Language);
-          if (key) localStorage.setItem(key, data.language);
+          localStorage.setItem(getLangKey(resolvedUserId), data.language);
+          localStorage.setItem(PUBLIC_LANGUAGE_KEY, data.language);
         } else {
           // Default to English
           setLang("en");
@@ -54,8 +88,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLang(lang);
-    const key = getLangKey(user?.id);
-    if (key) localStorage.setItem(key, lang);
+    const resolvedUserId = user?.id || getCachedAdminUserId();
+
+    localStorage.setItem(getLangKey(resolvedUserId), lang);
+    localStorage.setItem(PUBLIC_LANGUAGE_KEY, lang);
 
     if (user?.id) {
       await db
