@@ -271,8 +271,8 @@ export default function Packages() {
         } else toast.error(data?.error || "Bulk sync failed");
       } else {
         const data = await mikrotikCall('bulk-sync-packages', { tenant_id: tenantId });
-        if (data.success) {
-          const r = data.results;
+        const r = data.results || data;
+        if (data.success || r.success) {
           const parts = [];
           if (r.synced > 0) parts.push(`${r.synced} pushed`);
           if (r.imported > 0) parts.push(`${r.imported} imported`);
@@ -280,7 +280,7 @@ export default function Packages() {
           toast.success(`Sync complete: ${parts.join(", ") || "No changes"}`);
           if (r.errors?.length > 0) toast.warning(`Errors: ${r.errors.slice(0, 3).join("; ")}`);
           queryClient.invalidateQueries({ queryKey: ["packages-all"] });
-        } else toast.error(data.error || "Bulk sync failed");
+        } else toast.error(data.error || r.error || "Bulk sync failed");
       }
     } catch (err: any) {
       const msg = err.message || "";
