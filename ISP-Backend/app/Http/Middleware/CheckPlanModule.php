@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\PlanModuleService;
+use App\Support\Auth\AdminContext;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -16,17 +17,22 @@ class CheckPlanModule
     public function handle(Request $request, Closure $next, string $module)
     {
         $tenant = tenant();
+        $admin = AdminContext::user($request);
 
-        // Owner role bypasses plan module checks
-        $admin = $request->get('admin_user');
         if ($admin) {
-            $roles = \App\Models\UserRole::where('user_id', $admin->id)->pluck('role');
-            if ($roles->contains('owner') || $roles->contains('super_admin') || $roles->contains('admin')) {
+            if (AdminContext::isSuperAdmin($admin)) {
                 return $next($request);
+            }
+
+            $adminId = AdminContext::id($admin);
+            if ($adminId) {
+                $roles = \App\Models\UserRole::where('user_id', $adminId)->pluck('role');
+                if ($roles->contains('owner') || $roles->contains('super_admin') || $roles->contains('admin')) {
+                    return $next($request);
+                }
             }
         }
 
-        // No tenant context (central domain) → pass through
         if (!$tenant) {
             return $next($request);
         }

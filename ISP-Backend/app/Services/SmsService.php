@@ -18,8 +18,8 @@ class SmsService
      */
     public function send(string $to, string $message, string $smsType = 'manual', ?string $customerId = null): array
     {
-        $settings = SmsSetting::first();
-        $token = $settings->api_token ?? config('services.greenweb.token', '');
+        $settings = $this->resolveSettings();
+        $token = $settings?->api_token ?? config('services.greenweb.token', '');
 
         if (!$token) {
             Log::error('[SMS] No API token configured by Super Admin');
@@ -193,8 +193,8 @@ class SmsService
      */
     public function checkBalance(): array
     {
-        $settings = SmsSetting::first();
-        $token = $settings->api_token ?? config('services.greenweb.token', '');
+        $settings = $this->resolveSettings();
+        $token = $settings?->api_token ?? config('services.greenweb.token', '');
 
         if (!$token) {
             return ['error' => 'No API token configured'];
@@ -205,10 +205,24 @@ class SmsService
                 'token' => $token,
                 'type'  => 'balance',
             ]);
+
             return ['balance' => $response->body()];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
         }
+    }
+
+    private function resolveSettings(): ?SmsSetting
+    {
+        if (tenant_id()) {
+            return SmsSetting::query()->latest('updated_at')->first();
+        }
+
+        return SmsSetting::query()
+            ->whereNull('tenant_id')
+            ->latest('updated_at')
+            ->first()
+            ?? SmsSetting::query()->latest('updated_at')->first();
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\CustomRole;
 use App\Models\UserRole;
+use App\Support\Auth\AdminContext;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -11,20 +12,27 @@ class CheckPermission
 {
     public function handle(Request $request, Closure $next, string $module, string $action)
     {
-        $admin = $request->get('admin_user');
+        $admin = AdminContext::user($request);
 
         if (!$admin) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $roles = UserRole::where('user_id', $admin->id)->get();
+        if (AdminContext::isSuperAdmin($admin)) {
+            return $next($request);
+        }
 
-        // Super admin, admin, and owner bypass all checks
+        $adminId = AdminContext::id($admin);
+        if (!$adminId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $roles = UserRole::where('user_id', $adminId)->get();
+
         if ($roles->contains('role', 'super_admin') || $roles->contains('role', 'admin') || $roles->contains('role', 'owner')) {
             return $next($request);
         }
 
-        // Check custom role permissions
         foreach ($roles as $role) {
             if ($role->custom_role_id) {
                 $customRole = CustomRole::with('permissions')->find($role->custom_role_id);
