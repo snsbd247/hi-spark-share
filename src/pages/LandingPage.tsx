@@ -101,7 +101,13 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
 
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link: any, i: number) => (
-            <a key={i} href={link.href} className="text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium">
+            <a key={i} href={link.href} onClick={(e) => {
+              if (link.href.startsWith("#")) {
+                e.preventDefault();
+                const el = document.querySelector(link.href);
+                el?.scrollIntoView({ behavior: "smooth" });
+              }
+            }} className="text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium">
               {link.label}
             </a>
           ))}
@@ -124,7 +130,14 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
       {mobileOpen && (
         <div className="md:hidden border-t border-border/40 bg-background/95 backdrop-blur-xl pb-4 px-4 space-y-1">
           {navLinks.map((link: any, i: number) => (
-            <a key={i} href={link.href} onClick={() => setMobileOpen(false)}
+            <a key={i} href={link.href} onClick={(e) => {
+              setMobileOpen(false);
+              if (link.href.startsWith("#")) {
+                e.preventDefault();
+                const el = document.querySelector(link.href);
+                el?.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
               className="block py-2 text-sm text-muted-foreground hover:text-foreground font-medium">
               {link.label}
             </a>
