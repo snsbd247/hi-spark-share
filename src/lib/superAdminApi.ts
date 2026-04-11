@@ -1077,9 +1077,25 @@ export const superAdminApi = {
   cleanupBackups: (keepDays: number) => request("/backups/cleanup", { method: "POST", body: JSON.stringify({ keep_days: keepDays }) }),
   getAutoBackupSettings: () => request("/backups/auto-settings"),
   updateAutoBackupSettings: (data: { enabled: boolean; frequency: string; keep_count: number }) => request("/backups/auto-settings", { method: "PUT", body: JSON.stringify(data) }),
-  downloadBackup: (filePath: string) => {
-    const token = getToken();
-    const url = `${BASE()}/backups/download?file_path=${encodeURIComponent(filePath)}&token=${encodeURIComponent(token)}`;
-    window.open(url, "_blank");
+  downloadBackup: async (filePath: string) => {
+    try {
+      const res = await fetch(`${BASE()}/backups/download?file_path=${encodeURIComponent(filePath)}`, {
+        headers: headers(),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || "Download failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filePath.split("/").pop() || "backup.sql";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    } catch (e: any) {
+      throw new Error(e.message || "Download failed");
+    }
   },
 };
