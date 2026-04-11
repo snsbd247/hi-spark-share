@@ -1070,4 +1070,9 @@ export const superAdminApi = {
   cleanupBackups: (keepDays: number) => request("/backups/cleanup", { method: "POST", body: JSON.stringify({ keep_days: keepDays }) }),
   getAutoBackupSettings: () => request("/backups/auto-settings"),
   updateAutoBackupSettings: (data: { enabled: boolean; frequency: string; keep_count: number }) => request("/backups/auto-settings", { method: "PUT", body: JSON.stringify(data) }),
+  downloadBackup: (filePath: string) => {
+    const token = getToken();
+    const url = `${BASE()}/backups/download?file_path=${encodeURIComponent(filePath)}&token=${encodeURIComponent(token)}`;
+    window.open(url, "_blank");
+  },
 };
