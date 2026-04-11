@@ -304,7 +304,14 @@ export const superAdminApi = {
       }
       return tenant;
     }
-    return request("/tenants", { method: "POST", body: JSON.stringify(data) });
+    // VPS: auto-fill admin fields if not provided
+    const payload = {
+      ...data,
+      admin_name: data.admin_name || `${data.name} Admin`,
+      admin_email: data.admin_email || data.email,
+      admin_password: data.admin_password || "123456789",
+    };
+    return request("/tenants", { method: "POST", body: JSON.stringify(payload) });
   },
   updateTenant: async (id: string, data: any) => {
     if (IS_LOVABLE) return sbUpdate("tenants", id, data);
