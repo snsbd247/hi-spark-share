@@ -3,17 +3,18 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
 
 class SmtpSetting extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $table = 'smtp_settings';
 
     protected $fillable = [
-        'host', 'port', 'username', 'password', 'encryption',
+        'id', 'tenant_id', 'host', 'port', 'username', 'password', 'encryption',
         'from_email', 'from_name', 'status',
     ];
 

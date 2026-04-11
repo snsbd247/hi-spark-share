@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class GeneralSetting extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $fillable = [
         'id', 'tenant_id', 'site_name', 'logo_url', 'login_logo_url', 'favicon_url',
