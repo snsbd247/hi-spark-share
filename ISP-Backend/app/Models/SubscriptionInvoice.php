@@ -13,6 +13,7 @@ class SubscriptionInvoice extends Model
         'id', 'tenant_id', 'plan_id', 'amount', 'tax_amount',
         'total_amount', 'proration_credit', 'billing_cycle',
         'due_date', 'paid_date', 'status', 'payment_method', 'notes',
+        'subscription_id', 'transaction_id',
     ];
 
     protected $casts = [

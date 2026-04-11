@@ -9,5 +9,5 @@ class SystemSetting extends Model
 {
     use HasUuid;
 
-    protected $fillable = ['id', 'setting_key', 'setting_value'];
+    protected $fillable = ['id', 'tenant_id', 'setting_key', 'setting_value'];
 }

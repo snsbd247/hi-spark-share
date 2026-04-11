@@ -14,7 +14,7 @@ class FiberOnu extends Model
 
     protected $fillable = [
         'tenant_id', 'splitter_output_id', 'serial_number', 'mac_address',
-        'status', 'customer_id', 'signal_strength',
+        'status', 'customer_id', 'signal_strength', 'lat', 'lng',
     ];
 
     public function splitterOutput()

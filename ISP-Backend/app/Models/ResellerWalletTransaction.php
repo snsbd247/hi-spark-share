@@ -12,7 +12,7 @@ class ResellerWalletTransaction extends Model
     protected $table = 'reseller_wallet_transactions';
 
     protected $fillable = [
-        'id', 'reseller_id', 'tenant_id', 'type', 'amount', 'balance_after', 'description',
+        'id', 'reseller_id', 'tenant_id', 'type', 'amount', 'balance_after', 'description', 'reference',
     ];
 
     protected $casts = [

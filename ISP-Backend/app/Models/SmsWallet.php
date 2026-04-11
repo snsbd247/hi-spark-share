@@ -9,7 +9,7 @@ class SmsWallet extends Model
 {
     use HasUuid;
 
-    protected $fillable = ['id', 'tenant_id', 'balance'];
+    protected $fillable = ['id', 'tenant_id', 'balance', 'sms_rate'];
 
     protected $casts = ['balance' => 'integer'];
 

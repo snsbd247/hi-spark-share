@@ -14,7 +14,7 @@ class FiberCable extends Model
 
     protected $fillable = [
         'tenant_id', 'pon_port_id', 'name', 'total_cores', 'color', 'length_meters', 'status',
-        'source_type', 'source_id',
+        'source_type', 'source_id', 'lat', 'lng',
     ];
 
     protected $casts = [
