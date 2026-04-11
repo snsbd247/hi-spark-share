@@ -222,6 +222,7 @@ export default function SubscriptionInvoices() {
         {/* ── Invoice Preview Dialog ── */}
         <Dialog open={!!previewInv} onOpenChange={(o) => { if (!o) setPreviewInv(null); }}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogTitle className="sr-only">Invoice Preview</DialogTitle>
             {previewInv && (
               <div className="bg-white text-gray-900" style={{ background: "#ffffff" }}>
                 <div className="p-8 md:p-10 max-w-[800px] mx-auto">

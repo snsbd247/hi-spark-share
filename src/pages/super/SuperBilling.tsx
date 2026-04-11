@@ -633,6 +633,7 @@ export default function SuperBilling() {
       {/* ── Invoice Preview Dialog (Same design as Tenant side) ── */}
       <Dialog open={!!previewInv} onOpenChange={(o) => { if (!o) setPreviewInv(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogTitle className="sr-only">Invoice Preview</DialogTitle>
           {previewInv && (() => {
             const b = branding || { software_name: "Smart ISP", company_name: "Smart ISP", address: "", support_email: "", support_phone: "", logo_url: null, footer_text: "", copyright_text: "", email: "", mobile: "" };
             const tenantData = tenants.find((t: any) => t.id === previewInv.tenant_id);
