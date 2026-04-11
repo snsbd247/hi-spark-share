@@ -501,7 +501,7 @@ function ContactSection({ branding }: { branding: any }) {
   const inputClass = "flex h-9 w-full rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 transition-shadow";
 
   return (
-    <section id="contact" className="py-8 sm:py-12">
+    <section id="contact" data-section="signup" className="py-8 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
