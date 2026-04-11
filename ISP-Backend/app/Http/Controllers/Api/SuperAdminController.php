@@ -282,14 +282,22 @@ class SuperAdminController extends Controller
 
         DB::beginTransaction();
         try {
+            // First: delete subscription_invoices via subscription_id FK
+            $subIds = DB::table('subscriptions')->where('tenant_id', $id)->pluck('id');
+            if ($subIds->isNotEmpty()) {
+                DB::table('subscription_invoices')->whereIn('subscription_id', $subIds)->delete();
+            }
+            // Also delete any subscription_invoices directly by tenant_id
+            DB::table('subscription_invoices')->where('tenant_id', $id)->delete();
+            DB::table('subscriptions')->where('tenant_id', $id)->delete();
+
             // Delete child records from tables that have tenant_id
             foreach ($childTables as $key => $value) {
                 $table = is_int($key) ? $value : $key;
+                if (in_array($table, ['subscriptions', 'subscription_invoices'])) continue;
                 try {
-                    // Some tables reference tenant_id directly
                     DB::table($table)->where('tenant_id', $id)->delete();
                 } catch (\Exception $e) {
-                    // Some tables may not have tenant_id, try via customer/employee FK
                     Log::debug("Cascade delete {$table}: " . $e->getMessage());
                 }
             }
@@ -506,9 +514,28 @@ class SuperAdminController extends Controller
 
     public function deleteSubscription(string $id)
     {
-        $sub = Subscription::findOrFail($id);
-        $sub->delete();
-        return response()->json(['success' => true, 'message' => 'Subscription deleted']);
+        $sub = Subscription::find($id);
+        if (!$sub) {
+            // Try raw delete in case model has issues
+            $deleted = DB::table('subscriptions')->where('id', $id)->delete();
+            if ($deleted) {
+                DB::table('subscription_invoices')->where('subscription_id', $id)->delete();
+                return response()->json(['success' => true, 'message' => 'Subscription deleted']);
+            }
+            return response()->json(['error' => 'Subscription not found'], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Delete related invoices first
+            DB::table('subscription_invoices')->where('subscription_id', $id)->delete();
+            $sub->delete();
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Subscription deleted']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
+        }
     }
 
     // ══════════════════════════════════════════
