@@ -566,85 +566,84 @@ class DefaultSeeder extends Seeder
         if (\App\Models\LandingSection::count() > 0) return;
 
         $sections = [
+            // ── Hero ──
             [
                 'section_type' => 'hero',
-                'title' => 'Complete ISP Management Solution',
-                'subtitle' => 'Manage your ISP business with powerful billing, customer management, and network monitoring tools.',
-                'button_text' => 'Get Started',
-                'button_url' => '#pricing',
+                'title' => 'ISP ব্যবসার জন্য সম্পূর্ণ ম্যানেজমেন্ট সলিউশন',
+                'subtitle' => 'Smart ISP',
+                'description' => 'বিলিং, কাস্টমার ম্যানেজমেন্ট, MikroTik ইন্টিগ্রেশন, SMS নোটিফিকেশন, এবং আরও অনেক কিছু — একটি প্ল্যাটফর্মে।',
                 'sort_order' => 1,
                 'is_active' => true,
                 'metadata' => json_encode([
+                    'badge' => '🚀 Bangladesh #1 ISP Management Platform',
                     'cta_nav' => 'Get Started',
+                    'cta_primary' => 'ডেমো রিকোয়েস্ট করুন',
+                    'cta_secondary' => 'Watch Demo',
+                    'demo_title' => 'ডেমো রিকোয়েস্ট করুন',
+                    'demo_subtitle' => 'আমাদের সফটওয়্যার ব্যবহার করতে চান? নিচের ফর্মটি পূরণ করুন।',
+                    'hero_badges' => ['No Setup Fee', '24/7 Support', 'Free Trial', 'Bangla Interface'],
                     'nav_links' => [
-                        ['label' => 'Features', 'href' => '#features'],
-                        ['label' => 'How It Works', 'href' => '#how-it-works'],
-                        ['label' => 'Pricing', 'href' => '#pricing'],
+                        ['label' => 'FEATURES', 'href' => '#features'],
+                        ['label' => 'PRICING', 'href' => '#pricing'],
                         ['label' => 'FAQ', 'href' => '#faq'],
-                        ['label' => 'Contact', 'href' => '#contact'],
+                        ['label' => 'CONTACT', 'href' => '#signup'],
                     ],
+                    'pricing_title' => 'Package & Pricing',
+                    'pricing_subtitle' => 'আপনার ISP ব্যবসার জন্য সেরা প্ল্যান বেছে নিন',
                 ]),
             ],
-            [
-                'section_type' => 'stats',
-                'title' => 'Trusted by ISPs',
-                'sort_order' => 2,
-                'is_active' => true,
-                'metadata' => json_encode([
-                    'items' => [
-                        ['value' => '500+', 'label' => 'Active ISPs'],
-                        ['value' => '50K+', 'label' => 'Customers Managed'],
-                        ['value' => '99.9%', 'label' => 'Uptime'],
-                        ['value' => '24/7', 'label' => 'Support'],
-                    ],
-                ]),
-            ],
-            [
-                'section_type' => 'features',
-                'title' => 'Everything You Need',
-                'subtitle' => 'A comprehensive suite of tools to run your ISP business efficiently.',
-                'sort_order' => 3,
-                'is_active' => true,
-            ],
-            [
-                'section_type' => 'how_it_works',
-                'title' => 'Get Started in Minutes',
-                'subtitle' => 'Simple setup process to get your ISP management system running.',
-                'sort_order' => 4,
-                'is_active' => true,
-                'metadata' => json_encode([
-                    'steps' => [
-                        ['title' => 'Sign Up', 'description' => 'Create your account and choose a plan.'],
-                        ['title' => 'Configure', 'description' => 'Set up your network, packages, and billing.'],
-                        ['title' => 'Go Live', 'description' => 'Start managing your ISP business!'],
-                    ],
-                ]),
-            ],
-            [
-                'section_type' => 'faq',
-                'title' => 'Frequently Asked Questions',
-                'sort_order' => 6,
-                'is_active' => true,
-                'metadata' => json_encode([
-                    'items' => [
-                        ['question' => 'How long does setup take?', 'answer' => 'You can be up and running in less than 30 minutes.'],
-                        ['question' => 'Can I migrate from another system?', 'answer' => 'Yes, we support data import from CSV and other formats.'],
-                        ['question' => 'Is there a free trial?', 'answer' => 'Yes, we offer a 14-day free trial with full features.'],
-                    ],
-                ]),
-            ],
-            [
-                'section_type' => 'cta',
-                'title' => 'Ready to Transform Your ISP?',
-                'subtitle' => 'Join hundreds of ISPs already using Smart ISP to grow their business.',
-                'button_text' => 'Start Free Trial',
-                'sort_order' => 7,
-                'is_active' => true,
-            ],
+
+            // ── Stats ──
+            ['section_type' => 'stat', 'title' => '500+', 'subtitle' => 'Active ISP Clients', 'icon' => 'Users', 'sort_order' => 2, 'is_active' => true],
+            ['section_type' => 'stat', 'title' => '50,000+', 'subtitle' => 'Customers Managed', 'icon' => 'Globe', 'sort_order' => 3, 'is_active' => true],
+            ['section_type' => 'stat', 'title' => '99.9%', 'subtitle' => 'System Uptime', 'icon' => 'Shield', 'sort_order' => 4, 'is_active' => true],
+            ['section_type' => 'stat', 'title' => '24/7', 'subtitle' => 'Support Available', 'icon' => 'Headphones', 'sort_order' => 5, 'is_active' => true],
+
+            // ── Features ──
+            ['section_type' => 'feature', 'title' => 'Customer Management', 'subtitle' => 'কাস্টমার ম্যানেজমেন্ট', 'description' => 'সম্পূর্ণ কাস্টমার প্রোফাইল, PPPoE কনফিগারেশন, কানেকশন স্ট্যাটাস ট্র্যাকিং এবং অটোমেটেড নোটিফিকেশন সিস্টেম।', 'icon' => 'Users', 'sort_order' => 10, 'is_active' => true, 'metadata' => json_encode(['section_title' => 'আমাদের ফিচারসমূহ', 'section_subtitle' => 'ISP ব্যবসা পরিচালনার জন্য প্রয়োজনীয় সব টুল এক জায়গায়'])],
+            ['section_type' => 'feature', 'title' => 'Billing & Invoice', 'subtitle' => 'বিলিং ও ইনভয়েস', 'description' => 'অটোমেটেড মাসিক বিল জেনারেশন, কাস্টম ইনভয়েস, পেমেন্ট ট্র্যাকিং এবং ডিউ রিমাইন্ডার।', 'icon' => 'Receipt', 'sort_order' => 11, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'MikroTik Integration', 'subtitle' => 'মাইক্রোটিক ইন্টিগ্রেশন', 'description' => 'রাউটার থেকে সরাসরি PPPoE ইউজার ম্যানেজ করুন, ব্যান্ডউইথ কন্ট্রোল এবং রিয়েল-টাইম মনিটরিং।', 'icon' => 'Router', 'sort_order' => 12, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'SMS Notification', 'subtitle' => 'এসএমএস নোটিফিকেশন', 'description' => 'বিল জেনারেট, পেমেন্ট কনফার্মেশন, ডিউ রিমাইন্ডার এবং সার্ভিস আপডেট — সব কিছু অটোমেটিক SMS-এ।', 'icon' => 'MessageSquare', 'sort_order' => 13, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Accounting & Reports', 'subtitle' => 'হিসাবরক্ষণ ও রিপোর্ট', 'description' => 'Chart of Accounts, ডাবল-এন্ট্রি লেজার, ইনকাম-এক্সপেন্স ট্র্যাকিং এবং বিস্তারিত ফাইন্যান্সিয়াল রিপোর্ট।', 'icon' => 'Calculator', 'sort_order' => 14, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'FTTH/Fiber Network', 'subtitle' => 'ফাইবার নেটওয়ার্ক', 'description' => 'OLT, স্প্লিটার, ONU ম্যানেজমেন্ট এবং ফাইবার ট্র্যাকিং — সম্পূর্ণ FTTH নেটওয়ার্ক ম্যাপিং।', 'icon' => 'Cable', 'sort_order' => 15, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'HR & Payroll', 'subtitle' => 'কর্মী ব্যবস্থাপনা ও বেতন', 'description' => 'কর্মী তথ্য, অ্যাটেনডেন্স, লোন ম্যানেজমেন্ট, স্যালারি শীট এবং প্রভিডেন্ট ফান্ড — সবকিছু এক সিস্টেমে।', 'icon' => 'Briefcase', 'sort_order' => 16, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Inventory Management', 'subtitle' => 'পণ্য ও ডিভাইস ম্যানেজমেন্ট', 'description' => 'প্রোডাক্ট ক্যাটালগ, সিরিয়াল ট্র্যাকিং, কাস্টমার ডিভাইস অ্যাসাইনমেন্ট এবং স্টক লগ পরিচালনা।', 'icon' => 'Package', 'sort_order' => 17, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Reseller Management', 'subtitle' => 'রিসেলার ম্যানেজমেন্ট', 'description' => 'রিসেলার ওয়ালেট, কমিশন ক্যালকুলেশন, প্যাকেজ অ্যাক্সেস কন্ট্রোল এবং ইমপারসোনেশন সাপোর্ট।', 'icon' => 'Users', 'sort_order' => 18, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Supplier Management', 'subtitle' => 'সাপ্লায়ার ম্যানেজমেন্ট', 'description' => 'সাপ্লায়ার প্রোফাইল, পার্চেজ অর্ডার, পেমেন্ট ট্র্যাকিং এবং লেজার ম্যানেজমেন্ট।', 'icon' => 'Truck', 'sort_order' => 19, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Support Tickets', 'subtitle' => 'সাপোর্ট টিকেট', 'description' => 'কাস্টমার কমপ্লেইন ট্র্যাকিং, প্রায়োরিটি ম্যানেজমেন্ট এবং রেজোলিউশন হিস্টোরি।', 'icon' => 'Ticket', 'sort_order' => 20, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Payment Gateway', 'subtitle' => 'পেমেন্ট গেটওয়ে', 'description' => 'bKash, Nagad সহ মার্চেন্ট পেমেন্ট ইন্টিগ্রেশন এবং অনলাইন বিল পেমেন্ট সাপোর্ট।', 'icon' => 'CreditCard', 'sort_order' => 21, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Network Map', 'subtitle' => 'নেটওয়ার্ক ম্যাপ', 'description' => 'ইন্টারেক্টিভ ম্যাপে রাউটার, OLT, স্প্লিটার এবং কাস্টমার লোকেশন ভিজুয়ালাইজেশন।', 'icon' => 'Globe', 'sort_order' => 22, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Bandwidth Analytics', 'description' => 'কাস্টমার-ওয়াইজ ব্যান্ডউইথ ব্যবহার ট্র্যাকিং, রিয়েল-টাইম মনিটরিং এবং ডেটা এনালিটিক্স ড্যাশবোর্ড।', 'icon' => 'Activity', 'sort_order' => 25, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Backup & Recovery', 'description' => 'ফুল সিস্টেম ও টেন্যান্ট-ওয়াইজ SQL ব্যাকআপ, ওয়ান-ক্লিক রিস্টোর, অটো ব্যাকআপ শিডিউলিং এবং ডিজাস্টার রিকভারি।', 'icon' => 'DatabaseBackup', 'sort_order' => 26, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Customer Portal', 'description' => 'কাস্টমারদের জন্য ডেডিকেটেড সেলফ-সার্ভিস পোর্টাল — বিল দেখা, পেমেন্ট, টিকেট এবং প্রোফাইল ম্যানেজমেন্ট।', 'icon' => 'UserCircle', 'sort_order' => 27, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'IP Pool Management', 'description' => 'স্ট্যাটিক ও ডায়নামিক IP পুল ম্যানেজমেন্ট, সাবনেট কনফিগারেশন এবং IP অ্যাসাইনমেন্ট ট্র্যাকিং।', 'icon' => 'Network', 'sort_order' => 28, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Advanced Reports', 'description' => 'রেভিনিউ, এক্সপেন্স, প্রফিট-লস, ক্যাশ ফ্লো, ট্রায়াল ব্যালেন্স, ব্যালেন্স শিট — সম্পূর্ণ MIS রিপোর্টিং।', 'icon' => 'BarChart3', 'sort_order' => 29, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Coupon System', 'description' => 'ডিসকাউন্ট কুপন তৈরি, ভ্যালিডিটি কন্ট্রোল, ইউসেজ লিমিট এবং অটো বিল ডিসকাউন্ট অ্যাপ্লিকেশন।', 'icon' => 'Tag', 'sort_order' => 30, 'is_active' => true],
+            ['section_type' => 'feature', 'title' => 'Geo Management', 'description' => 'ডিভিশন, জেলা, উপজেলা ভিত্তিক লোকেশন ম্যানেজমেন্ট — কাস্টমার এবং নেটওয়ার্ক ম্যাপিং।', 'icon' => 'MapPin', 'sort_order' => 31, 'is_active' => true],
+
+            // ── Testimonials ──
+            ['section_type' => 'testimonial', 'title' => 'Md. Rahim Uddin', 'subtitle' => 'CEO, SpeedNet BD', 'description' => 'Smart ISP আমাদের ISP ব্যবসাকে সম্পূর্ণ বদলে দিয়েছে। বিলিং অটোমেশন এবং MikroTik ইন্টিগ্রেশন অসাধারণ কাজ করে।', 'sort_order' => 20, 'is_active' => true, 'metadata' => json_encode(['avatar' => 'R', 'rating' => 5, 'section_title' => 'আমাদের ক্লায়েন্টদের মতামত'])],
+            ['section_type' => 'testimonial', 'title' => 'Fatema Akter', 'subtitle' => 'Manager, FiberLink ISP', 'description' => 'কাস্টমার ম্যানেজমেন্ট এবং SMS নোটিফিকেশন ফিচারটি আমাদের কাস্টমার সার্ভিস উল্লেখযোগ্যভাবে উন্নত করেছে।', 'sort_order' => 21, 'is_active' => true, 'metadata' => json_encode(['avatar' => 'F', 'rating' => 5])],
+            ['section_type' => 'testimonial', 'title' => 'Kamal Hossain', 'subtitle' => 'Owner, NetZone ISP', 'description' => 'আগে Excel-এ হিসাব রাখতাম, এখন সব কিছু অটোমেটিক। রিপোর্ট এবং একাউন্টিং মডিউল দারুণ কাজ করে।', 'sort_order' => 22, 'is_active' => true, 'metadata' => json_encode(['avatar' => 'K', 'rating' => 5])],
+
+            // ── FAQs ──
+            ['section_type' => 'faq', 'title' => 'Smart ISP কি ধরনের ISP-এর জন্য উপযুক্ত?', 'description' => 'Smart ISP ছোট থেকে বড় সব ধরনের ISP-এর জন্য উপযুক্ত। আপনার ১০ জন কাস্টমার হোক বা ১০,০০০ — আমাদের সিস্টেম সব স্কেলে কাজ করে।', 'sort_order' => 30, 'is_active' => true, 'metadata' => json_encode(['section_title' => 'সচরাচর জিজ্ঞাসা'])],
+            ['section_type' => 'faq', 'title' => 'MikroTik রাউটার ছাড়া কি ব্যবহার করা যায়?', 'description' => 'হ্যাঁ, MikroTik ইন্টিগ্রেশন ঐচ্ছিক। আপনি শুধু বিলিং, কাস্টমার ম্যানেজমেন্ট এবং অন্যান্য মডিউল ব্যবহার করতে পারবেন।', 'sort_order' => 31, 'is_active' => true],
+            ['section_type' => 'faq', 'title' => 'ডাটা কি নিরাপদ?', 'description' => 'সম্পূর্ণ নিরাপদ। আমরা এনক্রিপ্টেড ডাটাবেস, role-based access control এবং নিয়মিত ব্যাকআপ ব্যবহার করি।', 'sort_order' => 32, 'is_active' => true],
+            ['section_type' => 'faq', 'title' => 'সাপোর্ট কিভাবে পাওয়া যায়?', 'description' => 'আমরা ২৪/৭ টেকনিক্যাল সাপোর্ট দিই। ফোন, ইমেইল এবং লাইভ চ্যাটের মাধ্যমে যেকোনো সময় যোগাযোগ করতে পারবেন।', 'sort_order' => 33, 'is_active' => true],
+            ['section_type' => 'faq', 'title' => 'কাস্টম ফিচার যোগ করা যায় কি?', 'description' => 'হ্যাঁ, আমরা কাস্টম ডেভেলপমেন্ট সাপোর্ট দিই। আপনার নির্দিষ্ট প্রয়োজন অনুযায়ী ফিচার তৈরি করে দিতে পারি।', 'sort_order' => 34, 'is_active' => true],
+
+            // ── Footer ──
+            ['section_type' => 'footer', 'title' => 'About Company', 'subtitle' => 'About Company', 'description' => 'Smart ISP হলো বাংলাদেশের ISP ব্যবসার জন্য তৈরি সবচেয়ে আধুনিক ম্যানেজমেন্ট সফটওয়্যার। আমরা প্রযুক্তির মাধ্যমে ISP পরিচালনাকে সহজ ও দক্ষ করতে প্রতিশ্রুতিবদ্ধ।', 'sort_order' => 40, 'is_active' => true, 'metadata' => json_encode(['company_name' => 'Smart ISP', 'developer' => 'Sync & Solutions IT'])],
+            ['section_type' => 'footer', 'title' => 'Quick Links', 'subtitle' => 'Quick Links', 'sort_order' => 41, 'is_active' => true, 'metadata' => json_encode(['links' => [['label' => 'Home', 'href' => '#'], ['label' => 'Features', 'href' => '#features'], ['label' => 'Package & Pricing', 'href' => '#pricing'], ['label' => 'FAQ', 'href' => '#faq'], ['label' => 'Demo Request', 'href' => '#signup']]])],
+            ['section_type' => 'footer', 'title' => 'Payment Methods', 'subtitle' => 'Payment Method', 'sort_order' => 42, 'is_active' => true, 'metadata' => json_encode(['bkash' => '01762673162', 'nagad' => '01762673162', 'bank_name' => 'Brac Bank PLC', 'account_name' => 'Md Ismail Hosain', 'account_no' => '1001104098331001'])],
+            ['section_type' => 'footer', 'title' => 'Contact Info', 'subtitle' => 'Contact Us', 'sort_order' => 43, 'is_active' => true, 'metadata' => json_encode(['phone' => '01315556633', 'email' => 'info@smartispapp.com', 'address' => '57/1, Omar Ali Lane, Wabda Road, West Rampura, Dhaka-1219, Bangladesh'])],
         ];
 
         foreach ($sections as $section) {
             \App\Models\LandingSection::create($section);
         }
+
+        $this->command->info('  ✓ Landing sections seeded (' . count($sections) . ' items)');
     }
 }
