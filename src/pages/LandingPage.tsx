@@ -480,17 +480,25 @@ function ContactSection({ branding }: { branding: any }) {
     if (!form.name || !form.email || !form.message) return;
     setSending(true);
     try {
+      // Save to database
+      await db.from("contact_messages").insert({
+        name: form.name,
+        email: form.email,
+        phone: form.phone || null,
+        message: form.message,
+      });
+      // Also send email
       await db.functions.invoke("send-email", {
         body: {
           to: branding.support_email || branding.email || "admin@example.com",
           subject: `Contact Form: ${form.name}`,
           html: `<h3>New Contact Message</h3><p><b>Name:</b> ${form.name}</p><p><b>Phone:</b> ${form.phone || "N/A"}</p><p><b>Email:</b> ${form.email}</p><p><b>Message:</b><br/>${form.message}</p>`,
         },
-      });
+      }).catch(() => {});
       setSent(true);
       setForm({ name: "", phone: "", email: "", message: "" });
     } catch {
-      // silent fail
+      toast.error("Failed to send message");
     } finally {
       setSending(false);
     }
