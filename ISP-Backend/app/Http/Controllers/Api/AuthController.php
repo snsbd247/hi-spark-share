@@ -71,6 +71,7 @@ class AuthController extends Controller
                 'custom_role_id' => $role->custom_role_id ?? null,
                 'avatar_url' => $user->avatar_url,
                 'mobile' => $user->mobile,
+                'tenant_id' => $user->tenant_id,
                 'language' => $user->language ?? 'en',
                 'must_change_password' => (bool) $user->must_change_password,
                 'permissions' => $permissions,
@@ -145,6 +146,7 @@ class AuthController extends Controller
             'custom_role_id' => $role->custom_role_id ?? null,
             'avatar_url' => $admin->avatar_url,
             'mobile' => $admin->mobile,
+            'tenant_id' => $admin->tenant_id ?? null,
             'staff_id' => $admin->staff_id,
             'address' => $admin->address,
             'language' => $admin->language ?? 'en',
@@ -174,6 +176,7 @@ class AuthController extends Controller
                 'email' => $admin->email,
                 'name' => $admin->full_name,
                 'avatar_url' => $admin->avatar_url,
+                'tenant_id' => $admin->tenant_id ?? null,
                 'language' => $admin->language ?? 'en',
             ],
         ]);

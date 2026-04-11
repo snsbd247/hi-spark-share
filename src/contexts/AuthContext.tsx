@@ -55,8 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             try {
               const { data } = await api.get("/admin/me");
-              if (data?.id && mounted) setUser(parsedUser);
-              else {
+              if (data?.id && mounted) {
+                // Sync tenant_id from server (may be missing in old stored sessions)
+                if (data.tenant_id && !parsedUser.tenant_id) {
+                  parsedUser.tenant_id = data.tenant_id;
+                  sessionStore.setItem("admin_user", JSON.stringify(parsedUser));
+                }
+                setUser(parsedUser);
+              } else {
                 sessionStore.removeItem("admin_token");
                 sessionStore.removeItem("admin_user");
               }
