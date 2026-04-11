@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class SmtpSetting extends Model
 {
@@ -22,8 +23,17 @@ class SmtpSetting extends Model
     // Encrypt password on set
     public function setPasswordAttribute($value)
     {
-        if ($value) {
-            $this->attributes['password'] = Crypt::encryptString($value);
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        try {
+            $this->attributes['password'] = Crypt::encryptString((string) $value);
+        } catch (\Throwable $e) {
+            Log::warning('SMTP password encryption failed, storing raw password fallback', [
+                'message' => $e->getMessage(),
+            ]);
+            $this->attributes['password'] = (string) $value;
         }
     }
 

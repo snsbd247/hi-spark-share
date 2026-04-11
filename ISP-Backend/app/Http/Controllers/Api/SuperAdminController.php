@@ -753,26 +753,49 @@ class SuperAdminController extends Controller
             'host'       => 'required|string|max:255',
             'port'       => 'required|integer|min:1|max:65535',
             'username'   => 'required|string|max:255',
+            'password'   => 'nullable|string|max:2000',
             'from_email' => 'required|email|max:255',
             'from_name'  => 'required|string|max:255',
         ]);
 
-        $data = $request->only(['host', 'port', 'username', 'encryption', 'from_email', 'from_name', 'status']);
+        $encryption = strtolower((string) $request->input('encryption', 'tls'));
+        $data = [
+            'host' => trim((string) $request->input('host')),
+            'port' => (int) $request->input('port', 587),
+            'username' => trim((string) $request->input('username')),
+            'encryption' => in_array($encryption, ['tls', 'ssl', 'none'], true) ? $encryption : 'tls',
+            'from_email' => trim((string) $request->input('from_email')),
+            'from_name' => trim((string) $request->input('from_name')),
+            'status' => strtolower((string) $request->input('status', 'active')) === 'inactive' ? 'inactive' : 'active',
+        ];
 
-        // Only update password if provided
         if ($request->filled('password')) {
-            $data['password'] = $request->password;
+            $data['password'] = (string) $request->input('password');
         }
 
-        $smtp = SmtpSetting::first();
-        if ($smtp) {
-            $smtp->update($data);
-        } else {
-            $data['password'] = $request->password ?? '';
-            $smtp = SmtpSetting::create($data);
-        }
+        try {
+            $smtp = SmtpSetting::first();
 
-        return response()->json($smtp);
+            if ($smtp) {
+                $smtp->update($data);
+            } else {
+                $data['password'] = $data['password'] ?? '';
+                $smtp = SmtpSetting::create($data);
+            }
+
+            return response()->json($smtp->fresh());
+        } catch (\Throwable $e) {
+            Log::error('Super admin SMTP save failed', [
+                'message' => $e->getMessage(),
+                'host' => $data['host'] ?? null,
+                'port' => $data['port'] ?? null,
+                'username' => $data['username'] ?? null,
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to save SMTP settings: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
