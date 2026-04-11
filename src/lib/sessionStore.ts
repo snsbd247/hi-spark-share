@@ -1,10 +1,10 @@
 /**
- * Session-scoped storage for auth tokens.
- * Uses sessionStorage so sessions expire when browser closes.
- * Falls back gracefully if sessionStorage is unavailable.
+ * Persistent storage for auth tokens.
+ * Uses localStorage so sessions persist across tabs and page navigations.
+ * Falls back gracefully if localStorage is unavailable.
  */
 
-const store = typeof window !== 'undefined' ? window.sessionStorage : null;
+const store = typeof window !== 'undefined' ? window.localStorage : null;
 
 export const sessionStore = {
   getItem(key: string): string | null {
