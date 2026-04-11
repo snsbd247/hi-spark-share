@@ -102,10 +102,15 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link: any, i: number) => (
             <a key={i} href={link.href} onClick={(e) => {
-              if (link.href.startsWith("#")) {
+              const href = link.href as string;
+              const hash = href.includes("#") ? "#" + href.split("#")[1] : "";
+              if (hash) {
                 e.preventDefault();
-                const el = document.querySelector(link.href);
-                el?.scrollIntoView({ behavior: "smooth" });
+                const el = document.getElementById(hash.slice(1));
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.replaceState(null, "", hash);
+                }
               }
             }} className="text-[13px] text-muted-foreground hover:text-foreground transition-colors font-medium">
               {link.label}
