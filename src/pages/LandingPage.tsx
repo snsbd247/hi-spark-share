@@ -151,7 +151,7 @@ function HeroSection({ sections, onCta }: { sections: any[]; onCta: () => void }
   const badges = (meta.hero_badges as string[]) || [];
 
   return (
-    <section className="relative overflow-hidden py-14 sm:py-20 lg:py-24">
+    <section className="relative overflow-hidden py-8 sm:py-12 lg:py-16">
       {/* Subtle mesh gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] via-transparent to-transparent" />
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-primary/[0.04] rounded-full blur-[100px]" />
@@ -227,7 +227,7 @@ function FeaturesSection({ sections }: { sections: any[] }) {
   const subtitle = sectionMeta.section_subtitle || "Powerful modules designed for modern ISP businesses";
 
   return (
-    <section id="features" className="py-14 sm:py-20 bg-muted/20">
+    <section id="features" className="py-8 sm:py-12 bg-muted/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -269,7 +269,7 @@ function HowItWorks({ sections }: { sections: any[] }) {
     : defaultSteps;
 
   return (
-    <section id="how-it-works" className="py-14 sm:py-20">
+    <section id="how-it-works" className="py-8 sm:py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -322,7 +322,7 @@ function PricingSection({ sections, onCta }: { sections: any[]; onCta: () => voi
   if (plans.length === 0) return null;
 
   return (
-    <section id="pricing" className="py-14 sm:py-20 bg-muted/20">
+    <section id="pricing" className="py-8 sm:py-12 bg-muted/20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -378,7 +378,7 @@ function TestimonialsSection({ sections }: { sections: any[] }) {
   const sectionMeta = testimonials[0]?.metadata || {};
 
   return (
-    <section className="py-14 sm:py-20">
+    <section className="py-8 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -420,7 +420,7 @@ function FaqSection({ sections }: { sections: any[] }) {
   const sectionMeta = faqs[0]?.metadata || {};
 
   return (
-    <section id="faq" className="py-14 sm:py-20 bg-muted/20">
+    <section id="faq" className="py-8 sm:py-12 bg-muted/20">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">FAQ</Badge>
@@ -478,7 +478,7 @@ function ContactSection({ branding }: { branding: any }) {
   const inputClass = "flex h-9 w-full rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 transition-shadow";
 
   return (
-    <section id="contact" className="py-14 sm:py-20">
+    <section id="contact" className="py-8 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -586,7 +586,7 @@ function FinalCta({ onCta, sections, branding }: { onCta: () => void; sections: 
   const cta = sections.find((s: any) => s.section_type === "cta");
   const meta = cta?.metadata || {};
   return (
-    <section className="py-14 sm:py-20">
+    <section className="py-8 sm:py-12">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
         <div className="relative rounded-2xl bg-gradient-to-br from-primary/[0.06] via-primary/[0.03] to-accent/[0.04] border border-primary/10 p-8 sm:p-12 overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-primary/[0.06] rounded-full blur-[60px]" />
