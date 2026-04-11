@@ -320,30 +320,43 @@ export const superAdminApi = {
   },
   deleteTenant: async (id: string) => {
     if (IS_LOVABLE) {
-      // Cascade delete all dependent records in correct order (deepest children first)
+      // Cascade delete ALL dependent records in correct order (deepest children first)
       const childTables = [
-        // Deep children first
+        // Deepest children (no further dependents)
         "customer_ledger", "customer_sessions", "customer_devices",
         "customer_bandwidth_usages", "customer_reseller_migrations",
         "employee_education", "employee_emergency_contacts", "employee_experience",
         "employee_provident_fund", "employee_salary_structure", "employee_savings_fund",
-        "core_connections", "fiber_cores", "fiber_cables", "fiber_pon_ports", "fiber_olts",
-        "attendance", "payroll",
+        "core_connections", "fiber_cores", "fiber_cables", "fiber_splitter_outputs",
+        "fiber_splitters", "fiber_pon_ports", "fiber_olts", "fiber_onus",
+        "attendance", "salary_sheets", "loans",
+        "online_sessions", "login_histories", "impersonations",
+        "reminder_logs", "ticket_replies", "support_tickets",
+        "sms_logs", "sms_transactions", "sms_wallets", "sms_templates", "sms_settings",
+        "merchant_payments", "supplier_payments",
+        "purchase_items", "purchases", "sale_items", "sales",
+        "inventory_logs", "product_serials",
+        "reseller_commissions", "reseller_package_commissions",
+        "reseller_wallet_transactions", "reseller_sessions", "reseller_packages",
+        "network_links", "network_nodes",
+        "notifications",
         // Mid-level
-        "bills", "payments", "invoices",
-        "customers", "reseller_zones", "resellers",
+        "bills", "payments", "transactions",
+        "customers", "reseller_zones", "resellers", "zones",
         "employees", "designations",
-        "expenses", "expense_heads", "income_heads",
-        "accounts", "journal_entries",
+        "expenses", "expense_heads", "income_heads", "other_heads",
+        "accounts", "system_settings",
         "packages", "ip_pools",
-        "mikrotik_routers", "customer_devices",
-        "categories", "products",
-        "payment_gateways", "sms_templates", "sms_logs",
+        "mikrotik_routers", "olts", "onus",
+        "categories", "products", "suppliers",
+        "payment_gateways",
         "activity_logs", "audit_logs", "admin_login_logs", "admin_sessions",
-        "custom_roles", "role_permissions", "permissions",
-        "notification_settings", "notification_templates",
-        "support_tickets", "support_messages",
-        "company_info",
+        "role_permissions", "user_roles", "custom_roles",
+        "daily_reports",
+        "tenant_company_info",
+        // Subscriptions & domains (top-level tenant relations)
+        "subscription_invoices", "subscriptions",
+        "demo_requests",
         "domains", "profiles",
       ];
       for (const table of childTables) {
