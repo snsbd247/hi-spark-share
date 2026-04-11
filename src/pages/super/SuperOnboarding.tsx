@@ -124,7 +124,13 @@ export default function SuperOnboarding() {
   const createTenant = useMutation({
     mutationFn: superAdminApi.createTenant,
     onSuccess: (data: any) => {
-      const id = Array.isArray(data) ? data[0]?.id : data?.id;
+      const id = Array.isArray(data) ? data[0]?.id 
+        : data?.tenant?.id || data?.data?.id || data?.id;
+      if (!id) {
+        console.error("Could not extract tenant ID from response:", data);
+        toast.error("Tenant created but ID not found in response");
+        return;
+      }
       update({ tenantId: id, step: 1 });
       markStep(0);
       toast.success(sa.tenantCreatedMsg);
