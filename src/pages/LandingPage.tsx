@@ -137,10 +137,15 @@ function Navbar({ branding, onCta, sections }: { branding: any; onCta: () => voi
           {navLinks.map((link: any, i: number) => (
             <a key={i} href={link.href} onClick={(e) => {
               setMobileOpen(false);
-              if (link.href.startsWith("#")) {
+              const href = link.href as string;
+              const hash = href.includes("#") ? "#" + href.split("#")[1] : "";
+              if (hash) {
                 e.preventDefault();
-                const el = document.querySelector(link.href);
-                el?.scrollIntoView({ behavior: "smooth" });
+                const el = document.getElementById(hash.slice(1));
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.replaceState(null, "", hash);
+                }
               }
             }}
               className="block py-2 text-sm text-muted-foreground hover:text-foreground font-medium">
