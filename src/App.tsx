@@ -157,6 +157,7 @@ const SuperActivityLogs = lazy(() => import("@/pages/super/SuperActivityLogs"));
 const SuperLandingCMS = lazy(() => import("@/pages/super/SuperLandingCMS"));
 const SuperDemoRequests = lazy(() => import("@/pages/super/SuperDemoRequests"));
 const SuperBackupRecovery = lazy(() => import("@/pages/super/SuperBackupRecovery"));
+const SuperContactMessages = lazy(() => import("@/pages/super/SuperContactMessages"));
 
 function PageLoader() {
   return (
@@ -348,6 +349,7 @@ function App() {
                     <Route path="landing-cms" element={<SuperLandingCMS />} />
                     <Route path="demo-requests" element={<SuperDemoRequests />} />
                     <Route path="backup-recovery" element={<SuperBackupRecovery />} />
+                    <Route path="contact-messages" element={<SuperContactMessages />} />
                   </Route>
                 </Route>
 

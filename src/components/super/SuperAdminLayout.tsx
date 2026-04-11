@@ -43,6 +43,7 @@ const NAV_GROUPS = [
     items: [
       { label: "SMS Management", icon: MessageSquare, path: "/super/sms" },
       { label: "SMTP / Email", icon: Mail, path: "/super/smtp" },
+      { label: "Contact Messages", icon: Mail, path: "/super/contact-messages" },
     ],
   },
   {
