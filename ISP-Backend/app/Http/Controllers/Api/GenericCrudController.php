@@ -93,7 +93,7 @@ class GenericCrudController extends Controller
         'activity_logs' => \App\Models\ActivityLog::class,
         'login_histories' => \App\Models\LoginHistory::class,
         'modules' => \App\Models\Module::class,
-        'online_sessions' => \App\Models\Onu::class,
+        'online_sessions' => \App\Models\OnlineSession::class,
         'billing_config' => \App\Models\SystemSetting::class,
         'sms_wallets' => \App\Models\SmsWallet::class,
         'sms_transactions' => \App\Models\SmsTransaction::class,

@@ -475,6 +475,17 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // ══════════════════════════════════════════════════════
     Route::post('/reseller/{resellerId}/impersonate', [\App\Http\Controllers\Api\ResellerImpersonationController::class, 'impersonate']);
 
+    // ══════════════════════════════════════════════════════
+    // ── NETWORK TOPOLOGY — module: network ──────────────
+    // ══════════════════════════════════════════════════════
+    Route::get('/network-nodes', [\App\Http\Controllers\Api\NetworkNodeController::class, 'index']);
+    Route::post('/network-nodes', [\App\Http\Controllers\Api\NetworkNodeController::class, 'store']);
+    Route::put('/network-nodes/{id}', [\App\Http\Controllers\Api\NetworkNodeController::class, 'update']);
+    Route::delete('/network-nodes/{id}', [\App\Http\Controllers\Api\NetworkNodeController::class, 'destroy']);
+    Route::get('/network-links', [\App\Http\Controllers\Api\NetworkLinkController::class, 'index']);
+    Route::post('/network-links', [\App\Http\Controllers\Api\NetworkLinkController::class, 'store']);
+    Route::delete('/network-links/{id}', [\App\Http\Controllers\Api\NetworkLinkController::class, 'destroy']);
+
 });
 
 /*
