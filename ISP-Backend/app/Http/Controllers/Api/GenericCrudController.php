@@ -588,6 +588,19 @@ class GenericCrudController extends Controller
                 }
             }
 
+            // Key-based upsert for payment_gateways (gateway_name is unique per tenant)
+            if ($request->has('_upsert') && $normalizedTable === 'payment_gateways' && $request->has('gateway_name')) {
+                $query = $model->where('gateway_name', $request->gateway_name);
+                if ($request->has('tenant_id')) {
+                    $query->where('tenant_id', $request->tenant_id);
+                }
+                $existing = $query->first();
+                if ($existing) {
+                    $existing->update(array_intersect_key($request->except(['_upsert', 'id']), array_flip($fillable)));
+                    return response()->json($existing->fresh());
+                }
+            }
+
             $record = $model->create($input);
             return response()->json($record, 201);
         } catch (\Exception $e) {
