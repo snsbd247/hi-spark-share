@@ -83,6 +83,11 @@ Route::get('/saas_plans', [GenericCrudController::class, 'index'])->defaults('ta
 Route::get('/saas-plans', [GenericCrudController::class, 'index'])->defaults('table', 'saas_plans');
 Route::get('/landing_sections', [GenericCrudController::class, 'index'])->defaults('table', 'landing_sections');
 Route::get('/landing-sections', [GenericCrudController::class, 'index'])->defaults('table', 'landing_sections');
+Route::get('/faqs', [GenericCrudController::class, 'index'])->defaults('table', 'faqs');
+
+// ── Public Demo Request (no auth required) ───────────
+Route::post('/demo_requests', [GenericCrudController::class, 'store'])->defaults('table', 'demo_requests');
+Route::post('/demo-requests', [GenericCrudController::class, 'store'])->defaults('table', 'demo_requests');
 
 // ── HTTP Setup Routes (secured by APP_KEY token) ─────
 Route::middleware('throttle:sensitive')->group(function () {
