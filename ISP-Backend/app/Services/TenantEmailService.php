@@ -2,49 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\SmtpSetting;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-
 class TenantEmailService
 {
     /**
-     * Send email using the centralized SMTP settings.
+     * Send email using tenant SMTP first, then centralized SMTP fallback.
      */
     public function send(string $to, string $subject, string $html, ?string $fromName = null): array
     {
-        $smtp = SmtpSetting::where('status', 'active')->first();
-
-        if (!$smtp) {
-            Log::warning('TenantEmailService: No active SMTP configuration found');
-            return ['success' => false, 'error' => 'SMTP not configured'];
-        }
-
-        // Dynamically configure SMTP
-        config([
-            'mail.default'              => 'smtp',
-            'mail.mailers.smtp.host'    => $smtp->host,
-            'mail.mailers.smtp.port'    => $smtp->port,
-            'mail.mailers.smtp.username' => $smtp->username,
-            'mail.mailers.smtp.password' => $smtp->decrypted_password,
-            'mail.mailers.smtp.encryption' => $smtp->encryption ?? 'tls',
-        ]);
-
-        $fromEmail = $smtp->from_email;
-        $fromName  = $fromName ?? $smtp->from_name ?? 'Smart ISP';
-
-        try {
-            Mail::html($html, function ($message) use ($to, $subject, $fromName, $fromEmail) {
-                $message->to($to)
-                    ->subject($subject)
-                    ->from($fromEmail, $fromName);
-            });
-
-            return ['success' => true, 'provider' => 'smtp'];
-        } catch (\Exception $e) {
-            Log::error('TenantEmailService send failed: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
+        return app(EmailService::class)->send($to, $subject, $html, $fromName);
     }
 
     /**
