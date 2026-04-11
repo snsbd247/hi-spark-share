@@ -13,7 +13,7 @@ class TenantEmailService
      */
     public function send(string $to, string $subject, string $html, ?string $fromName = null): array
     {
-        $smtp = SmtpSetting::where('status', 'active')->first();
+        $smtp = SmtpSetting::withoutGlobalScopes()->where('status', 'active')->first();
 
         if (!$smtp) {
             Log::warning('TenantEmailService: No active SMTP configuration found');
