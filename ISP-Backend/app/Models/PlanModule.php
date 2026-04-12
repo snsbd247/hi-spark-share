@@ -22,4 +22,12 @@ class PlanModule extends Model
     {
         return $this->belongsTo(Module::class);
     }
+
+    /**
+     * Alias for Supabase-compatible relation name (table name = modules).
+     */
+    public function modules()
+    {
+        return $this->belongsTo(Module::class, 'module_id');
+    }
 }
