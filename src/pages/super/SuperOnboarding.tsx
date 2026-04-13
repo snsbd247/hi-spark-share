@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { useServerInfo } from "@/hooks/useServerInfo";
 import DnsConfigBox from "@/components/super/DnsConfigBox";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

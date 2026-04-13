@@ -1,5 +1,4 @@
 import { sessionStore } from "@/lib/sessionStore";
-import { useServerInfo } from "@/hooks/useServerInfo";
 import DnsConfigBox from "@/components/super/DnsConfigBox";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
