@@ -57,6 +57,7 @@ const SecurityDashboard = lazy(() => import("@/pages/SecurityDashboard"));
 const RoleManagement = lazy(() => import("@/pages/settings/RoleManagement"));
 const FooterSettings = lazy(() => import("@/pages/settings/FooterSettings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const SmartHomeRoute = lazy(() => import("@/components/SmartHomeRoute"));
 const AccPurchases = lazy(() => import("@/pages/accounting/Purchases"));
 const AccountingDashboard = lazy(() => import("@/pages/accounting/AccountingDashboard"));
 const AccProducts = lazy(() => import("@/pages/accounting/Products"));
@@ -208,7 +209,7 @@ function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/demo-request" element={<DemoRequestPage />} />
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/" element={<SmartHomeRoute />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/customers" element={<PermissionGuard module="customers"><Customers /></PermissionGuard>} />
                 <Route path="/customers/:id" element={<PermissionGuard module="customers"><CustomerProfilePage /></PermissionGuard>} />
