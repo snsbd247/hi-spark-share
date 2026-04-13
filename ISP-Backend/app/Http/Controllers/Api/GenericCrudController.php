@@ -136,6 +136,7 @@ class GenericCrudController extends Controller
         'smtp_settings' => \App\Models\SmtpSetting::class,
         // Core connections (fiber)
         'core_connections' => \App\Models\CoreConnection::class,
+        'contact_messages' => \App\Models\ContactMessage::class,
         // Super Admin
         'super_admins' => \App\Models\SuperAdmin::class,
         'super_admin_sessions' => \App\Models\SuperAdminSession::class,

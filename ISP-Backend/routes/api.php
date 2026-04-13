@@ -89,6 +89,10 @@ Route::get('/faqs', [GenericCrudController::class, 'index'])->defaults('table', 
 Route::post('/demo_requests', [GenericCrudController::class, 'store'])->defaults('table', 'demo_requests');
 Route::post('/demo-requests', [GenericCrudController::class, 'store'])->defaults('table', 'demo_requests');
 
+// ── Public Contact Messages (no auth required for submit) ───────────
+Route::post('/contact_messages', [GenericCrudController::class, 'store'])->defaults('table', 'contact_messages');
+Route::post('/contact-messages', [GenericCrudController::class, 'store'])->defaults('table', 'contact_messages');
+
 // ── HTTP Setup Routes (secured by APP_KEY token) ─────
 Route::middleware('throttle:sensitive')->group(function () {
     Route::get('/setup/status', [\App\Http\Controllers\Api\SetupController::class, 'status']);
