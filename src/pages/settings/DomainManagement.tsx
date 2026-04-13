@@ -1,5 +1,6 @@
 import { sessionStore } from "@/lib/sessionStore";
 import { useState, useEffect, useMemo } from "react";
+import { useServerInfo } from "@/hooks/useServerInfo";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ function copyText(text: string) {
   navigator.clipboard.writeText(text).then(() => toast.success("Copied!"));
 }
 
-const SERVER_IP_PLACEHOLDER = "YOUR_SERVER_IP";
+
 
 const DomainManagement = () => {
   const { t } = useLanguage();
