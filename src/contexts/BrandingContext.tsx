@@ -90,12 +90,6 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    if (path.startsWith('/super')) {
-      setLoading(false);
-      return;
-    }
-
     load();
   }, []);
 
