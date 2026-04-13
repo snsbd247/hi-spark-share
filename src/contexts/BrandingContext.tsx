@@ -67,7 +67,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
           mobile: d.mobile || null,
         });
 
-        applyPrimaryColor(d.primary_color || "#2563eb");
+        const pc = d.primary_color || "#2563eb";
+        applyPrimaryColor(pc);
+        try { localStorage.setItem('branding_primary_color', pc); } catch(e) {}
 
         if (d.favicon_url) {
           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
