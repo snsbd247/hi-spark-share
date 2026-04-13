@@ -220,7 +220,13 @@ class SuperAdminController extends Controller
     {
         $tenant = Tenant::findOrFail($id);
 
-        $data = $request->only(['name', 'email', 'phone', 'logo_url', 'status', 'settings']);
+        $data = $request->only([
+            'name', 'email', 'phone', 'logo_url', 'status', 'settings',
+            'setup_status', 'setup_geo', 'setup_accounts', 'setup_templates',
+            'setup_ledger', 'setup_payment_gateways', 'auto_setup',
+            'max_users', 'max_customers', 'plan_expire_date', 'grace_days',
+            'plan_id', 'plan_expiry_message',
+        ]);
 
         if ($request->has('subdomain') && $request->subdomain !== $tenant->subdomain) {
             $request->validate(['subdomain' => 'required|string|max:100|unique:tenants,subdomain|alpha_dash']);
