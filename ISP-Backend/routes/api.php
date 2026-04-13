@@ -74,6 +74,16 @@ Route::get('/health', function () {
     ]);
 });
 
+// Server info (public - for DNS configuration display)
+Route::get('/server-info', function (\Illuminate\Http\Request $request) {
+    $serverIp = env('SERVER_IP', '') ?: $request->server('SERVER_ADDR', '');
+    $hostname = $request->getHost();
+    return response()->json([
+        'server_ip' => $serverIp,
+        'hostname' => $hostname,
+    ]);
+});
+
 // ── Public read-only settings (needed for login page branding & landing page) ──
 Route::get('/general_settings', [GenericCrudController::class, 'index'])->defaults('table', 'general_settings');
 Route::get('/general-settings', [GenericCrudController::class, 'index'])->defaults('table', 'general_settings');
