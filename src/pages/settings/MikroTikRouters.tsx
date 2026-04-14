@@ -261,7 +261,7 @@ export default function MikroTikRouters() {
           queryClient.invalidateQueries({ queryKey: ["ip-pools"] });
         } else toast.error(data?.error || "IP Pool import failed");
       } else {
-        const { data } = await api.post('/mikrotik/import-ip-pools', { router_id: router.id });
+        const { data } = await api.post('/mikrotik/sync-ip-pools', { router_id: router.id });
         if (data?.success) {
           toast.success(`Synced ${data.synced || 0} IP Pools`);
           queryClient.invalidateQueries({ queryKey: ["ip-pools"] });

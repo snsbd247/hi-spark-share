@@ -165,7 +165,8 @@ class MikrotikBillControlController extends Controller
     public function importUsers(Request $request)
     {
         $request->validate(['router_id' => 'required|uuid|exists:mikrotik_routers,id']);
-        $result = $this->mikrotikService->importUsersFromRouter($request->router_id);
+        $tenantId = $request->get('__tenant_id') ?: tenant_id();
+        $result = $this->mikrotikService->importUsersFromRouter($request->router_id, $tenantId);
         return response()->json($result);
     }
 
@@ -175,7 +176,8 @@ class MikrotikBillControlController extends Controller
     public function importPackages(Request $request)
     {
         $request->validate(['router_id' => 'required|uuid|exists:mikrotik_routers,id']);
-        $result = $this->mikrotikService->importPackagesFromRouter($request->router_id);
+        $tenantId = $request->get('__tenant_id') ?: tenant_id();
+        $result = $this->mikrotikService->importPackagesFromRouter($request->router_id, $tenantId);
         return response()->json($result);
     }
 }

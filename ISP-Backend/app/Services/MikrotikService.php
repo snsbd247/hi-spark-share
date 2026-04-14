@@ -59,17 +59,36 @@ class MikrotikService
     protected function readResponse($socket): array
     {
         $response = [];
-        stream_set_timeout($socket, 5);
+        stream_set_timeout($socket, 10);
+
         while (true) {
-            $word = $this->readWord($socket);
-            if ($word === false || $word === '') {
-                if (!empty($response) && in_array(end($response), ['!done', '!trap'])) break;
-                if (empty($word) && !empty($response)) break;
+            $sentence = [];
+
+            while (true) {
+                $word = $this->readWord($socket);
+                if ($word === false) {
+                    break 2;
+                }
+                if ($word === '') {
+                    break;
+                }
+                $sentence[] = $word;
+            }
+
+            if (empty($sentence)) {
                 continue;
             }
-            $response[] = $word;
-            if ($word === '!done' || $word === '!trap') break;
+
+            foreach ($sentence as $word) {
+                $response[] = $word;
+            }
+
+            $replyType = $sentence[0] ?? null;
+            if ($replyType === '!done' || $replyType === '!trap') {
+                break;
+            }
         }
+
         return $response;
     }
 
@@ -79,16 +98,30 @@ class MikrotikService
         if ($byte === false || $byte === '') return false;
         $len = ord($byte);
 
-        if ($len >= 0x80) {
-            if ($len < 0xC0) {
+        if (($len & 0x80) !== 0) {
+            if (($len & 0xC0) === 0x80) {
                 $len = (($len & 0x3F) << 8) + ord(fread($socket, 1));
-            } elseif ($len < 0xE0) {
+            } elseif (($len & 0xE0) === 0xC0) {
                 $len = (($len & 0x1F) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
+            } elseif (($len & 0xF0) === 0xE0) {
+                $len = (($len & 0x0F) << 24) + (ord(fread($socket, 1)) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
+            } else {
+                $len = (ord(fread($socket, 1)) << 24) + (ord(fread($socket, 1)) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
             }
         }
 
         if ($len === 0) return '';
-        return fread($socket, $len);
+
+        $data = '';
+        while (strlen($data) < $len) {
+            $chunk = fread($socket, $len - strlen($data));
+            if ($chunk === false || $chunk === '') {
+                return false;
+            }
+            $data .= $chunk;
+        }
+
+        return $data;
     }
 
     protected function sendCommand($connection, array $command): array
@@ -432,7 +465,7 @@ class MikrotikService
     /**
      * Import PPPoE secrets from router as customers.
      */
-    public function importUsersFromRouter(string $routerId): array
+    public function importUsersFromRouter(string $routerId, ?string $tenantId = null): array
     {
         $router = MikrotikRouter::findOrFail($routerId);
         $conn = $this->connect($router);
@@ -445,39 +478,68 @@ class MikrotikService
             $response = $this->sendCommand($conn, ['/ppp/secret/print']);
             $secrets = $this->parseItems($response);
 
+            $customerQuery = $tenantId
+                ? Customer::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                : Customer::query();
+            $existingCustomers = $customerQuery
+                ->whereNotNull('pppoe_username')
+                ->pluck('id', 'pppoe_username')
+                ->all();
+
+            $packageQuery = $tenantId
+                ? Package::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                : Package::query();
+            $packages = $packageQuery
+                ->get(['id', 'name', 'mikrotik_profile_name', 'monthly_price']);
+
+            [$customerPrefix, $importCounter, $usesPrefix] = $this->resolveImportedCustomerSeed($tenantId);
+
             $imported = 0;
             $skipped = 0;
             $errors = [];
 
             foreach ($secrets as $secret) {
-                $username = $secret['name'] ?? null;
-                if (!$username) { $skipped++; continue; }
+                $username = trim((string) ($secret['name'] ?? ''));
+                if ($username === '') { $skipped++; continue; }
+                if (isset($existingCustomers[$username])) { $skipped++; continue; }
 
-                // Check if already exists
-                $existing = Customer::where('pppoe_username', $username)->first();
-                if ($existing) { $skipped++; continue; }
+                $profileName = trim((string) ($secret['profile'] ?? 'default'));
+                $matchedPackage = $packages->first(function ($package) use ($profileName) {
+                    return $package->mikrotik_profile_name === $profileName || $package->name === $profileName;
+                });
 
-                // Generate customer_id
-                $lastCustomer = Customer::orderBy('customer_id', 'desc')->first();
-                $nextId = $lastCustomer ? (intval($lastCustomer->customer_id) + 1) : 100001;
-                $customerId = str_pad($nextId, 6, '0', STR_PAD_LEFT);
+                $importCounter++;
+                $customerId = $usesPrefix
+                    ? sprintf('%s-%05d', $customerPrefix, $importCounter)
+                    : str_pad((string) max(100001, $importCounter), 6, '0', STR_PAD_LEFT);
+
+                $isDisabled = in_array(strtolower((string) ($secret['disabled'] ?? 'false')), ['true', 'yes'], true);
 
                 try {
-                    Customer::create([
+                    $payload = [
                         'customer_id' => $customerId,
-                        'name' => $username,
+                        'name' => trim((string) ($secret['comment'] ?? '')) ?: $username,
                         'phone' => '01000000000',
-                        'area' => 'Imported',
+                        'area' => 'Imported from MikroTik',
                         'pppoe_username' => $username,
                         'pppoe_password' => $secret['password'] ?? '',
                         'ip_address' => $secret['remote-address'] ?? null,
                         'router_id' => $routerId,
-                        'status' => ($secret['disabled'] ?? 'false') === 'true' ? 'inactive' : 'active',
-                        'connection_status' => ($secret['disabled'] ?? 'false') === 'true' ? 'disabled' : 'active',
+                        'package_id' => $matchedPackage?->id,
+                        'monthly_bill' => (float) ($matchedPackage?->monthly_price ?? 0),
+                        'status' => $isDisabled ? 'inactive' : 'active',
+                        'connection_status' => $isDisabled ? 'suspended' : 'active',
                         'mikrotik_sync_status' => 'synced',
-                    ]);
+                    ];
+                    if ($tenantId) {
+                        $payload['tenant_id'] = $tenantId;
+                    }
+
+                    Customer::create($payload);
+                    $existingCustomers[$username] = true;
                     $imported++;
-                } catch (\Exception $e) {
+                } catch (
+Exception $e) {
                     $errors[] = "Failed to import {$username}: " . $e->getMessage();
                 }
             }
@@ -491,7 +553,8 @@ class MikrotikService
                 'errors' => $errors,
                 'total' => count($secrets),
             ];
-        } catch (\Exception $e) {
+        } catch (
+Exception $e) {
             @fclose($conn->socket);
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -500,7 +563,7 @@ class MikrotikService
     /**
      * Import PPPoE profiles from router as packages.
      */
-    public function importPackagesFromRouter(string $routerId): array
+    public function importPackagesFromRouter(string $routerId, ?string $tenantId = null): array
     {
         $router = MikrotikRouter::findOrFail($routerId);
         $conn = $this->connect($router);
@@ -513,42 +576,68 @@ class MikrotikService
             $response = $this->sendCommand($conn, ['/ppp/profile/print']);
             $profiles = $this->parseItems($response);
 
+            $packageQuery = $tenantId
+                ? Package::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                : Package::query();
+            $existingPackages = $packageQuery->get(['name', 'mikrotik_profile_name']);
+
+            $existingProfileNames = [];
+            foreach ($existingPackages as $existingPackage) {
+                if ($existingPackage->name) {
+                    $existingProfileNames[strtolower(trim($existingPackage->name))] = true;
+                }
+                if ($existingPackage->mikrotik_profile_name) {
+                    $existingProfileNames[strtolower(trim($existingPackage->mikrotik_profile_name))] = true;
+                }
+            }
+
             $imported = 0;
             $skipped = 0;
+            $errors = [];
 
             foreach ($profiles as $profile) {
-                $name = $profile['name'] ?? null;
-                if (!$name || $name === 'default' || $name === 'default-encryption') {
+                $name = trim((string) ($profile['name'] ?? ''));
+                if ($name === '' || in_array($name, ['default', 'default-encryption'], true)) {
+                    $skipped++;
+                    continue;
+                }
+                if (isset($existingProfileNames[strtolower($name)])) {
                     $skipped++;
                     continue;
                 }
 
-                // Check if already exists
-                $existing = Package::where('mikrotik_profile_name', $name)
-                    ->orWhere('name', $name)
-                    ->first();
-                if ($existing) { $skipped++; continue; }
-
-                // Parse rate-limit (e.g., "10M/20M" or "10000000/20000000")
-                $rateLimit = $profile['rate-limit'] ?? '';
+                $rateLimit = trim((string) ($profile['rate-limit'] ?? ''));
+                $mainRate = preg_split('/\s+/', $rateLimit)[0] ?? '';
                 $download = 0;
                 $upload = 0;
-                if (preg_match('/^(\d+)[kKmM]?\/(\d+)[kKmM]?/', $rateLimit, $m)) {
-                    $upload = $this->parseSpeed($m[1], $rateLimit);
-                    $download = $this->parseSpeed($m[2], $rateLimit);
+                if ($mainRate && str_contains($mainRate, '/')) {
+                    [$rawUpload, $rawDownload] = array_pad(explode('/', $mainRate, 2), 2, '');
+                    $upload = $this->parseSpeed($rawUpload);
+                    $download = $this->parseSpeed($rawDownload);
                 }
 
-                Package::create([
-                    'name' => $name,
-                    'speed' => ($download ?: 10) . ' Mbps',
-                    'monthly_price' => 0,
-                    'download_speed' => $download ?: 10,
-                    'upload_speed' => $upload ?: 10,
-                    'mikrotik_profile_name' => $name,
-                    'router_id' => $routerId,
-                    'is_active' => true,
-                ]);
-                $imported++;
+                try {
+                    $payload = [
+                        'name' => $name,
+                        'speed' => ($download ?: 10) . ' Mbps',
+                        'monthly_price' => 0,
+                        'download_speed' => $download ?: 10,
+                        'upload_speed' => $upload ?: 10,
+                        'mikrotik_profile_name' => $name,
+                        'router_id' => $routerId,
+                        'is_active' => true,
+                    ];
+                    if ($tenantId) {
+                        $payload['tenant_id'] = $tenantId;
+                    }
+
+                    Package::create($payload);
+                    $existingProfileNames[strtolower($name)] = true;
+                    $imported++;
+                } catch (
+Exception $e) {
+                    $errors[] = "Failed to import {$name}: " . $e->getMessage();
+                }
             }
 
             fclose($conn->socket);
@@ -557,9 +646,11 @@ class MikrotikService
                 'success' => true,
                 'imported' => $imported,
                 'skipped' => $skipped,
+                'errors' => $errors,
                 'total' => count($profiles),
             ];
-        } catch (\Exception $e) {
+        } catch (
+Exception $e) {
             @fclose($conn->socket);
             return ['success' => false, 'error' => $e->getMessage()];
         }
