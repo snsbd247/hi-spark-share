@@ -130,6 +130,24 @@ function parseSpeedValue(val: string): number {
 
 // ─── Supabase helpers ───────────────────────────────────────────
 
+// Fetch all rows from a Supabase query (bypass 1000-row default limit)
+async function fetchAll(supabase: any, table: string, selectCols: string, filters?: (q: any) => any) {
+  const PAGE_SIZE = 500;
+  let allData: any[] = [];
+  let from = 0;
+  while (true) {
+    let q = supabase.from(table).select(selectCols).range(from, from + PAGE_SIZE - 1);
+    if (filters) q = filters(q);
+    const { data, error } = await q;
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return allData;
+}
+
 function getSupabaseAdmin() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 }
