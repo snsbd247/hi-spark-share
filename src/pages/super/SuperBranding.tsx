@@ -126,6 +126,11 @@ export default function SuperBranding() {
       }));
 
       clearBrandingCache();
+      // Immediately apply the color without waiting for refresh
+      if (form.primary_color) {
+        applyPrimaryColor(form.primary_color);
+        try { localStorage.setItem('branding_primary_color', form.primary_color); } catch(e) {}
+      }
     },
     onSuccess: () => {
       toast.success(sa.brandingSaved);
