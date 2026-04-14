@@ -17,7 +17,7 @@ const api = axios.create({
 function getContextToken(): string | null {
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   if (path.startsWith('/super')) return sessionStore.getItem('super_admin_token');
-  if (path.startsWith('/reseller')) return sessionStore.getItem('reseller_token');
+  if (path.startsWith('/reseller/')) return sessionStore.getItem('reseller_token');
   return sessionStore.getItem('admin_token');
 }
 
