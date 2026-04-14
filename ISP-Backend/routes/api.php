@@ -194,6 +194,9 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::middleware(['check.plan_module:billing', 'check.permission:billing,delete'])->group(function () {
         Route::delete('/bills/{id}', [BillController::class, 'destroy']);
     });
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,edit'])->group(function () {
+        Route::post('/mikrotik/bill-control', [MikrotikBillControlController::class, 'billControl']);
+    });
 
     // ══════════════════════════════════════════════════════
     // ── PAYMENTS — module: payments ─────────────────────
@@ -255,7 +258,6 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/mikrotik/sync', [MikrotikController::class, 'sync']);
         Route::post('/mikrotik/sync-all', [MikrotikController::class, 'syncAll']);
         Route::post('/mikrotik/test-connection', [MikrotikController::class, 'testConnection']);
-        Route::post('/mikrotik/bill-control', [MikrotikBillControlController::class, 'billControl']);
         Route::post('/mikrotik/disable-pppoe', [MikrotikBillControlController::class, 'disablePppoe']);
         Route::post('/mikrotik/enable-pppoe', [MikrotikBillControlController::class, 'enablePppoe']);
         Route::post('/mikrotik/sync-profile', [MikrotikBillControlController::class, 'syncProfile']);

@@ -55,10 +55,10 @@ class MikrotikBillControlController extends Controller
         $skipped = 0;
         $errors = [];
 
-        // Get customers with unpaid bills who are active → suspend them
+        // Get customers with unpaid bills who are active/pending → suspend them
         $unpaidCustomers = Customer::with('router')
             ->where('tenant_id', $tenantId)
-            ->where('connection_status', 'active')
+            ->whereIn('status', ['active', 'pending_reactivation'])
             ->whereNotNull('pppoe_username')
             ->whereHas('bills', function ($q) use ($currentMonth) {
                 $q->where('status', 'unpaid')
@@ -71,7 +71,10 @@ class MikrotikBillControlController extends Controller
             try {
                 $result = $this->mikrotikService->disablePppoe($customer);
                 if ($result['success'] ?? false) {
-                    $customer->update(['connection_status' => 'suspended']);
+                    $customer->update([
+                        'status' => 'suspended',
+                        'connection_status' => 'disabled',
+                    ]);
                     $suspended++;
                 } else {
                     $errors[] = "{$customer->customer_id}: " . ($result['error'] ?? 'Failed');
@@ -81,10 +84,10 @@ class MikrotikBillControlController extends Controller
             }
         }
 
-        // Get suspended customers whose current month bill is paid → reactivate
+        // Get suspended/pending-reactivation customers with no unpaid current-month bill → reactivate
         $paidCustomers = Customer::with('router')
             ->where('tenant_id', $tenantId)
-            ->where('connection_status', 'suspended')
+            ->whereIn('status', ['suspended', 'pending_reactivation'])
             ->whereNotNull('pppoe_username')
             ->whereDoesntHave('bills', function ($q) use ($currentMonth) {
                 $q->where('status', 'unpaid')
@@ -97,7 +100,10 @@ class MikrotikBillControlController extends Controller
             try {
                 $result = $this->mikrotikService->enablePppoe($customer);
                 if ($result['success'] ?? false) {
-                    $customer->update(['connection_status' => 'active']);
+                    $customer->update([
+                        'status' => 'active',
+                        'connection_status' => 'active',
+                    ]);
                     $reactivated++;
                 } else {
                     $errors[] = "{$customer->customer_id}: " . ($result['error'] ?? 'Failed');
