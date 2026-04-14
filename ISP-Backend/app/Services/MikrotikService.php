@@ -538,8 +538,7 @@ class MikrotikService
                     Customer::create($payload);
                     $existingCustomers[$username] = true;
                     $imported++;
-                } catch (
-Exception $e) {
+                } catch (\Exception $e) {
                     $errors[] = "Failed to import {$username}: " . $e->getMessage();
                 }
             }
@@ -553,8 +552,7 @@ Exception $e) {
                 'errors' => $errors,
                 'total' => count($secrets),
             ];
-        } catch (
-Exception $e) {
+        } catch (\Exception $e) {
             @fclose($conn->socket);
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -634,8 +632,7 @@ Exception $e) {
                     Package::create($payload);
                     $existingProfileNames[strtolower($name)] = true;
                     $imported++;
-                } catch (
-Exception $e) {
+                } catch (\Exception $e) {
                     $errors[] = "Failed to import {$name}: " . $e->getMessage();
                 }
             }
@@ -649,8 +646,7 @@ Exception $e) {
                 'errors' => $errors,
                 'total' => count($profiles),
             ];
-        } catch (
-Exception $e) {
+        } catch (\Exception $e) {
             @fclose($conn->socket);
             return ['success' => false, 'error' => $e->getMessage()];
         }
@@ -901,17 +897,53 @@ Exception $e) {
         return abs($end - $start) + 1;
     }
 
-    protected function parseSpeed(string $value, string $fullRate): int
+    /**
+     * Parse a MikroTik speed value like "10M", "5k", "100", "1G" to Mbps.
+     */
+    protected function parseSpeed(string $value): int
     {
-        $num = intval($value);
-        if (stripos($fullRate, 'M') !== false || stripos($fullRate, 'm') !== false) {
-            return $num;
+        $value = trim(strtolower($value));
+        $num = (float) $value;
+        if ($num <= 0) return 0;
+        if (str_ends_with($value, 'g')) return (int) round($num * 1000);
+        if (str_ends_with($value, 'm')) return (int) round($num);
+        if (str_ends_with($value, 'k')) return max(1, (int) round($num / 1000));
+        // Plain number — likely bps
+        if ($num > 1000000) return (int) round($num / 1000000);
+        if ($num > 1000) return (int) round($num / 1000);
+        return (int) round($num);
+    }
+
+    /**
+     * Resolve customer_id seed for imports (detect prefix + max number).
+     * Returns [$prefix, $maxNumber, $usesPrefix].
+     */
+    protected function resolveImportedCustomerSeed(?string $tenantId): array
+    {
+        $query = $tenantId
+            ? Customer::withoutGlobalScopes()->where('tenant_id', $tenantId)
+            : Customer::query();
+
+        $customers = $query->select('customer_id')->orderByDesc('created_at')->limit(500)->get();
+
+        $prefix = 'ISP';
+        $maxNum = 0;
+        $usesPrefix = false;
+
+        foreach ($customers as $c) {
+            if (preg_match('/^([A-Za-z]+)-(\d+)$/', $c->customer_id, $m)) {
+                $usesPrefix = true;
+                $prefix = $m[1];
+                $num = (int) $m[2];
+                if ($num > $maxNum) $maxNum = $num;
+            } elseif (preg_match('/^(\d+)$/', $c->customer_id, $m)) {
+                $num = (int) $m[1];
+                if ($num > $maxNum) $maxNum = $num;
+            }
         }
-        if (stripos($fullRate, 'k') !== false || stripos($fullRate, 'K') !== false) {
-            return max(1, intval($num / 1000));
-        }
-        if ($num > 1000000) return intval($num / 1000000);
-        if ($num > 1000) return intval($num / 1000);
-        return $num;
+
+        if ($maxNum === 0) $maxNum = 100000;
+
+        return [$prefix, $maxNum, $usesPrefix];
     }
 }
