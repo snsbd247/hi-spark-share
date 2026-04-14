@@ -41,6 +41,28 @@ const BrandingContext = createContext<BrandingContextType>({
   refresh: () => {},
 });
 
+function normalizeHexColor(hex: string | null | undefined) {
+  if (!hex) return null;
+
+  const trimmed = hex.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed.toLowerCase();
+
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    const [, r, g, b] = trimmed;
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+
+  return null;
+}
+
+function getCachedPrimaryColor() {
+  try {
+    return normalizeHexColor(localStorage.getItem("branding_primary_color"));
+  } catch {
+    return null;
+  }
+}
+
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(true);
@@ -52,8 +74,13 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       // On VPS, use direct public API to avoid super-admin proxy auth issues
       if (HAS_BACKEND && !IS_LOVABLE) {
         try {
-          const res = await fetch(`${API_BASE_URL}/general_settings?per_page=1&paginate=false`, {
-            headers: { 'Accept': 'application/json' },
+          const res = await fetch(`${API_BASE_URL}/general_settings?per_page=1&paginate=false&_=${Date.now()}`, {
+            cache: "no-store",
+            headers: {
+              Accept: "application/json",
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
           });
           if (res.ok) {
             const json = await res.json();
@@ -71,12 +98,14 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
       if (data) {
         const d = data as any;
+        const primaryColor = normalizeHexColor(d.primary_color) || getCachedPrimaryColor() || "#2563eb";
+
         setBranding({
           site_name: d.site_name || "Smart ISP",
           logo_url: d.logo_url || null,
           login_logo_url: d.login_logo_url || null,
           favicon_url: d.favicon_url || null,
-          primary_color: d.primary_color || "#2563eb",
+          primary_color: primaryColor,
           support_email: d.support_email || null,
           support_phone: d.support_phone || null,
           address: d.address || null,
@@ -84,9 +113,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
           mobile: d.mobile || null,
         });
 
-        const pc = d.primary_color || "#2563eb";
-        applyPrimaryColor(pc);
-        try { localStorage.setItem('branding_primary_color', pc); } catch(e) {}
+        applyPrimaryColor(primaryColor);
+        try { localStorage.setItem("branding_primary_color", primaryColor); } catch {}
 
         if (d.favicon_url) {
           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
@@ -104,6 +132,12 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    const cachedColor = getCachedPrimaryColor();
+    if (cachedColor) {
+      applyPrimaryColor(cachedColor);
+      setBranding((prev) => ({ ...prev, primary_color: cachedColor }));
+    }
+
     if (!HAS_BACKEND && !IS_LOVABLE) {
       setLoading(false);
       return;
@@ -128,11 +162,12 @@ export function useBranding() {
 }
 
 export function applyPrimaryColor(hex: string) {
-  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+  const normalizedHex = normalizeHexColor(hex);
+  if (!normalizedHex) return;
 
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const r = parseInt(normalizedHex.slice(1, 3), 16) / 255;
+  const g = parseInt(normalizedHex.slice(3, 5), 16) / 255;
+  const b = parseInt(normalizedHex.slice(5, 7), 16) / 255;
 
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h = 0, s = 0;
@@ -182,7 +217,7 @@ export function applyPrimaryColor(hex: string) {
   }
 
   styleEl.textContent = `
-    :root, :root.light {
+    :root, html, :root.light, html.light {
       --primary: ${primary} !important;
       --accent: ${accent} !important;
       --success: ${success} !important;
@@ -192,7 +227,7 @@ export function applyPrimaryColor(hex: string) {
       --gradient-start: ${gradientStart} !important;
       --gradient-end: ${gradientEnd} !important;
     }
-    .dark {
+    html.dark, :root.dark, .dark {
       --primary: ${darkPrimary} !important;
       --accent: ${darkAccent} !important;
       --success: ${darkSuccess} !important;
@@ -206,12 +241,17 @@ export function applyPrimaryColor(hex: string) {
 
   // Also set inline styles as fallback
   const root = document.documentElement;
-  root.style.setProperty("--primary", primary);
-  root.style.setProperty("--accent", accent);
-  root.style.setProperty("--success", success);
-  root.style.setProperty("--ring", ring);
-  root.style.setProperty("--sidebar-primary", sidebarPrimary);
-  root.style.setProperty("--sidebar-ring", sidebarRing);
-  root.style.setProperty("--gradient-start", gradientStart);
-  root.style.setProperty("--gradient-end", gradientEnd);
+  root.style.setProperty("--primary", primary, "important");
+  root.style.setProperty("--accent", accent, "important");
+  root.style.setProperty("--success", success, "important");
+  root.style.setProperty("--ring", ring, "important");
+  root.style.setProperty("--sidebar-primary", sidebarPrimary, "important");
+  root.style.setProperty("--sidebar-ring", sidebarRing, "important");
+  root.style.setProperty("--gradient-start", gradientStart, "important");
+  root.style.setProperty("--gradient-end", gradientEnd, "important");
+
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) {
+    themeMeta.setAttribute("content", normalizedHex);
+  }
 }
