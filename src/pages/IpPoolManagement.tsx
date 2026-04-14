@@ -44,7 +44,7 @@ export default function IpPoolManagement() {
   const { data: routers = [] } = useQuery({
     queryKey: ["mikrotik-routers-list", tenantId],
     queryFn: async () => {
-      const { data, error } = await scopeByTenant(db.from("mikrotik_routers").select("id, name, ip_address, status").order("name"), tenantId);
+      const { data, error } = await scopeByTenant(db.from("mikrotik_routers").select("id, name, ip_address, username, password, api_port, status").order("name"), tenantId);
       if (error) throw error;
       return data;
     },
