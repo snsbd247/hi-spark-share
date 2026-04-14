@@ -849,7 +849,7 @@ Deno.serve(async (req: Request) => {
 
             for (const profile of mkProfiles) {
               const pName = profile.name;
-              if (!pName || pName === "default" || existingProfileNames.has(pName)) continue;
+              if (!pName || pName === "default" || pName === "default-encryption" || existingProfileNames.has(pName)) continue;
 
               try {
                 // Parse rate-limit - MikroTik format can be:
