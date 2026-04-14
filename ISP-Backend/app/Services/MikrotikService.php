@@ -59,7 +59,7 @@ class MikrotikService
     protected function readResponse($socket): array
     {
         $response = [];
-        stream_set_timeout($socket, 10);
+        stream_set_timeout($socket, 20);
 
         while (true) {
             $sentence = [];
@@ -95,7 +95,14 @@ class MikrotikService
     protected function readWord($socket)
     {
         $byte = fread($socket, 1);
-        if ($byte === false || $byte === '') return false;
+        if ($byte === false || $byte === '') {
+            $meta = stream_get_meta_data($socket);
+            if (!empty($meta['timed_out'])) {
+                throw new \RuntimeException('MikroTik API response timed out while reading data');
+            }
+
+            return false;
+        }
         $len = ord($byte);
 
         if (($len & 0x80) !== 0) {
@@ -116,6 +123,11 @@ class MikrotikService
         while (strlen($data) < $len) {
             $chunk = fread($socket, $len - strlen($data));
             if ($chunk === false || $chunk === '') {
+                $meta = stream_get_meta_data($socket);
+                if (!empty($meta['timed_out'])) {
+                    throw new \RuntimeException('MikroTik API response timed out while reading data');
+                }
+
                 return false;
             }
             $data .= $chunk;
@@ -131,6 +143,21 @@ class MikrotikService
         }
         $this->writeWord($connection->socket, '');
         return $this->readResponse($connection->socket);
+    }
+
+    protected function buildPrintCommand(string $path, array $properties = [], array $filters = []): array
+    {
+        $command = [$path];
+
+        if (!empty($properties)) {
+            $command[] = '=.proplist=' . implode(',', $properties);
+        }
+
+        foreach ($filters as $filter) {
+            $command[] = $filter;
+        }
+
+        return $command;
     }
 
     public function syncCustomer(string $customerId): array
@@ -475,7 +502,9 @@ class MikrotikService
         }
 
         try {
-            $response = $this->sendCommand($conn, ['/ppp/secret/print']);
+            $response = $this->sendCommand($conn, $this->buildPrintCommand('/ppp/secret/print', [
+                'name', 'comment', 'password', 'profile', 'disabled', 'remote-address',
+            ]));
             $secrets = $this->parseItems($response);
 
             $customerQuery = $tenantId
@@ -571,7 +600,9 @@ class MikrotikService
         }
 
         try {
-            $response = $this->sendCommand($conn, ['/ppp/profile/print']);
+            $response = $this->sendCommand($conn, $this->buildPrintCommand('/ppp/profile/print', [
+                'name', 'rate-limit',
+            ]));
             $profiles = $this->parseItems($response);
 
             $packageQuery = $tenantId
@@ -695,7 +726,9 @@ class MikrotikService
         }
 
         try {
-            $response = $this->sendCommand($conn, ['/ip/pool/print']);
+            $response = $this->sendCommand($conn, $this->buildPrintCommand('/ip/pool/print', [
+                '.id', 'name', 'ranges',
+            ]));
             $pools = $this->parseItems($response);
 
             // Also preserve .id for push/update
@@ -920,20 +953,28 @@ class MikrotikService
      */
     protected function resolveImportedCustomerSeed(?string $tenantId): array
     {
-        $query = $tenantId
-            ? Customer::withoutGlobalScopes()->where('tenant_id', $tenantId)
-            : Customer::query();
+        $tenantCustomers = $tenantId
+            ? Customer::withoutGlobalScopes()->where('tenant_id', $tenantId)->select('customer_id')->orderByDesc('created_at')->get()
+            : collect();
 
-        $customers = $query->select('customer_id')->orderByDesc('created_at')->limit(500)->get();
+        $customers = Customer::withoutGlobalScopes()->select('customer_id')->orderByDesc('created_at')->get();
+
+        $prefixSource = $tenantCustomers->isNotEmpty() ? $tenantCustomers : $customers;
 
         $prefix = 'ISP';
-        $maxNum = 0;
+        $maxNum = 100000;
         $usesPrefix = false;
 
-        foreach ($customers as $c) {
+        foreach ($prefixSource as $c) {
             if (preg_match('/^([A-Za-z]+)-(\d+)$/', $c->customer_id, $m)) {
                 $usesPrefix = true;
                 $prefix = $m[1];
+                break;
+            }
+        }
+
+        foreach ($customers as $c) {
+            if (preg_match('/^([A-Za-z]+)-(\d+)$/', $c->customer_id, $m)) {
                 $num = (int) $m[2];
                 if ($num > $maxNum) $maxNum = $num;
             } elseif (preg_match('/^(\d+)$/', $c->customer_id, $m)) {
@@ -941,8 +982,6 @@ class MikrotikService
                 if ($num > $maxNum) $maxNum = $num;
             }
         }
-
-        if ($maxNum === 0) $maxNum = 100000;
 
         return [$prefix, $maxNum, $usesPrefix];
     }

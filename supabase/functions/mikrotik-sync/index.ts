@@ -128,6 +128,14 @@ function parseSpeedValue(val: string): number {
   return Math.round(num);
 }
 
+const PPP_SECRET_IMPORT_PROPERTIES = ["name", "comment", "password", "profile", "disabled", "remote-address"];
+const PPP_PROFILE_IMPORT_PROPERTIES = ["name", "rate-limit"];
+const IP_POOL_IMPORT_PROPERTIES = [".id", "name", "ranges"];
+
+function buildPrintCommand(path: string, properties: string[]) {
+  return properties.length ? [path, `=.proplist=${properties.join(",")}`] : [path];
+}
+
 // ─── Supabase helpers ───────────────────────────────────────────
 
 // Fetch all rows from a Supabase query (bypass 1000-row default limit)
@@ -259,20 +267,30 @@ function normalizeTargetRouterId(router: any, requestedRouterId: string | null) 
 }
 
 async function resolveImportedCustomerSeed(supabase: any, tenantId: string | null) {
-  const existingCustomers = await fetchAll(supabase, "customers", "customer_id", (q: any) => {
-    if (tenantId) q = q.eq("tenant_id", tenantId);
-    return q.order("created_at", { ascending: false });
-  });
+  const [tenantCustomers, allCustomers] = await Promise.all([
+    tenantId
+      ? fetchAll(supabase, "customers", "customer_id", (q: any) => q.eq("tenant_id", tenantId).order("created_at", { ascending: false }))
+      : Promise.resolve([]),
+    fetchAll(supabase, "customers", "customer_id", (q: any) => q.order("created_at", { ascending: false })),
+  ]);
 
   let prefix = "ISP";
   let maxNumber = 100000;
   let usesPrefix = false;
 
-  for (const customer of existingCustomers || []) {
+  const prefixSource = (tenantCustomers?.length ? tenantCustomers : allCustomers) || [];
+
+  for (const customer of prefixSource) {
+    const prefixed = customer.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
+    if (!prefixed) continue;
+    usesPrefix = true;
+    prefix = prefixed[1];
+    break;
+  }
+
+  for (const customer of allCustomers || []) {
     const prefixed = customer.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
     if (prefixed) {
-      usesPrefix = true;
-      prefix = prefixed[1];
       maxNumber = Math.max(maxNumber, parseInt(prefixed[2], 10) || 0);
       continue;
     }
@@ -927,7 +945,7 @@ Deno.serve(async (req: Request) => {
         const routerId = router.id !== "env-default" ? router.id : null;
         try {
           await withRouter(routerConfig, async (mt) => {
-            const profileRes = await mt.send(["/ppp/profile/print"]);
+            const profileRes = await mt.send(buildPrintCommand("/ppp/profile/print", PPP_PROFILE_IMPORT_PROPERTIES));
             const mkProfiles = parseItems(profileRes.sentences);
 
             for (const profile of mkProfiles) {
@@ -1030,7 +1048,7 @@ Deno.serve(async (req: Request) => {
 
         try {
           await withRouter(routerConfig, async (mt) => {
-            const profileRes = await mt.send(["/ppp/profile/print"]);
+            const profileRes = await mt.send(buildPrintCommand("/ppp/profile/print", PPP_PROFILE_IMPORT_PROPERTIES));
             const mkProfiles = parseItems(profileRes.sentences);
 
             for (const profile of mkProfiles) {
@@ -1155,7 +1173,7 @@ Deno.serve(async (req: Request) => {
 
         try {
           await withRouter(routerConfig, async (mt) => {
-            const secretsRes = await mt.send(["/ppp/secret/print"]);
+            const secretsRes = await mt.send(buildPrintCommand("/ppp/secret/print", PPP_SECRET_IMPORT_PROPERTIES));
             const mkSecrets = parseItems(secretsRes.sentences);
 
             for (const secret of mkSecrets) {
@@ -1360,7 +1378,7 @@ Deno.serve(async (req: Request) => {
             }
 
             // ── Step 2: Get all PPPoE secrets from MikroTik ──
-            const secretsRes = await mt.send(["/ppp/secret/print"]);
+            const secretsRes = await mt.send(buildPrintCommand("/ppp/secret/print", PPP_SECRET_IMPORT_PROPERTIES));
             const mkSecrets = parseItems(secretsRes.sentences);
 
             // ── Step 3: Get all software customers for this router ──
@@ -1420,30 +1438,9 @@ Deno.serve(async (req: Request) => {
             }
 
             // ── Step 5: Import MikroTik users → Software ──
-            // Pre-generate customer IDs to avoid race conditions
-            // Determine tenant prefix by looking at existing customers
-            let customerPrefix = "ISP";
-            let maxCustomerNum = 0;
-            {
-              // Fetch ALL customer IDs to find the true max number
-              const existingCusts = await fetchAll(supabase, "customers", "customer_id", (q: any) => {
-                if (tenantId) q = q.eq("tenant_id", tenantId);
-                return q.order("created_at", { ascending: false });
-              });
-              if (existingCusts?.length) {
-                for (const ec of existingCusts) {
-                  const m = ec.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
-                  if (m) {
-                    if (maxCustomerNum === 0) customerPrefix = m[1]; // Use first found prefix
-                    const num = parseInt(m[2]);
-                    if (num > maxCustomerNum) maxCustomerNum = num;
-                  }
-                }
-              }
-            }
-
+            const customerSeed = await resolveImportedCustomerSeed(supabase, tenantId);
             const secretsToImport = mkSecrets.filter((s: any) => s.name && !swUsernameMap[s.name]);
-            let importCounter = maxCustomerNum;
+            let importCounter = customerSeed.maxNumber;
 
             for (const secret of secretsToImport) {
               const username = secret.name;
@@ -1454,7 +1451,9 @@ Deno.serve(async (req: Request) => {
                 const matchedPkg = (allPackages || []).find((p: any) => p.mikrotik_profile_name === profileName);
 
                 importCounter++;
-                const customerId = `${customerPrefix}-${String(importCounter).padStart(5, "0")}`;
+                const customerId = customerSeed.usesPrefix
+                  ? `${customerSeed.prefix}-${String(importCounter).padStart(5, "0")}`
+                  : String(Math.max(100001, importCounter)).padStart(6, "0");
 
                 const newCustomer: any = {
                   customer_id: customerId,
@@ -1523,8 +1522,8 @@ Deno.serve(async (req: Request) => {
       if (!router) return jsonResponse({ success: false, error: "Router not found" }, 404);
 
       try {
-        const pools = await withRouter(router, async (mt) => {
-          const res = await mt.send(["/ip/pool/print"]);
+          const pools = await withRouter(router, async (mt) => {
+            const res = await mt.send(buildPrintCommand("/ip/pool/print", IP_POOL_IMPORT_PROPERTIES));
           return parseItems(res.sentences);
         });
 

@@ -25,7 +25,7 @@ class IpPoolController extends Controller
         ]);
 
         try {
-            $tenantId = $request->get('__tenant_id');
+            $tenantId = $request->get('__tenant_id') ?: tenant_id();
             $result = $this->mikrotikService->syncIpPools($request->router_id, $tenantId);
             return response()->json($result);
         } catch (\Exception $e) {
@@ -96,7 +96,7 @@ class IpPoolController extends Controller
             'router_id' => 'required|uuid|exists:mikrotik_routers,id',
         ]);
 
-        $tenantId = $request->get('__tenant_id');
+        $tenantId = $request->get('__tenant_id') ?: tenant_id();
         SyncIpPoolsJob::dispatch($request->router_id, $tenantId);
 
         return response()->json(['success' => true, 'message' => 'IP Pool sync queued']);
