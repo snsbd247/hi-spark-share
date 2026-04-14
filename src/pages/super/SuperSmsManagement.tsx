@@ -243,8 +243,11 @@ export default function SuperSmsManagement() {
     if (!form) return;
     setSaving(true);
     try {
-      if (smsSettings?.id) {
-        await db.from("sms_settings").update({
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        // VPS: use dedicated super admin endpoint
+        const { default: api } = await import("@/lib/api");
+        const { data } = await api.put("/super-admin/sms-settings", {
           api_token: form.api_token,
           sender_id: form.sender_id,
           admin_cost_rate: form.admin_cost_rate,
@@ -256,19 +259,38 @@ export default function SuperSmsManagement() {
           whatsapp_token: form.whatsapp_token,
           whatsapp_phone_id: form.whatsapp_phone_id,
           whatsapp_enabled: form.whatsapp_enabled,
-          updated_at: new Date().toISOString(),
-        }).eq("id", smsSettings.id);
-      } else {
-        await db.from("sms_settings").insert({
-          api_token: form.api_token,
-          sender_id: form.sender_id,
-          admin_cost_rate: form.admin_cost_rate,
         });
+        if (data) setForm({ ...data });
+      } else {
+        if (smsSettings?.id) {
+          const { error } = await db.from("sms_settings").update({
+            api_token: form.api_token,
+            sender_id: form.sender_id,
+            admin_cost_rate: form.admin_cost_rate,
+            sms_on_bill_generate: form.sms_on_bill_generate,
+            sms_on_payment: form.sms_on_payment,
+            sms_on_registration: form.sms_on_registration,
+            sms_on_suspension: form.sms_on_suspension,
+            sms_on_new_customer_bill: form.sms_on_new_customer_bill,
+            whatsapp_token: form.whatsapp_token,
+            whatsapp_phone_id: form.whatsapp_phone_id,
+            whatsapp_enabled: form.whatsapp_enabled,
+            updated_at: new Date().toISOString(),
+          }).eq("id", smsSettings.id);
+          if (error) throw error;
+        } else {
+          const { error } = await db.from("sms_settings").insert({
+            api_token: form.api_token,
+            sender_id: form.sender_id,
+            admin_cost_rate: form.admin_cost_rate,
+          });
+          if (error) throw error;
+        }
       }
       toast.success("Global SMS settings saved");
       qc.invalidateQueries({ queryKey: ["super-sms-settings"] });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.response?.data?.message || e.message);
     } finally {
       setSaving(false);
     }
