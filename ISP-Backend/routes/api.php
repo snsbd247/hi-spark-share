@@ -569,6 +569,7 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     // SMS Management (centralized)
     Route::get('/sms-settings', [SuperAdminController::class, 'smsSettings']);
     Route::put('/sms-settings', [SuperAdminController::class, 'updateSmsSettings']);
+    Route::get('/sms-balance', [SuperAdminController::class, 'smsBalance']);
     Route::get('/sms-wallets', [SuperAdminController::class, 'smsWallets']);
     Route::post('/sms-recharge', [SuperAdminController::class, 'rechargeSms']);
     Route::get('/sms-transactions', [SuperAdminController::class, 'smsTransactions']);

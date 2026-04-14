@@ -655,7 +655,7 @@ class SuperAdminController extends Controller
      */
     public function smsSettings()
     {
-        $settings = SmsSetting::first();
+        $settings = SmsSetting::withoutGlobalScopes()->first();
         return response()->json($settings);
     }
 
@@ -664,13 +664,95 @@ class SuperAdminController extends Controller
      */
     public function updateSmsSettings(Request $request)
     {
-        $settings = SmsSetting::first();
+        $settings = SmsSetting::withoutGlobalScopes()->first();
         if (!$settings) {
-            $settings = SmsSetting::create($request->all());
+            $settings = new SmsSetting();
+            $settings->forceFill($request->all());
+            $settings->save();
         } else {
-            $settings->update($request->all());
+            $settings->forceFill($request->only([
+                'api_token', 'sender_id', 'admin_cost_rate',
+                'sms_on_bill_generate', 'sms_on_payment', 'sms_on_registration',
+                'sms_on_suspension', 'sms_on_new_customer_bill',
+                'whatsapp_enabled', 'whatsapp_token', 'whatsapp_phone_id',
+            ]));
+            $settings->updated_at = now();
+            $settings->save();
         }
-        return response()->json($settings);
+        return response()->json($settings->fresh());
+    }
+
+    /**
+     * Check GreenWeb SMS API balance (for super admin).
+     */
+    public function smsBalance()
+    {
+        try {
+            $settings = SmsSetting::withoutGlobalScopes()->first();
+            $token = $settings?->api_token;
+
+            if (!$token) {
+                $token = config('services.greenweb.token', '');
+            }
+
+            if (!$token) {
+                return response()->json([
+                    'error' => 'SMS API token not configured.',
+                ], 400);
+            }
+
+            // Fetch balance + expiry + rate
+            $balanceUrl = "http://api.greenweb.com.bd/g_api.php?token={$token}&balance&expiry&rate&json";
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->get($balanceUrl);
+            $rawText = $response->body();
+
+            $balanceData = null;
+            try {
+                $balanceData = json_decode($rawText, true);
+            } catch (\Exception $e) {
+                // not JSON
+            }
+
+            if (is_array($balanceData)) {
+                $items = isset($balanceData[0]) ? $balanceData : [$balanceData];
+                $items = array_map(function ($item) {
+                    unset($item['token']);
+                    return $item;
+                }, $items);
+            } else {
+                $items = [['balance' => trim($rawText)]];
+            }
+
+            // Fetch total sent via tokensms endpoint
+            $totalSent = 0;
+            try {
+                $statsUrl = "http://api.greenweb.com.bd/g_api.php?token={$token}&tokensms";
+                $statsRes = \Illuminate\Support\Facades\Http::timeout(15)->get($statsUrl);
+                $statsText = $statsRes->body();
+                $parsed = intval(trim($statsText));
+                if ($parsed > 0) {
+                    $totalSent = $parsed;
+                } else {
+                    $decoded = json_decode($statsText, true);
+                    if (is_array($decoded)) {
+                        $totalSent = $decoded['total_sms'] ?? $decoded['tokensms'] ?? $decoded['sent'] ?? $decoded['count'] ?? 0;
+                    }
+                }
+            } catch (\Exception $e) {
+                // stats fetch failed
+            }
+
+            return response()->json([
+                'balance'    => $items,
+                'total_sent' => $totalSent,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'balance'    => [],
+                'total_sent' => 0,
+                'error'      => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

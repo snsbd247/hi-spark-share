@@ -67,6 +67,12 @@ export default function SuperSmsManagement() {
   const { data: smsSettings, isLoading: settingsLoading } = useQuery({
     queryKey: ["super-sms-settings"],
     queryFn: async () => {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const { data } = await api.get("/super-admin/sms-settings");
+        return data;
+      }
       const { data } = await db.from("sms_settings").select("*").limit(1).maybeSingle();
       return data;
     },
@@ -81,6 +87,14 @@ export default function SuperSmsManagement() {
   const { data: liveBalance, isLoading: balanceLoading, error: balanceError, refetch: refetchBalance } = useQuery({
     queryKey: ["super-live-sms-balance"],
     queryFn: async () => {
+      // On VPS super admin, call the dedicated super admin endpoint
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const { data } = await api.get("/super-admin/sms-balance");
+        if (data?.error) throw new Error(data.error);
+        return data;
+      }
       const { data, error } = await db.functions.invoke("sms-balance");
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -235,8 +249,11 @@ export default function SuperSmsManagement() {
     if (!form) return;
     setSaving(true);
     try {
-      if (smsSettings?.id) {
-        await db.from("sms_settings").update({
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        // VPS: use dedicated super admin endpoint
+        const { default: api } = await import("@/lib/api");
+        const { data } = await api.put("/super-admin/sms-settings", {
           api_token: form.api_token,
           sender_id: form.sender_id,
           admin_cost_rate: form.admin_cost_rate,
@@ -248,19 +265,38 @@ export default function SuperSmsManagement() {
           whatsapp_token: form.whatsapp_token,
           whatsapp_phone_id: form.whatsapp_phone_id,
           whatsapp_enabled: form.whatsapp_enabled,
-          updated_at: new Date().toISOString(),
-        }).eq("id", smsSettings.id);
-      } else {
-        await db.from("sms_settings").insert({
-          api_token: form.api_token,
-          sender_id: form.sender_id,
-          admin_cost_rate: form.admin_cost_rate,
         });
+        if (data) setForm({ ...data });
+      } else {
+        if (smsSettings?.id) {
+          const { error } = await db.from("sms_settings").update({
+            api_token: form.api_token,
+            sender_id: form.sender_id,
+            admin_cost_rate: form.admin_cost_rate,
+            sms_on_bill_generate: form.sms_on_bill_generate,
+            sms_on_payment: form.sms_on_payment,
+            sms_on_registration: form.sms_on_registration,
+            sms_on_suspension: form.sms_on_suspension,
+            sms_on_new_customer_bill: form.sms_on_new_customer_bill,
+            whatsapp_token: form.whatsapp_token,
+            whatsapp_phone_id: form.whatsapp_phone_id,
+            whatsapp_enabled: form.whatsapp_enabled,
+            updated_at: new Date().toISOString(),
+          }).eq("id", smsSettings.id);
+          if (error) throw error;
+        } else {
+          const { error } = await db.from("sms_settings").insert({
+            api_token: form.api_token,
+            sender_id: form.sender_id,
+            admin_cost_rate: form.admin_cost_rate,
+          });
+          if (error) throw error;
+        }
       }
       toast.success("Global SMS settings saved");
       qc.invalidateQueries({ queryKey: ["super-sms-settings"] });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(e.response?.data?.message || e.message);
     } finally {
       setSaving(false);
     }
@@ -750,7 +786,7 @@ export default function SuperSmsManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label>{sa.adminCostRate}</Label>
-                      <Input type="number" value={form?.admin_cost_rate ?? 0.25}
+                      <Input type="number" value={form?.admin_cost_rate ?? ""}
                         onChange={(e) => setForm({ ...form, admin_cost_rate: parseFloat(e.target.value) || 0 })}
                         placeholder="0.25" min="0" step="0.01" />
                       <p className="text-xs text-muted-foreground">Your actual GreenWeb cost per SMS unit</p>
