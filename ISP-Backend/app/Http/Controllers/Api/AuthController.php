@@ -181,4 +181,44 @@ class AuthController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Check subscription status for the current tenant
+     */
+    public function subscriptionStatus(Request $request)
+    {
+        $tenant = tenant();
+
+        if (!$tenant) {
+            return response()->json([
+                'has_subscription' => true,
+                'is_expired' => false,
+            ]);
+        }
+
+        $now = now()->toDateString();
+
+        // Check active subscription
+        $active = \App\Models\Subscription::where('tenant_id', $tenant->id)
+            ->where('status', 'active')
+            ->where('end_date', '>=', $now)
+            ->exists();
+
+        if ($active) {
+            return response()->json([
+                'has_subscription' => true,
+                'is_expired' => false,
+            ]);
+        }
+
+        // Check if any subscription exists (expired)
+        $any = \App\Models\Subscription::where('tenant_id', $tenant->id)
+            ->orderBy('end_date', 'desc')
+            ->first();
+
+        return response()->json([
+            'has_subscription' => (bool) $any,
+            'is_expired' => (bool) $any,
+        ]);
+    }
 }

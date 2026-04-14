@@ -135,6 +135,15 @@ Route::get('/tenant/current', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Admin Routes (auth only, no subscription check)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['admin.auth'])->group(function () {
+    Route::get('/admin/subscription-status', [AuthController::class, 'subscriptionStatus']);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Admin Protected Routes
 |--------------------------------------------------------------------------
 */
