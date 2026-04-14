@@ -1060,12 +1060,12 @@ Deno.serve(async (req: Request) => {
 
             // ── Step 3: Get all software customers for this router ──
             const routerFilter = requestedRouterId || (router.id !== "env-default" && router.id !== "provided-router" ? router.id : null);
-            let query = supabase.from("customers").select("id, pppoe_username, pppoe_password, router_id, name, status, package_id, tenant_id").neq("status", "disconnected");
-            if (tenantId) query = query.eq("tenant_id", tenantId);
-            if (routerFilter) {
-              query = query.eq("router_id", routerFilter);
-            }
-            const { data: swCustomers } = await query;
+            const swCustomers = await fetchAll(supabase, "customers", "id, pppoe_username, pppoe_password, router_id, name, status, package_id, tenant_id", (q: any) => {
+              q = q.neq("status", "disconnected");
+              if (tenantId) q = q.eq("tenant_id", tenantId);
+              if (routerFilter) q = q.eq("router_id", routerFilter);
+              return q;
+            });
 
             const swUsernameMap: Record<string, any> = {};
             for (const c of swCustomers || []) {
