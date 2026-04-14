@@ -59,17 +59,36 @@ class MikrotikService
     protected function readResponse($socket): array
     {
         $response = [];
-        stream_set_timeout($socket, 5);
+        stream_set_timeout($socket, 10);
+
         while (true) {
-            $word = $this->readWord($socket);
-            if ($word === false || $word === '') {
-                if (!empty($response) && in_array(end($response), ['!done', '!trap'])) break;
-                if (empty($word) && !empty($response)) break;
+            $sentence = [];
+
+            while (true) {
+                $word = $this->readWord($socket);
+                if ($word === false) {
+                    break 2;
+                }
+                if ($word === '') {
+                    break;
+                }
+                $sentence[] = $word;
+            }
+
+            if (empty($sentence)) {
                 continue;
             }
-            $response[] = $word;
-            if ($word === '!done' || $word === '!trap') break;
+
+            foreach ($sentence as $word) {
+                $response[] = $word;
+            }
+
+            $replyType = $sentence[0] ?? null;
+            if ($replyType === '!done' || $replyType === '!trap') {
+                break;
+            }
         }
+
         return $response;
     }
 
@@ -79,16 +98,30 @@ class MikrotikService
         if ($byte === false || $byte === '') return false;
         $len = ord($byte);
 
-        if ($len >= 0x80) {
-            if ($len < 0xC0) {
+        if (($len & 0x80) !== 0) {
+            if (($len & 0xC0) === 0x80) {
                 $len = (($len & 0x3F) << 8) + ord(fread($socket, 1));
-            } elseif ($len < 0xE0) {
+            } elseif (($len & 0xE0) === 0xC0) {
                 $len = (($len & 0x1F) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
+            } elseif (($len & 0xF0) === 0xE0) {
+                $len = (($len & 0x0F) << 24) + (ord(fread($socket, 1)) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
+            } else {
+                $len = (ord(fread($socket, 1)) << 24) + (ord(fread($socket, 1)) << 16) + (ord(fread($socket, 1)) << 8) + ord(fread($socket, 1));
             }
         }
 
         if ($len === 0) return '';
-        return fread($socket, $len);
+
+        $data = '';
+        while (strlen($data) < $len) {
+            $chunk = fread($socket, $len - strlen($data));
+            if ($chunk === false || $chunk === '') {
+                return false;
+            }
+            $data .= $chunk;
+        }
+
+        return $data;
     }
 
     protected function sendCommand($connection, array $command): array
