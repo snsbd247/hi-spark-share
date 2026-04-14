@@ -114,6 +114,20 @@ function parseItems(sentences: string[][]): Record<string, string>[] {
   });
 }
 
+// Parse MikroTik speed value like "10M", "5k", "100", "1G" to Mbps
+function parseSpeedValue(val: string): number {
+  if (!val) return 0;
+  val = val.trim().toLowerCase();
+  const num = parseFloat(val) || 0;
+  if (val.endsWith("g")) return Math.round(num * 1000);
+  if (val.endsWith("m")) return Math.round(num);
+  if (val.endsWith("k")) return Math.round(num / 1000);
+  // Plain number - could be bps
+  if (num > 1000000) return Math.round(num / 1000000);
+  if (num > 1000) return Math.round(num / 1000);
+  return Math.round(num);
+}
+
 // ─── Supabase helpers ───────────────────────────────────────────
 
 function getSupabaseAdmin() {
