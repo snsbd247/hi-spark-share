@@ -2028,6 +2028,7 @@ const bn: Translations = {
     testConnection: "সংযোগ পরীক্ষা",
     importCustomers: "কাস্টমার ইমপোর্ট",
     importPackages: "প্যাকেজ ইমপোর্ট",
+    importIpPools: "IP পুল ইমপোর্ট",
     deleteRouter: "রাউটার মুছুন",
     deleteRouterConfirm: "আপনি কি \"{name}\" মুছতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।",
     routerUpdated: "রাউটার আপডেট হয়েছে",

@@ -2057,6 +2057,7 @@ const en = {
     testConnection: "Test Connection",
     importCustomers: "Import Customers",
     importPackages: "Import Packages",
+    importIpPools: "Import IP Pools",
     deleteRouter: "Delete Router",
     deleteRouterConfirm: "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
     routerUpdated: "Router updated",
