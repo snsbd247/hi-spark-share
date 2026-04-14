@@ -648,7 +648,21 @@ export const superAdminApi = {
         user: { id: user.id, name: user.full_name, email: user.email, role: "admin", avatar_url: user.avatar_url, tenant_id: tenantId },
       };
     }
-    return request(`/tenants/${tenantId}/impersonate`, { method: "POST" });
+    // VPS flow: generate impersonation token, then consume it to get real session
+    const generateResult = await request(`/tenants/${tenantId}/impersonate`, { method: "POST" });
+    // Now consume the token to create a real admin session
+    const consumeRes = await fetch(`${API_BASE_URL}/impersonate/consume`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: generateResult.token }),
+    });
+    const consumeData = await consumeRes.json();
+    if (!consumeRes.ok) throw new Error(consumeData?.error || "Impersonation consume failed");
+    return {
+      token: consumeData.token,
+      tenant: generateResult.tenant,
+      user: { ...consumeData.user, tenant_id: tenantId },
+    };
   },
 
   // Tenant Users
