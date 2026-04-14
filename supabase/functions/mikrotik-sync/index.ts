@@ -774,12 +774,11 @@ Deno.serve(async (req: Request) => {
       const tenantId = body?.tenant_id || null;
       const providedRouter = getProvidedRouter(body);
       const supabase = getSupabaseAdmin();
-      let pkgQuery = supabase
-        .from("packages")
-        .select("*")
-        .eq("is_active", true);
-      if (tenantId) pkgQuery = pkgQuery.eq("tenant_id", tenantId);
-      const { data: packages } = await pkgQuery;
+      const packages = await fetchAll(supabase, "packages", "*", (q: any) => {
+        q = q.eq("is_active", true);
+        if (tenantId) q = q.eq("tenant_id", tenantId);
+        return q;
+      });
 
       let routers = providedRouter ? [providedRouter] : null;
       if (!routers) {
@@ -1020,9 +1019,10 @@ Deno.serve(async (req: Request) => {
       const errors: string[] = [];
 
       // Get all packages for profile mapping (tenant-scoped)
-      let pkgQuery = supabase.from("packages").select("id, name, mikrotik_profile_name, monthly_price, speed, router_id");
-      if (tenantId) pkgQuery = pkgQuery.eq("tenant_id", tenantId);
-      const { data: packageRows } = await pkgQuery;
+      const packageRows = await fetchAll(supabase, "packages", "id, name, mikrotik_profile_name, monthly_price, speed, router_id", (q: any) => {
+        if (tenantId) q = q.eq("tenant_id", tenantId);
+        return q;
+      });
       const allPackages = requestedRouterId
         ? (packageRows || []).filter((pkg: any) => !pkg.router_id || pkg.router_id === requestedRouterId)
         : packageRows;
