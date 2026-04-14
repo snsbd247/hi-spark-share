@@ -237,7 +237,8 @@ export default function Dashboard() {
       const r = data?.results;
       toast.success(`${t.dashboard.billControlResult}: ${r?.suspended || 0} suspended, ${r?.reactivated || 0} reactivated`);
     } catch (e: any) {
-      toast.error(t.dashboard.billControlFailed + ": " + (e.message || "Unknown error"));
+      const msg = e?.response?.data?.message || e?.response?.data?.error || e.message || "Unknown error";
+      toast.error(t.dashboard.billControlFailed + ": " + msg);
     } finally {
       setRunningBillControl(false);
     }
