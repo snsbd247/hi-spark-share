@@ -172,21 +172,20 @@ export default function MikroTikRouters() {
     setImporting(`users-${router.id}`);
     try {
       if (IS_LOVABLE) {
-        const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/sync-all', {
+        const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/import-users', {
           body: getLovableRouterPayload(router),
         });
         if (error) throw error;
         if (data?.success) {
-          const r = data.results;
-          if (r.errors?.length && r.imported === 0 && r.pushed === 0 && r.updated === 0) {
-            const errMsg = r.errors[0] || "";
+          if (data.errors?.length && (data.imported || 0) === 0) {
+            const errMsg = data.errors[0] || "";
             if (errMsg.includes("Connection refused") || errMsg.includes("timeout")) {
               toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট Supabase সার্ভার থেকে অ্যাক্সেসযোগ্য হতে হবে।", { duration: 8000 });
             } else {
               toast.error(`Import failed: ${errMsg}`);
             }
           } else {
-            toast.success(`Imported ${r.imported || 0} customers, pushed ${r.pushed || 0}, updated ${r.updated || 0}`);
+            toast.success(`Imported ${data.imported || 0} customers, skipped ${data.skipped || 0}`);
             queryClient.invalidateQueries({ queryKey: ["customers"] });
           }
         } else toast.error(data?.error || "Import failed");
@@ -212,21 +211,20 @@ export default function MikroTikRouters() {
     setImporting(`packages-${router.id}`);
     try {
       if (IS_LOVABLE) {
-        const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/bulk-sync-packages', {
+        const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/import-packages', {
           body: getLovableRouterPayload(router),
         });
         if (error) throw error;
         if (data?.success) {
-          const r = data.results;
-          if (r.errors?.length && r.synced === 0 && r.imported === 0) {
-            const errMsg = r.errors[0] || "";
+          if (data.errors?.length && (data.imported || 0) === 0) {
+            const errMsg = data.errors[0] || "";
             if (errMsg.includes("Connection refused") || errMsg.includes("timeout")) {
               toast.error("রাউটারে কানেক্ট হচ্ছে না। MikroTik API পোর্ট Supabase সার্ভার থেকে অ্যাক্সেসযোগ্য হতে হবে।", { duration: 8000 });
             } else {
               toast.error(`Import failed: ${errMsg}`);
             }
           } else {
-            toast.success(`Synced ${r.synced || 0}, imported ${r.imported || 0} packages`);
+            toast.success(`Imported ${data.imported || 0} packages, skipped ${data.skipped || 0}`);
             queryClient.invalidateQueries({ queryKey: ["packages"] });
           }
         } else toast.error(data?.error || "Import failed");
@@ -253,7 +251,7 @@ export default function MikroTikRouters() {
     try {
       if (IS_LOVABLE) {
         const { data, error } = await supabaseDirect.functions.invoke('mikrotik-sync/sync-ip-pools', {
-          body: { router_id: router.id, tenant_id: tenantId || undefined },
+          body: getLovableRouterPayload(router),
         });
         if (error) throw error;
         if (data?.success) {

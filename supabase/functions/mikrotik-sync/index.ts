@@ -220,6 +220,72 @@ async function getRouterConfig(supabase: any, routerId?: string) {
   return getEnvRouter();
 }
 
+async function resolveImportRouters(supabase: any, requestedRouterId: string | null, providedRouter: any) {
+  let routers = providedRouter ? [providedRouter] : null;
+
+  if (!routers) {
+    let routersQuery = supabase.from("mikrotik_routers").select("*").eq("status", "active");
+    if (requestedRouterId) {
+      routersQuery = routersQuery.eq("id", requestedRouterId);
+    }
+
+    const { data, error } = await routersQuery;
+    if (error) {
+      return { routers: [] as any[], error: error.message || "Could not load routers" };
+    }
+
+    routers = data || [];
+
+    if (requestedRouterId && !routers.length) {
+      return { routers: [] as any[], error: "Selected router not found or inactive" };
+    }
+  }
+
+  if (!routers?.length) {
+    const envRouter = getEnvRouter();
+    if (!envRouter.ip_address || !envRouter.username || !envRouter.password) {
+      return { routers: [] as any[], error: "No active routers configured" };
+    }
+
+    routers = [{ ...envRouter, id: "env-default", name: "Default Router" }];
+  }
+
+  return { routers, error: null as string | null };
+}
+
+function normalizeTargetRouterId(router: any, requestedRouterId: string | null) {
+  if (requestedRouterId) return requestedRouterId;
+  return router?.id && router.id !== "env-default" && router.id !== "provided-router" ? router.id : null;
+}
+
+async function resolveImportedCustomerSeed(supabase: any, tenantId: string | null) {
+  const existingCustomers = await fetchAll(supabase, "customers", "customer_id", (q: any) => {
+    if (tenantId) q = q.eq("tenant_id", tenantId);
+    return q.order("created_at", { ascending: false });
+  });
+
+  let prefix = "ISP";
+  let maxNumber = 100000;
+  let usesPrefix = false;
+
+  for (const customer of existingCustomers || []) {
+    const prefixed = customer.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
+    if (prefixed) {
+      usesPrefix = true;
+      prefix = prefixed[1];
+      maxNumber = Math.max(maxNumber, parseInt(prefixed[2], 10) || 0);
+      continue;
+    }
+
+    const numeric = customer.customer_id?.match(/^(\d+)$/);
+    if (numeric) {
+      maxNumber = Math.max(maxNumber, parseInt(numeric[1], 10) || 0);
+    }
+  }
+
+  return { prefix, maxNumber, usesPrefix };
+}
+
 // Helper to update customer sync status
 async function updateSyncStatus(supabase: any, customerId: string, status: string) {
   await supabase.from("customers").update({ mikrotik_sync_status: status }).eq("id", customerId);
@@ -924,6 +990,245 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: true, results });
     }
 
+    // ─── IMPORT PACKAGES FROM MIKROTIK ──────────────────────────
+    if (req.method === "POST" && path === "import-packages") {
+      const body = await req.json().catch(() => ({}));
+      const requestedRouterId = body?.router_id || null;
+      const tenantId = body?.tenant_id || null;
+      const providedRouter = getProvidedRouter(body);
+      const supabase = getSupabaseAdmin();
+
+      const { routers, error: routerError } = await resolveImportRouters(supabase, requestedRouterId, providedRouter);
+      if (routerError) {
+        return jsonResponse({ success: false, error: routerError, imported: 0, skipped: 0, failed: 0, errors: [] });
+      }
+
+      const existingPackages = await fetchAll(supabase, "packages", "name, mikrotik_profile_name", (q: any) => {
+        if (tenantId) q = q.eq("tenant_id", tenantId);
+        return q;
+      });
+
+      const existingProfileNames = new Set<string>();
+      for (const pkg of existingPackages || []) {
+        if (pkg.name) existingProfileNames.add(String(pkg.name).trim().toLowerCase());
+        if (pkg.mikrotik_profile_name) existingProfileNames.add(String(pkg.mikrotik_profile_name).trim().toLowerCase());
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const router of routers) {
+        const routerConfig = {
+          ip_address: router.ip_address,
+          username: router.username,
+          password: router.password,
+          api_port: router.api_port || 8728,
+        };
+        const targetRouterId = normalizeTargetRouterId(router, requestedRouterId);
+
+        try {
+          await withRouter(routerConfig, async (mt) => {
+            const profileRes = await mt.send(["/ppp/profile/print"]);
+            const mkProfiles = parseItems(profileRes.sentences);
+
+            for (const profile of mkProfiles) {
+              const profileName = String(profile.name || "").trim();
+              const normalizedName = profileName.toLowerCase();
+
+              if (!profileName || profileName === "default" || profileName === "default-encryption") {
+                skipped++;
+                continue;
+              }
+
+              if (existingProfileNames.has(normalizedName)) {
+                skipped++;
+                continue;
+              }
+
+              try {
+                let downloadSpeed = 0;
+                let uploadSpeed = 0;
+                const rateLimit = String(profile["rate-limit"] || "").trim();
+                const mainRate = rateLimit.split(/\s+/)[0] || "";
+
+                if (mainRate.includes("/")) {
+                  const [rawUpload, rawDownload] = mainRate.split("/");
+                  uploadSpeed = parseSpeedValue(rawUpload || "");
+                  downloadSpeed = parseSpeedValue(rawDownload || "");
+                }
+
+                const insertData: any = {
+                  name: profileName,
+                  speed: `${downloadSpeed || 10} Mbps`,
+                  monthly_price: 0,
+                  download_speed: downloadSpeed || 10,
+                  upload_speed: uploadSpeed || 10,
+                  mikrotik_profile_name: profileName,
+                  router_id: targetRouterId,
+                  is_active: true,
+                };
+                if (tenantId) insertData.tenant_id = tenantId;
+
+                const { error: insertErr } = await supabase.from("packages").insert(insertData);
+                if (insertErr) {
+                  if (insertErr.message?.includes("duplicate")) {
+                    existingProfileNames.add(normalizedName);
+                    skipped++;
+                    continue;
+                  }
+                  throw new Error(insertErr.message);
+                }
+
+                existingProfileNames.add(normalizedName);
+                imported++;
+              } catch (e) {
+                failed++;
+                errors.push(`Import ${profileName}: ${getErrorMessage(e)}`);
+              }
+            }
+          });
+        } catch (e) {
+          failed++;
+          errors.push(`Router ${router.name || router.ip_address}: ${getErrorMessage(e)}`);
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        imported,
+        skipped,
+        failed,
+        errors: errors.slice(0, 20),
+      });
+    }
+
+    // ─── IMPORT USERS FROM MIKROTIK ─────────────────────────────
+    if (req.method === "POST" && path === "import-users") {
+      const body = await req.json().catch(() => ({}));
+      const requestedRouterId = body?.router_id || null;
+      const tenantId = body?.tenant_id || null;
+      const providedRouter = getProvidedRouter(body);
+      const supabase = getSupabaseAdmin();
+
+      const { routers, error: routerError } = await resolveImportRouters(supabase, requestedRouterId, providedRouter);
+      if (routerError) {
+        return jsonResponse({ success: false, error: routerError, imported: 0, skipped: 0, failed: 0, errors: [] });
+      }
+
+      const packageRows = await fetchAll(supabase, "packages", "id, name, mikrotik_profile_name, monthly_price, router_id", (q: any) => {
+        if (tenantId) q = q.eq("tenant_id", tenantId);
+        return q;
+      });
+
+      const existingCustomers = await fetchAll(supabase, "customers", "pppoe_username", (q: any) => {
+        if (tenantId) q = q.eq("tenant_id", tenantId);
+        return q.not("pppoe_username", "is", null);
+      });
+
+      const existingUsernames = new Set<string>();
+      for (const customer of existingCustomers || []) {
+        const username = String(customer.pppoe_username || "").trim();
+        if (username) existingUsernames.add(username);
+      }
+
+      const customerSeed = await resolveImportedCustomerSeed(supabase, tenantId);
+      let importCounter = customerSeed.maxNumber;
+
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const router of routers) {
+        const routerConfig = {
+          ip_address: router.ip_address,
+          username: router.username,
+          password: router.password,
+          api_port: router.api_port || 8728,
+        };
+        const targetRouterId = normalizeTargetRouterId(router, requestedRouterId);
+        const candidatePackages = targetRouterId
+          ? (packageRows || []).filter((pkg: any) => !pkg.router_id || pkg.router_id === targetRouterId)
+          : (packageRows || []);
+
+        try {
+          await withRouter(routerConfig, async (mt) => {
+            const secretsRes = await mt.send(["/ppp/secret/print"]);
+            const mkSecrets = parseItems(secretsRes.sentences);
+
+            for (const secret of mkSecrets) {
+              const username = String(secret.name || "").trim();
+              if (!username) {
+                skipped++;
+                continue;
+              }
+
+              if (existingUsernames.has(username)) {
+                skipped++;
+                continue;
+              }
+
+              const profileName = String(secret.profile || "default").trim();
+              const matchedPackage = candidatePackages.find((pkg: any) => {
+                return pkg.mikrotik_profile_name === profileName || pkg.name === profileName;
+              });
+
+              importCounter++;
+              const customerId = customerSeed.usesPrefix
+                ? `${customerSeed.prefix}-${String(importCounter).padStart(5, "0")}`
+                : String(Math.max(100001, importCounter)).padStart(6, "0");
+
+              const disabledValue = String(secret.disabled || "false").toLowerCase();
+              const isDisabled = disabledValue === "true" || disabledValue === "yes";
+
+              const insertData: any = {
+                customer_id: customerId,
+                name: String(secret.comment || username).trim() || username,
+                phone: "01000000000",
+                area: "Imported from MikroTik",
+                pppoe_username: username,
+                pppoe_password: secret.password || null,
+                ip_address: secret["remote-address"] || null,
+                router_id: targetRouterId,
+                package_id: matchedPackage?.id || null,
+                monthly_bill: matchedPackage?.monthly_price || 0,
+                status: isDisabled ? "inactive" : "active",
+                connection_status: isDisabled ? "suspended" : "active",
+                mikrotik_sync_status: "synced",
+              };
+              if (tenantId) insertData.tenant_id = tenantId;
+
+              const { error: insertErr } = await supabase.from("customers").insert(insertData);
+              if (insertErr) {
+                if (insertErr.message?.includes("duplicate")) {
+                  existingUsernames.add(username);
+                  skipped++;
+                  continue;
+                }
+                throw new Error(insertErr.message);
+              }
+
+              existingUsernames.add(username);
+              imported++;
+            }
+          });
+        } catch (e) {
+          failed++;
+          errors.push(`Router ${router.name || router.ip_address}: ${getErrorMessage(e)}`);
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        imported,
+        skipped,
+        failed,
+        errors: errors.slice(0, 20),
+      });
+    }
+
     // ─── ROUTER STATS (Online + Suspended from all routers) ────
     if (req.method === "POST" && path === "router-stats") {
       const supabase = getSupabaseAdmin();
@@ -1214,7 +1519,7 @@ Deno.serve(async (req: Request) => {
       if (!routerId) return jsonResponse({ success: false, error: "Missing router_id" }, 400);
 
       const supabase = getSupabaseAdmin();
-      const router = await getRouterById(supabase, routerId);
+      const router = getProvidedRouter(body) || await getRouterById(supabase, routerId);
       if (!router) return jsonResponse({ success: false, error: "Router not found" }, 404);
 
       try {
