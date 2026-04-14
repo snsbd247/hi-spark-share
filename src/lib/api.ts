@@ -79,7 +79,7 @@ api.interceptors.response.use(
           sessionStore.removeItem('super_admin_token');
           sessionStore.removeItem('super_admin_user');
           window.location.href = '/super/login';
-        } else if (path.startsWith('/reseller')) {
+        } else if (path.startsWith('/reseller/')) {
           sessionStore.removeItem('reseller_token');
           sessionStore.removeItem('reseller_user');
           window.location.href = '/reseller/login';
