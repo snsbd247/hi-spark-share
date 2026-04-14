@@ -451,8 +451,11 @@ class SuperAdminController extends Controller
             'tenant_id' => 'required|uuid|exists:tenants,id',
             'plan_id' => 'required|uuid|exists:saas_plans,id',
             'billing_cycle' => 'required|in:monthly,yearly',
-            'start_date' => 'required|date',
+            'start_date' => 'nullable|date',
         ]);
+
+        // Default start_date to today if not provided
+        $startDate = $request->start_date ?: now()->toDateString();
 
         $plan = SaasPlan::findOrFail($request->plan_id);
 

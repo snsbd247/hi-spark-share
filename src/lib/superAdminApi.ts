@@ -514,7 +514,12 @@ export const superAdminApi = {
 
       return result;
     }
-    return request("/subscriptions", { method: "POST", body: JSON.stringify(data) });
+    // Ensure start_date is always sent for the backend
+    const payload = {
+      ...data,
+      start_date: data.start_date || new Date().toISOString().split("T")[0],
+    };
+    return request("/subscriptions", { method: "POST", body: JSON.stringify(payload) });
   },
   updateSubscription: async (id: string, data: any) => {
     if (IS_LOVABLE) return sbUpdate("subscriptions", id, data);
