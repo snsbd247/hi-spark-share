@@ -127,6 +127,7 @@ export default function BandwidthAnalytics() {
   const formatMb = (mb: number) => mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -269,5 +270,6 @@ export default function BandwidthAnalytics() {
         </>
       )}
     </div>
+    </DashboardLayout>
   );
 }
