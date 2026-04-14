@@ -1097,28 +1097,40 @@ Deno.serve(async (req: Request) => {
             }
 
             // ── Step 5: Import MikroTik users → Software ──
-            for (const secret of mkSecrets) {
+            // Pre-generate customer IDs to avoid race conditions
+            // Determine tenant prefix by looking at existing customers
+            let customerPrefix = "ISP";
+            let maxCustomerNum = 0;
+            {
+              let custQuery = supabase.from("customers").select("customer_id").order("created_at", { ascending: false }).limit(100);
+              if (tenantId) custQuery = custQuery.eq("tenant_id", tenantId);
+              const { data: existingCusts } = await custQuery;
+              if (existingCusts?.length) {
+                // Detect prefix from existing customer IDs (e.g., "SN-00001" → prefix="SN")
+                for (const ec of existingCusts) {
+                  const m = ec.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
+                  if (m) {
+                    customerPrefix = m[1];
+                    const num = parseInt(m[2]);
+                    if (num > maxCustomerNum) maxCustomerNum = num;
+                  }
+                }
+              }
+            }
+
+            const secretsToImport = mkSecrets.filter((s: any) => s.name && !swUsernameMap[s.name]);
+            let importCounter = maxCustomerNum;
+
+            for (const secret of secretsToImport) {
               const username = secret.name;
-              if (!username || swUsernameMap[username]) continue; // Already exists in software
 
               try {
                 // Find matching package by profile name
                 const profileName = secret.profile || "default";
                 const matchedPkg = (allPackages || []).find((p: any) => p.mikrotik_profile_name === profileName);
 
-                // Generate customer_id
-                const { data: lastCust } = await supabase
-                  .from("customers")
-                  .select("customer_id")
-                  .order("customer_id", { ascending: false })
-                  .limit(1);
-
-                let nextNum = 1;
-                if (lastCust?.length) {
-                  const match = lastCust[0].customer_id.match(/ISP-(\d+)/);
-                  if (match) nextNum = parseInt(match[1]) + 1;
-                }
-                const customerId = `ISP-${String(nextNum).padStart(5, "0")}`;
+                importCounter++;
+                const customerId = `${customerPrefix}-${String(importCounter).padStart(5, "0")}`;
 
                 const newCustomer: any = {
                   customer_id: customerId,
