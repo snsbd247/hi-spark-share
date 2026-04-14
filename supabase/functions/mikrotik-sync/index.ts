@@ -1120,15 +1120,16 @@ Deno.serve(async (req: Request) => {
             let customerPrefix = "ISP";
             let maxCustomerNum = 0;
             {
-              let custQuery = supabase.from("customers").select("customer_id").order("created_at", { ascending: false }).limit(100);
-              if (tenantId) custQuery = custQuery.eq("tenant_id", tenantId);
-              const { data: existingCusts } = await custQuery;
+              // Fetch ALL customer IDs to find the true max number
+              const existingCusts = await fetchAll(supabase, "customers", "customer_id", (q: any) => {
+                if (tenantId) q = q.eq("tenant_id", tenantId);
+                return q.order("created_at", { ascending: false });
+              });
               if (existingCusts?.length) {
-                // Detect prefix from existing customer IDs (e.g., "SN-00001" → prefix="SN")
                 for (const ec of existingCusts) {
                   const m = ec.customer_id?.match(/^([A-Za-z]+)-(\d+)$/);
                   if (m) {
-                    customerPrefix = m[1];
+                    if (maxCustomerNum === 0) customerPrefix = m[1]; // Use first found prefix
                     const num = parseInt(m[2]);
                     if (num > maxCustomerNum) maxCustomerNum = num;
                   }
