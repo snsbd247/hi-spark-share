@@ -32,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
+      // Skip session validation on public pages (no admin context needed)
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      const publicPaths = ['/', '/landing', '/demo-request', '/admin/login', '/admin/forgot-password', '/reset-password', '/portal/login', '/reseller/login', '/super/login', '/pay'];
+      if (publicPaths.includes(path)) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       const token = sessionStore.getItem("admin_token");
       const savedUser = sessionStore.getItem("admin_user");
       if (token && savedUser) {
