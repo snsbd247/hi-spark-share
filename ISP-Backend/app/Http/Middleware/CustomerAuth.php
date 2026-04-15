@@ -24,7 +24,7 @@ class CustomerAuth
             return response()->json(['error' => 'Session expired'], 401);
         }
 
-        $request->merge(['portal_customer' => $session->customer]);
+        $request->attributes->set('portal_customer', $session->customer);
 
         return $next($request);
     }

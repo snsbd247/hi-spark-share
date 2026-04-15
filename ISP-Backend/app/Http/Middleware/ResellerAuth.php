@@ -32,10 +32,8 @@ class ResellerAuth
         // Touch session
         $session->touch();
 
-        $request->merge([
-            'reseller_user' => $reseller,
-            'reseller_session' => $session,
-        ]);
+        $request->attributes->set('reseller_user', $reseller);
+        $request->attributes->set('reseller_session', $session);
 
         return $next($request);
     }

@@ -211,6 +211,22 @@ class SuperAdminController extends Controller
             }
         }
 
+        $this->logSuperAdminAction(
+            $request,
+            'create',
+            'tenants',
+            (string) $tenant->id,
+            null,
+            $tenant->toArray(),
+            "Created tenant {$tenant->name} ({$tenant->subdomain})",
+            null,
+            [
+                'tenant_name' => $tenant->name,
+                'tenant_subdomain' => $tenant->subdomain,
+                'tenant_email' => $tenant->email,
+            ]
+        );
+
         return response()->json([
             'success' => true,
             'tenant' => $tenant,
@@ -221,6 +237,7 @@ class SuperAdminController extends Controller
     public function updateTenant(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+        $oldTenant = $tenant->toArray();
 
         $data = $request->only([
             'name', 'email', 'phone', 'logo_url', 'status', 'settings',
@@ -238,12 +255,31 @@ class SuperAdminController extends Controller
 
         $tenant->update($data);
 
-        return response()->json($tenant->load('domains'));
+        $updatedTenant = $tenant->load('domains');
+
+        $this->logSuperAdminAction(
+            $request,
+            'edit',
+            'tenants',
+            (string) $tenant->id,
+            $oldTenant,
+            $updatedTenant->toArray(),
+            "Updated tenant {$updatedTenant->name} ({$updatedTenant->subdomain})",
+            null,
+            [
+                'tenant_name' => $updatedTenant->name,
+                'tenant_subdomain' => $updatedTenant->subdomain,
+                'tenant_email' => $updatedTenant->email,
+            ]
+        );
+
+        return response()->json($updatedTenant);
     }
 
-    public function suspendTenant(string $id)
+    public function suspendTenant(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+        $oldTenant = $tenant->toArray();
         $tenant->update(['status' => 'suspended']);
 
         // Suspend active subscriptions
@@ -253,15 +289,46 @@ class SuperAdminController extends Controller
 
         TenantResolver::flushTenantCache($tenant);
 
+        $this->logSuperAdminAction(
+            $request,
+            'edit',
+            'tenants',
+            (string) $tenant->id,
+            $oldTenant,
+            $tenant->fresh()->toArray(),
+            "Suspended tenant {$tenant->name} ({$tenant->subdomain})",
+            null,
+            [
+                'tenant_name' => $tenant->name,
+                'tenant_subdomain' => $tenant->subdomain,
+            ]
+        );
+
         return response()->json(['success' => true, 'message' => 'Tenant suspended']);
     }
 
-    public function activateTenant(string $id)
+    public function activateTenant(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+        $oldTenant = $tenant->toArray();
         $tenant->update(['status' => 'active']);
 
         TenantResolver::flushTenantCache($tenant);
+
+        $this->logSuperAdminAction(
+            $request,
+            'edit',
+            'tenants',
+            (string) $tenant->id,
+            $oldTenant,
+            $tenant->fresh()->toArray(),
+            "Activated tenant {$tenant->name} ({$tenant->subdomain})",
+            null,
+            [
+                'tenant_name' => $tenant->name,
+                'tenant_subdomain' => $tenant->subdomain,
+            ]
+        );
 
         return response()->json(['success' => true, 'message' => 'Tenant activated']);
     }
@@ -374,44 +441,86 @@ class SuperAdminController extends Controller
     protected function logTenantDeletion(Request $request, array $tenantSnapshot, string $tenantId): void
     {
         try {
-            $admin = $request->get('super_admin');
-            $adminId = (string) ($admin->id ?? '00000000-0000-0000-0000-000000000000');
-            $adminName = $admin->name ?? $admin->email ?? 'Super Admin';
             $tenantName = $tenantSnapshot['name'] ?? 'Unknown tenant';
             $tenantSubdomain = $tenantSnapshot['subdomain'] ?? null;
 
-            EnhancedAuditLogger::log(
+            $this->logSuperAdminAction(
+                $request,
                 'delete',
                 'tenants',
                 $tenantId,
                 $tenantSnapshot,
                 null,
-                'tenants',
-                $adminId,
-                $adminName,
-                null,
-                $request
-            );
-
-            ActivityLogger::log(
-                'delete',
-                'tenants',
                 $tenantSubdomain
                     ? "Deleted tenant {$tenantName} ({$tenantSubdomain})"
                     : "Deleted tenant {$tenantName}",
-                $adminId,
                 null,
                 [
-                    'table' => 'tenants',
-                    'record_id' => $tenantId,
                     'tenant_name' => $tenantSnapshot['name'] ?? null,
                     'tenant_subdomain' => $tenantSnapshot['subdomain'] ?? null,
                     'tenant_email' => $tenantSnapshot['email'] ?? null,
                 ],
-                $request
             );
         } catch (\Throwable $e) {
             Log::warning('Tenant deletion log failed: ' . $e->getMessage());
+        }
+    }
+
+    protected function getSuperAdminActor(Request $request): array
+    {
+        $admin = $request->attributes->get('super_admin')
+            ?? $request->get('super_admin')
+            ?? $request->attributes->get('admin_user')
+            ?? $request->get('admin_user');
+
+        return [
+            'id' => (string) ($admin->id ?? '00000000-0000-0000-0000-000000000000'),
+            'name' => $admin->name ?? $admin->full_name ?? $admin->email ?? 'Super Admin',
+        ];
+    }
+
+    protected function logSuperAdminAction(
+        Request $request,
+        string $action,
+        string $table,
+        string $recordId,
+        ?array $oldData = null,
+        ?array $newData = null,
+        ?string $description = null,
+        ?string $tenantId = null,
+        ?array $metadata = null
+    ): void {
+        try {
+            $actor = $this->getSuperAdminActor($request);
+            $module = EnhancedAuditLogger::guessModulePublic($table);
+
+            EnhancedAuditLogger::log(
+                $action,
+                $table,
+                $recordId,
+                $oldData,
+                $newData,
+                $module,
+                $actor['id'],
+                $actor['name'],
+                $tenantId,
+                $request
+            );
+
+            ActivityLogger::log(
+                $action,
+                $module,
+                $description ?? ucfirst($action) . " {$table}",
+                $actor['id'],
+                $tenantId,
+                array_merge([
+                    'table' => $table,
+                    'record_id' => $recordId,
+                ], $metadata ?? []),
+                $request
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Super admin action log failed: ' . $e->getMessage());
         }
     }
 
@@ -713,22 +822,39 @@ class SuperAdminController extends Controller
      */
     public function updateSmsSettings(Request $request)
     {
+        $payload = $request->only([
+            'api_token', 'sender_id', 'admin_cost_rate',
+            'sms_on_bill_generate', 'sms_on_payment', 'sms_on_registration',
+            'sms_on_suspension', 'sms_on_reminder', 'sms_on_new_customer_bill',
+            'whatsapp_enabled', 'whatsapp_token', 'whatsapp_phone_id',
+        ]);
+
         $settings = SmsSetting::withoutGlobalScopes()->first();
+        $oldSettings = $settings?->toArray();
+
         if (!$settings) {
             $settings = new SmsSetting();
-            $settings->forceFill($request->all());
+            $settings->forceFill($payload);
             $settings->save();
         } else {
-            $settings->forceFill($request->only([
-                'api_token', 'sender_id', 'admin_cost_rate',
-                'sms_on_bill_generate', 'sms_on_payment', 'sms_on_registration',
-                'sms_on_suspension', 'sms_on_new_customer_bill',
-                'whatsapp_enabled', 'whatsapp_token', 'whatsapp_phone_id',
-            ]));
+            $settings->forceFill($payload);
             $settings->updated_at = now();
             $settings->save();
         }
-        return response()->json($settings->fresh());
+
+        $freshSettings = $settings->fresh();
+
+        $this->logSuperAdminAction(
+            $request,
+            $oldSettings ? 'edit' : 'create',
+            'sms_settings',
+            (string) $freshSettings->id,
+            $oldSettings,
+            $freshSettings->toArray(),
+            $oldSettings ? 'Updated global SMS settings' : 'Created global SMS settings'
+        );
+
+        return response()->json($freshSettings);
     }
 
     /**
