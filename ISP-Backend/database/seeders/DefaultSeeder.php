@@ -421,7 +421,7 @@ class DefaultSeeder extends Seeder
             $accountId = $this->coaCodeToId[$code] ?? null;
             if ($accountId) {
                 SystemSetting::updateOrCreate(
-                    ['setting_key' => $key],
+                    ['setting_key' => $key, 'tenant_id' => $this->defaultTenantId],
                     ['setting_value' => $accountId]
                 );
             }
