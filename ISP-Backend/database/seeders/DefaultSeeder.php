@@ -263,6 +263,23 @@ class DefaultSeeder extends Seeder
         }
     }
 
+    // ── SMTP Settings ────────────────────────────────────
+    private function seedSmtpSettings(): void
+    {
+        if (SmtpSetting::count() === 0) {
+            SmtpSetting::create([
+                'host' => 'smtp.gmail.com',
+                'port' => 465,
+                'username' => 'lifewithsagor@gmail.com',
+                'password' => '',
+                'encryption' => 'ssl',
+                'from_email' => 'lifewithsagor@gmail.com',
+                'from_name' => 'SmartISPApp',
+                'status' => 'active',
+            ]);
+        }
+    }
+
     // ── Email Templates (as system_settings) ─────────────
     private function seedEmailTemplates(): void
     {
