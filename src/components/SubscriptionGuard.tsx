@@ -112,7 +112,8 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
   };
 
   const handleBackToLogin = () => {
-    sessionStore.clear();
+    sessionStore.removeItem("admin_user");
+    sessionStore.removeItem("admin_token");
     window.location.href = "/login";
   };
 

@@ -2375,6 +2375,20 @@ const en = {
     connection: "Connection",
   },
 
+  subscriptionGuard: {
+    expired: "Subscription Expired",
+    noSubscription: "No Active Subscription",
+    expiredMessage: "Your package subscription has expired. Please contact the admin.",
+    noSubscriptionMessage: "You don't have any active subscription. Please contact the admin.",
+    refresh: "Refresh",
+    backToLogin: "Back to Login",
+  },
+
+  limits: {
+    customerLimitReached: "Customer limit reached! Your current plan allows a maximum of {max} customers.",
+    userLimitReached: "User limit reached! Your current plan allows a maximum of {max} users.",
+  },
+
 };
 
 export default en;

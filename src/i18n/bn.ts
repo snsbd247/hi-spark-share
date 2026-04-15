@@ -2344,6 +2344,20 @@ const bn: Translations = {
     bill: "বিল",
     connection: "সংযোগ",
   },
+
+  subscriptionGuard: {
+    expired: "সাবস্ক্রিপশনের মেয়াদ শেষ",
+    noSubscription: "কোনো সক্রিয় সাবস্ক্রিপশন নেই",
+    expiredMessage: "আপনার প্যাকেজ সাবস্ক্রিপশনের মেয়াদ শেষ হয়ে গেছে। দয়া করে এডমিনের সাথে যোগাযোগ করুন।",
+    noSubscriptionMessage: "আপনার কোনো সক্রিয় সাবস্ক্রিপশন নেই। দয়া করে এডমিনের সাথে যোগাযোগ করুন।",
+    refresh: "রিফ্রেশ",
+    backToLogin: "লগইন পেজে ফিরে যান",
+  },
+
+  limits: {
+    customerLimitReached: "কাস্টমার লিমিট শেষ! আপনার বর্তমান প্ল্যানে সর্বোচ্চ {max} জন কাস্টমার যোগ করা যায়।",
+    userLimitReached: "ইউজার লিমিট শেষ! আপনার বর্তমান প্ল্যানে সর্বোচ্চ {max} জন ইউজার যোগ করা যায়।",
+  },
 };
 
 export default bn;
