@@ -270,14 +270,17 @@ class DefaultSeeder extends Seeder
             'email_tpl_account_activation' => "প্রিয় {CustomerName},\n\nআপনার একাউন্ট সফলভাবে সক্রিয় করা হয়েছে! এখন থেকে আপনি আমাদের ইন্টারনেট সেবা উপভোগ করতে পারবেন।\n\nধন্যবাদ,\n{CompanyName} টিম",
         ];
         foreach ($templates as $key => $value) {
-            SystemSetting::firstOrCreate(['setting_key' => $key], ['setting_value' => $value]);
+            SystemSetting::firstOrCreate(
+                ['setting_key' => $key, 'tenant_id' => $this->defaultTenantId],
+                ['setting_value' => $value]
+            );
         }
     }
 
     // ── Packages ─────────────────────────────────────────
     private function seedPackages(): void
     {
-        if (Package::count() === 0) {
+        if (Package::where('tenant_id', $this->defaultTenantId)->count() === 0) {
             $packages = [
                 ['name' => 'Basic 10Mbps', 'speed' => '10 Mbps', 'monthly_price' => 500, 'download_speed' => 10, 'upload_speed' => 10],
                 ['name' => 'Standard 20Mbps', 'speed' => '20 Mbps', 'monthly_price' => 800, 'download_speed' => 20, 'upload_speed' => 20],
@@ -285,6 +288,7 @@ class DefaultSeeder extends Seeder
                 ['name' => 'Ultra 100Mbps', 'speed' => '100 Mbps', 'monthly_price' => 2000, 'download_speed' => 100, 'upload_speed' => 100],
             ];
             foreach ($packages as $pkg) {
+                $pkg['tenant_id'] = $this->defaultTenantId;
                 Package::create($pkg);
             }
         }
