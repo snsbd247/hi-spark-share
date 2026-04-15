@@ -13,7 +13,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Transaction;
-use App\Models\Vendor;
+use App\Models\Supplier;
 use App\Services\AccountingService;
 use App\Services\InventoryService;
 use App\Services\SalesService;
@@ -201,7 +201,7 @@ class ReportController extends Controller
      */
     public function vendorDues()
     {
-        $vendors = Vendor::where('total_due', '>', 0)
+        $vendors = Supplier::where('total_due', '>', 0)
             ->orderBy('total_due', 'desc')
             ->get(['id', 'name', 'phone', 'company', 'total_due']);
 
