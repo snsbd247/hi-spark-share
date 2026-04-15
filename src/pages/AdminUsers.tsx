@@ -222,7 +222,7 @@ export default function AdminUsers() {
             password_hash: hashPassword(form.password),
             status: "active",
             must_change_password: true,
-            tenant_id: currentProfile?.tenant_id || null,
+            tenant_id: adminProfile?.tenant_id || null,
           });
           if (insertError) throw insertError;
           if (form.role) {
