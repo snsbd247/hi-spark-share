@@ -7,6 +7,8 @@ use App\Models\Expense;
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Http\Controllers\Controller;
+use App\Services\EnhancedAuditLogger;
+use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
