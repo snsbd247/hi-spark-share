@@ -52,7 +52,6 @@ class GenericCrudController extends Controller
         'tenants' => \App\Models\Tenant::class,
         'domains' => \App\Models\Domain::class,
         // Accounting & Inventory
-        'vendors' => \App\Models\Vendor::class,
         'products' => \App\Models\Product::class,
         'accounts' => \App\Models\Account::class,
         'transactions' => \App\Models\Transaction::class,
@@ -96,7 +95,7 @@ class GenericCrudController extends Controller
         'login_histories' => \App\Models\LoginHistory::class,
         'modules' => \App\Models\Module::class,
         'online_sessions' => \App\Models\OnlineSession::class,
-        'billing_config' => \App\Models\SystemSetting::class,
+        'billing_config' => \App\Models\BillingConfig::class,
         'sms_wallets' => \App\Models\SmsWallet::class,
         'sms_transactions' => \App\Models\SmsTransaction::class,
         'network_nodes' => \App\Models\NetworkNode::class,
