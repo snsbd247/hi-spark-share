@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { activateSubscriptionOnPaid } from "@/lib/subscriptionHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db, supabase } from "@/integrations/supabase/client";
 import { IS_LOVABLE } from "@/lib/environment";

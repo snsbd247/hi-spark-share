@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { activateSubscriptionOnPaid } from "@/lib/subscriptionHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
