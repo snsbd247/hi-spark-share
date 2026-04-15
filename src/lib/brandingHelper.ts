@@ -20,16 +20,16 @@ export interface BrandingData {
 }
 
 const DEFAULT_BRANDING: BrandingData = {
-  software_name: "Smart ISP",
-  company_name: "Smart ISP",
-  address: "",
-  support_email: "",
-  support_phone: "",
+  software_name: "Smart ISP APP",
+  company_name: "Smart ISP APP",
+  address: "57/1 Omar Ali Lane, Wapda Road, West Rampura, Dhaka- 1219, Bangladesh",
+  support_email: "support@smartispapp.com",
+  support_phone: "01315556633",
   logo_url: null,
-  footer_text: "Thank you for your business!",
-  copyright_text: "",
-  email: "",
-  mobile: "",
+  footer_text: "Smart ISP APP - Complete ISP Management Solution",
+  copyright_text: "© 2026 Smart ISP APP. All rights reserved.",
+  email: "info@smartispapp.com",
+  mobile: "01717589069",
 };
 
 let cachedBranding: BrandingData | null = null;
