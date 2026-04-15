@@ -94,3 +94,20 @@ export async function toggleCustomerPppoe(
   const { data } = await api.post(`/mikrotik/${action}`, body);
   return data;
 }
+
+export async function removeCustomerPppoe(options: ToggleCustomerPppoeOptions) {
+  const body = {
+    customer_id: options.customerId,
+    pppoe_username: options.pppoeUsername,
+    router_id: options.routerId,
+  };
+
+  if (IS_LOVABLE) {
+    const { data, error } = await supabaseDirect.functions.invoke("mikrotik-sync/remove-pppoe", { body });
+    if (error) throw error;
+    return data;
+  }
+
+  const { data } = await api.post("/mikrotik/remove-pppoe", body);
+  return data;
+}
