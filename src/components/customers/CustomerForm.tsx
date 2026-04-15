@@ -338,7 +338,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           const { checkCustomerLimit } = await import("@/lib/subscriptionHelpers");
           const limitCheck = await checkCustomerLimit(tenantId);
           if (!limitCheck.allowed) {
-            toast.error(`Customer limit reached! Max: ${limitCheck.max}`);
+            toast.error((t as any).limits?.customerLimitReached?.replace("{max}", String(limitCheck.max)) || `Customer limit reached! Max: ${limitCheck.max}`);
             return;
           }
         }
