@@ -252,7 +252,10 @@ class DefaultSeeder extends Seeder
             ['name' => 'Package Upgrade', 'message' => 'Dear {CustomerName}, your internet package has been upgraded. Enjoy faster speed!'],
         ];
         foreach ($templates as $tpl) {
-            SmsTemplate::firstOrCreate(['name' => $tpl['name']], ['message' => $tpl['message']]);
+            SmsTemplate::firstOrCreate(
+                ['name' => $tpl['name'], 'tenant_id' => $this->defaultTenantId],
+                ['message' => $tpl['message']]
+            );
         }
     }
 
