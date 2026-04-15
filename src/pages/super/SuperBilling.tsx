@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { activateSubscriptionOnPaid } from "@/lib/subscriptionHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db, supabase } from "@/integrations/supabase/client";
 import { IS_LOVABLE } from "@/lib/environment";
@@ -133,31 +134,12 @@ export default function SuperBilling() {
     mutationFn: async (invoiceId: string) => {
       const invoice = invoices.find((i: any) => i.id === invoiceId);
       if (!invoice) throw new Error("Invoice not found");
-
-      // Mark paid
-      await (db.from as any)("subscription_invoices").update({
-        status: "paid",
-        paid_date: new Date().toISOString(),
-        payment_method: "manual",
-      }).eq("id", invoiceId);
-
-      // Extend tenant plan
-      const newExpiry = new Date();
-      if (invoice.billing_cycle === "yearly") {
-        newExpiry.setFullYear(newExpiry.getFullYear() + 1);
-      } else {
-        newExpiry.setMonth(newExpiry.getMonth() + 1);
-      }
-
-      await (db.from as any)("tenants").update({
-        plan_expire_date: newExpiry.toISOString().split("T")[0],
+      await activateSubscriptionOnPaid({
+        id: invoiceId,
+        tenant_id: invoice.tenant_id,
         plan_id: invoice.plan_id,
-        status: "active",
-      }).eq("id", invoice.tenant_id);
-
-      // Update subscription
-      await (db.from as any)("subscriptions").update({ status: "active" })
-        .eq("tenant_id", invoice.tenant_id).eq("status", "expired");
+        billing_cycle: invoice.billing_cycle,
+      });
     },
     onSuccess: () => {
       toast.success("Invoice marked as paid, plan extended!");
@@ -252,12 +234,26 @@ export default function SuperBilling() {
         status: form.status,
       }).eq("id", form.id);
       if (error) throw error;
+
+      // If status changed to paid, activate subscription
+      if (form.status === "paid") {
+        const invoice = invoices.find((i: any) => i.id === form.id);
+        if (invoice && invoice.status !== "paid") {
+          await activateSubscriptionOnPaid({
+            id: form.id,
+            tenant_id: invoice.tenant_id,
+            plan_id: invoice.plan_id,
+            billing_cycle: form.billing_cycle || invoice.billing_cycle,
+          });
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Invoice updated");
       setEditOpen(false);
       setEditInv(null);
       qc.invalidateQueries({ queryKey: ["subscription-invoices"] });
+      qc.invalidateQueries({ queryKey: ["billing-tenants"] });
     },
     onError: (e: any) => toast.error(e.message),
   });

@@ -193,12 +193,24 @@ export default function AdminUsers() {
         } else {
           if (!form.password) { toast.error("Password is required"); setLoading(false); return; }
           if (!form.username) { toast.error("Username is required"); setLoading(false); return; }
+
+          // Check user limit before creating
+          const adminUser = JSON.parse(sessionStore.getItem("admin_user") || "{}");
+          const { data: adminProfile } = await db.from("profiles").select("tenant_id").eq("id", adminUser.id).maybeSingle();
+          const currentTenantId = adminProfile?.tenant_id;
+          if (currentTenantId) {
+            const { checkUserLimit } = await import("@/lib/subscriptionHelpers");
+            const limitCheck = await checkUserLimit(currentTenantId);
+            if (!limitCheck.allowed) {
+              toast.error((t as any).limits?.userLimitReached?.replace("{max}", String(limitCheck.max)) || `User limit reached! Max: ${limitCheck.max}`);
+              setLoading(false);
+              return;
+            }
+          }
           // Check username uniqueness
           const { data: existing } = await db.from("profiles").select("id").eq("username", form.username).maybeSingle();
           if (existing) { toast.error("Username already taken"); setLoading(false); return; }
           const newId = crypto.randomUUID();
-          const currentUser = JSON.parse(sessionStore.getItem("admin_user") || "{}");
-          const { data: currentProfile } = await db.from("profiles").select("tenant_id").eq("id", currentUser.id).maybeSingle();
           const { error: insertError } = await db.from("profiles").insert({
             id: newId,
             full_name: form.full_name,
@@ -210,7 +222,7 @@ export default function AdminUsers() {
             password_hash: hashPassword(form.password),
             status: "active",
             must_change_password: true,
-            tenant_id: currentProfile?.tenant_id || null,
+            tenant_id: adminProfile?.tenant_id || null,
           });
           if (insertError) throw insertError;
           if (form.role) {

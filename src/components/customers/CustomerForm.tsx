@@ -16,6 +16,7 @@ import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
 import { syncCustomerPppoe, toggleCustomerPppoe, removeCustomerPppoe } from "@/lib/mikrotikClient";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useGeoDivisions, useGeoDistricts, useGeoUpazilas, useGeoDivisionByName, useGeoDistrictByName } from "@/hooks/useGeoData";
 
 interface CustomerFormProps {
@@ -42,6 +43,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
   const isEdit = !!customer;
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { t } = useLanguage();
   const tenantId = user?.tenant_id;
   const { data: invoiceFooter } = useInvoiceFooter();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -331,6 +333,16 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           }
         }
       } else {
+        // Check customer limit before creating
+        if (tenantId) {
+          const { checkCustomerLimit } = await import("@/lib/subscriptionHelpers");
+          const limitCheck = await checkCustomerLimit(tenantId);
+          if (!limitCheck.allowed) {
+            toast.error((t as any).limits?.customerLimitReached?.replace("{max}", String(limitCheck.max)) || `Customer limit reached! Max: ${limitCheck.max}`);
+            return;
+          }
+        }
+
         // Auto-generate 6-digit customer_id
         const { data: lastCustomer } = await db
           .from("customers")

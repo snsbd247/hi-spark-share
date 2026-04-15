@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { activateSubscriptionOnPaid } from "@/lib/subscriptionHelpers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { db } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -100,6 +101,19 @@ export default function TenantInvoicesTab({ tenantId, tenantName }: Props) {
         status: form.status,
       }).eq("id", form.id);
       if (error) throw error;
+
+      // If status changed to paid, activate subscription
+      if (form.status === "paid") {
+        const invoice = invoices.find((i: any) => i.id === form.id);
+        if (invoice && invoice.status !== "paid") {
+          await activateSubscriptionOnPaid({
+            id: form.id,
+            tenant_id: invoice.tenant_id || tenantId,
+            plan_id: invoice.plan_id,
+            billing_cycle: form.billing_cycle || invoice.billing_cycle,
+          });
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Invoice updated");
