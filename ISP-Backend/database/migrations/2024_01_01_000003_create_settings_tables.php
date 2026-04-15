@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('general_settings', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id')->nullable()->index();
-            $table->string('site_name')->default('Smart ISP');
+            $table->string('site_name')->default('Smart ISP APP');
             $table->string('logo_url')->nullable();
             $table->string('login_logo_url')->nullable();
             $table->string('favicon_url')->nullable();
