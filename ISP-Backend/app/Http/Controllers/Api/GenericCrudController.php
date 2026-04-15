@@ -726,4 +726,56 @@ class GenericCrudController extends Controller
             return response()->json(['message' => 'Error deleting record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
         }
     }
+
+    /**
+     * Log CRUD actions to both audit_logs and activity_logs.
+     */
+    protected function logCrudAction(string $action, string $table, string $recordId, ?array $oldData, ?array $newData, Request $request): void
+    {
+        $normalizedTable = str_replace('-', '_', $table);
+
+        // Skip logging for log tables themselves to avoid infinite loops
+        $skipTables = ['audit_logs', 'activity_logs', 'login_histories', 'admin_login_logs', 'backup_logs'];
+        if (in_array($normalizedTable, $skipTables)) {
+            return;
+        }
+
+        try {
+            $user = $request->attributes->get('auth_user');
+            $userId = $user->id ?? $request->header('X-User-Id') ?? '00000000-0000-0000-0000-000000000000';
+            $userName = $user->full_name ?? $request->header('X-User-Name') ?? 'System';
+            $tenantId = $request->header('X-Tenant-Id') ?? ($user->tenant_id ?? null);
+
+            EnhancedAuditLogger::log(
+                $action,
+                $normalizedTable,
+                (string) $recordId,
+                $oldData,
+                $newData,
+                null,
+                (string) $userId,
+                $userName,
+                $tenantId,
+                $request
+            );
+
+            $descriptions = [
+                'create' => "Created a new record in {$normalizedTable}",
+                'edit'   => "Updated record {$recordId} in {$normalizedTable}",
+                'delete' => "Deleted record {$recordId} from {$normalizedTable}",
+            ];
+
+            ActivityLogger::log(
+                $action,
+                EnhancedAuditLogger::guessModulePublic($normalizedTable),
+                $descriptions[$action] ?? "{$action} on {$normalizedTable}",
+                (string) $userId,
+                $tenantId,
+                ['table' => $normalizedTable, 'record_id' => $recordId],
+                $request
+            );
+        } catch (\Throwable $e) {
+            Log::warning("CRUD audit log failed: " . $e->getMessage());
+        }
+    }
 }
