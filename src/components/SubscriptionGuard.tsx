@@ -114,7 +114,7 @@ export function SubscriptionGuard({ children }: { children: ReactNode }) {
   const handleBackToLogin = () => {
     sessionStore.removeItem("admin_user");
     sessionStore.removeItem("admin_token");
-    window.location.href = "/login";
+    window.location.href = "/admin/login";
   };
 
   const title = isExpired

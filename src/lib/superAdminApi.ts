@@ -475,7 +475,7 @@ export const superAdminApi = {
         ? new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() + 1)).toISOString().split("T")[0]
         : new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString().split("T")[0];
 
-      // Create subscription
+      // Create subscription with pending status (will activate when invoice is paid)
       const result = await sbInsert("subscriptions", {
         tenant_id: data.tenant_id,
         plan_id: data.plan_id,
@@ -483,7 +483,7 @@ export const superAdminApi = {
         start_date: startDate,
         end_date: endDate,
         amount,
-        status: "active",
+        status: "pending",
       });
 
       // Auto-create subscription invoice
@@ -505,11 +505,10 @@ export const superAdminApi = {
         console.warn("Auto invoice creation failed:", e);
       }
 
-      // Update tenant plan_expire_date and plan_id
+      // Update tenant plan_id but keep status inactive until invoice is paid
       await sbUpdate("tenants", data.tenant_id, {
         plan_expire_date: endDate,
         plan_id: data.plan_id,
-        status: "active",
       });
 
       return result;
