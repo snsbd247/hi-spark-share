@@ -297,7 +297,7 @@ class DefaultSeeder extends Seeder
     // ── Chart of Accounts (ISP-specific hierarchy) ───────
     private function seedChartOfAccounts(): void
     {
-        if (Account::count() > 0) return;
+        if (Account::where('tenant_id', $this->defaultTenantId)->count() > 0) return;
 
         $coa = [
             // Assets (1000)
@@ -366,6 +366,7 @@ class DefaultSeeder extends Seeder
         foreach ($coa as $acct) {
             $parentId = $acct['parent_code'] ? ($codeToId[$acct['parent_code']] ?? null) : null;
             $created = Account::create([
+                'tenant_id' => $this->defaultTenantId,
                 'name' => $acct['name'],
                 'code' => $acct['code'],
                 'type' => $acct['type'],
