@@ -84,7 +84,14 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
           });
           if (res.ok) {
             const json = await res.json();
-            data = Array.isArray(json?.data) ? json.data[0] : (json?.data || json);
+            // paginate=false returns plain array [...], paginated returns {data: [...]}
+            if (Array.isArray(json)) {
+              data = json[0] || null;
+            } else if (Array.isArray(json?.data)) {
+              data = json.data[0] || null;
+            } else {
+              data = json?.data || json || null;
+            }
           }
         } catch {
           // fallback to db
