@@ -3,16 +3,17 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeSalaryStructure extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     protected $table = 'employee_salary_structure';
 
     protected $fillable = [
-        'id', 'employee_id', 'basic_salary', 'house_rent',
+        'id', 'tenant_id', 'employee_id', 'basic_salary', 'house_rent',
         'medical', 'conveyance', 'other_allowance', 'effective_from',
     ];
 

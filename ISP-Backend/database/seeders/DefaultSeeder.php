@@ -185,8 +185,9 @@ class DefaultSeeder extends Seeder
     // ── General Settings ─────────────────────────────────
     private function seedGeneralSettings(): void
     {
-        if (GeneralSetting::count() === 0) {
+        if (GeneralSetting::where('tenant_id', $this->defaultTenantId)->count() === 0) {
             GeneralSetting::create([
+                'tenant_id' => $this->defaultTenantId,
                 'site_name' => 'Smart ISP',
                 'primary_color' => '#3B82F6',
                 'email' => 'info@smartispapp.com',
@@ -215,15 +216,19 @@ class DefaultSeeder extends Seeder
             'branding_copyright_text' => '© {year} Smart ISP. All rights reserved.',
         ];
         foreach ($settings as $key => $value) {
-            SystemSetting::firstOrCreate(['setting_key' => $key], ['setting_value' => $value]);
+            SystemSetting::firstOrCreate(
+                ['setting_key' => $key, 'tenant_id' => $this->defaultTenantId],
+                ['setting_value' => $value]
+            );
         }
     }
 
     // ── SMS Settings ─────────────────────────────────────
     private function seedSmsSettings(): void
     {
-        if (SmsSetting::count() === 0) {
+        if (SmsSetting::where('tenant_id', $this->defaultTenantId)->count() === 0) {
             SmsSetting::create([
+                'tenant_id' => $this->defaultTenantId,
                 'sms_on_bill_generate' => true,
                 'sms_on_payment' => true,
                 'sms_on_registration' => true,
@@ -247,7 +252,10 @@ class DefaultSeeder extends Seeder
             ['name' => 'Package Upgrade', 'message' => 'Dear {CustomerName}, your internet package has been upgraded. Enjoy faster speed!'],
         ];
         foreach ($templates as $tpl) {
-            SmsTemplate::firstOrCreate(['name' => $tpl['name']], ['message' => $tpl['message']]);
+            SmsTemplate::firstOrCreate(
+                ['name' => $tpl['name'], 'tenant_id' => $this->defaultTenantId],
+                ['message' => $tpl['message']]
+            );
         }
     }
 
@@ -262,14 +270,17 @@ class DefaultSeeder extends Seeder
             'email_tpl_account_activation' => "প্রিয় {CustomerName},\n\nআপনার একাউন্ট সফলভাবে সক্রিয় করা হয়েছে! এখন থেকে আপনি আমাদের ইন্টারনেট সেবা উপভোগ করতে পারবেন।\n\nধন্যবাদ,\n{CompanyName} টিম",
         ];
         foreach ($templates as $key => $value) {
-            SystemSetting::firstOrCreate(['setting_key' => $key], ['setting_value' => $value]);
+            SystemSetting::firstOrCreate(
+                ['setting_key' => $key, 'tenant_id' => $this->defaultTenantId],
+                ['setting_value' => $value]
+            );
         }
     }
 
     // ── Packages ─────────────────────────────────────────
     private function seedPackages(): void
     {
-        if (Package::count() === 0) {
+        if (Package::where('tenant_id', $this->defaultTenantId)->count() === 0) {
             $packages = [
                 ['name' => 'Basic 10Mbps', 'speed' => '10 Mbps', 'monthly_price' => 500, 'download_speed' => 10, 'upload_speed' => 10],
                 ['name' => 'Standard 20Mbps', 'speed' => '20 Mbps', 'monthly_price' => 800, 'download_speed' => 20, 'upload_speed' => 20],
@@ -277,6 +288,7 @@ class DefaultSeeder extends Seeder
                 ['name' => 'Ultra 100Mbps', 'speed' => '100 Mbps', 'monthly_price' => 2000, 'download_speed' => 100, 'upload_speed' => 100],
             ];
             foreach ($packages as $pkg) {
+                $pkg['tenant_id'] = $this->defaultTenantId;
                 Package::create($pkg);
             }
         }
@@ -285,7 +297,7 @@ class DefaultSeeder extends Seeder
     // ── Chart of Accounts (ISP-specific hierarchy) ───────
     private function seedChartOfAccounts(): void
     {
-        if (Account::count() > 0) return;
+        if (Account::where('tenant_id', $this->defaultTenantId)->count() > 0) return;
 
         $coa = [
             // Assets (1000)
@@ -354,6 +366,7 @@ class DefaultSeeder extends Seeder
         foreach ($coa as $acct) {
             $parentId = $acct['parent_code'] ? ($codeToId[$acct['parent_code']] ?? null) : null;
             $created = Account::create([
+                'tenant_id' => $this->defaultTenantId,
                 'name' => $acct['name'],
                 'code' => $acct['code'],
                 'type' => $acct['type'],
@@ -408,7 +421,7 @@ class DefaultSeeder extends Seeder
             $accountId = $this->coaCodeToId[$code] ?? null;
             if ($accountId) {
                 SystemSetting::updateOrCreate(
-                    ['setting_key' => $key],
+                    ['setting_key' => $key, 'tenant_id' => $this->defaultTenantId],
                     ['setting_value' => $accountId]
                 );
             }

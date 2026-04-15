@@ -178,6 +178,7 @@ export type Database = {
           last_activity: string | null
           session_token: string
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -192,6 +193,7 @@ export type Database = {
           last_activity?: string | null
           session_token: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -206,9 +208,18 @@ export type Database = {
           last_activity?: string | null
           session_token?: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       attendance: {
         Row: {

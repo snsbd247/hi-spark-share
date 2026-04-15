@@ -3,18 +3,19 @@
 namespace App\Models;
 
 use App\Traits\HasUuid;
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeProvidentFund extends Model
 {
-    use HasUuid;
+    use HasUuid, BelongsToTenant;
 
     public $timestamps = false;
 
     protected $table = 'employee_provident_fund';
 
     protected $fillable = [
-        'id', 'employee_id', 'type', 'amount',
+        'id', 'tenant_id', 'employee_id', 'type', 'amount',
         'employee_share', 'employer_share', 'date', 'description',
     ];
 

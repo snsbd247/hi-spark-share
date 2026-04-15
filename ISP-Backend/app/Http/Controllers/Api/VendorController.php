@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Vendor;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 
+/**
+ * VendorController is a legacy alias for SupplierController.
+ * The "vendors" module was removed and absorbed into "suppliers".
+ */
 class VendorController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Vendor::query();
+        $query = Supplier::query();
 
         if ($request->has('search')) {
             $s = $request->search;
@@ -32,7 +36,7 @@ class VendorController extends Controller
 
     public function show(string $id)
     {
-        return response()->json(Vendor::findOrFail($id));
+        return response()->json(Supplier::findOrFail($id));
     }
 
     public function store(Request $request)
@@ -45,7 +49,7 @@ class VendorController extends Controller
             'address' => 'nullable|string|max:500',
         ]);
 
-        $vendor = Vendor::create($request->only([
+        $vendor = Supplier::create($request->only([
             'name', 'phone', 'email', 'company', 'address',
         ]));
 
@@ -54,7 +58,7 @@ class VendorController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $vendor = Vendor::findOrFail($id);
+        $vendor = Supplier::findOrFail($id);
         $vendor->update($request->only([
             'name', 'phone', 'email', 'company', 'address', 'status',
         ]));
@@ -64,7 +68,7 @@ class VendorController extends Controller
 
     public function destroy(string $id)
     {
-        Vendor::findOrFail($id)->delete();
+        Supplier::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 }
