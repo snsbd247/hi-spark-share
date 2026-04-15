@@ -361,7 +361,9 @@ export default function SuperSmsManagement() {
                 <div className="text-sm text-muted-foreground flex items-center gap-1">
                   <Zap className="h-3.5 w-3.5" /> {sa.liveApiBalance}
                 </div>
-                {balanceLoading ? (
+                {!smsSettings?.api_token ? (
+                  <div className="text-lg font-semibold text-muted-foreground">—</div>
+                ) : balanceLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin mt-1" />
                 ) : balanceError ? (
                   <div className="text-sm text-destructive mt-1">{(balanceError as Error).message?.substring(0, 60) || "Failed"}</div>
@@ -370,13 +372,15 @@ export default function SuperSmsManagement() {
                 ) : (
                   <div className="text-lg font-semibold text-muted-foreground">N/A</div>
                 )}
-                {apiBalance?.expire_date && (
+                {smsSettings?.api_token && apiBalance?.expire_date && (
                   <div className="text-xs text-muted-foreground mt-0.5">{sa.expiresLabel}: {apiBalance.expire_date}</div>
                 )}
               </div>
-              <Button size="icon" variant="ghost" onClick={() => refetchBalance()} className="h-8 w-8">
-                <RefreshCw className={`h-4 w-4 ${balanceLoading ? "animate-spin" : ""}`} />
-              </Button>
+              {smsSettings?.api_token && (
+                <Button size="icon" variant="ghost" onClick={() => refetchBalance()} className="h-8 w-8">
+                  <RefreshCw className={`h-4 w-4 ${balanceLoading ? "animate-spin" : ""}`} />
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -398,7 +402,9 @@ export default function SuperSmsManagement() {
             <div className="text-sm text-muted-foreground flex items-center gap-1">
               <TrendingUp className="h-3.5 w-3.5" /> {sa.totalSentApi}
             </div>
-            {balanceLoading ? (
+            {!smsSettings?.api_token ? (
+              <div className="text-lg font-semibold text-muted-foreground">—</div>
+            ) : balanceLoading ? (
               <Loader2 className="h-5 w-5 animate-spin mt-1" />
             ) : apiTotalSent !== null && apiTotalSent > 0 ? (
               <div className="text-2xl font-bold text-primary">{apiTotalSent.toLocaleString()}</div>
@@ -434,9 +440,11 @@ export default function SuperSmsManagement() {
                 <Badge variant="destructive" className="gap-1"><WifiOff className="h-3 w-3" /> {sa.notConfiguredGateway}</Badge>
               )}
             </div>
-            {apiBalance?.rate && (
+            {smsSettings?.api_token && apiBalance?.rate ? (
               <div className="text-xs text-muted-foreground mt-1">API Rate: ৳{apiBalance.rate}/SMS</div>
-            )}
+            ) : !smsSettings?.api_token ? (
+              <div className="text-xs text-muted-foreground mt-1">—</div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
