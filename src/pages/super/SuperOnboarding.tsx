@@ -212,7 +212,7 @@ export default function SuperOnboarding() {
     onError: (e: any) => { setRunningItem(null); toast.error(e.message || "Setup failed"); },
   });
 
-  // ── Step 4: Activate ───────────────────────────────────────
+  // ── Step 4: Finalize (SMS recharge only — tenant stays inactive until invoice is paid) ──
   const activateTenant = useMutation({
     mutationFn: async () => {
       if (!createdTenantId) return;
@@ -224,7 +224,7 @@ export default function SuperOnboarding() {
           description: "Initial SMS balance from onboarding",
         });
       }
-      await superAdminApi.activateTenant(createdTenantId);
+      // Do NOT activate tenant here — subscription stays pending until invoice is paid
     },
     onSuccess: () => {
       markStep(4);
