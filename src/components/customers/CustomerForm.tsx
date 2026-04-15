@@ -14,7 +14,7 @@ import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings, Ch
 import { Checkbox } from "@/components/ui/checkbox";
 import { generateCustomerPDF } from "@/lib/pdf";
 import { customersApi } from "@/lib/api";
-import { syncCustomerPppoe, toggleCustomerPppoe } from "@/lib/mikrotikClient";
+import { syncCustomerPppoe, toggleCustomerPppoe, removeCustomerPppoe } from "@/lib/mikrotikClient";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
 import { useGeoDivisions, useGeoDistricts, useGeoUpazilas, useGeoDivisionByName, useGeoDistrictByName } from "@/hooks/useGeoData";
 
