@@ -43,6 +43,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
   const isEdit = !!customer;
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { t } = useLanguage();
   const tenantId = user?.tenant_id;
   const { data: invoiceFooter } = useInvoiceFooter();
   const [photoFile, setPhotoFile] = useState<File | null>(null);
