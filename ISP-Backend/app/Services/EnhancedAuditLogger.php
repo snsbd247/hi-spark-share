@@ -49,6 +49,14 @@ class EnhancedAuditLogger
      */
     private static function guessModule(string $tableName): string
     {
+        return self::guessModulePublic($tableName);
+    }
+
+    /**
+     * Public method to guess the module from table name.
+     */
+    public static function guessModulePublic(string $tableName): string
+    {
         $map = [
             'customers'         => 'customers',
             'bills'             => 'billing',
@@ -61,6 +69,11 @@ class EnhancedAuditLogger
             'general_settings'  => 'settings',
             'system_settings'   => 'settings',
             'mikrotik_routers'  => 'settings',
+            'resellers'         => 'resellers',
+            'custom_roles'      => 'roles',
+            'tenants'           => 'tenants',
+            'users'             => 'users',
+            'profiles'          => 'users',
         ];
 
         return $map[$tableName] ?? 'system';

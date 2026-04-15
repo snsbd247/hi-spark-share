@@ -7,6 +7,8 @@ use App\Models\Expense;
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Http\Controllers\Controller;
+use App\Services\EnhancedAuditLogger;
+use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -603,6 +605,10 @@ class GenericCrudController extends Controller
             }
 
             $record = $model->create($input);
+
+            // Log audit & activity
+            $this->logCrudAction('create', $table, $record->id ?? '', null, $record->toArray(), $request);
+
             return response()->json($record, 201);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("GenericCrud store error [{$table}]: " . $e->getMessage());
@@ -652,7 +658,12 @@ class GenericCrudController extends Controller
 
             // ── Single record update ──
             $record = $model->findOrFail($id);
+            $oldData = $record->toArray();
             $record->update(array_intersect_key($request->all(), array_flip($fillable)));
+
+            // Log audit & activity
+            $this->logCrudAction('edit', $table, $id, $oldData, $record->fresh()->toArray(), $request);
+
             return response()->json($record->fresh());
         } catch (\Exception $e) {
             return response()->json(['message' => 'Error updating record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
@@ -695,7 +706,12 @@ class GenericCrudController extends Controller
 
             $model = $this->getModel($table);
             $record = $model->findOrFail($id);
+            $oldData = $record->toArray();
             $record->delete();
+
+            // Log audit & activity
+            $this->logCrudAction('delete', $table, $id, $oldData, null, $request);
+
             return response()->json(['success' => true]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Record not found'], 404);
@@ -708,6 +724,58 @@ class GenericCrudController extends Controller
         } catch (\Exception $e) {
             Log::error("GenericCrud destroy error [{$table}:{$id}]: " . $e->getMessage());
             return response()->json(['message' => 'Error deleting record', 'error' => config('app.debug') ? $e->getMessage() : 'Internal error'], 500);
+        }
+    }
+
+    /**
+     * Log CRUD actions to both audit_logs and activity_logs.
+     */
+    protected function logCrudAction(string $action, string $table, string $recordId, ?array $oldData, ?array $newData, Request $request): void
+    {
+        $normalizedTable = str_replace('-', '_', $table);
+
+        // Skip logging for log tables themselves to avoid infinite loops
+        $skipTables = ['audit_logs', 'activity_logs', 'login_histories', 'admin_login_logs', 'backup_logs'];
+        if (in_array($normalizedTable, $skipTables)) {
+            return;
+        }
+
+        try {
+            $user = $request->attributes->get('auth_user');
+            $userId = $user->id ?? $request->header('X-User-Id') ?? '00000000-0000-0000-0000-000000000000';
+            $userName = $user->full_name ?? $request->header('X-User-Name') ?? 'System';
+            $tenantId = $request->header('X-Tenant-Id') ?? ($user->tenant_id ?? null);
+
+            EnhancedAuditLogger::log(
+                $action,
+                $normalizedTable,
+                (string) $recordId,
+                $oldData,
+                $newData,
+                null,
+                (string) $userId,
+                $userName,
+                $tenantId,
+                $request
+            );
+
+            $descriptions = [
+                'create' => "Created a new record in {$normalizedTable}",
+                'edit'   => "Updated record {$recordId} in {$normalizedTable}",
+                'delete' => "Deleted record {$recordId} from {$normalizedTable}",
+            ];
+
+            ActivityLogger::log(
+                $action,
+                EnhancedAuditLogger::guessModulePublic($normalizedTable),
+                $descriptions[$action] ?? "{$action} on {$normalizedTable}",
+                (string) $userId,
+                $tenantId,
+                ['table' => $normalizedTable, 'record_id' => $recordId],
+                $request
+            );
+        } catch (\Throwable $e) {
+            Log::warning("CRUD audit log failed: " . $e->getMessage());
         }
     }
 }
