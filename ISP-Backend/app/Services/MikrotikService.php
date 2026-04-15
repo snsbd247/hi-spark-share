@@ -369,8 +369,64 @@ class MikrotikService
     }
 
     /**
-     * Sync a package profile to its assigned router.
+     * Remove a customer's PPPoE secret from the router entirely.
      */
+    public function removePppoe(Customer $customer): array
+    {
+        if (!$customer->router || !$customer->pppoe_username) {
+            return ['success' => false, 'error' => 'Missing router or PPPoE credentials'];
+        }
+
+        $conn = $this->connect($customer->router);
+        if (!$conn) {
+            return ['success' => false, 'error' => 'Cannot connect to router'];
+        }
+
+        try {
+            // Disconnect active session first
+            $this->sendCommand($conn, [
+                '/ppp/active/remove',
+                '?name=' . $customer->pppoe_username,
+            ]);
+
+            // Find the secret
+            $existing = $this->sendCommand($conn, [
+                '/ppp/secret/print',
+                '?name=' . $customer->pppoe_username,
+            ]);
+
+            $existingId = null;
+            foreach ($existing as $line) {
+                if (str_starts_with($line, '=.id=')) {
+                    $existingId = substr($line, 4);
+                }
+            }
+
+            if ($existingId) {
+                $this->sendCommand($conn, [
+                    '/ppp/secret/remove',
+                    '=.id=' . $existingId,
+                ]);
+            }
+
+            fclose($conn->socket);
+
+            $customer->update([
+                'connection_status' => 'disabled',
+                'mikrotik_sync_status' => 'removed',
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'PPPoE secret removed from router successfully',
+            ];
+        } catch (\Exception $e) {
+            @fclose($conn->socket);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+
     public function syncProfile(Package $package): array
     {
         if (!$package->router) {
