@@ -72,8 +72,8 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const headerParts = [];
   if (settings.mobile) headerParts.push(`Hotline: ${settings.mobile}`);
   if (settings.email) headerParts.push(settings.email);
-  doc.text(headerParts.join("  |  "), m, 18);
-  if (settings.address) doc.text(settings.address, m, 23);
+  doc.text(headerParts.join("  |  "), textStartX, 18);
+  if (settings.address) doc.text(settings.address, textStartX, 23);
 
   doc.setFontSize(PDF_FONT.body);
   doc.setFont("helvetica", "bold");
