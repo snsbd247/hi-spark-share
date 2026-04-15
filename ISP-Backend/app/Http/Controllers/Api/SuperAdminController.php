@@ -20,6 +20,8 @@ use App\Services\PlanModuleService;
 use App\Services\SmsService;
 use App\Services\TenantEmailService;
 use App\Services\TenantResolver;
+use App\Services\ActivityLogger;
+use App\Services\EnhancedAuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -264,9 +266,10 @@ class SuperAdminController extends Controller
         return response()->json(['success' => true, 'message' => 'Tenant activated']);
     }
 
-    public function deleteTenant(string $id)
+    public function deleteTenant(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+        $tenantSnapshot = $tenant->toArray();
         TenantResolver::flushTenantCache($tenant);
 
         // Cascade delete all dependent records
@@ -356,6 +359,8 @@ class SuperAdminController extends Controller
 
             $tenant->delete();
 
+            $this->logTenantDeletion($request, $tenantSnapshot, $id);
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
@@ -364,6 +369,50 @@ class SuperAdminController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    protected function logTenantDeletion(Request $request, array $tenantSnapshot, string $tenantId): void
+    {
+        try {
+            $admin = $request->get('super_admin');
+            $adminId = (string) ($admin->id ?? '00000000-0000-0000-0000-000000000000');
+            $adminName = $admin->name ?? $admin->email ?? 'Super Admin';
+            $tenantName = $tenantSnapshot['name'] ?? 'Unknown tenant';
+            $tenantSubdomain = $tenantSnapshot['subdomain'] ?? null;
+
+            EnhancedAuditLogger::log(
+                'delete',
+                'tenants',
+                $tenantId,
+                $tenantSnapshot,
+                null,
+                'tenants',
+                $adminId,
+                $adminName,
+                null,
+                $request
+            );
+
+            ActivityLogger::log(
+                'delete',
+                'tenants',
+                $tenantSubdomain
+                    ? "Deleted tenant {$tenantName} ({$tenantSubdomain})"
+                    : "Deleted tenant {$tenantName}",
+                $adminId,
+                null,
+                [
+                    'table' => 'tenants',
+                    'record_id' => $tenantId,
+                    'tenant_name' => $tenantSnapshot['name'] ?? null,
+                    'tenant_subdomain' => $tenantSnapshot['subdomain'] ?? null,
+                    'tenant_email' => $tenantSnapshot['email'] ?? null,
+                ],
+                $request
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Tenant deletion log failed: ' . $e->getMessage());
+        }
     }
 
     // ══════════════════════════════════════════
