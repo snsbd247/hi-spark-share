@@ -163,7 +163,7 @@ export async function importGeoData(force = false): Promise<SetupResult> {
 
     return {
       success: true,
-      message: `Geo data imported: ${DIVISIONS.length} divisions, ${insertedDistricts.length} districts, ${upazilaRows.length} upazilas`,
+      message: `Geo data imported: ${DIVISIONS.length} divisions, ${(savedDistricts || []).length} districts, ${upazilaRows.length} upazilas`,
       count: totalInserted,
     };
   });
