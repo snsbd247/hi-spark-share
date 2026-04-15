@@ -17,6 +17,7 @@ use App\Models\TenantCompanyInfo;
 use App\Models\Domain;
 use App\Models\User;
 use App\Models\SmsSetting;
+use App\Models\SmtpSetting;
 use App\Models\UserRole;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -38,6 +39,7 @@ class DefaultSeeder extends Seeder
         $this->seedSystemSettings();
         $this->seedSmsSettings();
         $this->seedSmsTemplates();
+        $this->seedSmtpSettings();
         $this->seedEmailTemplates();
         $this->seedPackages();
         $this->seedChartOfAccounts();
@@ -229,6 +231,8 @@ class DefaultSeeder extends Seeder
         if (SmsSetting::where('tenant_id', $this->defaultTenantId)->count() === 0) {
             SmsSetting::create([
                 'tenant_id' => $this->defaultTenantId,
+                'sender_id' => 'smartispapp',
+                'admin_cost_rate' => 0.36,
                 'sms_on_bill_generate' => true,
                 'sms_on_payment' => true,
                 'sms_on_registration' => true,
@@ -256,6 +260,23 @@ class DefaultSeeder extends Seeder
                 ['name' => $tpl['name'], 'tenant_id' => $this->defaultTenantId],
                 ['message' => $tpl['message']]
             );
+        }
+    }
+
+    // ── SMTP Settings ────────────────────────────────────
+    private function seedSmtpSettings(): void
+    {
+        if (SmtpSetting::count() === 0) {
+            SmtpSetting::create([
+                'host' => 'smtp.gmail.com',
+                'port' => 465,
+                'username' => 'lifewithsagor@gmail.com',
+                'password' => '',
+                'encryption' => 'ssl',
+                'from_email' => 'lifewithsagor@gmail.com',
+                'from_name' => 'SmartISPApp',
+                'status' => 'active',
+            ]);
         }
     }
 
