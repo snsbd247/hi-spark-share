@@ -197,6 +197,20 @@ class AuthController extends Controller
         }
 
         $now = now()->toDateString();
+        $hasPendingInvoice = \App\Models\SubscriptionInvoice::where('tenant_id', $tenant->id)
+            ->where('status', 'pending')
+            ->exists();
+        $latestSubscription = \App\Models\Subscription::where('tenant_id', $tenant->id)
+            ->orderBy('end_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($tenant->status === 'suspended' || $hasPendingInvoice) {
+            return response()->json([
+                'has_subscription' => false,
+                'is_expired' => (bool) $latestSubscription,
+            ]);
+        }
 
         // Check active subscription
         $active = \App\Models\Subscription::where('tenant_id', $tenant->id)
@@ -211,14 +225,9 @@ class AuthController extends Controller
             ]);
         }
 
-        // Check if any subscription exists (expired)
-        $any = \App\Models\Subscription::where('tenant_id', $tenant->id)
-            ->orderBy('end_date', 'desc')
-            ->first();
-
         return response()->json([
-            'has_subscription' => (bool) $any,
-            'is_expired' => (bool) $any,
+            'has_subscription' => (bool) $latestSubscription,
+            'is_expired' => (bool) $latestSubscription,
         ]);
     }
 }

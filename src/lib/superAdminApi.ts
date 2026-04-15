@@ -223,7 +223,7 @@ export const superAdminApi = {
         email: data.email,
         phone: data.phone,
         plan: "basic",
-        status: "active",
+        status: "suspended",
       });
       // Auto-create default tenant admin user
       const tenantId = Array.isArray(tenant) ? tenant[0]?.id : tenant?.id;
@@ -365,7 +365,31 @@ export const superAdminApi = {
     return request(`/tenants/${id}/suspend`, { method: "POST" });
   },
   activateTenant: async (id: string) => {
-    if (IS_LOVABLE) return sbUpdate("tenants", id, { status: "active" });
+    if (IS_LOVABLE) {
+      const now = new Date().toISOString().slice(0, 10);
+      const { data: pendingInvoice } = await (supabase.from as any)("subscription_invoices")
+        .select("id")
+        .eq("tenant_id", id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (pendingInvoice) {
+        throw new Error("Cannot activate tenant while a subscription invoice is pending");
+      }
+
+      const { data: activeSubscription } = await (supabase.from as any)("subscriptions")
+        .select("id")
+        .eq("tenant_id", id)
+        .eq("status", "active")
+        .gte("end_date", now)
+        .maybeSingle();
+
+      if (!activeSubscription) {
+        throw new Error("Cannot activate tenant without an active paid subscription");
+      }
+
+      return sbUpdate("tenants", id, { status: "active" });
+    }
     return request(`/tenants/${id}/activate`, { method: "POST" });
   },
   deleteTenant: async (id: string) => {
@@ -475,7 +499,12 @@ export const superAdminApi = {
         ? new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() + 1)).toISOString().split("T")[0]
         : new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString().split("T")[0];
 
-      // Create subscription with pending status (will activate when invoice is paid)
+      await (supabase.from as any)("subscriptions")
+        .update({ status: "expired" })
+        .eq("tenant_id", data.tenant_id)
+        .in("status", ["active", "pending"]);
+
+      // Create subscription as expired until the invoice is paid
       const result = await sbInsert("subscriptions", {
         tenant_id: data.tenant_id,
         plan_id: data.plan_id,
@@ -483,7 +512,7 @@ export const superAdminApi = {
         start_date: startDate,
         end_date: endDate,
         amount,
-        status: "pending",
+        status: "expired",
       });
 
       // Auto-create subscription invoice
@@ -505,10 +534,12 @@ export const superAdminApi = {
         console.warn("Auto invoice creation failed:", e);
       }
 
-      // Update tenant plan_id but keep status inactive until invoice is paid
+      // Update tenant plan metadata but keep tenant suspended until invoice is paid
       await sbUpdate("tenants", data.tenant_id, {
         plan_expire_date: endDate,
         plan_id: data.plan_id,
+        plan: plan?.slug || null,
+        status: "suspended",
       });
 
       return result;

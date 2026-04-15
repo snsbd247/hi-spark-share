@@ -42,9 +42,7 @@ class TenantResolver
             // 2) Try subdomain resolution
             $subdomain = $this->extractSubdomain($host);
             if ($subdomain) {
-                return Tenant::where('subdomain', $subdomain)
-                    ->where('status', '!=', 'suspended')
-                    ->first();
+                return Tenant::where('subdomain', $subdomain)->first();
             }
 
             return null;

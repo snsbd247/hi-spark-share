@@ -33,13 +33,6 @@ class ResolveTenant
             ], 404);
         }
 
-        if (!$tenant->isActive()) {
-            return response()->json([
-                'error' => 'Account suspended',
-                'message' => 'This ISP account has been suspended. Contact support.',
-            ], 403);
-        }
-
         // Bind tenant to the container
         app()->instance('tenant', $tenant);
         app()->instance(\App\Models\Tenant::class, $tenant);

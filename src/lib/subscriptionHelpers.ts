@@ -10,42 +10,100 @@ export async function activateSubscriptionOnPaid(invoice: {
   plan_id: string;
   billing_cycle?: string;
 }) {
+  const paidAt = new Date().toISOString();
+
   // 1. Mark invoice paid
   await (db.from as any)("subscription_invoices").update({
     status: "paid",
-    paid_date: new Date().toISOString(),
+    paid_date: paidAt,
     payment_method: "manual",
   }).eq("id", invoice.id);
 
+  const { data: invoiceRecord } = await (db.from as any)("subscription_invoices")
+    .select("id, subscription_id, tenant_id, plan_id, billing_cycle, amount, total_amount")
+    .eq("id", invoice.id)
+    .maybeSingle();
+
   // 2. Get plan details for limits
   const { data: plan } = await (db.from as any)("saas_plans")
-    .select("id, name, max_customers, max_users, max_routers")
+    .select("id, slug, name, price_monthly, price_yearly, max_customers, max_users, max_routers")
     .eq("id", invoice.plan_id)
     .single();
 
   // 3. Calculate new expiry
-  const newExpiry = new Date();
-  if (invoice.billing_cycle === "yearly") {
+  const billingCycle = invoiceRecord?.billing_cycle || invoice.billing_cycle || "monthly";
+  const today = new Date();
+  const newExpiry = new Date(today);
+  if (billingCycle === "yearly") {
     newExpiry.setFullYear(newExpiry.getFullYear() + 1);
   } else {
     newExpiry.setMonth(newExpiry.getMonth() + 1);
   }
+  const startDate = today.toISOString().split("T")[0];
+  const endDate = newExpiry.toISOString().split("T")[0];
+  const amount = Number(
+    invoiceRecord?.total_amount ??
+    invoiceRecord?.amount ??
+    (billingCycle === "yearly" ? plan?.price_yearly : plan?.price_monthly) ??
+    0
+  );
 
   // 4. Update tenant with plan limits + expiry + active status
   const tenantUpdate: any = {
-    plan_expire_date: newExpiry.toISOString().split("T")[0],
+    plan_expire_date: endDate,
     plan_id: invoice.plan_id,
     status: "active",
   };
   if (plan) {
+    tenantUpdate.plan = plan.slug;
     tenantUpdate.max_customers = plan.max_customers;
     tenantUpdate.max_users = plan.max_users;
   }
   await (db.from as any)("tenants").update(tenantUpdate).eq("id", invoice.tenant_id);
 
-  // 5. Activate any pending/expired subscriptions for this tenant
-  await (db.from as any)("subscriptions").update({ status: "active" })
-    .eq("tenant_id", invoice.tenant_id).in("status", ["expired", "pending"]);
+  // 5. Canonicalize subscriptions: keep only the paid one active
+  await (db.from as any)("subscriptions")
+    .update({ status: "expired" })
+    .eq("tenant_id", invoice.tenant_id)
+    .in("status", ["active", "pending"]);
+
+  let targetSubscriptionId = invoiceRecord?.subscription_id || null;
+
+  if (!targetSubscriptionId) {
+    const { data: latestSubscription } = await (db.from as any)("subscriptions")
+      .select("id")
+      .eq("tenant_id", invoice.tenant_id)
+      .eq("plan_id", invoice.plan_id)
+      .in("status", ["expired", "pending", "active"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    targetSubscriptionId = latestSubscription?.id || null;
+  }
+
+  if (targetSubscriptionId) {
+    await (db.from as any)("subscriptions")
+      .update({
+        status: "active",
+        plan_id: invoice.plan_id,
+        billing_cycle: billingCycle,
+        start_date: startDate,
+        end_date: endDate,
+        amount,
+      })
+      .eq("id", targetSubscriptionId);
+  } else {
+    await (db.from as any)("subscriptions").insert({
+      tenant_id: invoice.tenant_id,
+      plan_id: invoice.plan_id,
+      billing_cycle: billingCycle,
+      start_date: startDate,
+      end_date: endDate,
+      status: "active",
+      amount,
+    });
+  }
 }
 
 /**

@@ -131,7 +131,7 @@ class SuperAdminController extends Controller
                     'subdomain' => strtolower($validated['subdomain']),
                     'email' => $validated['email'],
                     'phone' => $validated['phone'] ?? null,
-                    'status' => 'active',
+                    'status' => 'suspended',
                     'plan' => 'basic',
                 ]);
 
@@ -144,11 +144,16 @@ class SuperAdminController extends Controller
                         'billing_cycle' => 'monthly',
                         'start_date' => now()->toDateString(),
                         'end_date' => now()->addMonth()->toDateString(),
-                        'status' => 'active',
+                        'status' => 'expired',
                         'amount' => $amount,
                     ]);
 
-                    $tenant->update(['plan' => $plan->slug]);
+                    $tenant->update([
+                        'plan' => $plan->slug,
+                        'plan_id' => $plan->id,
+                        'plan_expire_date' => $sub->end_date,
+                        'status' => 'suspended',
+                    ]);
                     $this->createSubscriptionInvoice($sub, $plan, $amount);
                 }
 
@@ -310,6 +315,28 @@ class SuperAdminController extends Controller
     public function activateTenant(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+
+        $hasPendingInvoice = SubscriptionInvoice::where('tenant_id', $tenant->id)
+            ->where('status', 'pending')
+            ->exists();
+
+        if ($hasPendingInvoice) {
+            return response()->json([
+                'error' => 'Cannot activate tenant while a subscription invoice is pending',
+            ], 422);
+        }
+
+        $activeSubscription = Subscription::where('tenant_id', $tenant->id)
+            ->where('status', 'active')
+            ->where('end_date', '>=', now()->toDateString())
+            ->exists();
+
+        if (!$activeSubscription) {
+            return response()->json([
+                'error' => 'Cannot activate tenant without an active paid subscription',
+            ], 422);
+        }
+
         $oldTenant = $tenant->toArray();
         $tenant->update(['status' => 'active']);
 
@@ -619,7 +646,7 @@ class SuperAdminController extends Controller
 
         // Expire old subscriptions
         Subscription::where('tenant_id', $request->tenant_id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'pending'])
             ->update(['status' => 'expired']);
 
         $endDate = $request->billing_cycle === 'yearly'
@@ -636,7 +663,7 @@ class SuperAdminController extends Controller
             'billing_cycle' => $request->billing_cycle,
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'status' => 'active',
+            'status' => 'expired',
             'amount' => $amount,
         ]);
 
@@ -645,7 +672,7 @@ class SuperAdminController extends Controller
             'plan' => $plan->slug,
             'plan_id' => $plan->id,
             'plan_expire_date' => $endDate,
-            'status' => 'active',
+            'status' => 'suspended',
         ]);
 
         // Auto-create subscription invoice

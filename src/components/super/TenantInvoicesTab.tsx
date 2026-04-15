@@ -56,27 +56,12 @@ export default function TenantInvoicesTab({ tenantId, tenantName }: Props) {
       const invoice = invoices.find((i: any) => i.id === invoiceId);
       if (!invoice) throw new Error("Invoice not found");
 
-      await (db.from as any)("subscription_invoices").update({
-        status: "paid",
-        paid_date: new Date().toISOString(),
-        payment_method: "manual",
-      }).eq("id", invoiceId);
-
-      const newExpiry = new Date();
-      if (invoice.billing_cycle === "yearly") {
-        newExpiry.setFullYear(newExpiry.getFullYear() + 1);
-      } else {
-        newExpiry.setMonth(newExpiry.getMonth() + 1);
-      }
-
-      await (db.from as any)("tenants").update({
-        plan_expire_date: newExpiry.toISOString().split("T")[0],
+      await activateSubscriptionOnPaid({
+        id: invoiceId,
+        tenant_id: invoice.tenant_id || tenantId,
         plan_id: invoice.plan_id,
-        status: "active",
-      }).eq("id", invoice.tenant_id);
-
-      await (db.from as any)("subscriptions").update({ status: "active" })
-        .eq("tenant_id", invoice.tenant_id).eq("status", "expired");
+        billing_cycle: invoice.billing_cycle,
+      });
     },
     onSuccess: () => {
       toast.success("Invoice marked as paid, plan extended!");

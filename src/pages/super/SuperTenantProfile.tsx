@@ -989,7 +989,7 @@ export default function SuperTenantProfile() {
 
   // Smart Alerts
   const alerts: { type: "warning" | "error" | "info"; message: string; action?: () => void }[] = [];
-  if (tenant.status === "suspended") alerts.push({ type: "error", message: "Tenant is currently suspended — users cannot login", action: () => activateMut.mutate() });
+  if (tenant.status === "suspended") alerts.push({ type: "error", message: "Tenant is currently suspended — users can login but will see the subscription lock screen until invoice is paid", action: () => activateMut.mutate() });
   if (!isFullySetup) alerts.push({ type: "warning", message: `Setup incomplete (${completedSteps}/${setupSteps.length}) — some features may not work` });
   if (!subscription) alerts.push({ type: "error", message: "No active subscription — billing features disabled" });
   else if (subscription.end_date && new Date(subscription.end_date) < new Date(Date.now() + 7 * 86400000)) {
