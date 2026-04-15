@@ -41,7 +41,20 @@ class SuperAdminAuth
         }
 
         $session->touch();
-        $request->merge(['super_admin' => $admin, 'super_admin_session' => $session]);
+
+        $request->attributes->set('super_admin', $admin);
+        $request->attributes->set('super_admin_session', $session);
+        $request->attributes->set('admin_user', (object) [
+            'id' => $admin->id,
+            'full_name' => $admin->name,
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'username' => $admin->username,
+            'status' => $admin->status,
+            'tenant_id' => null,
+            'is_super_admin' => true,
+        ]);
+        $request->attributes->set('admin_session', $session);
 
         return $next($request);
     }

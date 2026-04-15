@@ -740,9 +740,18 @@ class GenericCrudController extends Controller
         }
 
         try {
-            $user = $request->attributes->get('auth_user');
+            $user = $request->attributes->get('auth_user')
+                ?? $request->attributes->get('admin_user')
+                ?? $request->attributes->get('super_admin')
+                ?? $request->get('admin_user')
+                ?? $request->get('super_admin');
+
             $userId = $user->id ?? $request->header('X-User-Id') ?? '00000000-0000-0000-0000-000000000000';
-            $userName = $user->full_name ?? $request->header('X-User-Name') ?? 'System';
+            $userName = $user->full_name
+                ?? $user->name
+                ?? $user->email
+                ?? $request->header('X-User-Name')
+                ?? 'System';
             $tenantId = $request->header('X-Tenant-Id') ?? ($user->tenant_id ?? null);
 
             EnhancedAuditLogger::log(
