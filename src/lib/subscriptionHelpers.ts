@@ -43,9 +43,9 @@ export async function activateSubscriptionOnPaid(invoice: {
   }
   await (db.from as any)("tenants").update(tenantUpdate).eq("id", invoice.tenant_id);
 
-  // 5. Activate any expired subscriptions
+  // 5. Activate any pending/expired subscriptions for this tenant
   await (db.from as any)("subscriptions").update({ status: "active" })
-    .eq("tenant_id", invoice.tenant_id).eq("status", "expired");
+    .eq("tenant_id", invoice.tenant_id).in("status", ["expired", "pending"]);
 }
 
 /**
