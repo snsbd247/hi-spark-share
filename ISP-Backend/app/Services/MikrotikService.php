@@ -1024,11 +1024,17 @@ class MikrotikService
     {
         $items = [];
         $current = [];
+        $inItem = false;
         foreach ($response as $line) {
             if ($line === '!re') {
-                if (!empty($current)) $items[] = $current;
+                if ($inItem && !empty($current)) $items[] = $current;
                 $current = [];
-            } elseif (str_starts_with($line, '=') && str_contains($line, '=')) {
+                $inItem = true;
+            } elseif ($line === '!done' || $line === '!trap' || $line === '!fatal') {
+                if ($inItem && !empty($current)) $items[] = $current;
+                $current = [];
+                $inItem = false;
+            } elseif ($inItem && str_starts_with($line, '=')) {
                 $withoutPrefix = substr($line, 1);
                 $eqPos = strpos($withoutPrefix, '=');
                 if ($eqPos !== false) {
@@ -1038,7 +1044,7 @@ class MikrotikService
                 }
             }
         }
-        if (!empty($current)) $items[] = $current;
+        if ($inItem && !empty($current)) $items[] = $current;
         return $items;
     }
 
