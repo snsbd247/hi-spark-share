@@ -176,14 +176,30 @@ class MikrotikBillControlController extends Controller
      */
     public function syncProfile(Request $request)
     {
-        $request->validate(['package_id' => 'required|uuid|exists:packages,id']);
-        $package = Package::with('router')->findOrFail($request->package_id);
+        $request->validate([
+            'package_id' => 'required|uuid|exists:packages,id',
+            'remote_address' => 'nullable|string',
+            'local_address' => 'nullable|string',
+            'router_id' => 'nullable|uuid',
+        ]);
+        $package = Package::with(['router', 'ipPool'])->findOrFail($request->package_id);
+
+        // Allow caller to override the package's router for this sync
+        if ($request->filled('router_id') && $request->router_id !== $package->router_id) {
+            $package->router_id = $request->router_id;
+            $package->save();
+            $package->load('router');
+        }
 
         if (!$package->router) {
             return response()->json(['success' => false, 'error' => 'No router assigned to package'], 422);
         }
 
-        return response()->json($this->mikrotikService->syncProfile($package));
+        return response()->json($this->mikrotikService->syncProfile(
+            $package,
+            $request->input('remote_address'),
+            $request->input('local_address')
+        ));
     }
 
     /**

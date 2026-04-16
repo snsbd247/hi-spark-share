@@ -232,31 +232,55 @@ class MikrotikService
         }
     }
 
-    protected function ensureProfile($connection, ?Package $package, string $profileName): void
+    protected function ensureProfile($connection, ?Package $package, string $profileName, ?string $remoteAddress = null, ?string $localAddress = null): void
     {
         if (!$package) return;
+
+        // Resolve remote/local from package's IP pool when not provided
+        if ($remoteAddress === null || $localAddress === null) {
+            try {
+                $pool = $package->ipPool;
+                if ($pool) {
+                    $remoteAddress = $remoteAddress ?? ($pool->name ?: null);
+                    $localAddress = $localAddress ?? ($pool->gateway ?: null);
+                }
+            } catch (\Throwable $e) { /* ignore */ }
+        }
+
+        $rateLimit = $package->upload_speed . 'M/' . $package->download_speed . 'M';
 
         $check = $this->sendCommand($connection, [
             '/ppp/profile/print',
             '?name=' . $profileName,
         ]);
 
-        $exists = false;
+        $existingId = null;
         foreach ($check as $line) {
             if (str_starts_with($line, '=.id=')) {
-                $exists = true;
+                $existingId = substr($line, 4);
                 break;
             }
         }
 
-        if (!$exists) {
-            $rateLimit = $package->upload_speed . 'M/' . $package->download_speed . 'M';
-            $this->sendCommand($connection, [
+        if ($existingId) {
+            // Update existing profile so changes (rate-limit, pool, gateway) are reflected
+            $cmd = [
+                '/ppp/profile/set',
+                '=.id=' . $existingId,
+                '=rate-limit=' . $rateLimit,
+            ];
+            if ($localAddress) $cmd[] = '=local-address=' . $localAddress;
+            if ($remoteAddress) $cmd[] = '=remote-address=' . $remoteAddress;
+            $this->sendCommand($connection, $cmd);
+        } else {
+            $cmd = [
                 '/ppp/profile/add',
                 '=name=' . $profileName,
                 '=rate-limit=' . $rateLimit,
-                '=local-address=10.10.10.1',
-            ]);
+            ];
+            $cmd[] = '=local-address=' . ($localAddress ?: '10.10.10.1');
+            if ($remoteAddress) $cmd[] = '=remote-address=' . $remoteAddress;
+            $this->sendCommand($connection, $cmd);
         }
     }
 
@@ -427,7 +451,7 @@ class MikrotikService
     }
 
 
-    public function syncProfile(Package $package): array
+    public function syncProfile(Package $package, ?string $remoteAddress = null, ?string $localAddress = null): array
     {
         if (!$package->router) {
             return ['success' => false, 'error' => 'No router assigned'];
@@ -439,10 +463,21 @@ class MikrotikService
         }
 
         try {
-            $profileName = $package->mikrotik_profile_name ?? $package->name ?? 'default';
-            $this->ensureProfile($conn, $package, $profileName);
+            $profileName = $package->mikrotik_profile_name ?: ($package->name ? 'ISP-' . preg_replace('/\s+/', '-', $package->name) : 'default');
+            $this->ensureProfile($conn, $package, $profileName, $remoteAddress, $localAddress);
             fclose($conn->socket);
-            return ['success' => true, 'message' => "Profile '{$profileName}' synced"];
+
+            // Persist the profile name so the UI no longer shows "Not synced"
+            if ($package->mikrotik_profile_name !== $profileName) {
+                $package->mikrotik_profile_name = $profileName;
+                $package->save();
+            }
+
+            return [
+                'success' => true,
+                'profile_name' => $profileName,
+                'message' => "Profile '{$profileName}' synced",
+            ];
         } catch (\Exception $e) {
             @fclose($conn->socket);
             return ['success' => false, 'error' => $e->getMessage()];
