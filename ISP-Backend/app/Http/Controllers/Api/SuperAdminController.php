@@ -317,25 +317,36 @@ class SuperAdminController extends Controller
     {
         $tenant = Tenant::findOrFail($id);
 
-        $hasPendingInvoice = SubscriptionInvoice::where('tenant_id', $tenant->id)
+        // Super admin force-activate: mark pending invoices as paid and activate subscriptions
+        $pendingInvoice = SubscriptionInvoice::where('tenant_id', $tenant->id)
             ->where('status', 'pending')
-            ->exists();
+            ->orderBy('created_at', 'desc')
+            ->first();
 
-        if ($hasPendingInvoice) {
-            return response()->json([
-                'error' => 'Cannot activate tenant while a subscription invoice is pending',
-            ], 422);
-        }
+        if ($pendingInvoice) {
+            // Use the activation service to properly activate everything
+            SubscriptionActivationService::activateOnInvoicePaid($pendingInvoice->id);
+            // Refresh tenant after service updated it
+            $tenant->refresh();
+        } else {
+            // No pending invoice — just activate the subscription if expired
+            $expiredSub = Subscription::where('tenant_id', $tenant->id)
+                ->where('status', 'expired')
+                ->orderBy('created_at', 'desc')
+                ->first();
 
-        $activeSubscription = Subscription::where('tenant_id', $tenant->id)
-            ->where('status', 'active')
-            ->where('end_date', '>=', now()->toDateString())
-            ->exists();
+            if ($expiredSub) {
+                $billingCycle = $expiredSub->billing_cycle ?: 'monthly';
+                $endDate = $billingCycle === 'yearly'
+                    ? now()->addYear()->toDateString()
+                    : now()->addMonth()->toDateString();
 
-        if (!$activeSubscription) {
-            return response()->json([
-                'error' => 'Cannot activate tenant without an active paid subscription',
-            ], 422);
+                $expiredSub->update([
+                    'status' => 'active',
+                    'start_date' => now()->toDateString(),
+                    'end_date' => $endDate,
+                ]);
+            }
         }
 
         $oldTenant = $tenant->toArray();
