@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Http\Controllers\Controller;
 use App\Services\EnhancedAuditLogger;
 use App\Services\ActivityLogger;
+use App\Services\SubscriptionActivationService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -659,6 +660,19 @@ class GenericCrudController extends Controller
             $record = $model->findOrFail($id);
             $oldData = $record->toArray();
             $record->update(array_intersect_key($request->all(), array_flip($fillable)));
+
+            // Auto-activate subscription when invoice is marked as paid
+            $normalizedTable = str_replace('-', '_', $table);
+            if ($normalizedTable === 'subscription_invoices') {
+                $freshRecord = $record->fresh();
+                if ($freshRecord && $freshRecord->status === 'paid' && ($oldData['status'] ?? '') !== 'paid') {
+                    try {
+                        SubscriptionActivationService::activateOnInvoicePaid($id);
+                    } catch (\Throwable $e) {
+                        Log::warning('Auto subscription activation failed: ' . $e->getMessage());
+                    }
+                }
+            }
 
             // Log audit & activity
             $this->logCrudAction('edit', $table, $id, $oldData, $record->fresh()->toArray(), $request);

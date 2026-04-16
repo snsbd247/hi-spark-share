@@ -22,6 +22,7 @@ use App\Services\TenantEmailService;
 use App\Services\TenantResolver;
 use App\Services\ActivityLogger;
 use App\Services\EnhancedAuditLogger;
+use App\Services\SubscriptionActivationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -757,6 +758,44 @@ class SuperAdminController extends Controller
             return response()->json(['error' => 'Delete failed: ' . $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Mark a subscription invoice as paid → auto-activate tenant + subscription
+     */
+    public function markInvoicePaid(Request $request, string $id)
+    {
+        $invoice = SubscriptionInvoice::find($id);
+        if (!$invoice) {
+            return response()->json(['error' => 'Invoice not found'], 404);
+        }
+
+        if ($invoice->status === 'paid') {
+            return response()->json(['message' => 'Invoice is already paid', 'invoice' => $invoice]);
+        }
+
+        try {
+            SubscriptionActivationService::activateOnInvoicePaid($id);
+
+            $this->logSuperAdminAction(
+                $request,
+                'payment',
+                'subscription_invoices',
+                $id,
+                ['status' => $invoice->status],
+                ['status' => 'paid'],
+                "Marked invoice as paid for tenant {$invoice->tenant_id}"
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice paid, tenant and subscription activated',
+                'invoice' => $invoice->fresh(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Activation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
 
     // ══════════════════════════════════════════
     // DOMAIN MANAGEMENT (Super Admin)
