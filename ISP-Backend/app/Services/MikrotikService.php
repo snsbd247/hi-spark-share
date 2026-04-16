@@ -59,6 +59,8 @@ class MikrotikService
     protected function readResponse($socket): array
     {
         $response = [];
+        $trapMessage = null;
+        $fatalMessage = null;
         stream_set_timeout($socket, 20);
 
         while (true) {
@@ -79,14 +81,38 @@ class MikrotikService
                 continue;
             }
 
+            $replyType = $sentence[0] ?? null;
+
+            // Capture error messages from !trap / !fatal sentences
+            if ($replyType === '!trap') {
+                foreach ($sentence as $word) {
+                    if (str_starts_with($word, '=message=')) {
+                        $trapMessage = substr($word, 9);
+                    }
+                }
+            } elseif ($replyType === '!fatal') {
+                foreach ($sentence as $word) {
+                    if (!str_starts_with($word, '!')) {
+                        $fatalMessage = $word;
+                    }
+                }
+            }
+
             foreach ($sentence as $word) {
                 $response[] = $word;
             }
 
-            $replyType = $sentence[0] ?? null;
-            if ($replyType === '!done' || $replyType === '!trap') {
+            if ($replyType === '!done' || $replyType === '!fatal') {
                 break;
             }
+        }
+
+        // Surface MikroTik-side errors so callers don't silently consider failed ops as success
+        if ($fatalMessage !== null) {
+            throw new \RuntimeException('MikroTik fatal: ' . $fatalMessage);
+        }
+        if ($trapMessage !== null) {
+            throw new \RuntimeException('MikroTik error: ' . $trapMessage);
         }
 
         return $response;
@@ -192,7 +218,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -257,7 +283,7 @@ class MikrotikService
         $existingId = null;
         foreach ($check as $line) {
             if (str_starts_with($line, '=.id=')) {
-                $existingId = substr($line, 4);
+                $existingId = substr($line, 5);
                 break;
             }
         }
@@ -353,7 +379,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -422,7 +448,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -509,7 +535,7 @@ class MikrotikService
             $profileId = null;
             foreach ($check as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $profileId = substr($line, 4);
+                    $profileId = substr($line, 5);
                 }
             }
 
@@ -781,12 +807,18 @@ class MikrotikService
     {
         $items = [];
         $current = [];
+        $inItem = false;
         foreach ($response as $line) {
             if ($line === '!re') {
-                if (!empty($current)) $items[] = $current;
+                if ($inItem && !empty($current)) $items[] = $current;
                 $current = [];
-            } elseif (str_starts_with($line, '=') && str_contains($line, '=')) {
-                $withoutPrefix = substr($line, 1); // remove leading =
+                $inItem = true;
+            } elseif ($line === '!done' || $line === '!trap' || $line === '!fatal') {
+                if ($inItem && !empty($current)) $items[] = $current;
+                $current = [];
+                $inItem = false;
+            } elseif ($inItem && str_starts_with($line, '=')) {
+                $withoutPrefix = substr($line, 1);
                 $eqPos = strpos($withoutPrefix, '=');
                 if ($eqPos !== false) {
                     $key = substr($withoutPrefix, 0, $eqPos);
@@ -795,7 +827,7 @@ class MikrotikService
                 }
             }
         }
-        if (!empty($current)) $items[] = $current;
+        if ($inItem && !empty($current)) $items[] = $current;
         return $items;
     }
 
@@ -904,47 +936,58 @@ class MikrotikService
                 return ['success' => false, 'error' => 'No IP range defined'];
             }
 
+            $existingId = null;
+
+            // If we previously stored a mikrotik_id, verify it still exists; if not, fall back to lookup-by-name
             if ($pool->mikrotik_id) {
-                // Update existing pool on router
-                $this->sendCommand($conn, [
-                    '/ip/pool/set',
-                    '=.id=' . $pool->mikrotik_id,
-                    '=name=' . $pool->name,
-                    '=ranges=' . $ranges,
-                ]);
-            } else {
-                // Check if pool with same name exists
+                try {
+                    $verify = $this->sendCommand($conn, [
+                        '/ip/pool/print',
+                        '?.id=' . $pool->mikrotik_id,
+                    ]);
+                    foreach ($verify as $line) {
+                        if (str_starts_with($line, '=.id=')) {
+                            $existingId = substr($line, 5);
+                            break;
+                        }
+                    }
+                } catch (\Throwable $e) { /* ignore and lookup by name */ }
+            }
+
+            // Lookup by name as a safe fallback
+            if (!$existingId) {
                 $existing = $this->sendCommand($conn, [
                     '/ip/pool/print',
                     '?name=' . $pool->name,
                 ]);
-
-                $existingId = null;
                 foreach ($existing as $line) {
                     if (str_starts_with($line, '=.id=')) {
-                        $existingId = substr($line, 4);
+                        $existingId = substr($line, 5);
+                        break;
                     }
                 }
+            }
 
-                if ($existingId) {
-                    $this->sendCommand($conn, [
-                        '/ip/pool/set',
-                        '=.id=' . $existingId,
-                        '=ranges=' . $ranges,
-                    ]);
+            if ($existingId) {
+                $this->sendCommand($conn, [
+                    '/ip/pool/set',
+                    '=.id=' . $existingId,
+                    '=name=' . $pool->name,
+                    '=ranges=' . $ranges,
+                ]);
+                if ($pool->mikrotik_id !== $existingId) {
                     $pool->update(['mikrotik_id' => $existingId]);
-                } else {
-                    $addResponse = $this->sendCommand($conn, [
-                        '/ip/pool/add',
-                        '=name=' . $pool->name,
-                        '=ranges=' . $ranges,
-                    ]);
+                }
+            } else {
+                $addResponse = $this->sendCommand($conn, [
+                    '/ip/pool/add',
+                    '=name=' . $pool->name,
+                    '=ranges=' . $ranges,
+                ]);
 
-                    // Extract new .id
-                    foreach ($addResponse as $line) {
-                        if (str_starts_with($line, '=ret=')) {
-                            $pool->update(['mikrotik_id' => substr($line, 5)]);
-                        }
+                foreach ($addResponse as $line) {
+                    if (str_starts_with($line, '=ret=')) {
+                        $pool->update(['mikrotik_id' => substr($line, 5)]);
                     }
                 }
             }
@@ -992,11 +1035,17 @@ class MikrotikService
     {
         $items = [];
         $current = [];
+        $inItem = false;
         foreach ($response as $line) {
             if ($line === '!re') {
-                if (!empty($current)) $items[] = $current;
+                if ($inItem && !empty($current)) $items[] = $current;
                 $current = [];
-            } elseif (str_starts_with($line, '=') && str_contains($line, '=')) {
+                $inItem = true;
+            } elseif ($line === '!done' || $line === '!trap' || $line === '!fatal') {
+                if ($inItem && !empty($current)) $items[] = $current;
+                $current = [];
+                $inItem = false;
+            } elseif ($inItem && str_starts_with($line, '=')) {
                 $withoutPrefix = substr($line, 1);
                 $eqPos = strpos($withoutPrefix, '=');
                 if ($eqPos !== false) {
@@ -1006,7 +1055,7 @@ class MikrotikService
                 }
             }
         }
-        if (!empty($current)) $items[] = $current;
+        if ($inItem && !empty($current)) $items[] = $current;
         return $items;
     }
 
