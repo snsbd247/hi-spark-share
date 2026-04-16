@@ -218,7 +218,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -283,7 +283,7 @@ class MikrotikService
         $existingId = null;
         foreach ($check as $line) {
             if (str_starts_with($line, '=.id=')) {
-                $existingId = substr($line, 4);
+                $existingId = substr($line, 5);
                 break;
             }
         }
@@ -379,7 +379,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -448,7 +448,7 @@ class MikrotikService
             $existingId = null;
             foreach ($existing as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $existingId = substr($line, 4);
+                    $existingId = substr($line, 5);
                 }
             }
 
@@ -535,7 +535,7 @@ class MikrotikService
             $profileId = null;
             foreach ($check as $line) {
                 if (str_starts_with($line, '=.id=')) {
-                    $profileId = substr($line, 4);
+                    $profileId = substr($line, 5);
                 }
             }
 
