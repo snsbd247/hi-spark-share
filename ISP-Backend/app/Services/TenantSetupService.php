@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use App\Models\Tenant;
-use App\Models\Account;
-use App\Models\SmsTemplate;
-use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -146,13 +143,6 @@ class TenantSetupService
     public function importAccounts(Tenant $tenant): array
     {
         return $this->runStep('accounts', $tenant, function () use ($tenant) {
-            $existing = DB::table('accounts')
-                ->where('tenant_id', $tenant->id)
-                ->count();
-            if ($existing > 0) {
-                return ['success' => true, 'message' => 'Accounts already exist for tenant', 'count' => $existing];
-            }
-
             $data = $this->loadJson('accounts.json');
             if (!$data) {
                 throw new \RuntimeException('accounts.json not found or invalid');
@@ -161,10 +151,20 @@ class TenantSetupService
             // Sort by level to ensure parents created first
             usort($data, fn($a, $b) => ($a['level'] ?? 0) <=> ($b['level'] ?? 0));
 
-            $codeToId = [];
+            $codeToId = DB::table('accounts')
+                ->where('tenant_id', $tenant->id)
+                ->whereNotNull('code')
+                ->pluck('id', 'code')
+                ->toArray();
+
             $count = 0;
 
             foreach ($data as $acct) {
+                $code = $acct['code'] ?? null;
+                if (!$code || isset($codeToId[$code])) {
+                    continue;
+                }
+
                 $parentId = null;
                 if (!empty($acct['parent_code']) && isset($codeToId[$acct['parent_code']])) {
                     $parentId = $codeToId[$acct['parent_code']];
@@ -186,14 +186,18 @@ class TenantSetupService
                     'updated_at' => now(),
                 ]);
 
-                $codeToId[$acct['code']] = $id;
+                $codeToId[$code] = $id;
                 $count++;
             }
 
             // Store code-to-id mapping for ledger step
             $tenant->setRelation('_coaMap', collect($codeToId));
 
-            return ['success' => true, 'message' => "Chart of Accounts imported", 'count' => $count];
+            return [
+                'success' => true,
+                'message' => $count > 0 ? 'Chart of Accounts synced' : 'Chart of Accounts already synced',
+                'count' => $count,
+            ];
         });
     }
 
@@ -202,13 +206,6 @@ class TenantSetupService
     public function importTemplates(Tenant $tenant): array
     {
         return $this->runStep('templates', $tenant, function () use ($tenant) {
-            $existing = DB::table('sms_templates')
-                ->where('tenant_id', $tenant->id)
-                ->count();
-            if ($existing > 0) {
-                return ['success' => true, 'message' => 'Templates already exist', 'count' => $existing];
-            }
-
             $data = $this->loadJson('templates.json');
             if (!$data) {
                 throw new \RuntimeException('templates.json not found or invalid');
@@ -216,6 +213,15 @@ class TenantSetupService
 
             $count = 0;
             foreach ($data['sms'] as $tpl) {
+                $exists = DB::table('sms_templates')
+                    ->where('tenant_id', $tenant->id)
+                    ->where('name', $tpl['name'])
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
                 DB::table('sms_templates')->insert([
                     'id'         => Str::uuid()->toString(),
                     'tenant_id'  => $tenant->id,
@@ -230,6 +236,15 @@ class TenantSetupService
             // Email templates as system_settings
             if (!empty($data['email'])) {
                 foreach ($data['email'] as $key => $value) {
+                    $exists = DB::table('system_settings')
+                        ->where('tenant_id', $tenant->id)
+                        ->where('setting_key', $key)
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
                     DB::table('system_settings')->insert([
                         'id'            => Str::uuid()->toString(),
                         'tenant_id'     => $tenant->id,
@@ -242,7 +257,11 @@ class TenantSetupService
                 }
             }
 
-            return ['success' => true, 'message' => "Templates imported", 'count' => $count];
+            return [
+                'success' => true,
+                'message' => $count > 0 ? 'Templates synced' : 'Templates already synced',
+                'count' => $count,
+            ];
         });
     }
 
@@ -273,58 +292,62 @@ class TenantSetupService
             foreach ($data['mappings'] as $key => $code) {
                 $accountId = $codeToId[$code] ?? null;
                 if ($accountId) {
-                    DB::table('system_settings')->updateOrInsert(
-                        ['tenant_id' => $tenant->id, 'setting_key' => $key],
-                        [
-                            'id'            => Str::uuid()->toString(),
-                            'setting_value' => $accountId,
-                            'created_at'    => now(),
-                            'updated_at'    => now(),
-                        ]
-                    );
+                    $this->syncTenantSystemSetting($tenant->id, $key, $accountId);
                     $count++;
                 }
             }
 
             // Expense heads
             if (!empty($data['expense_heads'])) {
-                $existing = DB::table('expense_heads')->where('tenant_id', $tenant->id)->count();
-                if ($existing === 0) {
-                    foreach ($data['expense_heads'] as $head) {
-                        DB::table('expense_heads')->insert([
-                            'id'          => Str::uuid()->toString(),
-                            'tenant_id'   => $tenant->id,
-                            'name'        => $head['name'],
-                            'description' => $head['description'] ?? null,
-                            'status'      => 'active',
-                            'created_at'  => now(),
-                            'updated_at'  => now(),
-                        ]);
-                        $count++;
+                foreach ($data['expense_heads'] as $head) {
+                    $exists = DB::table('expense_heads')
+                        ->where('tenant_id', $tenant->id)
+                        ->where('name', $head['name'])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
                     }
+
+                    DB::table('expense_heads')->insert([
+                        'id'          => Str::uuid()->toString(),
+                        'tenant_id'   => $tenant->id,
+                        'name'        => $head['name'],
+                        'description' => $head['description'] ?? null,
+                        'status'      => 'active',
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ]);
+                    $count++;
                 }
             }
 
             // Income heads
             if (!empty($data['income_heads'])) {
-                $existing = DB::table('income_heads')->where('tenant_id', $tenant->id)->count();
-                if ($existing === 0) {
-                    foreach ($data['income_heads'] as $head) {
-                        DB::table('income_heads')->insert([
-                            'id'          => Str::uuid()->toString(),
-                            'tenant_id'   => $tenant->id,
-                            'name'        => $head['name'],
-                            'description' => $head['description'] ?? null,
-                            'status'      => 'active',
-                            'created_at'  => now(),
-                            'updated_at'  => now(),
-                        ]);
-                        $count++;
+                foreach ($data['income_heads'] as $head) {
+                    $exists = DB::table('income_heads')
+                        ->where('tenant_id', $tenant->id)
+                        ->where('name', $head['name'])
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
                     }
+
+                    DB::table('income_heads')->insert([
+                        'id'          => Str::uuid()->toString(),
+                        'tenant_id'   => $tenant->id,
+                        'name'        => $head['name'],
+                        'description' => $head['description'] ?? null,
+                        'status'      => 'active',
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ]);
+                    $count++;
                 }
             }
 
-            return ['success' => true, 'message' => "Ledger settings imported", 'count' => $count];
+            return ['success' => true, 'message' => 'Ledger settings synced', 'count' => $count];
         });
     }
 
@@ -366,6 +389,37 @@ class TenantSetupService
                 'error_code' => 'SETUP_' . strtoupper($step) . '_FAILED',
             ];
         }
+    }
+
+    /**
+     * Create or update a tenant system setting without mutating primary keys.
+     */
+    private function syncTenantSystemSetting(string $tenantId, string $key, string $value): void
+    {
+        $existing = DB::table('system_settings')
+            ->where('tenant_id', $tenantId)
+            ->where('setting_key', $key)
+            ->first(['id']);
+
+        if ($existing) {
+            DB::table('system_settings')
+                ->where('id', $existing->id)
+                ->update([
+                    'setting_value' => $value,
+                    'updated_at' => now(),
+                ]);
+
+            return;
+        }
+
+        DB::table('system_settings')->insert([
+            'id' => Str::uuid()->toString(),
+            'tenant_id' => $tenantId,
+            'setting_key' => $key,
+            'setting_value' => $value,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**

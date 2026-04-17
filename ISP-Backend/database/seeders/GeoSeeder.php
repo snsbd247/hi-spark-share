@@ -10,251 +10,135 @@ class GeoSeeder extends Seeder
 {
     public function run(): void
     {
-        // Idempotent: only insert what's missing. This way re-running the seeder
-        // will fill in any districts/upazilas that were added later, without
-        // duplicating existing rows or affecting other modules.
+        $data = $this->loadGeoData();
         $now = now();
 
-        $divisions = [
-            ['name' => 'Barishal', 'bn_name' => 'বরিশাল'],
-            ['name' => 'Chattogram', 'bn_name' => 'চট্টগ্রাম'],
-            ['name' => 'Dhaka', 'bn_name' => 'ঢাকা'],
-            ['name' => 'Khulna', 'bn_name' => 'খুলনা'],
-            ['name' => 'Mymensingh', 'bn_name' => 'ময়মনসিংহ'],
-            ['name' => 'Rajshahi', 'bn_name' => 'রাজশাহী'],
-            ['name' => 'Rangpur', 'bn_name' => 'রংপুর'],
-            ['name' => 'Sylhet', 'bn_name' => 'সিলেট'],
-        ];
-
         $divisionIds = [];
-        foreach ($divisions as $div) {
-            $existing = DB::table('geo_divisions')->where('name', $div['name'])->first();
+        $insertedDivisions = 0;
+        foreach ($data['divisions'] as $division) {
+            $existing = DB::table('geo_divisions')
+                ->where('name', $division['name'])
+                ->first();
+
             if ($existing) {
-                $divisionIds[$div['name']] = $existing->id;
+                $divisionIds[$division['name']] = $existing->id;
                 continue;
             }
+
             $id = Str::uuid()->toString();
             DB::table('geo_divisions')->insert([
                 'id' => $id,
-                'name' => $div['name'],
-                'bn_name' => $div['bn_name'],
+                'name' => $division['name'],
+                'bn_name' => $division['bn_name'] ?? null,
                 'status' => 'active',
                 'created_at' => $now,
+                'updated_at' => $now,
             ]);
-            $divisionIds[$div['name']] = $id;
+
+            $divisionIds[$division['name']] = $id;
+            $insertedDivisions++;
         }
 
-        $districts = [
-            'Barishal' => [
-                ['name' => 'Barguna', 'bn_name' => 'বরগুনা'],
-                ['name' => 'Barishal', 'bn_name' => 'বরিশাল'],
-                ['name' => 'Bhola', 'bn_name' => 'ভোলা'],
-                ['name' => 'Jhalokati', 'bn_name' => 'ঝালকাঠি'],
-                ['name' => 'Patuakhali', 'bn_name' => 'পটুয়াখালী'],
-                ['name' => 'Pirojpur', 'bn_name' => 'পিরোজপুর'],
-            ],
-            'Chattogram' => [
-                ['name' => 'Bandarban', 'bn_name' => 'বান্দরবান'],
-                ['name' => 'Brahmanbaria', 'bn_name' => 'ব্রাহ্মণবাড়িয়া'],
-                ['name' => 'Chandpur', 'bn_name' => 'চাঁদপুর'],
-                ['name' => 'Chattogram', 'bn_name' => 'চট্টগ্রাম'],
-                ['name' => 'Comilla', 'bn_name' => 'কুমিল্লা'],
-                ['name' => "Cox's Bazar", 'bn_name' => 'কক্সবাজার'],
-                ['name' => 'Feni', 'bn_name' => 'ফেনী'],
-                ['name' => 'Khagrachhari', 'bn_name' => 'খাগড়াছড়ি'],
-                ['name' => 'Lakshmipur', 'bn_name' => 'লক্ষ্মীপুর'],
-                ['name' => 'Noakhali', 'bn_name' => 'নোয়াখালী'],
-                ['name' => 'Rangamati', 'bn_name' => 'রাঙ্গামাটি'],
-            ],
-            'Dhaka' => [
-                ['name' => 'Dhaka', 'bn_name' => 'ঢাকা'],
-                ['name' => 'Faridpur', 'bn_name' => 'ফরিদপুর'],
-                ['name' => 'Gazipur', 'bn_name' => 'গাজীপুর'],
-                ['name' => 'Gopalganj', 'bn_name' => 'গোপালগঞ্জ'],
-                ['name' => 'Kishoreganj', 'bn_name' => 'কিশোরগঞ্জ'],
-                ['name' => 'Madaripur', 'bn_name' => 'মাদারীপুর'],
-                ['name' => 'Manikganj', 'bn_name' => 'মানিকগঞ্জ'],
-                ['name' => 'Munshiganj', 'bn_name' => 'মুন্সীগঞ্জ'],
-                ['name' => 'Narayanganj', 'bn_name' => 'নারায়ণগঞ্জ'],
-                ['name' => 'Narsingdi', 'bn_name' => 'নরসিংদী'],
-                ['name' => 'Rajbari', 'bn_name' => 'রাজবাড়ী'],
-                ['name' => 'Shariatpur', 'bn_name' => 'শরীয়তপুর'],
-                ['name' => 'Tangail', 'bn_name' => 'টাঙ্গাইল'],
-            ],
-            'Khulna' => [
-                ['name' => 'Bagerhat', 'bn_name' => 'বাগেরহাট'],
-                ['name' => 'Chuadanga', 'bn_name' => 'চুয়াডাঙ্গা'],
-                ['name' => 'Jessore', 'bn_name' => 'যশোর'],
-                ['name' => 'Jhenaidah', 'bn_name' => 'ঝিনাইদহ'],
-                ['name' => 'Khulna', 'bn_name' => 'খুলনা'],
-                ['name' => 'Kushtia', 'bn_name' => 'কুষ্টিয়া'],
-                ['name' => 'Magura', 'bn_name' => 'মাগুরা'],
-                ['name' => 'Meherpur', 'bn_name' => 'মেহেরপুর'],
-                ['name' => 'Narail', 'bn_name' => 'নড়াইল'],
-                ['name' => 'Satkhira', 'bn_name' => 'সাতক্ষীরা'],
-            ],
-            'Mymensingh' => [
-                ['name' => 'Jamalpur', 'bn_name' => 'জামালপুর'],
-                ['name' => 'Mymensingh', 'bn_name' => 'ময়মনসিংহ'],
-                ['name' => 'Netrokona', 'bn_name' => 'নেত্রকোনা'],
-                ['name' => 'Sherpur', 'bn_name' => 'শেরপুর'],
-            ],
-            'Rajshahi' => [
-                ['name' => 'Bogra', 'bn_name' => 'বগুড়া'],
-                ['name' => 'Chapainawabganj', 'bn_name' => 'চাঁপাইনবাবগঞ্জ'],
-                ['name' => 'Joypurhat', 'bn_name' => 'জয়পুরহাট'],
-                ['name' => 'Naogaon', 'bn_name' => 'নওগাঁ'],
-                ['name' => 'Natore', 'bn_name' => 'নাটোর'],
-                ['name' => 'Nawabganj', 'bn_name' => 'নবাবগঞ্জ'],
-                ['name' => 'Pabna', 'bn_name' => 'পাবনা'],
-                ['name' => 'Rajshahi', 'bn_name' => 'রাজশাহী'],
-                ['name' => 'Sirajganj', 'bn_name' => 'সিরাজগঞ্জ'],
-            ],
-            'Rangpur' => [
-                ['name' => 'Dinajpur', 'bn_name' => 'দিনাজপুর'],
-                ['name' => 'Gaibandha', 'bn_name' => 'গাইবান্ধা'],
-                ['name' => 'Kurigram', 'bn_name' => 'কুড়িগ্রাম'],
-                ['name' => 'Lalmonirhat', 'bn_name' => 'লালমনিরহাট'],
-                ['name' => 'Nilphamari', 'bn_name' => 'নীলফামারী'],
-                ['name' => 'Panchagarh', 'bn_name' => 'পঞ্চগড়'],
-                ['name' => 'Rangpur', 'bn_name' => 'রংপুর'],
-                ['name' => 'Thakurgaon', 'bn_name' => 'ঠাকুরগাঁও'],
-            ],
-            'Sylhet' => [
-                ['name' => 'Habiganj', 'bn_name' => 'হবিগঞ্জ'],
-                ['name' => 'Moulvibazar', 'bn_name' => 'মৌলভীবাজার'],
-                ['name' => 'Sunamganj', 'bn_name' => 'সুনামগঞ্জ'],
-                ['name' => 'Sylhet', 'bn_name' => 'সিলেট'],
-            ],
-        ];
-
         $districtIds = [];
-        foreach ($districts as $divName => $dists) {
-            foreach ($dists as $dist) {
+        $insertedDistricts = 0;
+        foreach ($data['districts'] as $divisionName => $districts) {
+            $divisionId = $divisionIds[$divisionName] ?? null;
+            if (!$divisionId) {
+                continue;
+            }
+
+            foreach ($districts as $district) {
+                $name = is_array($district) ? $district['name'] : $district;
+                $bnName = is_array($district) ? ($district['bn_name'] ?? null) : null;
+
                 $existing = DB::table('geo_districts')
-                    ->where('division_id', $divisionIds[$divName])
-                    ->where('name', $dist['name'])
+                    ->where('division_id', $divisionId)
+                    ->where('name', $name)
                     ->first();
+
                 if ($existing) {
-                    $districtIds[$dist['name']] = $existing->id;
+                    $districtIds[$name] = $existing->id;
                     continue;
                 }
+
                 $id = Str::uuid()->toString();
                 DB::table('geo_districts')->insert([
                     'id' => $id,
-                    'division_id' => $divisionIds[$divName],
-                    'name' => $dist['name'],
-                    'bn_name' => $dist['bn_name'],
+                    'division_id' => $divisionId,
+                    'name' => $name,
+                    'bn_name' => $bnName,
                     'status' => 'active',
                     'created_at' => $now,
+                    'updated_at' => $now,
                 ]);
-                $districtIds[$dist['name']] = $id;
+
+                $districtIds[$name] = $id;
+                $insertedDistricts++;
             }
         }
 
-        // Complete upazila list for all 64 districts (~495 upazilas)
-        $upazilas = [
-            // Barishal Division
-            'Barguna' => ['Amtali', 'Bamna', 'Barguna Sadar', 'Betagi', 'Patharghata', 'Taltali'],
-            'Barishal' => ['Agailjhara', 'Babuganj', 'Bakerganj', 'Banaripara', 'Barishal Sadar', 'Gournadi', 'Hizla', 'Mehendiganj', 'Muladi', 'Wazirpur'],
-            'Bhola' => ['Bhola Sadar', 'Borhanuddin', 'Char Fasson', 'Daulatkhan', 'Lalmohan', 'Manpura', 'Tazumuddin'],
-            'Jhalokati' => ['Jhalokati Sadar', 'Kathalia', 'Nalchity', 'Rajapur'],
-            'Patuakhali' => ['Bauphal', 'Dashmina', 'Dumki', 'Galachipa', 'Kalapara', 'Mirzaganj', 'Patuakhali Sadar', 'Rangabali'],
-            'Pirojpur' => ['Bhandaria', 'Kawkhali', 'Mathbaria', 'Nazirpur', 'Nesarabad', 'Pirojpur Sadar', 'Zianagar'],
-            // Chattogram Division
-            'Bandarban' => ['Ali Kadam', 'Bandarban Sadar', 'Lama', 'Naikhongchhari', 'Rowangchhari', 'Ruma', 'Thanchi'],
-            'Brahmanbaria' => ['Akhaura', 'Bancharampur', 'Brahmanbaria Sadar', 'Kasba', 'Nabinagar', 'Nasirnagar', 'Sarail', 'Ashuganj', 'Bijoynagar'],
-            'Chandpur' => ['Chandpur Sadar', 'Faridganj', 'Haimchar', 'Haziganj', 'Kachua', 'Matlab Dakshin', 'Matlab Uttar', 'Shahrasti'],
-            'Chattogram' => ['Anwara', 'Banshkhali', 'Boalkhali', 'Chandanaish', 'Chittagong Port', 'Double Mooring', 'Fatikchhari', 'Hathazari', 'Karnaphuli', 'Lohagara', 'Mirsharai', 'Patiya', 'Rangunia', 'Raozan', 'Sandwip', 'Satkania', 'Sitakunda'],
-            'Comilla' => ['Barura', 'Brahmanpara', 'Burichang', 'Chandina', 'Chauddagram', 'Comilla Sadar', 'Comilla Sadar Dakshin', 'Daudkandi', 'Debidwar', 'Homna', 'Laksam', 'Meghna', 'Monohorgonj', 'Muradnagar', 'Nangalkot', 'Titas'],
-            "Cox's Bazar" => ['Chakaria', "Cox's Bazar Sadar", 'Kutubdia', 'Maheshkhali', 'Pekua', 'Ramu', 'Teknaf', 'Ukhia'],
-            'Feni' => ['Chhagalnaiya', 'Daganbhuiyan', 'Feni Sadar', 'Fulgazi', 'Parshuram', 'Sonagazi'],
-            'Khagrachhari' => ['Dighinala', 'Guimara', 'Khagrachhari Sadar', 'Lakshmichhari', 'Mahalchhari', 'Manikchhari', 'Matiranga', 'Panchhari', 'Ramgarh'],
-            'Lakshmipur' => ['Kamalnagar', 'Lakshmipur Sadar', 'Raipur', 'Ramganj', 'Ramgati'],
-            'Noakhali' => ['Begumganj', 'Chatkhil', 'Companiganj', 'Hatiya', 'Kabirhat', 'Noakhali Sadar', 'Senbagh', 'Sonaimuri', 'Subarnachar'],
-            'Rangamati' => ['Bagaichhari', 'Barkal', 'Belaichhari', 'Juraichhari', 'Kaptai', 'Kawkhali', 'Langadu', 'Naniarchar', 'Rajasthali', 'Rangamati Sadar'],
-            // Dhaka Division
-            'Dhaka' => ['Dhamrai', 'Dohar', 'Keraniganj', 'Nawabganj', 'Savar', 'Tejgaon'],
-            'Faridpur' => ['Alfadanga', 'Bhanga', 'Boalmari', 'Charbhadrasan', 'Faridpur Sadar', 'Madhukhali', 'Nagarkanda', 'Sadarpur', 'Saltha'],
-            'Gazipur' => ['Gazipur Sadar', 'Kaliakair', 'Kaliganj', 'Kapasia', 'Sreepur'],
-            'Gopalganj' => ['Gopalganj Sadar', 'Kashiani', 'Kotalipara', 'Muksudpur', 'Tungipara'],
-            'Kishoreganj' => ['Austagram', 'Bajitpur', 'Bhairab', 'Hossainpur', 'Itna', 'Karimganj', 'Katiadi', 'Kishoreganj Sadar', 'Kuliarchar', 'Mithamain', 'Nikli', 'Pakundia', 'Tarail'],
-            'Madaripur' => ['Kalkini', 'Madaripur Sadar', 'Rajoir', 'Shibchar'],
-            'Manikganj' => ['Daulatpur', 'Ghior', 'Harirampur', 'Manikganj Sadar', 'Saturia', 'Shivalaya', 'Singair'],
-            'Munshiganj' => ['Gazaria', 'Lohajang', 'Munshiganj Sadar', 'Sirajdikhan', 'Sreenagar', 'Tongibari'],
-            'Narayanganj' => ['Araihazar', 'Bandar', 'Narayanganj Sadar', 'Rupganj', 'Sonargaon'],
-            'Narsingdi' => ['Belabo', 'Monohardi', 'Narsingdi Sadar', 'Palash', 'Raipura', 'Shibpur'],
-            'Rajbari' => ['Baliakandi', 'Goalandaghat', 'Kalukhali', 'Pangsha', 'Rajbari Sadar'],
-            'Shariatpur' => ['Bhedarganj', 'Damudya', 'Gosairhat', 'Naria', 'Shariatpur Sadar', 'Zanjira'],
-            'Tangail' => ['Basail', 'Bhuapur', 'Delduar', 'Dhanbari', 'Ghatail', 'Gopalpur', 'Kalihati', 'Madhupur', 'Mirzapur', 'Nagarpur', 'Sakhipur', 'Tangail Sadar'],
-            // Khulna Division
-            'Bagerhat' => ['Bagerhat Sadar', 'Chitalmari', 'Fakirhat', 'Kachua', 'Mollahat', 'Mongla', 'Morrelganj', 'Rampal', 'Sarankhola'],
-            'Chuadanga' => ['Alamdanga', 'Chuadanga Sadar', 'Damurhuda', 'Jibannagar'],
-            'Jessore' => ['Abhaynagar', 'Bagherpara', 'Chaugachha', 'Jessore Sadar', 'Jhikargachha', 'Keshabpur', 'Manirampur', 'Sharsha'],
-            'Jhenaidah' => ['Harinakunda', 'Jhenaidah Sadar', 'Kaliganj', 'Kotchandpur', 'Maheshpur', 'Shailkupa'],
-            'Khulna' => ['Batiaghata', 'Dacope', 'Dumuria', 'Dighalia', 'Koyra', 'Khulna Sadar', 'Paikgachha', 'Phultala', 'Rupsa', 'Terokhada'],
-            'Kushtia' => ['Bheramara', 'Daulatpur', 'Khoksa', 'Kumarkhali', 'Kushtia Sadar', 'Mirpur'],
-            'Magura' => ['Magura Sadar', 'Mohammadpur', 'Shalikha', 'Sreepur'],
-            'Meherpur' => ['Gangni', 'Meherpur Sadar', 'Mujibnagar'],
-            'Narail' => ['Kalia', 'Lohagara', 'Narail Sadar'],
-            'Satkhira' => ['Assasuni', 'Debhata', 'Kalaroa', 'Kaliganj', 'Satkhira Sadar', 'Shyamnagar', 'Tala'],
-            // Mymensingh Division
-            'Jamalpur' => ['Bakshiganj', 'Dewanganj', 'Islampur', 'Jamalpur Sadar', 'Madarganj', 'Melandaha', 'Sarishabari'],
-            'Mymensingh' => ['Bhaluka', 'Dhobaura', 'Fulbaria', 'Gaffargaon', 'Gauripur', 'Haluaghat', 'Ishwarganj', 'Mymensingh Sadar', 'Muktagachha', 'Nandail', 'Phulpur', 'Trishal'],
-            'Netrokona' => ['Atpara', 'Barhatta', 'Durgapur', 'Kalmakanda', 'Kendua', 'Khaliajuri', 'Madan', 'Mohanganj', 'Netrokona Sadar', 'Purbadhala'],
-            'Sherpur' => ['Jhenaigati', 'Nakla', 'Nalitabari', 'Sherpur Sadar', 'Sreebardi'],
-            // Rajshahi Division
-            'Bogra' => ['Adamdighi', 'Bogra Sadar', 'Dhunat', 'Dhupchanchia', 'Gabtali', 'Kahaloo', 'Nandigram', 'Sariakandi', 'Shajahanpur', 'Sherpur', 'Shibganj', 'Sonatola'],
-            'Chapainawabganj' => ['Bholahat', 'Chapainawabganj Sadar', 'Gomastapur', 'Nachole', 'Shibganj'],
-            'Joypurhat' => ['Akkelpur', 'Joypurhat Sadar', 'Kalai', 'Khetlal', 'Panchbibi'],
-            'Naogaon' => ['Atrai', 'Badalgachhi', 'Dhamoirhat', 'Manda', 'Mahadebpur', 'Naogaon Sadar', 'Niamatpur', 'Patnitala', 'Porsha', 'Raninagar', 'Sapahar'],
-            'Natore' => ['Bagatipara', 'Baraigram', 'Gurudaspur', 'Lalpur', 'Naldanga', 'Natore Sadar', 'Singra'],
-            'Nawabganj' => ['Bholahat', 'Gomastapur', 'Nachole', 'Nawabganj Sadar', 'Shibganj'],
-            'Pabna' => ['Atgharia', 'Bera', 'Bhangura', 'Chatmohar', 'Faridpur', 'Ishwardi', 'Pabna Sadar', 'Santhia', 'Sujanagar'],
-            'Rajshahi' => ['Bagha', 'Bagmara', 'Boalia', 'Charghat', 'Durgapur', 'Godagari', 'Mohanpur', 'Paba', 'Puthia', 'Tanore'],
-            'Sirajganj' => ['Belkuchi', 'Chauhali', 'Kamarkhanda', 'Kazipur', 'Raiganj', 'Shahjadpur', 'Sirajganj Sadar', 'Tarash', 'Ullahpara'],
-            // Rangpur Division
-            'Dinajpur' => ['Biral', 'Birampur', 'Birganj', 'Bochaganj', 'Chirirbandar', 'Dinajpur Sadar', 'Ghoraghat', 'Hakimpur', 'Kaharole', 'Khansama', 'Nawabganj', 'Parbatipur', 'Phulbari'],
-            'Gaibandha' => ['Fulchhari', 'Gaibandha Sadar', 'Gobindaganj', 'Palashbari', 'Sadullapur', 'Saghata', 'Sundarganj'],
-            'Kurigram' => ['Bhurungamari', 'Char Rajibpur', 'Chilmari', 'Kurigram Sadar', 'Nageshwari', 'Phulbari', 'Rajarhat', 'Raumari', 'Ulipur'],
-            'Lalmonirhat' => ['Aditmari', 'Hatibandha', 'Kaliganj', 'Lalmonirhat Sadar', 'Patgram'],
-            'Nilphamari' => ['Dimla', 'Domar', 'Jaldhaka', 'Kishoreganj', 'Nilphamari Sadar', 'Saidpur'],
-            'Panchagarh' => ['Atwari', 'Boda', 'Debiganj', 'Panchagarh Sadar', 'Tetulia'],
-            'Rangpur' => ['Badarganj', 'Gangachara', 'Kaunia', 'Mithapukur', 'Pirgachha', 'Pirganj', 'Rangpur Sadar', 'Taraganj'],
-            'Thakurgaon' => ['Baliadangi', 'Haripur', 'Pirganj', 'Ranisankail', 'Thakurgaon Sadar'],
-            // Sylhet Division
-            'Habiganj' => ['Ajmiriganj', 'Bahubal', 'Baniachong', 'Chunarughat', 'Habiganj Sadar', 'Lakhai', 'Madhabpur', 'Nabiganj', 'Sayestaganj'],
-            'Moulvibazar' => ['Barlekha', 'Juri', 'Kamalganj', 'Kulaura', 'Moulvibazar Sadar', 'Rajnagar', 'Sreemangal'],
-            'Sunamganj' => ['Bishwamvarpur', 'Chhatak', 'Dakshin Sunamganj', 'Derai', 'Dharampasha', 'Dowarabazar', 'Jagannathpur', 'Jamalganj', 'Sulla', 'Sunamganj Sadar', 'Tahirpur'],
-            'Sylhet' => ['Balaganj', 'Beanibazar', 'Bishwanath', 'Companiganj', 'Fenchuganj', 'Golapganj', 'Gowainghat', 'Jaintiapur', 'Kanaighat', 'Osmani Nagar', 'South Surma', 'Sylhet Sadar', 'Zakiganj'],
-        ];
-
         $totalUpazilas = 0;
         $insertedUpazilas = 0;
-        foreach ($upazilas as $distName => $upas) {
-            if (!isset($districtIds[$distName])) continue;
-            foreach ($upas as $upa) {
+        foreach ($data['upazilas'] as $districtName => $upazilas) {
+            $districtId = $districtIds[$districtName] ?? null;
+            if (!$districtId) {
+                continue;
+            }
+
+            foreach ($upazilas as $upazila) {
                 $totalUpazilas++;
+
+                $name = is_array($upazila) ? $upazila['name'] : $upazila;
+                $bnName = is_array($upazila) ? ($upazila['bn_name'] ?? null) : null;
+
                 $exists = DB::table('geo_upazilas')
-                    ->where('district_id', $districtIds[$distName])
-                    ->where('name', $upa)
+                    ->where('district_id', $districtId)
+                    ->where('name', $name)
                     ->exists();
-                if ($exists) continue;
+
+                if ($exists) {
+                    continue;
+                }
 
                 DB::table('geo_upazilas')->insert([
                     'id' => Str::uuid()->toString(),
-                    'district_id' => $districtIds[$distName],
-                    'name' => $upa,
-                    'bn_name' => null,
+                    'district_id' => $districtId,
+                    'name' => $name,
+                    'bn_name' => $bnName,
                     'status' => 'active',
                     'created_at' => $now,
+                    'updated_at' => $now,
                 ]);
+
                 $insertedUpazilas++;
             }
         }
 
-        echo "Bangladesh geo data seeded: " . count($divisions) . " divisions, "
-            . array_sum(array_map('count', $districts)) . " districts, "
-            . "{$insertedUpazilas} new upazilas inserted (total defined: {$totalUpazilas})\n";
+        $summary = 'Bangladesh geo data synced: '
+            . count($data['divisions']) . ' divisions (' . $insertedDivisions . ' new), '
+            . array_sum(array_map('count', $data['districts'])) . ' districts (' . $insertedDistricts . ' new), '
+            . $totalUpazilas . ' upazilas (' . $insertedUpazilas . ' new)';
+
+        if ($this->command) {
+            $this->command->info($summary);
+            return;
+        }
+
+        echo $summary . PHP_EOL;
+    }
+
+    private function loadGeoData(): array
+    {
+        $path = database_path('data/geo.json');
+        if (!file_exists($path)) {
+            throw new \RuntimeException('geo.json not found');
+        }
+
+        $data = json_decode(file_get_contents($path), true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+            throw new \RuntimeException('Invalid geo.json: ' . json_last_error_msg());
+        }
+
+        return $data;
     }
 }

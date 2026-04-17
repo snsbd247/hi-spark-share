@@ -301,25 +301,24 @@ class DefaultSeeder extends Seeder
     // ── Packages ─────────────────────────────────────────
     private function seedPackages(): void
     {
-        if (Package::where('tenant_id', $this->defaultTenantId)->count() === 0) {
-            $packages = [
-                ['name' => 'Basic 10Mbps', 'speed' => '10 Mbps', 'monthly_price' => 500, 'download_speed' => 10, 'upload_speed' => 10],
-                ['name' => 'Standard 20Mbps', 'speed' => '20 Mbps', 'monthly_price' => 800, 'download_speed' => 20, 'upload_speed' => 20],
-                ['name' => 'Premium 50Mbps', 'speed' => '50 Mbps', 'monthly_price' => 1200, 'download_speed' => 50, 'upload_speed' => 50],
-                ['name' => 'Ultra 100Mbps', 'speed' => '100 Mbps', 'monthly_price' => 2000, 'download_speed' => 100, 'upload_speed' => 100],
-            ];
-            foreach ($packages as $pkg) {
-                $pkg['tenant_id'] = $this->defaultTenantId;
-                Package::create($pkg);
-            }
+        $packages = [
+            ['name' => 'Basic 10Mbps', 'speed' => '10 Mbps', 'monthly_price' => 500, 'download_speed' => 10, 'upload_speed' => 10],
+            ['name' => 'Standard 20Mbps', 'speed' => '20 Mbps', 'monthly_price' => 800, 'download_speed' => 20, 'upload_speed' => 20],
+            ['name' => 'Premium 50Mbps', 'speed' => '50 Mbps', 'monthly_price' => 1200, 'download_speed' => 50, 'upload_speed' => 50],
+            ['name' => 'Ultra 100Mbps', 'speed' => '100 Mbps', 'monthly_price' => 2000, 'download_speed' => 100, 'upload_speed' => 100],
+        ];
+
+        foreach ($packages as $pkg) {
+            Package::firstOrCreate(
+                ['tenant_id' => $this->defaultTenantId, 'name' => $pkg['name']],
+                array_merge($pkg, ['tenant_id' => $this->defaultTenantId])
+            );
         }
     }
 
     // ── Chart of Accounts (ISP-specific hierarchy) ───────
     private function seedChartOfAccounts(): void
     {
-        if (Account::where('tenant_id', $this->defaultTenantId)->count() > 0) return;
-
         $coa = [
             // Assets (1000)
             ['name' => 'Assets', 'code' => '1000', 'type' => 'asset', 'level' => 0, 'is_system' => true, 'parent_code' => null],
@@ -383,8 +382,16 @@ class DefaultSeeder extends Seeder
         // Sort by level to ensure parents are created first
         usort($coa, fn($a, $b) => $a['level'] <=> $b['level']);
 
-        $codeToId = [];
+        $codeToId = Account::where('tenant_id', $this->defaultTenantId)
+            ->whereNotNull('code')
+            ->pluck('id', 'code')
+            ->toArray();
+
         foreach ($coa as $acct) {
+            if (isset($codeToId[$acct['code']])) {
+                continue;
+            }
+
             $parentId = $acct['parent_code'] ? ($codeToId[$acct['parent_code']] ?? null) : null;
             $created = Account::create([
                 'tenant_id' => $this->defaultTenantId,
@@ -409,7 +416,9 @@ class DefaultSeeder extends Seeder
     {
         // If COA wasn't just seeded, load existing codes
         if (empty($this->coaCodeToId)) {
-            $accounts = Account::whereNotNull('code')->get();
+            $accounts = Account::where('tenant_id', $this->defaultTenantId)
+                ->whereNotNull('code')
+                ->get();
             foreach ($accounts as $acct) {
                 $this->coaCodeToId[$acct->code] = $acct->id;
             }
@@ -477,16 +486,13 @@ class DefaultSeeder extends Seeder
 
     private function seedRolePermissions(array $permissionIds, array $modules): void
     {
-        // Skip if already seeded
-        if (\App\Models\RolePermission::count() > 0) return;
-
         $roles = CustomRole::all()->keyBy('name');
 
         // Super Admin, Admin & Owner → all permissions
         foreach (['Super Admin', 'Admin', 'Owner'] as $roleName) {
             if (!isset($roles[$roleName])) continue;
             foreach ($permissionIds as $permId) {
-                \App\Models\RolePermission::create([
+                \App\Models\RolePermission::firstOrCreate([
                     'role_id' => $roles[$roleName]->id,
                     'permission_id' => $permId,
                 ]);
@@ -498,7 +504,7 @@ class DefaultSeeder extends Seeder
             $managerExclude = ['users.create', 'users.delete', 'roles.create', 'roles.edit', 'roles.delete', 'settings.delete'];
             foreach ($permissionIds as $key => $permId) {
                 if (!in_array($key, $managerExclude)) {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Manager']->id,
                         'permission_id' => $permId,
                     ]);
@@ -512,7 +518,7 @@ class DefaultSeeder extends Seeder
             foreach ($permissionIds as $key => $permId) {
                 [$mod, $act] = explode('.', $key);
                 if ($act === 'view' || in_array($mod, $staffModules)) {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Staff']->id,
                         'permission_id' => $permId,
                     ]);
@@ -526,17 +532,17 @@ class DefaultSeeder extends Seeder
             foreach ($permissionIds as $key => $permId) {
                 [$mod, $act] = explode('.', $key);
                 if (in_array($mod, $techFullModules) && $act !== 'delete') {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Technician']->id,
                         'permission_id' => $permId,
                     ]);
                 } elseif (in_array($mod, ['customers', 'tickets']) && in_array($act, ['view', 'edit'])) {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Technician']->id,
                         'permission_id' => $permId,
                     ]);
                 } elseif (in_array($mod, ['dashboard', 'settings']) && $act === 'view') {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Technician']->id,
                         'permission_id' => $permId,
                     ]);
@@ -550,7 +556,7 @@ class DefaultSeeder extends Seeder
             foreach ($permissionIds as $key => $permId) {
                 [$mod, $act] = explode('.', $key);
                 if (in_array($mod, $accModules) || ($act === 'view' && in_array($mod, ['customers']))) {
-                    \App\Models\RolePermission::create([
+                    \App\Models\RolePermission::firstOrCreate([
                         'role_id' => $roles['Accountant']->id,
                         'permission_id' => $permId,
                     ]);
@@ -597,8 +603,6 @@ class DefaultSeeder extends Seeder
     // ── Landing Page Default Sections ────────────────────
     private function seedLandingSections(): void
     {
-        if (\App\Models\LandingSection::count() > 0) return;
-
         $sections = [
             // ── Hero ──
             [
@@ -674,10 +678,18 @@ class DefaultSeeder extends Seeder
             ['section_type' => 'footer', 'title' => 'Contact Info', 'subtitle' => 'Contact Us', 'sort_order' => 43, 'is_active' => true, 'metadata' => json_encode(['phone' => '01315556633', 'email' => 'info@smartispapp.com', 'address' => '57/1, Omar Ali Lane, Wabda Road, West Rampura, Dhaka-1219, Bangladesh'])],
         ];
 
+        $inserted = 0;
         foreach ($sections as $section) {
-            \App\Models\LandingSection::create($section);
+            $record = \App\Models\LandingSection::firstOrCreate(
+                ['section_type' => $section['section_type'], 'sort_order' => $section['sort_order']],
+                $section
+            );
+
+            if ($record->wasRecentlyCreated) {
+                $inserted++;
+            }
         }
 
-        $this->command->info('  ✓ Landing sections seeded (' . count($sections) . ' items)');
+        $this->command->info('  ✓ Landing sections synced (' . $inserted . ' new items)');
     }
 }
