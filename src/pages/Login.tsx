@@ -111,6 +111,14 @@ export default function Login() {
             </div>
           </CardContent>
         </Card>
+
+        {branding.support_email || branding.support_phone ? (
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            <p>{t.portal.needHelp}</p>
+            {branding.support_email && <p>{branding.support_email}</p>}
+            {branding.support_phone && <p>{branding.support_phone}</p>}
+          </div>
+        ) : null}
       </div>
     </div>
   );
