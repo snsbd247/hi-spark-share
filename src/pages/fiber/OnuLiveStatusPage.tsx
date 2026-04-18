@@ -6,16 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Activity, RefreshCw, Search } from "lucide-react";
+import { Activity, ArrowDown, ArrowUp, Download, RefreshCw, Search } from "lucide-react";
 import { oltApi, type OltDevice, type OnuLiveStatus } from "@/lib/oltApi";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type SortKey = "serial_number" | "status" | "rx_power" | "tx_power" | "olt_rx_power" | "distance_m" | "last_seen";
 
 function signalClass(rx?: number | null) {
   if (rx === null || rx === undefined) return "text-muted-foreground";
-  if (rx > -20) return "text-green-600 dark:text-green-400";
-  if (rx > -25) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+  if (rx > -20) return "text-success";
+  if (rx > -25) return "text-warning";
+  return "text-destructive";
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "online": return "bg-success/15 text-success border-success/30";
+    case "offline": return "bg-destructive/15 text-destructive border-destructive/30";
+    case "los": return "bg-warning/15 text-warning border-warning/30";
+    case "dying-gasp": return "bg-warning/15 text-warning border-warning/30";
+    default: return "bg-muted text-muted-foreground border-border";
+  }
 }
 
 export default function OnuLiveStatusPage() {
@@ -26,6 +39,14 @@ export default function OnuLiveStatusPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("last_seen");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const oltNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    olts.forEach((o) => { m[o.id] = o.name; });
+    return m;
+  }, [olts]);
 
   const load = async () => {
     setLoading(true);
@@ -60,14 +81,74 @@ export default function OnuLiveStatusPage() {
     const total = rows.length;
     const online = rows.filter((r) => r.status === "online").length;
     const offline = rows.filter((r) => r.status === "offline").length;
-    const los = rows.filter((r) => r.status === "los").length;
+    const los = rows.filter((r) => r.status === "los" || r.status === "dying-gasp").length;
     return { total, online, offline, los };
   }, [rows]);
+
+  const sortedRows = useMemo(() => {
+    const arr = [...rows];
+    arr.sort((a, b) => {
+      const av = (a as any)[sortKey];
+      const bv = (b as any)[sortKey];
+      if (av === null || av === undefined) return 1;
+      if (bv === null || bv === undefined) return -1;
+      if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
+      const as = String(av); const bs = String(bv);
+      return sortDir === "asc" ? as.localeCompare(bs) : bs.localeCompare(as);
+    });
+    return arr;
+  }, [rows, sortKey, sortDir]);
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+
+  const exportCsv = () => {
+    if (!sortedRows.length) { toast.info("No data to export"); return; }
+    const headers = ["serial_number","olt","status","rx_power","tx_power","olt_rx_power","uptime","distance_m","last_seen"];
+    const escape = (v: any) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? `"${s}"` : s;
+    };
+    const lines = [headers.join(",")];
+    sortedRows.forEach((r) => {
+      lines.push([
+        r.serial_number,
+        oltNameById[r.olt_device_id] || r.olt_device_id,
+        r.status,
+        r.rx_power ?? "",
+        r.tx_power ?? "",
+        r.olt_rx_power ?? "",
+        r.uptime ?? "",
+        r.distance_m ?? "",
+        r.last_seen ?? "",
+      ].map(escape).join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `onu-live-status-${format(new Date(), "yyyyMMdd-HHmmss")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${sortedRows.length} rows`);
+  };
+
+  const SortHeader = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
+    <TableHead>
+      <button onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition">
+        {children}
+        {sortKey === k && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+      </button>
+    </TableHead>
+  );
 
   return (
     <DashboardLayout>
       <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Activity className="h-6 w-6 text-primary" /> ONU Live Status
@@ -77,8 +158,11 @@ export default function OnuLiveStatusPage() {
             </p>
           </div>
           <div className="flex gap-2 items-center">
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="h-4 w-4 mr-2" /> Export CSV
+            </Button>
             <Button variant={autoRefresh ? "default" : "outline"} size="sm" onClick={() => setAutoRefresh((v) => !v)}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${autoRefresh ? "animate-spin" : ""}`} /> Auto refresh
+              <RefreshCw className={cn("h-4 w-4 mr-2", autoRefresh && "animate-spin")} /> Auto refresh
             </Button>
             <Button variant="outline" size="sm" onClick={load}>Refresh now</Button>
           </div>
@@ -87,14 +171,14 @@ export default function OnuLiveStatusPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Total ONUs", value: stats.total, color: "bg-primary/10 text-primary" },
-            { label: "Online", value: stats.online, color: "bg-green-500/15 text-green-700 dark:text-green-400" },
-            { label: "Offline", value: stats.offline, color: "bg-red-500/15 text-red-700 dark:text-red-400" },
-            { label: "LOS", value: stats.los, color: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+            { label: "Online", value: stats.online, color: "bg-success/15 text-success" },
+            { label: "Offline", value: stats.offline, color: "bg-destructive/15 text-destructive" },
+            { label: "LOS / Dying-gasp", value: stats.los, color: "bg-warning/15 text-warning" },
           ].map((s) => (
             <Card key={s.label}>
               <CardContent className="p-4">
                 <div className="text-xs text-muted-foreground">{s.label}</div>
-                <div className={`text-2xl font-bold mt-1 inline-flex px-2 py-0.5 rounded ${s.color}`}>{s.value}</div>
+                <div className={cn("text-2xl font-bold mt-1 inline-flex px-2 py-0.5 rounded", s.color)}>{s.value}</div>
               </CardContent>
             </Card>
           ))}
@@ -125,6 +209,7 @@ export default function OnuLiveStatusPage() {
                 <SelectItem value="online">Online</SelectItem>
                 <SelectItem value="offline">Offline</SelectItem>
                 <SelectItem value="los">LOS</SelectItem>
+                <SelectItem value="dying-gasp">Dying-gasp</SelectItem>
                 <SelectItem value="unknown">Unknown</SelectItem>
               </SelectContent>
             </Select>
@@ -133,40 +218,37 @@ export default function OnuLiveStatusPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Live ONUs ({rows.length})</CardTitle></CardHeader>
-          <CardContent className="p-0">
+          <CardHeader><CardTitle className="text-base">Live ONUs ({sortedRows.length})</CardTitle></CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Serial</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>RX (dBm)</TableHead>
-                  <TableHead>TX (dBm)</TableHead>
-                  <TableHead>OLT RX</TableHead>
+                  <SortHeader k="serial_number">Serial</SortHeader>
+                  <TableHead>OLT</TableHead>
+                  <SortHeader k="status">Status</SortHeader>
+                  <SortHeader k="rx_power">RX (dBm)</SortHeader>
+                  <SortHeader k="tx_power">TX (dBm)</SortHeader>
+                  <SortHeader k="olt_rx_power">OLT RX</SortHeader>
                   <TableHead>Uptime</TableHead>
-                  <TableHead>Distance</TableHead>
-                  <TableHead>Last seen</TableHead>
+                  <SortHeader k="distance_m">Distance</SortHeader>
+                  <SortHeader k="last_seen">Last seen</SortHeader>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
-                ) : rows.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No live data yet — add an OLT and poll.</TableCell></TableRow>
-                ) : rows.map((r) => (
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+                ) : sortedRows.length === 0 ? (
+                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No live data yet — add an OLT and poll.</TableCell></TableRow>
+                ) : sortedRows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs">{r.serial_number}</TableCell>
+                    <TableCell className="text-xs">{oltNameById[r.olt_device_id] || "—"}</TableCell>
                     <TableCell>
-                      <Badge className={
-                        r.status === "online" ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                        : r.status === "offline" ? "bg-red-500/15 text-red-700 dark:text-red-400"
-                        : r.status === "los" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                        : "bg-muted text-muted-foreground"
-                      }>{r.status}</Badge>
+                      <Badge variant="outline" className={statusBadgeClass(r.status)}>{r.status}</Badge>
                     </TableCell>
-                    <TableCell className={`font-mono ${signalClass(r.rx_power)}`}>{r.rx_power ?? "—"}</TableCell>
+                    <TableCell className={cn("font-mono", signalClass(r.rx_power))}>{r.rx_power ?? "—"}</TableCell>
                     <TableCell className="font-mono">{r.tx_power ?? "—"}</TableCell>
-                    <TableCell className={`font-mono ${signalClass(r.olt_rx_power)}`}>{r.olt_rx_power ?? "—"}</TableCell>
+                    <TableCell className={cn("font-mono", signalClass(r.olt_rx_power))}>{r.olt_rx_power ?? "—"}</TableCell>
                     <TableCell className="text-xs">{r.uptime ?? "—"}</TableCell>
                     <TableCell className="text-xs">{r.distance_m ? `${r.distance_m} m` : "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
