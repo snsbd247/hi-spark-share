@@ -604,6 +604,20 @@ class GenericCrudController extends Controller
                 }
             }
 
+            // ── Customer auto-generation hook (per-tenant prefix + duplicate check + default pppoe password) ──
+            if ($normalizedTable === 'customers') {
+                try {
+                    $tenantId = $input['tenant_id'] ?? $request->input('tenant_id') ?? optional($request->user())->tenant_id ?? null;
+                    $input = \App\Services\CustomerIdGenerator::applyDefaults($input, $tenantId);
+                } catch (\RuntimeException $dupEx) {
+                    return response()->json([
+                        'message' => $dupEx->getMessage(),
+                        'error' => $dupEx->getMessage(),
+                        'duplicate' => true,
+                    ], 422);
+                }
+            }
+
             $record = $model->create($input);
 
             // Log audit & activity
