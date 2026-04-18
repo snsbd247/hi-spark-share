@@ -118,6 +118,68 @@ class OltDeviceController extends Controller
     }
 
 
+    public function update(Request $request, $id)
+    {
+        $device = OltDevice::findOrFail($id);
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'ip_address' => 'sometimes|string|max:64',
+            'port' => 'nullable|integer|min:1|max:65535',
+            'api_port' => 'nullable|integer|min:1|max:65535',
+            'username' => 'nullable|string|max:255',
+            'password' => 'nullable|string|max:255',
+            'vendor' => 'sometimes|in:huawei,zte,vsol,bdcom',
+            'connection_type' => 'nullable|in:api,cli,hybrid',
+            'location' => 'nullable|string',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
+            'poll_interval_sec' => 'nullable|integer|min:30|max:3600',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        return DB::transaction(function () use ($device, $data) {
+            // Sync topology fields back to fiber_olts master (SSOT)
+            if ($device->fiber_olt_id) {
+                $fiberUpdates = array_filter([
+                    'name' => $data['name'] ?? null,
+                    'location' => $data['location'] ?? null,
+                    'lat' => $data['lat'] ?? null,
+                    'lng' => $data['lng'] ?? null,
+                ], fn($v) => $v !== null);
+                if (!empty($fiberUpdates)) {
+                    FiberOlt::where('id', $device->fiber_olt_id)->update($fiberUpdates);
+                }
+            }
+
+            $device->fill(collect($data)->except(['password', 'location', 'lat', 'lng'])->toArray());
+            if (array_key_exists('password', $data) && $data['password'] !== null && $data['password'] !== '') {
+                $device->password_encrypted = $this->vault->encrypt($data['password'], $device->tenant_id);
+                $device->encryption_key_id = $this->vault->currentKeyId();
+            }
+            $device->save();
+            return response()->json($this->present($device));
+        });
+    }
+
+    /**
+     * SSOT-aware delete: removes olt_devices row only.
+     * fiber_olts master is preserved unless ?cascade=1.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $device = OltDevice::findOrFail($id);
+        $cascade = (bool) $request->query('cascade', false);
+        return DB::transaction(function () use ($device, $cascade) {
+            $fiberOltId = $device->fiber_olt_id;
+            $device->delete();
+            if ($cascade && $fiberOltId) {
+                FiberPonPort::where('olt_id', $fiberOltId)->delete();
+                FiberOlt::where('id', $fiberOltId)->delete();
+            }
+            return response()->json(['message' => 'OLT device deleted', 'cascaded' => $cascade]);
+        });
+    }
+
     public function testConnection($id)
     {
         $device = OltDevice::findOrFail($id);
