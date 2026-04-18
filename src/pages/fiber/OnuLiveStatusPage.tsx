@@ -77,10 +77,26 @@ export default function OnuLiveStatusPage() {
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const id = setInterval(load, 15000);
+    // When live-push is active we can poll less aggressively (60s safety net),
+    // otherwise stay at 15s.
+    const interval = livePush ? 60000 : 15000;
+    const id = setInterval(load, interval);
     return () => clearInterval(id);
     // eslint-disable-next-line
-  }, [autoRefresh, oltFilter, statusFilter, search]);
+  }, [autoRefresh, oltFilter, statusFilter, search, livePush]);
+
+  // Phase 8: subscribe to live push — instant refresh on poll completion.
+  useEffect(() => {
+    const unsub = subscribeOnuStatus(tenantId, (payload) => {
+      setLastPushAt(payload.polled_at);
+      // If user is filtered to a different OLT, skip the auto-reload to avoid flicker.
+      if (oltFilter !== "all" && oltFilter !== payload.olt_device_id) return;
+      load();
+    });
+    setLivePush(!!getEcho());
+    return unsub;
+    // eslint-disable-next-line
+  }, [tenantId, oltFilter]);
 
   const stats = useMemo(() => {
     const total = rows.length;
