@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL } from '@/lib/apiBaseUrl';
+import { API_BASE_URL, getAlternateApiBaseUrl, persistWorkingApiBaseUrl } from '@/lib/apiBaseUrl';
 import { apiHealth, friendlyErrorMessage } from '@/lib/apiHealth';
 import { toast } from 'sonner';
 import { sessionStore } from '@/lib/sessionStore';
@@ -11,6 +11,12 @@ const api = axios.create({
     'Accept': 'application/json',
   },
 });
+
+const shouldTryAlternateApiBase = (error: any) => {
+  const status = error?.response?.status;
+  const currentBase = error?.config?.baseURL;
+  return status === 404 && !!currentBase && !!getAlternateApiBaseUrl(currentBase);
+};
 
 // Attach admin auth token + start timer
 // Determine the correct auth token based on current page context
@@ -52,6 +58,17 @@ api.interceptors.response.use(
     const config = error?.config as any;
     const status = error?.response?.status;
     const url = config?.url || '';
+
+    if (config && !config._retryWithAlternateBase && shouldTryAlternateApiBase(error)) {
+      const alternateBaseUrl = getAlternateApiBaseUrl(config.baseURL);
+      if (alternateBaseUrl) {
+        config._retryWithAlternateBase = true;
+        config.baseURL = alternateBaseUrl;
+        persistWorkingApiBaseUrl(alternateBaseUrl);
+        api.defaults.baseURL = alternateBaseUrl;
+        return api.request(config);
+      }
+    }
 
     apiHealth.log({
       timestamp: Date.now(),
@@ -195,8 +212,22 @@ portalApi.interceptors.request.use((config) => {
 });
 
 portalApi.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?.baseURL) persistWorkingApiBaseUrl(response.config.baseURL);
+    return response;
+  },
   (error) => {
+    if ((error?.response?.status === 404) && error?.config && !error.config._retryWithAlternateBase) {
+      const alternateBaseUrl = getAlternateApiBaseUrl(error.config.baseURL);
+      if (alternateBaseUrl) {
+        error.config._retryWithAlternateBase = true;
+        error.config.baseURL = alternateBaseUrl;
+        persistWorkingApiBaseUrl(alternateBaseUrl);
+        portalApi.defaults.baseURL = `${alternateBaseUrl}/portal`;
+        error.config.baseURL = `${alternateBaseUrl}/portal`;
+        return portalApi.request(error.config);
+      }
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('customer_portal_session');
       if (window.location.pathname.startsWith('/portal')) {
