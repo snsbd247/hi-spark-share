@@ -76,6 +76,11 @@ class OnuStatusUpdater
                     if ($mappedStatus !== $fiberOnuRow->status) $changes['status'] = $mappedStatus;
                     // Backfill olt_device_id if missing (legacy rows)
                     $changes['olt_device_id'] = $device->id;
+                    // Smart linking: backfill customer_id when missing
+                    if (empty($fiberOnuRow->customer_id)) {
+                        $autoCustomerId = $this->resolveCustomerId($device->tenant_id, $sn, $row['mac_address'] ?? null);
+                        if ($autoCustomerId) $changes['customer_id'] = $autoCustomerId;
+                    }
                     if (!empty($changes)) {
                         $changes['updated_at'] = $now;
                         \DB::table('fiber_onus')->where('id', $fiberOnuId)->update($changes);
