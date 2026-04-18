@@ -209,4 +209,90 @@ class PortalController extends Controller
         $customer->update($request->only(['alt_phone', 'email', 'photo_url']));
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Phase 13 — Customer-facing ONU connection health.
+     * Returns ONU live status + 24h signal trend + recent outage events
+     * for the authenticated portal customer's own ONU only.
+     */
+    public function connectionHealth(Request $request)
+    {
+        $customer = $request->get('portal_customer');
+
+        // Find ONU linked to this customer (loose-link via fiber_onus.customer_id)
+        $onu = \DB::table('fiber_onus')
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        if (!$onu) {
+            return response()->json([
+                'has_device' => false,
+                'message' => 'No optical device assigned to your account. Please contact support.',
+            ]);
+        }
+
+        $serial = $onu->serial_number;
+
+        // Latest live status snapshot
+        $live = \DB::table('onu_live_status')
+            ->where('serial_number', $serial)
+            ->orderBy('updated_at', 'desc')
+            ->first();
+
+        // 24h signal trend (max 96 points → ~15min spacing)
+        $points = \DB::table('onu_signal_history')
+            ->where('serial_number', $serial)
+            ->where('recorded_at', '>=', now()->subHours(24))
+            ->orderBy('recorded_at', 'asc')
+            ->limit(200)
+            ->get(['rx_power', 'tx_power', 'status', 'recorded_at']);
+
+        // Last 5 outage events (offline/los/dying-gasp)
+        $outages = \DB::table('onu_alert_logs')
+            ->where('serial', $serial)
+            ->whereIn('current_status', ['offline', 'los', 'dying-gasp'])
+            ->orderBy('sent_at', 'desc')
+            ->limit(5)
+            ->get(['id', 'event_type', 'previous_status', 'current_status', 'sent_at']);
+
+        // Compute uptime %% over last 24h (online points / total points)
+        $uptimePct = null;
+        if ($points->count() > 0) {
+            $online = $points->where('status', 'online')->count();
+            $uptimePct = round(($online / $points->count()) * 100, 1);
+        }
+
+        // Health verdict
+        $verdict = 'unknown';
+        if ($live) {
+            if ($live->status === 'online') {
+                $verdict = ($live->rx_power !== null && $live->rx_power < -27) ? 'degraded' : 'healthy';
+            } elseif (in_array($live->status, ['los', 'dying-gasp'])) {
+                $verdict = 'critical';
+            } elseif ($live->status === 'offline') {
+                $verdict = 'offline';
+            }
+        }
+
+        return response()->json([
+            'has_device' => true,
+            'verdict' => $verdict,
+            'serial' => $serial,
+            'live' => $live ? [
+                'status' => $live->status,
+                'rx_power' => $live->rx_power !== null ? (float) $live->rx_power : null,
+                'tx_power' => $live->tx_power !== null ? (float) $live->tx_power : null,
+                'uptime' => $live->uptime,
+                'last_seen' => $live->last_seen,
+            ] : null,
+            'uptime_24h_pct' => $uptimePct,
+            'trend_points' => $points->map(fn ($p) => [
+                'rx_power' => $p->rx_power !== null ? (float) $p->rx_power : null,
+                'status' => $p->status,
+                'recorded_at' => $p->recorded_at,
+            ])->values(),
+            'recent_outages' => $outages,
+        ]);
+    }
 }
+
