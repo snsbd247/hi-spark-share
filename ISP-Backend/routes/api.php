@@ -521,6 +521,18 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::post('/network-links', [\App\Http\Controllers\Api\NetworkLinkController::class, 'store']);
     Route::delete('/network-links/{id}', [\App\Http\Controllers\Api\NetworkLinkController::class, 'destroy']);
 
+    // ══════════════════════════════════════════════════════
+    // ── LIVE OLT MONITORING — module: fiber (NEW, isolated)
+    // ══════════════════════════════════════════════════════
+    Route::get('/fiber/olt-devices', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'index']);
+    Route::post('/fiber/olt-devices', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'store']);
+    Route::get('/fiber/olt-devices/{id}', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'show']);
+    Route::put('/fiber/olt-devices/{id}', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'update']);
+    Route::delete('/fiber/olt-devices/{id}', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'destroy']);
+    Route::post('/fiber/olt-devices/{id}/test', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'testConnection']);
+    Route::post('/fiber/olt-devices/{id}/poll', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'poll']);
+    Route::get('/fiber/onu-live-status', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'liveStatus']);
+
 });
 
 /*
