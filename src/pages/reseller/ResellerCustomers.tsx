@@ -15,6 +15,8 @@ import { Loader2, Search, Users, Plus, Edit, User, MapPin, Wifi, Receipt, Buildi
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useGeoDivisions, useGeoDistricts, useGeoUpazilas, useGeoDivisionByName, useGeoDistrictByName } from "@/hooks/useGeoData";
+import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
+import { getTenantCompanySettings } from "@/lib/pdfTheme";
 
 // --- Section wrapper ---
 function FormSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
