@@ -61,9 +61,9 @@ export default function UnlinkedOnus() {
 
   const signalBadge = (rx?: number | null) => {
     if (rx == null) return <Badge variant="outline">—</Badge>;
-    if (rx >= -25) return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">{rx} dBm</Badge>;
-    if (rx >= -27) return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30">{rx} dBm</Badge>;
-    return <Badge className="bg-red-500/10 text-red-600 border-red-500/30">{rx} dBm</Badge>;
+    if (rx >= -25) return <Badge className="bg-primary/10 text-primary border-primary/30">{rx} dBm</Badge>;
+    if (rx >= -27) return <Badge className="bg-accent text-accent-foreground border-border">{rx} dBm</Badge>;
+    return <Badge variant="destructive">{rx} dBm</Badge>;
   };
 
   return (
