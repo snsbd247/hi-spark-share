@@ -77,26 +77,26 @@ export interface OltDeviceInput {
 }
 
 export const oltApi = {
-  list: () => api.get<OltDevice[]>("/api/fiber/olt-devices").then((r) => r.data),
-  get: (id: string) => api.get<OltDevice>(`/api/fiber/olt-devices/${id}`).then((r) => r.data),
+  list: () => api.get<OltDevice[]>("/fiber/olt-devices").then((r) => r.data),
+  get: (id: string) => api.get<OltDevice>(`/fiber/olt-devices/${id}`).then((r) => r.data),
   create: (payload: OltDeviceInput) =>
-    api.post<OltDevice>("/api/fiber/olt-devices", payload).then((r) => r.data),
+    api.post<OltDevice>("/fiber/olt-devices", payload).then((r) => r.data),
   update: (id: string, payload: Partial<OltDeviceInput>) =>
-    api.put<OltDevice>(`/api/fiber/olt-devices/${id}`, payload).then((r) => r.data),
+    api.put<OltDevice>(`/fiber/olt-devices/${id}`, payload).then((r) => r.data),
   remove: (id: string, cascade = false) =>
     api.delete<{ message: string; cascaded?: boolean }>(
-      `/api/fiber/olt-devices/${id}${cascade ? "?cascade=1" : ""}`,
+      `/fiber/olt-devices/${id}${cascade ? "?cascade=1" : ""}`,
     ).then((r) => r.data),
   test: (id: string) =>
     api.post<{ ok: boolean; mode: string; message?: string; raw?: string }>(
-      `/api/fiber/olt-devices/${id}/test`,
+      `/fiber/olt-devices/${id}/test`,
     ).then((r) => r.data),
   poll: (id: string) =>
     api.post<{ ok: boolean; mode?: string; count?: number; persisted?: { updated: number; inserted: number; linked?: number; signal_synced?: number }; error?: string }>(
-      `/api/fiber/olt-devices/${id}/poll`,
+      `/fiber/olt-devices/${id}/poll`,
     ).then((r) => r.data),
   liveStatus: (params?: { olt_device_id?: string; status?: string; search?: string }) =>
-    api.get<OnuLiveStatus[]>("/api/fiber/onu-live-status", { params }).then((r) => r.data),
+    api.get<OnuLiveStatus[]>("/fiber/onu-live-status", { params }).then((r) => r.data),
   // SSOT: list master ONUs with optional OLT/status/search filters (for dropdowns + tables)
   listOnus: (params?: { olt_device_id?: string; pon_port_id?: string; status?: string; search?: string; unlinked_only?: 0 | 1 }) =>
     api.get<Array<{
@@ -107,10 +107,10 @@ export const oltApi = {
       olt_name: string | null; customer_name: string | null; customer_code: string | null;
       live_status: string | null; rx_power: number | null; tx_power: number | null;
       olt_rx_power: number | null; last_seen: string | null; uptime: string | null;
-    }>>("/api/fiber/onus", { params }).then((r) => r.data),
+    }>>("/fiber/onus", { params }).then((r) => r.data),
   // SSOT: unlinked ONUs (auto-discovered, awaiting topology placement)
   unlinkedOnus: (params?: { olt_device_id?: string }) =>
-    api.get<UnlinkedOnu[]>("/api/fiber/onus/unlinked", { params }).then((r) => r.data),
+    api.get<UnlinkedOnu[]>("/fiber/onus/unlinked", { params }).then((r) => r.data),
   linkOnu: (id: string, payload: { splitter_output_id: string; customer_id?: string }) =>
-    api.post<{ ok: boolean }>(`/api/fiber/onus/${id}/link`, payload).then((r) => r.data),
+    api.post<{ ok: boolean }>(`/fiber/onus/${id}/link`, payload).then((r) => r.data),
 };
