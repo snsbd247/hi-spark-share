@@ -459,7 +459,6 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::get('/storage/list', [StorageController::class, 'list']);
     Route::get('/storage/download', [StorageController::class, 'download']);
     Route::post('/storage/delete', [StorageController::class, 'delete']);
-    Route::get('/storage/serve/{bucket}/{path}', [StorageController::class, 'serve'])->where('path', '.*');
 
     // ══════════════════════════════════════════════════════
     // ── DOMAIN MANAGEMENT — module: settings ────────────
