@@ -35,6 +35,9 @@ class OnuStatusUpdater
                     ->first(['id', 'status', 'signal_strength']);
 
                 if (!$fiberOnuRow) {
+                    // Smart linking: try to auto-attach existing customer by ONU MAC/serial match.
+                    $autoCustomerId = $this->resolveCustomerId($device->tenant_id, $sn, $row['mac_address'] ?? null);
+
                     // Hybrid mode: auto-create unlinked ONU master row (no splitter yet)
                     $newId = (string) \Str::uuid();
                     \DB::table('fiber_onus')->insert([
@@ -45,6 +48,7 @@ class OnuStatusUpdater
                         'olt_device_id' => $device->id,
                         'pon_port_id' => $row['pon_port_id'] ?? null,
                         'splitter_output_id' => null,
+                        'customer_id' => $autoCustomerId,
                         'status' => 'inactive',
                         'is_unlinked' => true,
                         'discovered_at' => $now,
