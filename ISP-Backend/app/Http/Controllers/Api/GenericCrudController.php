@@ -41,8 +41,8 @@ class GenericCrudController extends Controller
         'payment_gateways' => \App\Models\PaymentGateway::class,
         'backup_logs' => \App\Models\BackupLog::class,
         'zones' => \App\Models\Zone::class,
-        'olts' => \App\Models\Olt::class,
-        'onus' => \App\Models\Onu::class,
+        // SSOT: legacy 'olts'/'onus' generic CRUD removed — use /api/fiber/olt-devices and /api/fiber/onus instead.
+        // (Tables retained for backward compat; models orphaned.)
         'custom_roles' => \App\Models\CustomRole::class,
         'user_roles' => \App\Models\UserRole::class,
         'permissions' => \App\Models\Permission::class,
