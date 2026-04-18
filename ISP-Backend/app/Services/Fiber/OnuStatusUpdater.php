@@ -75,6 +75,7 @@ class OnuStatusUpdater
 
             $existing = OnuLiveStatus::where('olt_device_id', $device->id)
                 ->where('serial_number', $sn)->first();
+            $previousStatus = $existing?->status;
             if ($existing) {
                 $existing->update($payload);
                 $updated++;
@@ -82,6 +83,17 @@ class OnuStatusUpdater
                 OnuLiveStatus::create($payload);
                 $inserted++;
             }
+
+            // Phase 10 — Alert Engine evaluation (silent on failure)
+            try {
+                app(\App\Services\Fiber\OnuAlertEngine::class)->evaluate(
+                    $device,
+                    $sn,
+                    $previousStatus,
+                    (string) ($payload['status'] ?? 'unknown'),
+                    $payload['rx_power'] !== null ? (float) $payload['rx_power'] : null,
+                );
+            } catch (\Throwable $e) { /* silent */ }
 
             // Phase 9 — Throttled signal history recording.
             // Insert if: no prior point in last 5 minutes OR rx/tx changed by ≥0.5 dB OR status changed.

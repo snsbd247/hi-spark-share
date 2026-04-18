@@ -535,6 +535,13 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // Phase 9 — Historical signal trend
     Route::get('/fiber/onu-signal-history', [\App\Http\Controllers\Api\Fiber\OnuSignalHistoryController::class, 'index']);
 
+    // Phase 10 — ONU Alert Engine
+    Route::get('/fiber/alert-rules', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'index']);
+    Route::post('/fiber/alert-rules', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'store']);
+    Route::put('/fiber/alert-rules/{id}', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'update']);
+    Route::delete('/fiber/alert-rules/{id}', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'destroy']);
+    Route::get('/fiber/alert-logs', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'logs']);
+
 });
 
 /*
