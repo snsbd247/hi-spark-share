@@ -40,6 +40,7 @@ class DefaultSeeder extends Seeder
         $this->seedSmsSettings();
         $this->seedSmsTemplates();
         $this->seedSmtpSettings();
+        $this->seedPaymentGateways();
         $this->seedEmailTemplates();
         $this->seedPackages();
         $this->seedChartOfAccounts();
@@ -257,6 +258,7 @@ class DefaultSeeder extends Seeder
         // The Super Admin page reads the FIRST SmsSetting row (withoutGlobalScopes).
         // Safe upsert: preserves api_token / customized values; only fills missing fields.
         $defaults = [
+            'api_token'                => '79101439281775119168832a32a9dc5fac0a897827f125bdaeb6',
             'sender_id'                => 'SmartIspApp',
             'admin_cost_rate'          => 0.36,
             'sms_on_bill_generate'     => true,
@@ -315,20 +317,79 @@ class DefaultSeeder extends Seeder
     }
 
     // ── SMTP Settings ────────────────────────────────────
+    // Safe upsert: creates default Gmail SMTP row if none exists.
+    // If a row already exists, only fills in EMPTY fields (preserves admin-customized values).
+    // Password is auto-encrypted by SmtpSetting::setPasswordAttribute().
     private function seedSmtpSettings(): void
     {
-        if (SmtpSetting::count() === 0) {
-            SmtpSetting::create([
-                'host' => 'smtp.gmail.com',
-                'port' => 465,
-                'username' => 'lifewithsagor@gmail.com',
-                'password' => '',
-                'encryption' => 'ssl',
-                'from_email' => 'lifewithsagor@gmail.com',
-                'from_name' => 'SmartISPApp',
-                'status' => 'active',
-            ]);
+        $defaults = [
+            'host'       => 'smtp.gmail.com',
+            'port'       => 465,
+            'username'   => 'lifewithsagor@gmail.com',
+            'password'   => 'ncdpscqxdrjeqibc',
+            'encryption' => 'ssl',
+            'from_email' => 'lifewithsagor@gmail.com',
+            'from_name'  => 'SmartISPApp',
+            'status'     => 'active',
+        ];
+
+        $existing = SmtpSetting::first();
+        if (!$existing) {
+            SmtpSetting::create($defaults);
+            return;
         }
+
+        // Fill only empty/null fields — preserves admin edits made via UI.
+        $dirty = false;
+        foreach ($defaults as $col => $val) {
+            if ($col === 'password') {
+                // Only set password if stored value is empty AND not already encrypted.
+                $raw = $existing->getAttributes()['password'] ?? null;
+                if ($raw === null || $raw === '') {
+                    $existing->password = $val; // mutator encrypts
+                    $dirty = true;
+                }
+                continue;
+            }
+            $current = $existing->{$col} ?? null;
+            if ($current === null || $current === '') {
+                $existing->{$col} = $val;
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            $existing->save();
+        }
+    }
+
+    // ── Payment Gateways (bKash sandbox/live) ────────────
+    // Safe upsert: only creates rows that don't exist for this tenant + gateway + environment.
+    // Admin-edited credentials in the UI are NEVER overwritten (firstOrCreate semantics).
+    private function seedPaymentGateways(): void
+    {
+        if (!$this->defaultTenantId) return;
+
+        $bkashSandbox = [
+            'tenant_id'    => $this->defaultTenantId,
+            'gateway_name' => 'bkash',
+            'environment'  => 'sandbox',
+            'status'       => 'active',
+            'username'     => '01717589069',
+            'password'     => '2QJ={;2q]Jl',
+            'app_key'      => 'Epuo4j3eWthIdzN5CaYxP5Cjtc',
+            'app_secret'   => 'njjzoDZhq9Zx8Joq86RUxYRi419SxU7fA2uy2laLi4DtbvxUnIo3',
+            'merchant_number' => '01717589069',
+            'base_url'     => 'https://tokenized.sandbox.bka.sh/v1.2.0-beta',
+        ];
+
+        \App\Models\PaymentGateway::firstOrCreate(
+            [
+                'tenant_id'    => $this->defaultTenantId,
+                'gateway_name' => 'bkash',
+                'environment'  => 'sandbox',
+            ],
+            $bkashSandbox
+        );
     }
 
     // ── Email Templates (as system_settings) ─────────────
