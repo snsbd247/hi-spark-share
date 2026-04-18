@@ -78,6 +78,7 @@ class OnuAlertRuleController extends Controller
             'channels' => 'nullable|array',
             'channels.*' => 'in:email,sms',
             'is_active' => 'nullable|boolean',
+            'auto_suspend_pppoe' => 'nullable|boolean',
         ]);
         return $data;
     }

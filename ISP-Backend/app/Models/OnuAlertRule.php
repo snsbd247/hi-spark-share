@@ -14,7 +14,7 @@ class OnuAlertRule extends Model
     protected $fillable = [
         'tenant_id', 'name', 'event_type', 'rx_threshold_db',
         'cooldown_minutes', 'recipients_email', 'recipients_sms',
-        'channels', 'is_active',
+        'channels', 'is_active', 'auto_suspend_pppoe',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class OnuAlertRule extends Model
         'recipients_sms' => 'array',
         'channels' => 'array',
         'is_active' => 'boolean',
+        'auto_suspend_pppoe' => 'boolean',
         'rx_threshold_db' => 'float',
         'cooldown_minutes' => 'integer',
     ];
