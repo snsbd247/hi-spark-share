@@ -20,11 +20,35 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::where('pppoe_username', $request->pppoe_username)->first();
 
-        if (!$customer || !$customer->pppoe_password_hash) {
+        if (!$customer) {
             return response()->json(['error' => 'Invalid PPPoE username or password'], 401);
         }
 
-        if (!Hash::check($request->pppoe_password, $customer->pppoe_password_hash)) {
+        $passwordValid = false;
+
+        // 1) Try bcrypt hash if present
+        if (!empty($customer->pppoe_password_hash)) {
+            try {
+                $passwordValid = Hash::check($request->pppoe_password, $customer->pppoe_password_hash);
+            } catch (\Throwable $e) {
+                $passwordValid = false;
+            }
+        }
+
+        // 2) Fallback: plaintext pppoe_password column (legacy / freshly seeded customers)
+        if (!$passwordValid && !empty($customer->pppoe_password) && hash_equals((string) $customer->pppoe_password, (string) $request->pppoe_password)) {
+            $passwordValid = true;
+
+            // Auto-hash for future logins (one-time upgrade) — non-fatal on failure
+            try {
+                $customer->pppoe_password_hash = Hash::make($request->pppoe_password);
+                $customer->saveQuietly();
+            } catch (\Throwable $e) {
+                \Log::warning('Customer auto-hash failed: ' . $e->getMessage());
+            }
+        }
+
+        if (!$passwordValid) {
             return response()->json(['error' => 'Invalid PPPoE username or password'], 401);
         }
 
