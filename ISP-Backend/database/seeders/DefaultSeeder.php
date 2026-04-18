@@ -224,21 +224,28 @@ class DefaultSeeder extends Seeder
         }
 
         // Global branding settings (tenant_id = NULL — managed by Super Admin, shared system-wide)
-        // Always upsert these so re-seeding fixes any missing/orphaned rows.
+        // FORCE upsert: always ensure these rows exist with correct default values.
+        // This is safe — only touches these 2 specific keys, no other settings (SMTP/SMS/payment/MikroTik) affected.
         $globalSettings = [
             'branding_footer_text' => 'Smart ISP APP - Complete ISP Management Solution',
             'branding_copyright_text' => '© {year} Smart ISP APP. All rights reserved.',
         ];
         foreach ($globalSettings as $key => $value) {
+            // Remove any tenant-scoped duplicates of these specific keys (they should be global only)
+            SystemSetting::where('setting_key', $key)->whereNotNull('tenant_id')->delete();
+
             $existing = SystemSetting::whereNull('tenant_id')->where('setting_key', $key)->first();
             if (!$existing) {
-                // Also remove any tenant-scoped duplicates of these keys to avoid confusion
-                SystemSetting::where('setting_key', $key)->whereNotNull('tenant_id')->delete();
+                // Row missing — create with default value
                 SystemSetting::create([
                     'setting_key' => $key,
                     'setting_value' => $value,
                     'tenant_id' => null,
                 ]);
+            } elseif (empty(trim((string) $existing->setting_value))) {
+                // Row exists but value is empty/null — fill in default (preserves admin-customized values)
+                $existing->setting_value = $value;
+                $existing->save();
             }
         }
     }
