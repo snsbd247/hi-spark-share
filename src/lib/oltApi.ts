@@ -64,7 +64,7 @@ export const oltApi = {
       `/api/fiber/olt-devices/${id}/test`,
     ).then((r) => r.data),
   poll: (id: string) =>
-    api.post<{ ok: boolean; mode?: string; count?: number; persisted?: { updated: number; inserted: number }; error?: string }>(
+    api.post<{ ok: boolean; mode?: string; count?: number; persisted?: { updated: number; inserted: number; linked?: number; signal_synced?: number }; error?: string }>(
       `/api/fiber/olt-devices/${id}/poll`,
     ).then((r) => r.data),
   liveStatus: (params?: { olt_device_id?: string; status?: string; search?: string }) =>
