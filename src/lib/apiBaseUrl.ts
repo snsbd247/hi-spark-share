@@ -50,9 +50,9 @@ export const getAlternateApiBaseUrl = (currentBaseUrl = API_BASE_URL) => {
   const origin = window.location.origin;
   if (!currentBaseUrl.startsWith(origin)) return null;
 
-  const apiPath = normalizeApiPath(currentBaseUrl.slice(origin.length));
-  if (apiPath === '/api/api') return `${origin}/api`;
-  if (apiPath === '/api') return `${origin}/api/api`;
+  const fullPath = `/${currentBaseUrl.slice(origin.length)}`.replace(/\/+/g, '/');
+  if (fullPath.startsWith('/api/api')) return `${origin}${fullPath.replace(/^\/api\/api/, '/api')}`;
+  if (fullPath.startsWith('/api')) return `${origin}${fullPath.replace(/^\/api/, '/api/api')}`;
   return null;
 };
 

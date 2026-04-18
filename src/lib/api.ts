@@ -44,6 +44,7 @@ api.interceptors.request.use((config: any) => {
 // ─── Health-tracked interceptors with retry ────────────────────
 api.interceptors.response.use(
   (response) => {
+    if (response.config?.baseURL) persistWorkingApiBaseUrl(response.config.baseURL);
     const url = response.config?.url || '';
     apiHealth.log({
       timestamp: Date.now(),
@@ -213,7 +214,10 @@ portalApi.interceptors.request.use((config) => {
 
 portalApi.interceptors.response.use(
   (response) => {
-    if (response.config?.baseURL) persistWorkingApiBaseUrl(response.config.baseURL);
+    if (response.config?.baseURL) {
+      const normalizedBase = response.config.baseURL.replace(/\/portal\/?$/, '');
+      persistWorkingApiBaseUrl(normalizedBase);
+    }
     return response;
   },
   (error) => {
@@ -221,10 +225,10 @@ portalApi.interceptors.response.use(
       const alternateBaseUrl = getAlternateApiBaseUrl(error.config.baseURL);
       if (alternateBaseUrl) {
         error.config._retryWithAlternateBase = true;
-        error.config.baseURL = alternateBaseUrl;
-        persistWorkingApiBaseUrl(alternateBaseUrl);
-        portalApi.defaults.baseURL = `${alternateBaseUrl}/portal`;
-        error.config.baseURL = `${alternateBaseUrl}/portal`;
+        const normalizedBase = alternateBaseUrl.replace(/\/portal\/?$/, '');
+        persistWorkingApiBaseUrl(normalizedBase);
+        portalApi.defaults.baseURL = `${normalizedBase}/portal`;
+        error.config.baseURL = `${normalizedBase}/portal`;
         return portalApi.request(error.config);
       }
     }
