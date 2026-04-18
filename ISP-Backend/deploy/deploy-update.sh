@@ -11,6 +11,7 @@ BACKEND_DIR="${APP_DIR}/backend"
 FRONTEND_DIR="${APP_DIR}/frontend"
 REPO_DIR="/tmp/smartisp-repo"
 REPO_URL="https://github.com/snsbd247/hi-spark-share-4de255f8.git"
+SCRIPT_PATH="${REPO_DIR}/ISP-Backend/deploy/deploy-update.sh"
 PHP_VERSION="8.2"
 
 RED='\033[0;31m'
@@ -28,12 +29,23 @@ php artisan down --retry=60 2>/dev/null || true
 
 # ── 2. Pull latest code from GitHub ──────────────────
 echo -e "${YELLOW}[2/9] Pulling latest code from GitHub...${NC}"
+REPO_UPDATED=0
 if [ -d "${REPO_DIR}/.git" ]; then
-    cd ${REPO_DIR} && git pull origin main
+    cd ${REPO_DIR}
+    CURRENT_HEAD=$(git rev-parse HEAD)
+    git pull origin main
+    NEW_HEAD=$(git rev-parse HEAD)
+    [ "${CURRENT_HEAD}" != "${NEW_HEAD}" ] && REPO_UPDATED=1
 else
     echo -e "${YELLOW}  Repo not found — cloning fresh from ${REPO_URL}${NC}"
     rm -rf ${REPO_DIR}
     git clone ${REPO_URL} ${REPO_DIR}
+    REPO_UPDATED=1
+fi
+
+if [ "${REPO_UPDATED}" = "1" ] && [ "${DEPLOY_SCRIPT_RELOADED:-0}" != "1" ]; then
+    echo -e "${YELLOW}  New deploy script detected — reloading latest version...${NC}"
+    exec env DEPLOY_SCRIPT_RELOADED=1 bash ${SCRIPT_PATH}
 fi
 
 # ── 3. Sync Backend files ────────────────────────────
