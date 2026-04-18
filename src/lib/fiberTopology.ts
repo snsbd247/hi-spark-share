@@ -107,6 +107,7 @@ export interface FiberMapMarker {
   lng: number;
   cable?: string | null;
   customer?: string | null;
+  serial_number?: string | null;
   parentLat?: number;
   parentLng?: number;
   lineColor?: string;
@@ -545,6 +546,7 @@ export function buildFiberMapMarkersFromTree(tree: OltData[]): FiberMapMarker[] 
           name: output.onu.customer?.name || output.onu.serial_number,
           lat: output.onu.lat, lng: output.onu.lng,
           customer: output.onu.customer?.name || null,
+          serial_number: output.onu.serial_number || null,
           parentLat: sLat, parentLng: sLng, lineColor: lineColor || "#9b59b6",
         });
       }
