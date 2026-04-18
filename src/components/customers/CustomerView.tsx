@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { RefreshCw, Loader2, Ban, Play } from "lucide-react";
+import { RefreshCw, Loader2, Ban, Play, LogIn } from "lucide-react";
 import { toast } from "sonner";
 
 import { retryCustomerPppoeSync, toggleCustomerPppoe } from "@/lib/mikrotikClient";
+import { impersonateCustomerPortal } from "@/lib/customerImpersonate";
 
 interface CustomerViewProps {
   customer: any;
@@ -37,6 +38,19 @@ export default function CustomerView({ customer }: CustomerViewProps) {
   const [retrying, setRetrying] = useState(false);
   const [suspending, setSuspending] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [impersonatingPortal, setImpersonatingPortal] = useState(false);
+
+  const handleImpersonate = async () => {
+    setImpersonatingPortal(true);
+    try {
+      await impersonateCustomerPortal(customer.id);
+      toast.success("Portal opened in new tab");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not open customer portal");
+    } finally {
+      setImpersonatingPortal(false);
+    }
+  };
 
   const statusColor =
     customer.status === "active"
@@ -103,7 +117,13 @@ export default function CustomerView({ customer }: CustomerViewProps) {
             <p className="text-sm font-mono text-muted-foreground">{customer.customer_id}</p>
           </div>
         </div>
-        <Badge variant="outline" className={statusColor}>{customer.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleImpersonate} disabled={impersonatingPortal}>
+            {impersonatingPortal ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <LogIn className="h-3.5 w-3.5 mr-1.5" />}
+            Login to Portal
+          </Button>
+          <Badge variant="outline" className={statusColor}>{customer.status}</Badge>
+        </div>
       </div>
 
       <Separator />

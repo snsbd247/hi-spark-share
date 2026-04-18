@@ -604,6 +604,20 @@ class GenericCrudController extends Controller
                 }
             }
 
+            // ── Customer auto-generation hook (per-tenant prefix + duplicate check + default pppoe password) ──
+            if ($normalizedTable === 'customers') {
+                try {
+                    $tenantId = $input['tenant_id'] ?? $request->input('tenant_id') ?? optional($request->user())->tenant_id ?? null;
+                    $input = \App\Services\CustomerIdGenerator::applyDefaults($input, $tenantId);
+                } catch (\RuntimeException $dupEx) {
+                    return response()->json([
+                        'message' => $dupEx->getMessage(),
+                        'error' => $dupEx->getMessage(),
+                        'duplicate' => true,
+                    ], 422);
+                }
+            }
+
             $record = $model->create($input);
 
             // Log audit & activity
@@ -659,7 +673,29 @@ class GenericCrudController extends Controller
             // ── Single record update ──
             $record = $model->findOrFail($id);
             $oldData = $record->toArray();
-            $record->update(array_intersect_key($request->all(), array_flip($fillable)));
+            $updateInput = array_intersect_key($request->all(), array_flip($fillable));
+
+            // Customer: keep pppoe_password_hash in sync when password changes; block duplicate pppoe_username/customer_id
+            $normalizedTableForUpdate = str_replace('-', '_', $table);
+            if ($normalizedTableForUpdate === 'customers') {
+                if (array_key_exists('pppoe_password', $updateInput) && $updateInput['pppoe_password'] !== null && $updateInput['pppoe_password'] !== '') {
+                    $updateInput['pppoe_password_hash'] = \Illuminate\Support\Facades\Hash::make($updateInput['pppoe_password']);
+                }
+                foreach (['customer_id' => 'Customer ID', 'pppoe_username' => 'PPPoE username'] as $col => $label) {
+                    if (!empty($updateInput[$col]) && $updateInput[$col] !== ($oldData[$col] ?? null)) {
+                        $exists = \App\Models\Customer::where($col, $updateInput[$col])->where('id', '!=', $id)->exists();
+                        if ($exists) {
+                            return response()->json([
+                                'message' => "{$label} '{$updateInput[$col]}' already exists.",
+                                'error' => "{$label} '{$updateInput[$col]}' already exists.",
+                                'duplicate' => true,
+                            ], 422);
+                        }
+                    }
+                }
+            }
+
+            $record->update($updateInput);
 
             // Auto-activate subscription when invoice is marked as paid
             $normalizedTable = str_replace('-', '_', $table);

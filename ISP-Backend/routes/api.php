@@ -140,6 +140,8 @@ Route::get('/tenant/current', function () {
 */
 Route::middleware(['admin.auth'])->group(function () {
     Route::get('/admin/subscription-status', [AuthController::class, 'subscriptionStatus']);
+    // Tenant admin → impersonate a customer (opens portal in new tab)
+    Route::post('/customers/{customerId}/impersonate', [CustomerAuthController::class, 'impersonate']);
 });
 
 /*

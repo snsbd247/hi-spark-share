@@ -49,6 +49,7 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(customer?.photo_url || null);
   const [form, setForm] = useState({
+    customer_id: customer?.customer_id ?? "",
     name: customer?.name ?? "",
     father_name: customer?.father_name ?? "",
     mother_name: customer?.mother_name ?? "",
@@ -343,25 +344,26 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           }
         }
 
-        // Auto-generate 6-digit customer_id
-        const { data: lastCustomer } = await db
-          .from("customers")
-          .select("customer_id")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        let nextNum = 1;
-        if (lastCustomer?.customer_id) {
-          const numPart = lastCustomer.customer_id.replace(/\D/g, "");
-          if (numPart) nextNum = parseInt(numPart) + 1;
+        // Auto-generate customer_id + pppoe_username with tenant prefix; default pppoe_password = 123456789
+        const { applyCustomerDefaults } = await import("@/lib/customerIdGenerator");
+        let preparedPayload: Record<string, any>;
+        try {
+          preparedPayload = await applyCustomerDefaults(
+            {
+              ...payload,
+              customer_id: form.customer_id || "",
+              pppoe_username: form.pppoe_username || "",
+              pppoe_password: form.pppoe_password || "",
+            },
+            tenantId,
+          );
+        } catch (dupErr: any) {
+          toast.error(dupErr.message || "Duplicate ID/PPPoE detected");
+          setLoading(false);
+          return;
         }
-        const generatedCustomerId = String(nextNum).padStart(6, "0");
 
-        const insertPayload: any = {
-          ...payload,
-          customer_id: generatedCustomerId,
-        };
+        const insertPayload: any = { ...preparedPayload };
         if (tenantId) insertPayload.tenant_id = tenantId;
 
         const { data, error: insertError } = await db
@@ -369,7 +371,14 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           .insert(insertPayload)
           .select()
           .single();
-        if (insertError) throw insertError;
+        if (insertError) {
+          // Surface DB-level unique violations clearly
+          const msg = String(insertError.message || "").toLowerCase();
+          if (msg.includes("duplicate") || msg.includes("unique")) {
+            throw new Error("Customer ID or PPPoE username already exists. Please change it or leave blank to auto-generate.");
+          }
+          throw insertError;
+        }
 
         if (data && photoFile) {
           const photoUrl = await uploadPhoto(data.id);
@@ -770,12 +779,22 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
             <Input type="date" value={form.installation_date} onChange={(e) => update("installation_date", e.target.value)} className="h-9" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">PPPoE Username</Label>
-            <Input value={form.pppoe_username} onChange={(e) => update("pppoe_username", e.target.value)} className="h-9" />
+            <Label className="text-xs">Customer ID {isEdit ? "" : <span className="text-muted-foreground">(blank = auto-generate)</span>}</Label>
+            <Input
+              value={form.customer_id}
+              onChange={(e) => update("customer_id", e.target.value)}
+              placeholder={isEdit ? "" : "Leave blank for auto (e.g. SNB000001)"}
+              className="h-9 font-mono"
+              disabled={isEdit}
+            />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">PPPoE Password</Label>
-            <Input value={form.pppoe_password} onChange={(e) => update("pppoe_password", e.target.value)} className="h-9" />
+            <Label className="text-xs">PPPoE Username <span className="text-muted-foreground">(blank = same as Customer ID)</span></Label>
+            <Input value={form.pppoe_username} onChange={(e) => update("pppoe_username", e.target.value)} placeholder="Auto" className="h-9 font-mono" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">PPPoE Password <span className="text-muted-foreground">(default 123456789)</span></Label>
+            <Input value={form.pppoe_password} onChange={(e) => update("pppoe_password", e.target.value)} placeholder="123456789" className="h-9" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">IP Address</Label>

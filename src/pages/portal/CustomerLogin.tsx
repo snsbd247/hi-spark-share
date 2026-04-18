@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import { useBranding } from "@/contexts/BrandingContext";
@@ -9,15 +9,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Wifi, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { db } from "@/integrations/supabase/client";
 
 export default function CustomerLogin() {
   const { t } = useLanguage();
   const [pppoeUsername, setPppoeUsername] = useState("");
   const [pppoePassword, setPppoePassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [impersonating, setImpersonating] = useState(false);
   const { signIn } = useCustomerAuth();
   const { branding } = useBranding();
   const navigate = useNavigate();
+
+  // ── Impersonation: tenant admin opened this tab with a pre-issued session_token ──
+  useEffect(() => {
+    const hash = window.location.hash || "";
+    if (!hash.includes("impersonate=")) return;
+
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const token = params.get("impersonate");
+    const expires = params.get("expires");
+    if (!token) return;
+
+    setImpersonating(true);
+    (async () => {
+      try {
+        const { data: session } = await (db as any)
+          .from("customer_sessions")
+          .select("customer_id, expires_at")
+          .eq("session_token", token)
+          .maybeSingle();
+        if (!session?.customer_id) throw new Error("Impersonation session invalid or expired");
+
+        const { data: customer } = await (db as any)
+          .from("customers")
+          .select("id, customer_id, name, phone, area, status, monthly_bill, package_id, photo_url, tenant_id")
+          .eq("id", session.customer_id)
+          .maybeSingle();
+        if (!customer) throw new Error("Customer not found");
+
+        const portalSession = {
+          ...customer,
+          monthly_bill: Number(customer.monthly_bill || 0),
+          session_token: token,
+          expires_at: expires || session.expires_at,
+        };
+        localStorage.setItem("customer_portal_session", JSON.stringify(portalSession));
+        window.history.replaceState(null, "", window.location.pathname);
+        toast.success(`Impersonating ${customer.name}`);
+        window.location.href = "/portal";
+      } catch (err: any) {
+        toast.error(err?.message || "Impersonation failed");
+        setImpersonating(false);
+      }
+    })();
+  }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +85,17 @@ export default function CustomerLogin() {
   };
 
   const logoSrc = branding.login_logo_url || branding.logo_url;
+
+  if (impersonating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground">Opening customer portal…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
