@@ -67,4 +67,27 @@ class VsolOltAdapter extends AbstractOltAdapter
         }
         return array_values($onus);
     }
+
+    /** Phase 6: enrich with `show gpon onu detail-info` for accurate optical readings. */
+    protected function opticalInfoCommand(): ?string
+    {
+        return "enable\r\nterminal length 0\r\nshow gpon onu detail-info\r\nexit\r\n";
+    }
+
+    protected function parseOpticalInfo(string $raw): array
+    {
+        $blocks = preg_split('/\n\s*\n/', $raw) ?: [];
+        $out = [];
+        foreach ($blocks as $block) {
+            if (!preg_match('/\b((?:VSOL[0-9A-F]+)|(?:[0-9A-F]{12,16}))\b/i', $block, $sM)) continue;
+            $sn = strtoupper($sM[1]);
+            $entry = [];
+            if (preg_match('/rx\s*power[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['rx'] = (float) $m[1];
+            if (preg_match('/tx\s*power[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['tx'] = (float) $m[1];
+            if (preg_match('/olt\s*rx[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['olt_rx'] = (float) $m[1];
+            if (preg_match('/distance[^:]*:\s*(\d{1,5})/i', $block, $m)) $entry['distance_m'] = (int) $m[1];
+            if ($entry) $out[$sn] = $entry;
+        }
+        return $out;
+    }
 }

@@ -66,4 +66,28 @@ class ZteOltAdapter extends AbstractOltAdapter
         }
         return array_values($onus);
     }
+
+    /** Phase 6: enrich with `show pon power onu-rx` (returns OLT-side rx for each ONU). */
+    protected function opticalInfoCommand(): ?string
+    {
+        // Aggregate: works on most C300/C320/C600 firmwares.
+        return "enable\r\nterminal length 0\r\nshow pon power onu-rx\r\nshow pon power onu-tx\r\nexit\r\n";
+    }
+
+    protected function parseOpticalInfo(string $raw): array
+    {
+        // Lines like:  gpon-onu_1/2/3:1   ZTEGC1234567   -25.31
+        $lines = preg_split("/\r?\n/", $raw) ?: [];
+        $out = [];
+        foreach ($lines as $line) {
+            if (!preg_match('/gpon-onu_\d+\/\d+\/\d+:\d+\s+(\S+)\s+(-?\d+\.\d+)/i', $line, $m)) continue;
+            $sn = strtoupper($m[1]);
+            $val = (float) $m[2];
+            if (!isset($out[$sn])) $out[$sn] = [];
+            // Heuristic: first occurrence = OLT rx (downstream from ONU), second = ONU tx
+            if (!isset($out[$sn]['olt_rx'])) $out[$sn]['olt_rx'] = $val;
+            else $out[$sn]['tx'] = $val;
+        }
+        return $out;
+    }
 }

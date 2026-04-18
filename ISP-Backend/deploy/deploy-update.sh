@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.4.0 — Phase 5: Auto-link ONU↔fiber_onus by SN
+# Smart ISP — Production Update Script (Mono-Repo) v1.5.0 — Phase 6: CLI optical-info enrichment
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.4.0) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.5.0) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"

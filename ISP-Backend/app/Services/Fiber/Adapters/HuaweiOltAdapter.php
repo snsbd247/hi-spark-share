@@ -87,4 +87,31 @@ class HuaweiOltAdapter extends AbstractOltAdapter
         }
         return array_values($onus);
     }
+
+    /**
+     * Phase 6: enrich with `display ont optical-info` across all PON ports on board 0.
+     * On Huawei MA56xx/MA58xx, "display ont optical-info 0 all" returns rx/tx/olt-rx for every active ONT.
+     */
+    protected function opticalInfoCommand(): ?string
+    {
+        return "enable\r\nundo smart\r\nundo interactive\r\nscroll 512\r\ndisplay ont optical-info 0 all\r\nquit\r\n";
+    }
+
+    protected function parseOpticalInfo(string $raw): array
+    {
+        // Output is grouped per ONT with an SN header line, followed by Rx/Tx/OLT-Rx labeled lines.
+        $blocks = preg_split('/\n\s*\n/', $raw) ?: [];
+        $out = [];
+        foreach ($blocks as $block) {
+            if (!preg_match('/\b((?:[A-Z]{4}[0-9A-F]{8})|(?:[0-9A-F]{16}))\b/i', $block, $sM)) continue;
+            $sn = strtoupper($sM[1]);
+            $entry = [];
+            if (preg_match('/rx\s*optical\s*power[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['rx'] = (float) $m[1];
+            if (preg_match('/tx\s*optical\s*power[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['tx'] = (float) $m[1];
+            if (preg_match('/olt\s*rx[^:]*:\s*(-?\d+\.\d+)/i', $block, $m)) $entry['olt_rx'] = (float) $m[1];
+            if (preg_match('/distance[^:]*:\s*(\d{1,5})/i', $block, $m)) $entry['distance_m'] = (int) $m[1];
+            if ($entry) $out[$sn] = $entry;
+        }
+        return $out;
+    }
 }
