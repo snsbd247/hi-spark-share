@@ -350,6 +350,16 @@ export default function AppSidebar() {
               <Wrench className={cn("h-[18px] w-[18px] shrink-0", location.pathname === "/fiber/mikrotik-sync-logs" ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70")} />
               {(!collapsed || isMobile) && <span>Auto-Sync Logs</span>}
             </NavLink>
+            <NavLink to="/fiber/olt-performance" onClick={isMobile ? () => setMobileOpen(false) : undefined}
+              className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative group",
+                location.pathname === "/fiber/olt-performance"
+                  ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/10 text-sidebar-primary"
+                  : "text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-accent/70"
+              )}>
+              {location.pathname === "/fiber/olt-performance" && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />}
+              <Network className={cn("h-[18px] w-[18px] shrink-0", location.pathname === "/fiber/olt-performance" ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70")} />
+              {(!collapsed || isMobile) && <span>OLT Performance</span>}
+            </NavLink>
           </>
         )}
 

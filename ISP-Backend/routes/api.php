@@ -545,6 +545,10 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // Phase 11 — MikroTik ↔ ONU auto-sync logs
     Route::get('/fiber/mikrotik-sync-logs', [\App\Http\Controllers\Api\Fiber\OnuMikrotikSyncLogController::class, 'index']);
 
+    // Phase 14 — OLT Performance Dashboard
+    Route::get('/fiber/olt-performance', [\App\Http\Controllers\Api\Fiber\OltPerformanceController::class, 'overview']);
+    Route::get('/fiber/olt-performance/{id}', [\App\Http\Controllers\Api\Fiber\OltPerformanceController::class, 'detail']);
+
 });
 
 /*
