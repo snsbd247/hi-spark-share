@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useCustomerAuth } from "@/contexts/CustomerAuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  LayoutDashboard, Receipt, History, User, LogOut, Wifi, ChevronLeft, Ticket, Menu, X, Activity,
+  LayoutDashboard, Receipt, History, User, LogOut, Wifi, ChevronLeft, Ticket, Menu, X, Activity, HeartPulse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export default function PortalSidebar() {
 
   const navItems = [
     { to: "/portal/dashboard", icon: LayoutDashboard, label: t.portal.dashboard },
+    { to: "/portal/connection-health", icon: HeartPulse, label: "Connection Health" },
     { to: "/portal/bills", icon: Receipt, label: t.portal.myBills },
     { to: "/portal/payments", icon: History, label: t.portal.paymentHistory },
     { to: "/portal/tickets", icon: Ticket, label: t.portal.support },

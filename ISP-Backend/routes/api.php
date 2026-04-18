@@ -702,6 +702,8 @@ Route::middleware('customer.auth')->prefix('portal')->group(function () {
     Route::post('/tickets/{id}/reply', [PortalController::class, 'replyTicket']);
     Route::get('/profile', [PortalController::class, 'profile']);
     Route::put('/profile', [PortalController::class, 'updateProfile']);
+    // Phase 13 — Customer-facing ONU connection health
+    Route::get('/connection-health', [PortalController::class, 'connectionHealth']);
 });
 
 /*
