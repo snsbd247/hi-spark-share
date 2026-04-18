@@ -253,17 +253,43 @@ class DefaultSeeder extends Seeder
     // ── SMS Settings ─────────────────────────────────────
     private function seedSmsSettings(): void
     {
-        if (SmsSetting::where('tenant_id', $this->defaultTenantId)->count() === 0) {
-            SmsSetting::create([
+        // Global SMS Gateway (GreenWeb) — used by Super Admin SMS Management page.
+        // The Super Admin page reads the FIRST SmsSetting row (withoutGlobalScopes).
+        // Safe upsert: preserves api_token / customized values; only fills missing fields.
+        $defaults = [
+            'sender_id'                => 'SmartIspApp',
+            'admin_cost_rate'          => 0.36,
+            'sms_on_bill_generate'     => true,
+            'sms_on_payment'           => true,
+            'sms_on_registration'      => true,
+            'sms_on_suspension'        => true,
+            'sms_on_reminder'          => true,
+            'sms_on_new_customer_bill' => true,
+        ];
+
+        $global = SmsSetting::withoutGlobalScopes()->first();
+
+        if (!$global) {
+            // No SMS settings row exists anywhere → create a fresh global one.
+            SmsSetting::create(array_merge($defaults, [
                 'tenant_id' => $this->defaultTenantId,
-                'sender_id' => 'smartispapp',
-                'admin_cost_rate' => 0.36,
-                'sms_on_bill_generate' => true,
-                'sms_on_payment' => true,
-                'sms_on_registration' => true,
-                'sms_on_suspension' => true,
-                'sms_on_new_customer_bill' => true,
-            ]);
+            ]));
+            return;
+        }
+
+        // Row exists — fill in only empty/null fields (preserves api_token & admin edits).
+        $dirty = false;
+        foreach ($defaults as $col => $val) {
+            $current = $global->{$col} ?? null;
+            if ($current === null || $current === '' || $current === 0 || $current === '0') {
+                // For boolean flags, only override if NULL (not if explicitly false).
+                if (is_bool($val) && $current !== null) continue;
+                $global->{$col} = $val;
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            $global->save();
         }
     }
 
