@@ -98,10 +98,7 @@ php artisan modules:scan 2>/dev/null || true
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
-if ! npm ci --legacy-peer-deps 2>/dev/null; then
-    echo -e "${YELLOW}  ⚠ Lock file out of sync — running npm install instead...${NC}"
-    npm install --legacy-peer-deps
-fi
+npm install --legacy-peer-deps --no-audit --no-fund
 VITE_DEPLOY_TARGET=vps npm run build
 
 # ── 8. Deploy frontend ──────────────────────────────
