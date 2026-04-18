@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Users, Loader2, RefreshCw, Router, Target, Wallet, CreditCard,
+  Users, Loader2, Router, Target, Wallet, CreditCard,
   TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, DollarSign,
-  Wifi, WifiOff, CircleDollarSign, TicketCheck, Package, MessageSquare,
+  Wifi, WifiOff, CircleDollarSign, TicketCheck, MessageSquare,
+  Activity, Briefcase, BarChart3,
 } from "lucide-react";
 import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -25,6 +26,10 @@ import NotificationCenter from "@/components/NotificationCenter";
 import StatCard from "@/components/dashboard/StatCard";
 import PaymentSummaryCard from "@/components/dashboard/PaymentSummaryCard";
 import AiInsights from "@/components/dashboard/AiInsights";
+import DashboardHero from "@/components/dashboard/DashboardHero";
+import TopDueCustomers from "@/components/dashboard/TopDueCustomers";
+import RecentActivityFeed from "@/components/dashboard/RecentActivityFeed";
+import SectionTitle from "@/components/dashboard/SectionTitle";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#6366f1"];
@@ -286,25 +291,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ══════ Header ══════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t.dashboard.title}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t.dashboard.subtitle}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefreshMikrotik} disabled={refreshingMikrotik || loadingMikrotik}>
-            {refreshingMikrotik ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />}
-            <span className="hidden sm:inline">{t.common.refresh}</span>
-          </Button>
-          <Button size="sm" onClick={runBillControl} disabled={runningBillControl}>
-            {runningBillControl ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <Router className="h-3.5 w-3.5 sm:mr-1.5" />}
-            <span className="hidden sm:inline">{t.dashboard.billControl}</span>
-          </Button>
-        </div>
-      </div>
+      {/* ══════ Hero Header ══════ */}
+      <DashboardHero
+        userName={user?.name}
+        onRefresh={handleRefreshMikrotik}
+        onBillControl={runBillControl}
+        refreshing={refreshingMikrotik}
+        loadingMikrotik={loadingMikrotik}
+        runningBillControl={runningBillControl}
+        refreshLabel={t.common.refresh}
+        billControlLabel={t.dashboard.billControl}
+      />
 
       {/* ══════ Section 1: Customer & Connection Stats ══════ */}
+      <SectionTitle icon={Users} title={t.sidebar.customers} subtitle={t.dashboard.subtitle} />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 stagger-children">
         <StatCard title={t.dashboard.totalCustomers} value={total} icon={<Users className="h-5 w-5" />} variant="default" />
         <StatCard title={t.common.active} value={active} icon={<Users className="h-5 w-5" />} variant="success" />
@@ -315,6 +315,7 @@ export default function Dashboard() {
       </div>
 
       {/* ══════ Section 2: Financial Overview ══════ */}
+      <SectionTitle icon={DollarSign} title="Financial Overview" subtitle="Today's & monthly money flow" />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 stagger-children">
         <StatCard title={t.dashboard.monthCollection} value={`৳${collectedAmount.toLocaleString()}`} icon={<CircleDollarSign className="h-5 w-5" />} variant="success" />
         <StatCard title={t.dashboard.totalDue} value={`৳${dueAmount.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} variant="destructive" />
@@ -498,12 +499,16 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* ══════ Section: Insights — Top Due + Recent Activity ══════ */}
+      <SectionTitle icon={Activity} title="Live Insights" subtitle="বকেয়া কাস্টমার ও সাম্প্রতিক কার্যক্রম" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <TopDueCustomers tenantCustomerIds={tenantCustomerIds} />
+        <RecentActivityFeed />
+      </div>
+
       {/* ══════ Section 6: Accounting Overview ══════ */}
       <div className="space-y-4 mb-6">
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-primary" />
-          {t.accounting.title}
-        </h2>
+        <SectionTitle icon={Briefcase} title={t.accounting.title} subtitle="Sales, purchases, expenses & profit" />
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard title={t.dashboard.totalSales} value={`৳${totalAccSales.toLocaleString()}`} icon={<TrendingUp className="h-5 w-5" />} variant="success" />
