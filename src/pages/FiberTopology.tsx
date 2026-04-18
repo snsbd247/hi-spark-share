@@ -342,23 +342,22 @@ function HTreeItem({ children, isLast }: { children: React.ReactNode; isLast?: b
   );
 }
 
-function OnuHNode({
-  onu, t, onEdit, liveBySn, onSelect,
-}: {
-  onu: FiberOnuData;
-  t: any;
-  onEdit?: (type: string, data: any) => void;
-  liveBySn?: Record<string, LiveOnuMeta>;
-  onSelect?: (sn: string, customer?: { id: string; name: string } | null) => void;
-}) {
+// Phase 12 — context to expose live ONU map + selection handler down the tree
+const LiveOnuOverlayContext = createContext<{
+  liveBySn: Record<string, LiveOnuMeta>;
+  onSelect: (sn: string, customer?: { id: string; name: string } | null) => void;
+} | null>(null);
+
+function OnuHNode({ onu, t, onEdit }: { onu: FiberOnuData; t: any; onEdit?: (type: string, data: any) => void }) {
+  const ctx = useContext(LiveOnuOverlayContext);
   const sn = normalizeSn(onu.serial_number);
-  const meta = sn && liveBySn ? liveBySn[sn] : undefined;
+  const meta = sn && ctx ? ctx.liveBySn[sn] : undefined;
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {sn && (
         <OnuStatusDot
           meta={meta}
-          onClick={onSelect ? () => onSelect(sn, onu.customer ? { id: onu.customer.id, name: onu.customer.name } : null) : undefined}
+          onClick={ctx ? () => ctx.onSelect(sn, onu.customer ? { id: onu.customer.id, name: onu.customer.name } : null) : undefined}
         />
       )}
       <HNodeLabel text={onu.serial_number} colorClass={NODE_COLORS.onu} icon={Radio} onEdit={onEdit ? () => onEdit("edit_onu", { _edit_id: onu.id, serial_number: onu.serial_number, mac_address: onu.mac_address || "", status: onu.status, customer_id: onu.customer_id || "", lat: onu.lat, lng: onu.lng }) : undefined} />
