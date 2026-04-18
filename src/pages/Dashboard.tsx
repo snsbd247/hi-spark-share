@@ -291,25 +291,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ══════ Header ══════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t.dashboard.title}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t.dashboard.subtitle}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefreshMikrotik} disabled={refreshingMikrotik || loadingMikrotik}>
-            {refreshingMikrotik ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" />}
-            <span className="hidden sm:inline">{t.common.refresh}</span>
-          </Button>
-          <Button size="sm" onClick={runBillControl} disabled={runningBillControl}>
-            {runningBillControl ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5" /> : <Router className="h-3.5 w-3.5 sm:mr-1.5" />}
-            <span className="hidden sm:inline">{t.dashboard.billControl}</span>
-          </Button>
-        </div>
-      </div>
+      {/* ══════ Hero Header ══════ */}
+      <DashboardHero
+        userName={user?.name}
+        onRefresh={handleRefreshMikrotik}
+        onBillControl={runBillControl}
+        refreshing={refreshingMikrotik}
+        loadingMikrotik={loadingMikrotik}
+        runningBillControl={runningBillControl}
+        refreshLabel={t.common.refresh}
+        billControlLabel={t.dashboard.billControl}
+      />
 
       {/* ══════ Section 1: Customer & Connection Stats ══════ */}
+      <SectionTitle icon={Users} title={t.sidebar.customers} subtitle={t.dashboard.subtitle} />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 stagger-children">
         <StatCard title={t.dashboard.totalCustomers} value={total} icon={<Users className="h-5 w-5" />} variant="default" />
         <StatCard title={t.common.active} value={active} icon={<Users className="h-5 w-5" />} variant="success" />
@@ -320,6 +315,7 @@ export default function Dashboard() {
       </div>
 
       {/* ══════ Section 2: Financial Overview ══════ */}
+      <SectionTitle icon={DollarSign} title="Financial Overview" subtitle="Today's & monthly money flow" />
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 stagger-children">
         <StatCard title={t.dashboard.monthCollection} value={`৳${collectedAmount.toLocaleString()}`} icon={<CircleDollarSign className="h-5 w-5" />} variant="success" />
         <StatCard title={t.dashboard.totalDue} value={`৳${dueAmount.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} variant="destructive" />
