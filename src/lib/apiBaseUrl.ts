@@ -1,13 +1,14 @@
 /**
  * API Base URL — Auto-detect per deployment target
- * Local dev → http://localhost:8000/api
- * VPS build → /api
- * cPanel build → /api/api
+ * Local dev               → http://localhost:8000/api
+ * VPS / standard hosting  → /api  (default)
+ * cPanel sub-folder build → /api/api  (set VITE_DEPLOY_TARGET=cpanel)
  */
 import { IS_LOCAL_DEV } from '@/lib/environment';
 
 const LOCAL_API = 'http://localhost:8000/api';
-const IS_EXPLICIT_VPS = import.meta.env.VITE_DEPLOY_TARGET === 'vps';
+const DEPLOY_TARGET = (import.meta.env.VITE_DEPLOY_TARGET || '').toLowerCase();
+const IS_EXPLICIT_CPANEL = DEPLOY_TARGET === 'cpanel';
 const API_BASE_STORAGE_KEY = 'smartisp.api-base-path';
 
 const normalizeApiPath = (value?: string | null) => {
@@ -21,7 +22,12 @@ const getStoredApiPath = () => {
   return normalizeApiPath(window.localStorage.getItem(API_BASE_STORAGE_KEY));
 };
 
-const getDefaultApiPath = () => (IS_EXPLICIT_VPS ? '/api' : '/api/api');
+/**
+ * Standard hosting and modern VPS deployments expose Laravel on `/api`.
+ * Only legacy cPanel sub-folder builds need the doubled `/api/api` prefix —
+ * opt into that explicitly with `VITE_DEPLOY_TARGET=cpanel`.
+ */
+const getDefaultApiPath = () => (IS_EXPLICIT_CPANEL ? '/api/api' : '/api');
 
 export const persistWorkingApiBaseUrl = (baseUrl: string) => {
   if (typeof window === 'undefined') return;
