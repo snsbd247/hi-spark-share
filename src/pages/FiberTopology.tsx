@@ -1351,7 +1351,16 @@ export default function FiberTopology() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <OnuLiveDetailsDrawer
+        open={!!selectedOnu}
+        onOpenChange={(o) => !o && setSelectedOnu(null)}
+        serial={selectedOnu?.serial ?? null}
+        meta={selectedOnu ? liveOnu.bySn[selectedOnu.serial] : undefined}
+        customerName={selectedOnu?.customer?.name ?? null}
+        customerId={selectedOnu?.customer?.id ?? null}
+      />
     </div>
+    </LiveOnuOverlayContext.Provider>
     </DashboardLayout>
   );
 }
