@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\Fiber;
 
 use App\Http\Controllers\Controller;
+use App\Models\FiberOlt;
+use App\Models\FiberPonPort;
 use App\Models\OltDevice;
 use App\Models\OnuLiveStatus;
 use App\Services\Fiber\CredentialVault;
 use App\Services\Fiber\OltConnector;
 use App\Services\Fiber\OnuStatusUpdater;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OltDeviceController extends Controller
 {
@@ -31,6 +34,10 @@ class OltDeviceController extends Controller
         return response()->json($this->present($device));
     }
 
+    /**
+     * SSOT atomic create: writes fiber_olts (master) + fiber_pon_ports + olt_devices in one transaction.
+     * Single entry-point for both Topology and Live Monitoring pages.
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -42,62 +49,74 @@ class OltDeviceController extends Controller
             'password' => 'nullable|string|max:255',
             'vendor' => 'required|in:huawei,zte,vsol,bdcom',
             'connection_type' => 'nullable|in:api,cli,hybrid',
-            'fiber_olt_id' => 'nullable|uuid',
+            'fiber_olt_id' => 'nullable|uuid',                  // when linking to existing topology OLT
+            'location' => 'nullable|string',                    // topology fields
+            'total_pon_ports' => 'nullable|integer|min:1|max:64',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
             'poll_interval_sec' => 'nullable|integer|min:30|max:3600',
             'is_active' => 'nullable|boolean',
         ]);
 
-        $device = new OltDevice();
-        $device->fill([
-            'name' => $data['name'],
-            'ip_address' => $data['ip_address'],
-            'port' => $data['port'] ?? 22,
-            'api_port' => $data['api_port'] ?? null,
-            'username' => $data['username'] ?? null,
-            'vendor' => $data['vendor'],
-            'connection_type' => $data['connection_type'] ?? 'cli',
-            'fiber_olt_id' => $data['fiber_olt_id'] ?? null,
-            'poll_interval_sec' => $data['poll_interval_sec'] ?? 300,
-            'is_active' => $data['is_active'] ?? true,
-        ]);
-        if (!empty($data['password'])) {
-            $device->password_encrypted = $this->vault->encrypt($data['password'], request()->attributes->get('tenant_id'));
-            $device->encryption_key_id = $this->vault->currentKeyId();
-        }
-        $device->save();
-        return response()->json($this->present($device), 201);
+        $tenantId = request()->attributes->get('tenant_id');
+
+        return DB::transaction(function () use ($data, $tenantId) {
+            // Step 1: resolve or create fiber_olts master row (1 OLT = 1 entry)
+            $fiberOltId = $data['fiber_olt_id'] ?? null;
+            if ($fiberOltId) {
+                // Reuse existing topology OLT — enforce 1:1 (no duplicate olt_devices for same fiber_olt)
+                $alreadyLinked = OltDevice::where('fiber_olt_id', $fiberOltId)->exists();
+                if ($alreadyLinked) {
+                    abort(422, 'This topology OLT already has live monitoring credentials configured.');
+                }
+                $fiberOlt = FiberOlt::findOrFail($fiberOltId);
+            } else {
+                $fiberOlt = FiberOlt::create([
+                    'tenant_id' => $tenantId,
+                    'name' => $data['name'],
+                    'location' => $data['location'] ?? null,
+                    'total_pon_ports' => $data['total_pon_ports'] ?? 8,
+                    'status' => 'active',
+                    'lat' => $data['lat'] ?? null,
+                    'lng' => $data['lng'] ?? null,
+                ]);
+                // Auto-create PON ports (matches Topology behavior)
+                $portCount = $data['total_pon_ports'] ?? 8;
+                for ($i = 1; $i <= $portCount; $i++) {
+                    FiberPonPort::create([
+                        'tenant_id' => $tenantId,
+                        'olt_id' => $fiberOlt->id,
+                        'port_number' => $i,
+                        'status' => 'active',
+                    ]);
+                }
+            }
+
+            // Step 2: create olt_devices (credentials/monitoring side)
+            $device = new OltDevice();
+            $device->fill([
+                'tenant_id' => $tenantId,
+                'fiber_olt_id' => $fiberOlt->id,
+                'name' => $data['name'],
+                'ip_address' => $data['ip_address'],
+                'port' => $data['port'] ?? 22,
+                'api_port' => $data['api_port'] ?? null,
+                'username' => $data['username'] ?? null,
+                'vendor' => $data['vendor'],
+                'connection_type' => $data['connection_type'] ?? 'cli',
+                'poll_interval_sec' => $data['poll_interval_sec'] ?? 300,
+                'is_active' => $data['is_active'] ?? true,
+            ]);
+            if (!empty($data['password'])) {
+                $device->password_encrypted = $this->vault->encrypt($data['password'], $tenantId);
+                $device->encryption_key_id = $this->vault->currentKeyId();
+            }
+            $device->save();
+
+            return response()->json($this->present($device), 201);
+        });
     }
 
-    public function update(Request $request, $id)
-    {
-        $device = OltDevice::findOrFail($id);
-        $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'ip_address' => 'sometimes|string|max:64',
-            'port' => 'nullable|integer|min:1|max:65535',
-            'api_port' => 'nullable|integer|min:1|max:65535',
-            'username' => 'nullable|string|max:255',
-            'password' => 'nullable|string|max:255',
-            'vendor' => 'sometimes|in:huawei,zte,vsol,bdcom',
-            'connection_type' => 'nullable|in:api,cli,hybrid',
-            'poll_interval_sec' => 'nullable|integer|min:30|max:3600',
-            'is_active' => 'nullable|boolean',
-        ]);
-        $device->fill(collect($data)->except('password')->toArray());
-        if (array_key_exists('password', $data) && $data['password'] !== null && $data['password'] !== '') {
-            $device->password_encrypted = $this->vault->encrypt($data['password'], $device->tenant_id);
-            $device->encryption_key_id = $this->vault->currentKeyId();
-        }
-        $device->save();
-        return response()->json($this->present($device));
-    }
-
-    public function destroy($id)
-    {
-        $device = OltDevice::findOrFail($id);
-        $device->delete();
-        return response()->json(['message' => 'OLT device deleted']);
-    }
 
     public function testConnection($id)
     {
