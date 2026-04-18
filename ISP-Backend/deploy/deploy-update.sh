@@ -95,6 +95,11 @@ composer install --no-dev --optimize-autoloader --no-interaction
 php artisan migrate --force
 php artisan modules:scan 2>/dev/null || true
 
+# Run seeders (idempotent — safe to re-run, won't duplicate data)
+echo -e "${YELLOW}  Running seeders (DefaultSeeder + GeoSeeder)...${NC}"
+php artisan db:seed --class=DefaultSeeder --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ DefaultSeeder skipped${NC}"
+php artisan db:seed --class=GeoSeeder --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ GeoSeeder skipped${NC}"
+
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
