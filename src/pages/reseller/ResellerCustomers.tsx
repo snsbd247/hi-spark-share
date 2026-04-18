@@ -15,6 +15,8 @@ import { Loader2, Search, Users, Plus, Edit, User, MapPin, Wifi, Receipt, Buildi
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useGeoDivisions, useGeoDistricts, useGeoUpazilas, useGeoDivisionByName, useGeoDistrictByName } from "@/hooks/useGeoData";
+import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
+import { getTenantCompanySettings } from "@/lib/pdfTheme";
 
 // --- Section wrapper ---
 function FormSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
@@ -334,6 +336,32 @@ export default function ResellerCustomers() {
           paid_amount: monthlyBill,
           paid_date: new Date().toISOString().slice(0, 10),
         });
+
+        // Generate Customer Application Form PDF (B&W) — fetch full record + package
+        try {
+          const { data: fullCustomer } = await (db as any)
+            .from("customers")
+            .select("*, packages(name, monthly_price, speed)")
+            .eq("customer_id", customerId)
+            .eq("tenant_id", reseller!.tenant_id)
+            .maybeSingle();
+          const tenantSettings = await getTenantCompanySettings(reseller!.tenant_id);
+          const settings = {
+            site_name: tenantSettings?.site_name || reseller?.company_name || "ISP",
+            address: tenantSettings?.address || null,
+            email: tenantSettings?.email || null,
+            mobile: tenantSettings?.mobile || null,
+            logo_url: tenantSettings?.logo_url || null,
+          };
+          const pdf = await generateApplicationFormPDF(
+            fullCustomer || { ...basePayload, customer_id: customerId },
+            (fullCustomer as any)?.packages || selectedPkg,
+            settings
+          );
+          pdf.save(`${customerId}-application-form.pdf`);
+        } catch (pdfErr) {
+          console.warn("PDF generation failed:", pdfErr);
+        }
       }
     },
     onSuccess: () => {
