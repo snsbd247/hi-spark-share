@@ -116,6 +116,9 @@ php artisan db:seed --class=GeoSeeder --force --no-interaction 2>/dev/null || ec
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
 npm install --legacy-peer-deps --no-audit --no-fund
+# VITE_DEPLOY_TARGET kept for backward compatibility / clarity.
+# The frontend now defaults to `/api` for any non-cpanel build, so this
+# value is informational unless you set it to `cpanel` for legacy hosting.
 VITE_DEPLOY_TARGET=vps npm run build
 
 # ── 8. Deploy frontend ──────────────────────────────
