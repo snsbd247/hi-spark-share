@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.14.0 — Phase 15: SSOT (Single Source of Truth) OLT/ONU Bridge
+# Smart ISP — Production Update Script (Mono-Repo) v1.15.0 — Phase 16: Auto-Discovery + Smart Customer Linking
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
