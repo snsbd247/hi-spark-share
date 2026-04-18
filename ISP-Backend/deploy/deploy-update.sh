@@ -10,6 +10,7 @@ APP_DIR="/var/www/smartisp"
 BACKEND_DIR="${APP_DIR}/backend"
 FRONTEND_DIR="${APP_DIR}/frontend"
 REPO_DIR="/tmp/smartisp-repo"
+REPO_URL="https://github.com/snsbd247/hi-spark-share-4de255f8.git"
 PHP_VERSION="8.2"
 
 RED='\033[0;31m'
@@ -27,13 +28,12 @@ php artisan down --retry=60 2>/dev/null || true
 
 # ── 2. Pull latest code from GitHub ──────────────────
 echo -e "${YELLOW}[2/9] Pulling latest code from GitHub...${NC}"
-if [ -d "${REPO_DIR}" ]; then
+if [ -d "${REPO_DIR}/.git" ]; then
     cd ${REPO_DIR} && git pull origin main
 else
-    echo -e "${RED}✗ Repo not found at ${REPO_DIR}${NC}"
-    echo -e "  Run: git clone <YOUR_REPO_URL> ${REPO_DIR}"
-    cd ${BACKEND_DIR} && php artisan up
-    exit 1
+    echo -e "${YELLOW}  Repo not found — cloning fresh from ${REPO_URL}${NC}"
+    rm -rf ${REPO_DIR}
+    git clone ${REPO_URL} ${REPO_DIR}
 fi
 
 # ── 3. Sync Backend files ────────────────────────────
