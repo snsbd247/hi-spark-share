@@ -82,6 +82,40 @@ class OnuStatusUpdater
                 OnuLiveStatus::create($payload);
                 $inserted++;
             }
+
+            // Phase 9 — Throttled signal history recording.
+            // Insert if: no prior point in last 5 minutes OR rx/tx changed by ≥0.5 dB OR status changed.
+            try {
+                $rxNew = $payload['rx_power'];
+                $txNew = $payload['tx_power'];
+                $oltRxNew = $payload['olt_rx_power'];
+                $statusNew = $payload['status'];
+                $last = \DB::table('onu_signal_history')
+                    ->where('serial_number', $sn)
+                    ->orderByDesc('recorded_at')
+                    ->first(['rx_power', 'tx_power', 'olt_rx_power', 'status', 'recorded_at']);
+                $shouldRecord = true;
+                if ($last) {
+                    $ageSec = $now->diffInSeconds(\Carbon\Carbon::parse($last->recorded_at));
+                    $rxDelta = ($rxNew !== null && $last->rx_power !== null) ? abs($rxNew - $last->rx_power) : 999;
+                    $txDelta = ($txNew !== null && $last->tx_power !== null) ? abs($txNew - $last->tx_power) : 999;
+                    $statusChanged = $statusNew !== $last->status;
+                    $shouldRecord = $statusChanged || $rxDelta >= 0.5 || $txDelta >= 0.5 || $ageSec >= 300;
+                }
+                if ($shouldRecord) {
+                    \DB::table('onu_signal_history')->insert([
+                        'id' => (string) \Str::uuid(),
+                        'tenant_id' => $device->tenant_id,
+                        'olt_device_id' => $device->id,
+                        'serial_number' => $sn,
+                        'rx_power' => $rxNew,
+                        'tx_power' => $txNew,
+                        'olt_rx_power' => $oltRxNew,
+                        'status' => $statusNew,
+                        'recorded_at' => $now,
+                    ]);
+                }
+            } catch (\Throwable $e) { /* table may not exist yet — silent */ }
         }
         return ['updated' => $updated, 'inserted' => $inserted, 'linked' => $linked, 'signal_synced' => $signalSynced];
     }

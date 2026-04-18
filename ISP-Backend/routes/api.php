@@ -532,6 +532,8 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::post('/fiber/olt-devices/{id}/test', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'testConnection']);
     Route::post('/fiber/olt-devices/{id}/poll', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'poll']);
     Route::get('/fiber/onu-live-status', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'liveStatus']);
+    // Phase 9 — Historical signal trend
+    Route::get('/fiber/onu-signal-history', [\App\Http\Controllers\Api\Fiber\OnuSignalHistoryController::class, 'index']);
 
 });
 
