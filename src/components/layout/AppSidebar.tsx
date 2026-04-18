@@ -312,6 +312,8 @@ export default function AppSidebar() {
           </>
         )}
 
+        {(!collapsed || isMobile) && <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/25">{t.sidebar.business}</p>}
+
         {filterItems(tAccountingNav).length > 0 && <NavGroup label={t.sidebar.accounting} icon={CreditCard} items={filterItems(tAccountingNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
         {filterItems(tInventoryNav).length > 0 && <NavGroup label={t.sidebar.inventory} icon={BoxIcon} items={filterItems(tInventoryNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
         {filterItems(tSupplierNav).length > 0 && <NavGroup label={t.sidebar.supplier} icon={Truck} items={filterItems(tSupplierNav)} collapsed={!isMobile && collapsed} location={location} onNavigate={isMobile ? () => setMobileOpen(false) : undefined} />}
