@@ -12,7 +12,8 @@ import {
 import { toast } from "sonner";
 import { Loader2, Upload, X, User, MapPin, Wifi, Receipt, Building, Settings, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { generateCustomerPDF } from "@/lib/pdf";
+import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
+import { getTenantCompanySettings } from "@/lib/pdfTheme";
 import { customersApi } from "@/lib/api";
 import { syncCustomerPppoe, toggleCustomerPppoe, removeCustomerPppoe } from "@/lib/mikrotikClient";
 import { useInvoiceFooter } from "@/hooks/useInvoiceFooter";
@@ -547,7 +548,28 @@ export default function CustomerForm({ customer, onSuccess }: CustomerFormProps)
           await syncPPPoE(data.id);
         }
 
-        if (data) generateCustomerPDF(data, invoiceFooter);
+        if (data) {
+          try {
+            // Fetch the freshly created customer with package + photo URL for the PDF
+            const { data: full } = await db
+              .from("customers")
+              .select("*, packages(name, speed)")
+              .eq("id", data.id)
+              .maybeSingle();
+            const tenantSettings: any = await getTenantCompanySettings(tenantId);
+            const settings = {
+              site_name: tenantSettings?.company_name || tenantSettings?.site_name || "Smart ISP",
+              address: tenantSettings?.address || null,
+              email: tenantSettings?.email || null,
+              mobile: tenantSettings?.mobile || tenantSettings?.phone || null,
+              logo_url: tenantSettings?.logo_url || null,
+            };
+            const pdf = await generateApplicationFormPDF(full || data, (full as any)?.packages || null, settings);
+            pdf.save(`${(full || data).customer_id || "customer"}-application-form.pdf`);
+          } catch (pdfErr) {
+            console.error("Application form PDF error:", pdfErr);
+          }
+        }
       }
       onSuccess();
     } catch (error: any) {
