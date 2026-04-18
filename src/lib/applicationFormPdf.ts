@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { PDF_COLORS, PDF_FONT, PDF_SPACING } from "./pdfTheme";
+import { PDF_FONT, PDF_SPACING } from "./pdfTheme";
 
 interface Settings {
   site_name: string;
@@ -8,6 +8,17 @@ interface Settings {
   mobile?: string | null;
   logo_url?: string | null;
 }
+
+// ─── Local Black & White palette (does NOT affect other PDFs) ───
+const BW = {
+  black: [0, 0, 0] as [number, number, number],
+  white: [255, 255, 255] as [number, number, number],
+  text: [0, 0, 0] as [number, number, number],
+  textMuted: [80, 80, 80] as [number, number, number],
+  textLight: [120, 120, 120] as [number, number, number],
+  border: [0, 0, 0] as [number, number, number],
+  bgLight: [240, 240, 240] as [number, number, number],
+};
 
 export async function generateApplicationFormPDF(customer: any, pkg: any, settings: Settings, photoDataUrl?: string | null) {
   let photoData = photoDataUrl;
@@ -30,12 +41,6 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const cw = pw - m * 2;
   let y = 0;
 
-  const navy = PDF_COLORS.navy;
-  const bgLight = PDF_COLORS.bgLight;
-  const border = PDF_COLORS.border;
-  const textDark = PDF_COLORS.text;
-  const textMuted = PDF_COLORS.textMuted;
-
   // ─── Fetch logo ───
   let logoData: string | null = null;
   if (settings.logo_url) {
@@ -50,8 +55,8 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     } catch { /* skip */ }
   }
 
-  // ─── HEADER ───
-  doc.setFillColor(...navy);
+  // ─── HEADER (black bar) ───
+  doc.setFillColor(...BW.black);
   doc.rect(0, 0, pw, 28, "F");
 
   // Logo in header
@@ -63,7 +68,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     } catch { /* skip if image fails */ }
   }
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...BW.white);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text(settings.site_name || "Smart ISP", textStartX, 12);
@@ -86,28 +91,28 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   // ─── HELPERS ───
   const sectionTitle = (title: string) => {
-    doc.setFillColor(...navy);
+    doc.setFillColor(...BW.black);
     doc.rect(m, y, cw, 5.5, "F");
     doc.setFontSize(PDF_FONT.tiny);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(...BW.white);
     doc.text(title.toUpperCase(), m + 3, y + 4);
     y += 7;
-    doc.setTextColor(...textDark);
+    doc.setTextColor(...BW.text);
   };
 
   const field = (label: string, value: string, x: number, w: number, h = 8) => {
-    doc.setDrawColor(...border);
+    doc.setDrawColor(...BW.border);
     doc.rect(x, y, w, h, "S");
-    doc.setFillColor(...bgLight);
+    doc.setFillColor(...BW.bgLight);
     doc.rect(x, y, w, 3.2, "F");
     doc.setFontSize(5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...textMuted);
+    doc.setTextColor(...BW.textMuted);
     doc.text(label, x + 1.5, y + 2.5);
     doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...textDark);
+    doc.setTextColor(...BW.text);
     const truncated = value.length > Math.floor(w / 1.8) ? value.substring(0, Math.floor(w / 1.8)) + ".." : value;
     doc.text(truncated || "-", x + 1.5, y + 6.5);
   };
@@ -124,15 +129,15 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
   const photoSize = 20;
   const photoX = pw - m - photoSize;
   const photoY = y;
-  doc.setDrawColor(...border);
+  doc.setDrawColor(...BW.border);
   doc.rect(photoX, photoY, photoSize, photoSize, "S");
   if (photoData) {
     try { doc.addImage(photoData, "JPEG", photoX + 0.5, photoY + 0.5, photoSize - 1, photoSize - 1); } catch {}
   } else {
     doc.setFontSize(5.5);
-    doc.setTextColor(...textMuted);
+    doc.setTextColor(...BW.textMuted);
     doc.text("PHOTO", photoX + photoSize / 2, photoY + photoSize / 2, { align: "center" });
-    doc.setTextColor(...textDark);
+    doc.setTextColor(...BW.text);
   }
 
   const infoW = cw - photoSize - 2;
@@ -234,7 +239,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   // ─── SIGNATURES ───
   const sigW = (cw - 10) / 3;
-  doc.setDrawColor(...border);
+  doc.setDrawColor(...BW.border);
   [
     { label: "Applicant Signature", x: m },
     { label: "Admin Signature", x: m + sigW + 5 },
@@ -243,7 +248,7 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
     doc.line(x, y + 10, x + sigW, y + 10);
     doc.setFontSize(PDF_FONT.micro);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...textMuted);
+    doc.setTextColor(...BW.textMuted);
     doc.text(label, x + sigW / 2, y + 14, { align: "center" });
   });
 
@@ -251,13 +256,13 @@ export async function generateApplicationFormPDF(customer: any, pkg: any, settin
 
   // ─── TERMS ───
   doc.setFontSize(5.5);
-  doc.setTextColor(...textMuted);
+  doc.setTextColor(...BW.textMuted);
   doc.text("I hereby declare that all the information provided above is correct to the best of my knowledge.", m, y);
   doc.text("The ISP reserves the right to suspend the connection in case of non-payment or violation of terms.", m, y + 3.5);
 
   // ─── FOOTER ───
   doc.setFontSize(5.5);
-  doc.setTextColor(...PDF_COLORS.textLight);
+  doc.setTextColor(...BW.textLight);
   doc.text(
     `Generated on ${new Date().toLocaleDateString()} - ${settings.site_name || "Smart ISP"} Billing System`,
     pw / 2, ph - 5, { align: "center" }
