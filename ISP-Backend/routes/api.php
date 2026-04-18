@@ -542,6 +542,9 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::delete('/fiber/alert-rules/{id}', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'destroy']);
     Route::get('/fiber/alert-logs', [\App\Http\Controllers\Api\Fiber\OnuAlertRuleController::class, 'logs']);
 
+    // Phase 11 — MikroTik ↔ ONU auto-sync logs
+    Route::get('/fiber/mikrotik-sync-logs', [\App\Http\Controllers\Api\Fiber\OnuMikrotikSyncLogController::class, 'index']);
+
 });
 
 /*

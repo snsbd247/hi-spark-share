@@ -32,6 +32,7 @@ interface FormState {
   email_enabled: boolean;
   sms_enabled: boolean;
   is_active: boolean;
+  auto_suspend_pppoe: boolean;
 }
 
 const empty: FormState = {
@@ -44,6 +45,7 @@ const empty: FormState = {
   email_enabled: true,
   sms_enabled: false,
   is_active: true,
+  auto_suspend_pppoe: false,
 };
 
 export default function OnuAlertRulesPage() {
@@ -79,6 +81,7 @@ export default function OnuAlertRulesPage() {
       email_enabled: (r.channels || []).includes("email"),
       sms_enabled: (r.channels || []).includes("sms"),
       is_active: r.is_active,
+      auto_suspend_pppoe: !!r.auto_suspend_pppoe,
     });
     setOpen(true);
   };
@@ -100,6 +103,7 @@ export default function OnuAlertRulesPage() {
       recipients_sms: form.recipients_sms.split(",").map((s) => s.trim()).filter(Boolean),
       channels,
       is_active: form.is_active,
+      auto_suspend_pppoe: form.auto_suspend_pppoe,
     };
 
     setSaving(true);
@@ -232,6 +236,20 @@ export default function OnuAlertRulesPage() {
               <label className="flex items-center gap-2 text-sm"><Switch checked={form.email_enabled} onCheckedChange={(v) => setForm({ ...form, email_enabled: v })} /> Email</label>
               <label className="flex items-center gap-2 text-sm"><Switch checked={form.sms_enabled} onCheckedChange={(v) => setForm({ ...form, sms_enabled: v })} /> SMS</label>
               <label className="flex items-center gap-2 text-sm ml-auto"><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /> Active</label>
+            </div>
+            <div className="rounded-lg border border-warning/40 bg-warning/5 p-3">
+              <label className="flex items-start gap-3 text-sm cursor-pointer">
+                <Switch
+                  checked={form.auto_suspend_pppoe}
+                  onCheckedChange={(v) => setForm({ ...form, auto_suspend_pppoe: v })}
+                />
+                <div>
+                  <div className="font-medium">Auto-suspend customer PPPoE on this event</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    When ONU goes offline/LOS, automatically disable the linked customer's MikroTik PPPoE secret. Restored automatically when ONU comes back online. Use with caution.
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
           <DialogFooter>

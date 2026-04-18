@@ -16,6 +16,7 @@ export interface OnuAlertRule {
   recipients_sms: string[] | null;
   channels: ("email" | "sms")[] | null;
   is_active: boolean;
+  auto_suspend_pppoe?: boolean;
   created_at?: string;
 }
 
@@ -28,6 +29,7 @@ export interface OnuAlertRuleInput {
   recipients_sms?: string[];
   channels?: ("email" | "sms")[];
   is_active?: boolean;
+  auto_suspend_pppoe?: boolean;
 }
 
 export interface OnuAlertLog {

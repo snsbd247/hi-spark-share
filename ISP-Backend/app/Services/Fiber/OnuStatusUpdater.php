@@ -95,6 +95,16 @@ class OnuStatusUpdater
                 );
             } catch (\Throwable $e) { /* silent */ }
 
+            // Phase 11 — MikroTik ↔ ONU auto-sync (auto-suspend / auto-restore PPPoE)
+            try {
+                app(\App\Services\Fiber\OnuMikrotikAutoSync::class)->handle(
+                    $device,
+                    $sn,
+                    $previousStatus,
+                    (string) ($payload['status'] ?? 'unknown'),
+                );
+            } catch (\Throwable $e) { /* silent */ }
+
             // Phase 9 — Throttled signal history recording.
             // Insert if: no prior point in last 5 minutes OR rx/tx changed by ≥0.5 dB OR status changed.
             try {
