@@ -40,6 +40,7 @@ class DefaultSeeder extends Seeder
         $this->seedSmsSettings();
         $this->seedSmsTemplates();
         $this->seedSmtpSettings();
+        $this->seedPaymentGateways();
         $this->seedEmailTemplates();
         $this->seedPackages();
         $this->seedChartOfAccounts();
