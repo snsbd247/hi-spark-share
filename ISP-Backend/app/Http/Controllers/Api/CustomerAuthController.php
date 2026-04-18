@@ -78,6 +78,55 @@ class CustomerAuthController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * Tenant admin impersonates a customer — issues a one-time portal session token.
+     * Returns session_token; admin opens portal in new tab, own session stays intact.
+     */
+    public function impersonate(Request $request, string $customerId)
+    {
+        $admin = $request->get('admin') ?? $request->user();
+        if (!$admin) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $customer = Customer::find($customerId);
+        if (!$customer) {
+            return response()->json(['error' => 'Customer not found'], 404);
+        }
+
+        $adminTenantId = is_array($admin) ? ($admin['tenant_id'] ?? null) : ($admin->tenant_id ?? null);
+        $adminRole = is_array($admin) ? ($admin['role'] ?? '') : ($admin->role ?? '');
+        if ($adminTenantId && $customer->tenant_id && $adminTenantId !== $customer->tenant_id && $adminRole !== 'super_admin') {
+            return response()->json(['error' => 'Forbidden: customer belongs to another tenant'], 403);
+        }
+
+        $sessionToken = Str::uuid()->toString();
+        $expiresAt = now()->addHours(2);
+
+        CustomerSession::create([
+            'customer_id' => $customer->id,
+            'session_token' => $sessionToken,
+            'expires_at' => $expiresAt,
+        ]);
+
+        return response()->json([
+            'customer' => [
+                'id' => $customer->id,
+                'customer_id' => $customer->customer_id,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'area' => $customer->area,
+                'status' => $customer->status,
+                'monthly_bill' => $customer->monthly_bill,
+                'package_id' => $customer->package_id,
+                'photo_url' => $customer->photo_url,
+            ],
+            'session_token' => $sessionToken,
+            'expires_at' => $expiresAt->toISOString(),
+            'impersonated' => true,
+        ]);
+    }
+
     public function verify(Request $request)
     {
         // Support both middleware-injected customer and direct session_token in body
