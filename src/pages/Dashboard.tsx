@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Users, Loader2, RefreshCw, Router, Target, Wallet, CreditCard,
+  Users, Loader2, Router, Target, Wallet, CreditCard,
   TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, DollarSign,
-  Wifi, WifiOff, CircleDollarSign, TicketCheck, Package, MessageSquare,
+  Wifi, WifiOff, CircleDollarSign, TicketCheck, MessageSquare,
+  Activity, Briefcase, BarChart3,
 } from "lucide-react";
 import api from "@/lib/api";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -25,6 +26,10 @@ import NotificationCenter from "@/components/NotificationCenter";
 import StatCard from "@/components/dashboard/StatCard";
 import PaymentSummaryCard from "@/components/dashboard/PaymentSummaryCard";
 import AiInsights from "@/components/dashboard/AiInsights";
+import DashboardHero from "@/components/dashboard/DashboardHero";
+import TopDueCustomers from "@/components/dashboard/TopDueCustomers";
+import RecentActivityFeed from "@/components/dashboard/RecentActivityFeed";
+import SectionTitle from "@/components/dashboard/SectionTitle";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "#f59e0b", "#10b981", "#6366f1"];
