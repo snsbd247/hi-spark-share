@@ -206,18 +206,23 @@ export default function AppSidebar() {
     { to: "/profile", icon: UserCircle, label: t.sidebar.myProfile },
     { to: "/users", icon: Shield, label: t.sidebar.adminUsers, module: "users" },
     { to: "/settings/roles", icon: KeyRound, label: t.sidebar.rolesPermissions, module: "roles" },
+    { to: "/sessions", icon: Activity, label: "Active Sessions", module: "settings" },
+    { to: "/security", icon: Shield, label: "Security Dashboard", module: "settings" },
+    { to: "/activity-logs", icon: ClipboardList, label: "Activity Logs", module: "settings" },
+    { to: "/login-history", icon: FileText, label: "Login History", module: "settings" },
   ];
 
   const tSettingsNav: NavItem[] = [
+    { to: "/settings/general", icon: Settings, label: "General Settings", module: "settings" },
     { to: "/settings/system", icon: Settings, label: t.sidebar.systemSettings, module: "settings" },
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
     { to: "/ip-pools", icon: Network, label: t.sidebar.ipPools, module: "settings" },
     { to: "/settings/integrations", icon: Plug, label: t.sidebar.integrations, module: "settings" },
     { to: "/settings/locations", icon: Globe, label: t.sidebar.locationManagement, module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },
+    { to: "/settings/footer", icon: FileText, label: "Footer Settings", module: "settings" },
     { to: "/login-logs", icon: FileText, label: t.sidebar.loginLogs, module: "settings" },
     { to: "/audit-logs", icon: ClipboardList, label: t.sidebar.auditLogs, module: "settings" },
-    
     { to: "/settings/domains", icon: Globe, label: t.sidebar.domainManagement, module: "settings" },
     { to: "/settings/subscription", icon: Receipt, label: t.sidebar.subscriptionInvoices },
   ];
@@ -371,6 +376,20 @@ export default function AppSidebar() {
               {(!collapsed || isMobile) && <span>Unlinked ONUs</span>}
             </NavLink>
           </>
+        )}
+
+        {/* Network Map (separate module) */}
+        {(isOwner || (isModuleEnabled("network_map") && hasModuleAccess("network_map"))) && (
+          <NavLink to="/network-map" onClick={isMobile ? () => setMobileOpen(false) : undefined}
+            className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative group",
+              location.pathname === "/network-map"
+                ? "bg-gradient-to-r from-sidebar-primary/20 to-sidebar-primary/10 text-sidebar-primary"
+                : "text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-accent/70"
+            )}>
+            {location.pathname === "/network-map" && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-sidebar-primary" />}
+            <Globe className={cn("h-[18px] w-[18px] shrink-0", location.pathname === "/network-map" ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70")} />
+            {(!collapsed || isMobile) && <span>Network Map</span>}
+          </NavLink>
         )}
 
         {(!collapsed || isMobile) && <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/25">{t.sidebar.business}</p>}

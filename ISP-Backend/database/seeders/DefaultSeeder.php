@@ -520,6 +520,11 @@ class DefaultSeeder extends Seeder
             'live_bandwidth',
         ];
 
+        // Stale module slugs to garbage-collect (kept here so re-seed cleans them up).
+        // NOTE: Never list integration-critical modules here.
+        $staleModules = ['olts', 'onus'];
+        \App\Models\Permission::whereIn('module', $staleModules)->delete();
+
         $permissionIds = [];
         foreach ($modules as $module) {
             foreach (['view', 'create', 'edit', 'delete'] as $action) {
