@@ -10,6 +10,25 @@ const LOCAL_API = 'http://localhost:8000/api';
 const DEPLOY_TARGET = (import.meta.env.VITE_DEPLOY_TARGET || '').toLowerCase();
 const IS_EXPLICIT_CPANEL = DEPLOY_TARGET === 'cpanel';
 const API_BASE_STORAGE_KEY = 'smartisp.api-base-path';
+const API_BASE_VERSION_KEY = 'smartisp.api-base-version';
+/**
+ * Bump this whenever we change the default detection rules so older clients
+ * with a stale `/api/api` cached in localStorage rediscover the correct path
+ * on next load.
+ */
+const API_BASE_DETECTION_VERSION = '2';
+
+if (typeof window !== 'undefined') {
+  try {
+    const storedVersion = window.localStorage.getItem(API_BASE_VERSION_KEY);
+    if (storedVersion !== API_BASE_DETECTION_VERSION) {
+      window.localStorage.removeItem(API_BASE_STORAGE_KEY);
+      window.localStorage.setItem(API_BASE_VERSION_KEY, API_BASE_DETECTION_VERSION);
+    }
+  } catch {
+    /* ignore storage access errors (private mode, etc.) */
+  }
+}
 
 const normalizeApiPath = (value?: string | null) => {
   if (!value) return null;
