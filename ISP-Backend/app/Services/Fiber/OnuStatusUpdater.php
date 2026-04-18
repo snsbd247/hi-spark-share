@@ -171,4 +171,33 @@ class OnuStatusUpdater
         }
         return ['updated' => $updated, 'inserted' => $inserted, 'linked' => $linked, 'signal_synced' => $signalSynced];
     }
+
+    /**
+     * Smart customer linking — match an ONU serial/MAC to an existing customer
+     * via the `onu_mac` column (which stores either the ONU MAC or its serial).
+     * Tenant-scoped, returns null when no unambiguous match.
+     */
+    protected function resolveCustomerId(?string $tenantId, string $serial, ?string $mac): ?string
+    {
+        try {
+            $needles = array_values(array_unique(array_filter([
+                $serial,
+                $mac,
+                strtoupper($serial),
+                $mac ? strtoupper($mac) : null,
+            ])));
+            if (empty($needles)) return null;
+
+            $ids = \DB::table('customers')
+                ->whereIn('onu_mac', $needles)
+                ->when($tenantId, fn($qq) => $qq->where('tenant_id', $tenantId))
+                ->limit(2)
+                ->pluck('id');
+
+            // Only auto-link when exactly one match (avoid ambiguity)
+            return $ids->count() === 1 ? (string) $ids->first() : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 }
