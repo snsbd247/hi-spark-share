@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash2, Printer, Receipt, Activity } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Pencil, FileDown, CreditCard, Plus, Trash2, Printer, Receipt, Activity, MessageSquare } from "lucide-react";
 import CustomerLiveBandwidthWidget from "@/components/bandwidth/CustomerLiveBandwidthWidget";
 import { generateApplicationFormPDF } from "@/lib/applicationFormPdf";
 import { postSalePaymentToLedger } from "@/lib/ledger";
@@ -38,6 +38,7 @@ export default function CustomerProfilePage() {
   const queryClient = useQueryClient();
   const tenantId = useTenantId();
   const [generating, setGenerating] = useState(false);
+  const [resendingSms, setResendingSms] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editSaleOpen, setEditSaleOpen] = useState(false);
   const [editSaleData, setEditSaleData] = useState<any>(null);
@@ -149,6 +150,51 @@ export default function CustomerProfilePage() {
     },
     onError: () => toast.error("Failed to update bill"),
   });
+
+  const handleResendRegistrationSms = async () => {
+    if (!customer) return;
+    if (!customer.phone) {
+      toast.error("Customer has no phone number");
+      return;
+    }
+    setResendingSms(true);
+    try {
+      const { data: tpl } = await db
+        .from("sms_templates")
+        .select("message")
+        .eq("name", "Customer Registration")
+        .limit(1)
+        .maybeSingle();
+
+      const templateMsg = tpl?.message
+        || "Dear {CustomerName}, welcome! Your Customer ID: {CustomerID}. PPPoE Username: {PPPoEUsername}, Password: {PPPoEPassword}.";
+
+      const message = templateMsg
+        .replace(/\{CustomerName\}/g, customer.name || "")
+        .replace(/\{CustomerID\}/g, customer.customer_id || "")
+        .replace(/\{PPPoEUsername\}/g, customer.pppoe_username || "")
+        .replace(/\{PPPoEPassword\}/g, customer.pppoe_password || "");
+
+      const { data: result, error } = await db.functions.invoke("send-sms", {
+        body: {
+          to: customer.phone,
+          message,
+          sms_type: "registration",
+          customer_id: customer.id,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (result && result.success === false) {
+        throw new Error(result.error || "SMS gateway returned failure");
+      }
+      toast.success("Registration SMS resent successfully");
+    } catch (err: any) {
+      toast.error("Failed to send SMS: " + (err?.message || "Unknown error"));
+    } finally {
+      setResendingSms(false);
+    }
+  };
 
   const handleDownloadPDF = async () => {
     if (!customer || !settings) return;
@@ -264,6 +310,10 @@ export default function CustomerProfilePage() {
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" /> Edit Customer
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleResendRegistrationSms} disabled={resendingSms}>
+            {resendingSms ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+            Resend Registration SMS
           </Button>
           <Button size="sm" onClick={handleDownloadPDF} disabled={generating}>
             {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
