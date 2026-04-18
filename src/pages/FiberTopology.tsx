@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MapLocationPicker } from "@/components/MapLocationPicker";
+import { LiveOnuHealthBadge } from "@/components/fiber/LiveOnuHealthBadge";
 import {
   buildFiberMapMarkersFromTree,
   buildFiberStatsFromTree,
@@ -711,6 +712,9 @@ export default function FiberTopology() {
           </div>
         }
       />
+
+      {/* Live ONU Health (Phase 2 — non-invasive) */}
+      <LiveOnuHealthBadge />
 
       {/* Stats */}
       {stats && (

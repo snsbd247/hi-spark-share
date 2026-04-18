@@ -47,7 +47,7 @@ export function LiveOnuHealthBadge({ className }: { className?: string }) {
           <span className="text-xs font-medium text-muted-foreground">Live ONU Health</span>
         </div>
         <Badge variant="outline" className="gap-1">
-          <Wifi className="h-3 w-3 text-green-500" /> {online} online
+          <Wifi className="h-3 w-3 text-primary" /> {online} online
         </Badge>
         <Badge variant="outline" className="gap-1">
           <WifiOff className="h-3 w-3 text-muted-foreground" /> {offline} offline
@@ -61,8 +61,8 @@ export function LiveOnuHealthBadge({ className }: { className?: string }) {
           variant="outline"
           className={cn(
             "ml-auto",
-            healthPct >= 90 && "border-green-500/50 text-green-600",
-            healthPct < 90 && healthPct >= 70 && "border-yellow-500/50 text-yellow-600",
+            healthPct >= 90 && "border-primary/50 text-primary",
+            healthPct < 90 && healthPct >= 70 && "border-accent/50 text-accent-foreground",
             healthPct < 70 && "border-destructive/50 text-destructive",
           )}
         >
