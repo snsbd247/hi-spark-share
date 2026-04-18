@@ -83,6 +83,6 @@ class OnuStatusUpdater
                 $inserted++;
             }
         }
-        return ['updated' => $updated, 'inserted' => $inserted];
+        return ['updated' => $updated, 'inserted' => $inserted, 'linked' => $linked, 'signal_synced' => $signalSynced];
     }
 }
