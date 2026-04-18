@@ -206,18 +206,23 @@ export default function AppSidebar() {
     { to: "/profile", icon: UserCircle, label: t.sidebar.myProfile },
     { to: "/users", icon: Shield, label: t.sidebar.adminUsers, module: "users" },
     { to: "/settings/roles", icon: KeyRound, label: t.sidebar.rolesPermissions, module: "roles" },
+    { to: "/sessions", icon: Activity, label: "Active Sessions", module: "settings" },
+    { to: "/security", icon: Shield, label: "Security Dashboard", module: "settings" },
+    { to: "/activity-logs", icon: ClipboardList, label: "Activity Logs", module: "settings" },
+    { to: "/login-history", icon: FileText, label: "Login History", module: "settings" },
   ];
 
   const tSettingsNav: NavItem[] = [
+    { to: "/settings/general", icon: Settings, label: "General Settings", module: "settings" },
     { to: "/settings/system", icon: Settings, label: t.sidebar.systemSettings, module: "settings" },
     { to: "/settings/packages", icon: Package, label: t.sidebar.packages, module: "settings" },
     { to: "/ip-pools", icon: Network, label: t.sidebar.ipPools, module: "settings" },
     { to: "/settings/integrations", icon: Plug, label: t.sidebar.integrations, module: "settings" },
     { to: "/settings/locations", icon: Globe, label: t.sidebar.locationManagement, module: "settings" },
     { to: "/settings/mikrotik", icon: Router, label: t.sidebar.mikrotikRouters, module: "settings" },
+    { to: "/settings/footer", icon: FileText, label: "Footer Settings", module: "settings" },
     { to: "/login-logs", icon: FileText, label: t.sidebar.loginLogs, module: "settings" },
     { to: "/audit-logs", icon: ClipboardList, label: t.sidebar.auditLogs, module: "settings" },
-    
     { to: "/settings/domains", icon: Globe, label: t.sidebar.domainManagement, module: "settings" },
     { to: "/settings/subscription", icon: Receipt, label: t.sidebar.subscriptionInvoices },
   ];
