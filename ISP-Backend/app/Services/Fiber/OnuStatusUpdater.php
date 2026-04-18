@@ -25,7 +25,8 @@ class OnuStatusUpdater
             $sn = (string) ($row['serial_number'] ?? '');
             if ($sn === '') continue;
 
-            // Auto-link to existing fiber_onus by serial_number (Phase 5)
+            // SSOT: auto-link to existing fiber_onus by serial_number,
+            // OR auto-create master row when unknown (is_unlinked=true).
             $fiberOnuId = null;
             try {
                 $fiberOnuRow = \DB::table('fiber_onus')
@@ -33,7 +34,26 @@ class OnuStatusUpdater
                     ->when($device->tenant_id, fn($q) => $q->where('tenant_id', $device->tenant_id))
                     ->first(['id', 'status', 'signal_strength']);
 
-                if ($fiberOnuRow) {
+                if (!$fiberOnuRow) {
+                    // Hybrid mode: auto-create unlinked ONU master row (no splitter yet)
+                    $newId = (string) \Str::uuid();
+                    \DB::table('fiber_onus')->insert([
+                        'id' => $newId,
+                        'tenant_id' => $device->tenant_id,
+                        'serial_number' => $sn,
+                        'mac_address' => $row['mac_address'] ?? null,
+                        'olt_device_id' => $device->id,
+                        'pon_port_id' => $row['pon_port_id'] ?? null,
+                        'splitter_output_id' => null,
+                        'status' => 'inactive',
+                        'is_unlinked' => true,
+                        'discovered_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    $fiberOnuId = $newId;
+                    $linked++;
+                } else {
                     $fiberOnuId = $fiberOnuRow->id;
                     $linked++;
 
@@ -41,7 +61,6 @@ class OnuStatusUpdater
                     $rx = $row['rx_power'] ?? $row['olt_rx_power'] ?? null;
                     $newSignal = $rx !== null ? (string) $rx : $fiberOnuRow->signal_strength;
                     $liveStatus = $row['status'] ?? null;
-                    // Map live → fiber_onus.status (keep existing if unknown)
                     $mappedStatus = match ($liveStatus) {
                         'online' => 'active',
                         'offline', 'los', 'dying-gasp' => 'inactive',
@@ -51,6 +70,8 @@ class OnuStatusUpdater
                     $changes = [];
                     if ($newSignal !== $fiberOnuRow->signal_strength) $changes['signal_strength'] = $newSignal;
                     if ($mappedStatus !== $fiberOnuRow->status) $changes['status'] = $mappedStatus;
+                    // Backfill olt_device_id if missing (legacy rows)
+                    $changes['olt_device_id'] = $device->id;
                     if (!empty($changes)) {
                         $changes['updated_at'] = $now;
                         \DB::table('fiber_onus')->where('id', $fiberOnuId)->update($changes);

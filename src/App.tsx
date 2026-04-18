@@ -131,6 +131,7 @@ const OnuAlertRulesPage = lazy(() => import("@/pages/fiber/OnuAlertRulesPage"));
 const OnuAlertLogsPage = lazy(() => import("@/pages/fiber/OnuAlertLogsPage"));
 const OnuMikrotikSyncLogsPage = lazy(() => import("@/pages/fiber/OnuMikrotikSyncLogsPage"));
 const OltPerformancePage = lazy(() => import("@/pages/fiber/OltPerformancePage"));
+const UnlinkedOnusPage = lazy(() => import("@/pages/fiber/UnlinkedOnus"));
 const SuperAdminLogin = lazy(() => import("@/pages/super/SuperAdminLogin"));
 const ResellerLogin = lazy(() => import("@/pages/reseller/ResellerLogin"));
 const ResellerDashboard = lazy(() => import("@/pages/reseller/ResellerDashboard"));
@@ -333,6 +334,7 @@ function App() {
                 <Route path="/fiber/alert-logs" element={<PermissionGuard module="fiber_network"><OnuAlertLogsPage /></PermissionGuard>} />
                 <Route path="/fiber/mikrotik-sync-logs" element={<PermissionGuard module="fiber_network"><OnuMikrotikSyncLogsPage /></PermissionGuard>} />
                 <Route path="/fiber/olt-performance" element={<PermissionGuard module="fiber_network"><OltPerformancePage /></PermissionGuard>} />
+                <Route path="/fiber/unlinked-onus" element={<PermissionGuard module="fiber_network"><UnlinkedOnusPage /></PermissionGuard>} />
 
                 {/* Public Payment Link */}
                 <Route path="/pay" element={<PayBill />} />

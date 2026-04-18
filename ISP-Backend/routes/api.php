@@ -532,6 +532,9 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::post('/fiber/olt-devices/{id}/test', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'testConnection']);
     Route::post('/fiber/olt-devices/{id}/poll', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'poll']);
     Route::get('/fiber/onu-live-status', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'liveStatus']);
+    // Phase 15 — SSOT: unlinked ONUs (auto-discovered, awaiting topology placement)
+    Route::get('/fiber/onus/unlinked', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'unlinkedOnus']);
+    Route::post('/fiber/onus/{id}/link', [\App\Http\Controllers\Api\Fiber\OltDeviceController::class, 'linkOnu']);
     // Phase 9 — Historical signal trend
     Route::get('/fiber/onu-signal-history', [\App\Http\Controllers\Api\Fiber\OnuSignalHistoryController::class, 'index']);
 

@@ -165,26 +165,59 @@ class FiberTopologyController extends Controller
             'total_pon_ports' => 'required|integer|min:1|max:64',
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
+            // SSOT: optional live monitoring credentials (creates olt_devices row in same TX)
+            'ip_address' => 'nullable|string|max:64',
+            'vendor' => 'nullable|in:huawei,zte,vsol,bdcom',
+            'connection_type' => 'nullable|in:api,cli,hybrid',
+            'username' => 'nullable|string|max:255',
+            'password' => 'nullable|string|max:255',
+            'port' => 'nullable|integer|min:1|max:65535',
+            'api_port' => 'nullable|integer|min:1|max:65535',
         ]);
 
         if (!$tenantId) {
             return response()->json(['message' => 'Tenant context not found'], 422);
         }
 
-        $olt = FiberOlt::create([
-            ...$request->only(['name', 'location', 'total_pon_ports', 'status', 'lat', 'lng']),
-            'tenant_id' => $tenantId,
-        ]);
-
-        for ($i = 1; $i <= $request->total_pon_ports; $i++) {
-            FiberPonPort::create([
-                'olt_id' => $olt->id,
-                'port_number' => $i,
+        return \DB::transaction(function () use ($request, $tenantId) {
+            $olt = FiberOlt::create([
+                ...$request->only(['name', 'location', 'total_pon_ports', 'status', 'lat', 'lng']),
                 'tenant_id' => $tenantId,
             ]);
-        }
 
-        return response()->json($olt->load('ponPorts'), 201);
+            for ($i = 1; $i <= $request->total_pon_ports; $i++) {
+                FiberPonPort::create([
+                    'olt_id' => $olt->id,
+                    'port_number' => $i,
+                    'tenant_id' => $tenantId,
+                ]);
+            }
+
+            // SSOT bridge: if credentials provided, create olt_devices row 1:1
+            if ($request->filled('ip_address') && $request->filled('vendor')) {
+                $vault = app(\App\Services\Fiber\CredentialVault::class);
+                $device = new \App\Models\OltDevice();
+                $device->fill([
+                    'tenant_id' => $tenantId,
+                    'fiber_olt_id' => $olt->id,
+                    'name' => $request->name,
+                    'ip_address' => $request->ip_address,
+                    'port' => $request->input('port', 22),
+                    'api_port' => $request->api_port,
+                    'username' => $request->username,
+                    'vendor' => $request->vendor,
+                    'connection_type' => $request->input('connection_type', 'cli'),
+                    'is_active' => true,
+                ]);
+                if ($request->filled('password')) {
+                    $device->password_encrypted = $vault->encrypt($request->password, $tenantId);
+                    $device->encryption_key_id = $vault->currentKeyId();
+                }
+                $device->save();
+            }
+
+            return response()->json($olt->load('ponPorts'), 201);
+        });
     }
 
     /**
