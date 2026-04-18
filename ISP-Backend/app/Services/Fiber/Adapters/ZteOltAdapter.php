@@ -2,6 +2,18 @@
 
 namespace App\Services\Fiber\Adapters;
 
+/**
+ * ZTE C300 / C320 / C600 GPON OLT adapter.
+ *
+ * Typical CLI flow:
+ *   enable
+ *   show gpon onu state
+ *   show pon power onu-rx gpon-onu_1/2/3:1
+ *
+ * Output rows look like:
+ *   gpon-onu_1/2/3:1   ZTEGC1234567   ready   working   -25.31
+ *   OnuIndex            SN             Adm     OperState Phase-state
+ */
 class ZteOltAdapter extends AbstractOltAdapter
 {
     public function vendor(): string { return 'zte'; }
@@ -13,8 +25,7 @@ class ZteOltAdapter extends AbstractOltAdapter
 
     protected function onuListCommand(): string
     {
-        // ZTE C300/C320 — list all ONUs
-        return "enable\r\nshow gpon onu state\r\nexit\r\n";
+        return "enable\r\nterminal length 0\r\nshow gpon onu state\r\nexit\r\n";
     }
 
     protected function parseOnuList(string $raw): array
@@ -22,18 +33,37 @@ class ZteOltAdapter extends AbstractOltAdapter
         $lines = preg_split("/\r?\n/", $raw) ?: [];
         $onus = [];
         foreach ($lines as $line) {
-            if (preg_match('/gpon-onu_(\d+\/\d+\/\d+:\d+)\s+(\S+)\s+(\S+)/i', $line, $m)) {
-                $onus[] = [
-                    'serial_number' => strtoupper($m[2]),
-                    'status' => stripos($m[3], 'working') !== false ? 'online' : 'offline',
-                    'rx_power' => null,
-                    'tx_power' => null,
-                    'olt_rx_power' => null,
-                    'uptime' => null,
-                    'distance_m' => null,
-                ];
-            }
+            $line = trim($line);
+            if ($line === '' || stripos($line, 'OnuIndex') !== false) continue;
+
+            // gpon-onu_<frame/slot/port>:<onu-id>  <SN>  <admin>  <oper>  ...
+            if (!preg_match('/gpon-onu_(\d+\/\d+\/\d+):(\d+)\s+(\S+)\s+(\S+)\s+(\S+)/i', $line, $m)) continue;
+
+            $sn = strtoupper($m[3]);
+            $oper = strtolower($m[5]);
+
+            $status = match (true) {
+                str_contains($oper, 'working') => 'online',
+                str_contains($oper, 'logout'), str_contains($oper, 'offline') => 'offline',
+                str_contains($oper, 'los') => 'los',
+                str_contains($oper, 'dying') => 'dying-gasp',
+                default => 'unknown',
+            };
+
+            // Optional appended Rx power column on some firmwares
+            $rx = null;
+            if (preg_match('/(-?\d+\.\d+)\s*$/', $line, $rM)) $rx = (float) $rM[1];
+
+            $onus[$sn] = [
+                'serial_number' => $sn,
+                'status'        => $status,
+                'rx_power'      => $rx,
+                'tx_power'      => null,
+                'olt_rx_power'  => null,
+                'uptime'        => null,
+                'distance_m'    => null,
+            ];
         }
-        return $onus;
+        return array_values($onus);
     }
 }
