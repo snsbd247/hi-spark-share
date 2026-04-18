@@ -182,6 +182,18 @@ export default function AppSidebar() {
     { to: "/reseller-profit-report", icon: TrendingUp, label: "Reseller Profit", module: "reseller" },
   ];
 
+  const tFiberNav: NavItem[] = [
+    { to: "/fiber-topology", icon: Network, label: t.sidebar.fiberTopology, module: "fiber_network" },
+    { to: "/fiber/olt-devices", icon: Router, label: "OLT Devices", module: "fiber_network" },
+    { to: "/fiber/olt-performance", icon: Activity, label: "OLT Performance", module: "fiber_network" },
+    { to: "/fiber/onu-live", icon: Wifi, label: "ONU Live Status", module: "fiber_network" },
+    { to: "/fiber/unlinked-onus", icon: WifiOff, label: "Unlinked ONUs", module: "fiber_network" },
+    { to: "/fiber/alerts", icon: Bell, label: "ONU Alerts", module: "fiber_network" },
+    { to: "/fiber/alert-logs", icon: ClipboardList, label: "Alert Logs", module: "fiber_network" },
+    { to: "/fiber/mikrotik-sync-logs", icon: Wrench, label: "Auto-Sync Logs", module: "fiber_network" },
+    { to: "/network-map", icon: Globe, label: "Network Map", module: "network_map" },
+  ];
+
   const tReportingNav: NavItem[] = [
     { to: "/analytics", icon: PieChart, label: t.sidebar.advancedAnalytics, module: "reports" },
     { to: "/reporting/revenue", icon: TrendingUp, label: t.sidebar.revenueReport, module: "reports" },
