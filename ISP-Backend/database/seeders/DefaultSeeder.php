@@ -102,6 +102,23 @@ class DefaultSeeder extends Seeder
     // ── Default Tenant ──────────────────────────────────
     private ?string $defaultTenantId = null;
 
+    private function isMissingSeedValue(mixed $value, bool $treatZeroAsEmpty = false): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '' || ($treatZeroAsEmpty && trim($value) === '0');
+        }
+
+        if ($treatZeroAsEmpty && ($value === 0 || $value === 0.0)) {
+            return true;
+        }
+
+        return false;
+    }
+
     private function seedDefaultTenant(): void
     {
         $tenant = Tenant::firstOrCreate(
@@ -254,12 +271,12 @@ class DefaultSeeder extends Seeder
     // ── SMS Settings ─────────────────────────────────────
     private function seedSmsSettings(): void
     {
-        // Global SMS Gateway (GreenWeb) — used by Super Admin SMS Management page.
-        // The Super Admin page reads the FIRST SmsSetting row (withoutGlobalScopes).
-        // Safe upsert: preserves api_token / customized values; only fills missing fields.
+        // Global SMS Gateway (GreenWeb) — this must live on the global row
+        // (tenant_id = NULL). Using a deterministic target prevents import
+        // from silently skipping when tenant-scoped rows already exist.
         $defaults = [
             'api_token'                => '79101439281775119168832a32a9dc5fac0a897827f125bdaeb6',
-            'sender_id'                => 'SmartIspApp',
+            'sender_id'                => 'SmartISPApp',
             'admin_cost_rate'          => 0.36,
             'sms_on_bill_generate'     => true,
             'sms_on_payment'           => true,
@@ -269,28 +286,39 @@ class DefaultSeeder extends Seeder
             'sms_on_new_customer_bill' => true,
         ];
 
-        $global = SmsSetting::withoutGlobalScopes()->first();
+        $global = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
 
         if (!$global) {
-            // No SMS settings row exists anywhere → create a fresh global one.
-            SmsSetting::create(array_merge($defaults, [
-                'tenant_id' => $this->defaultTenantId,
+            SmsSetting::withoutGlobalScopes()->create(array_merge($defaults, [
+                'tenant_id' => null,
             ]));
             return;
         }
 
-        // Row exists — fill in only empty/null fields (preserves api_token & admin edits).
         $dirty = false;
         foreach ($defaults as $col => $val) {
             $current = $global->{$col} ?? null;
-            if ($current === null || $current === '' || $current === 0 || $current === '0') {
-                // For boolean flags, only override if NULL (not if explicitly false).
-                if (is_bool($val) && $current !== null) continue;
+
+            if (is_bool($val)) {
+                if ($current === null) {
+                    $global->{$col} = $val;
+                    $dirty = true;
+                }
+                continue;
+            }
+
+            if ($this->isMissingSeedValue($current, $col === 'admin_cost_rate')) {
                 $global->{$col} = $val;
                 $dirty = true;
             }
         }
+
         if ($dirty) {
+            $global->updated_at = now();
             $global->save();
         }
     }
@@ -333,38 +361,43 @@ class DefaultSeeder extends Seeder
             'status'     => 'active',
         ];
 
-        $existing = SmtpSetting::first();
+        $existing = SmtpSetting::query()
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
         if (!$existing) {
             SmtpSetting::create($defaults);
             return;
         }
 
-        // Fill only empty/null fields — preserves admin edits made via UI.
         $dirty = false;
         foreach ($defaults as $col => $val) {
             if ($col === 'password') {
-                // Only set password if stored value is empty AND not already encrypted.
                 $raw = $existing->getAttributes()['password'] ?? null;
-                if ($raw === null || $raw === '') {
-                    $existing->password = $val; // mutator encrypts
+                if ($this->isMissingSeedValue($raw)) {
+                    $existing->password = $val;
                     $dirty = true;
                 }
                 continue;
             }
+
             $current = $existing->{$col} ?? null;
-            if ($current === null || $current === '') {
+            if ($this->isMissingSeedValue($current, $col === 'port')) {
                 $existing->{$col} = $val;
                 $dirty = true;
             }
         }
         if ($dirty) {
+            $existing->updated_at = now();
             $existing->save();
         }
     }
 
     // ── Payment Gateways (bKash sandbox/live) ────────────
-    // Safe upsert: only creates rows that don't exist for this tenant + gateway + environment.
-    // Admin-edited credentials in the UI are NEVER overwritten (firstOrCreate semantics).
+    // Safe upsert: targets the exact tenant+gateway+environment row and fills
+    // only missing values, so repeat seeding re-imports blanks but never wipes
+    // admin-customized credentials.
     private function seedPaymentGateways(): void
     {
         if (!$this->defaultTenantId) return;
@@ -382,14 +415,34 @@ class DefaultSeeder extends Seeder
             'base_url'     => 'https://tokenized.sandbox.bka.sh/v1.2.0-beta',
         ];
 
-        \App\Models\PaymentGateway::firstOrCreate(
-            [
-                'tenant_id'    => $this->defaultTenantId,
-                'gateway_name' => 'bkash',
-                'environment'  => 'sandbox',
-            ],
-            $bkashSandbox
-        );
+        $gateway = \App\Models\PaymentGateway::withoutGlobalScopes()
+            ->where('tenant_id', $this->defaultTenantId)
+            ->where('gateway_name', 'bkash')
+            ->where('environment', 'sandbox')
+            ->first();
+
+        if (!$gateway) {
+            \App\Models\PaymentGateway::create($bkashSandbox);
+            return;
+        }
+
+        $dirty = false;
+        foreach ($bkashSandbox as $col => $val) {
+            if (in_array($col, ['tenant_id', 'gateway_name', 'environment'], true)) {
+                continue;
+            }
+
+            $current = $gateway->{$col} ?? null;
+            if ($this->isMissingSeedValue($current)) {
+                $gateway->{$col} = $val;
+                $dirty = true;
+            }
+        }
+
+        if ($dirty) {
+            $gateway->updated_at = now();
+            $gateway->save();
+        }
     }
 
     // ── Email Templates (as system_settings) ─────────────

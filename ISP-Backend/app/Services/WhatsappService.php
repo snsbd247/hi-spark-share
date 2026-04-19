@@ -11,7 +11,15 @@ class WhatsappService
 {
     public function send(string $to, string $message, ?string $customerId = null, ?string $billId = null): array
     {
-        $settings = SmsSetting::first();
+        $settings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first()
+            ?? SmsSetting::withoutGlobalScopes()
+                ->orderByDesc('updated_at')
+                ->orderByDesc('created_at')
+                ->first();
 
         if (!$settings || !$settings->whatsapp_enabled) {
             return ['success' => false, 'error' => 'WhatsApp disabled'];

@@ -89,8 +89,17 @@ class SmsBalanceController extends Controller
 
     private function resolveToken(): ?string
     {
-        // Try DB settings first, then env fallback
-        $settings = SmsSetting::query()->latest('updated_at')->first();
+        // Prefer the global super-admin SMS row; if legacy data exists without
+        // a proper global row yet, fall back to the most recently updated one.
+        $settings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first()
+            ?? SmsSetting::withoutGlobalScopes()
+                ->orderByDesc('updated_at')
+                ->orderByDesc('created_at')
+                ->first();
         $token = $settings?->api_token;
 
         if (!$token) {
