@@ -957,7 +957,16 @@ class SuperAdminController extends Controller
      */
     public function smsSettings()
     {
-        $settings = SmsSetting::withoutGlobalScopes()->first();
+        $settings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first()
+            ?? SmsSetting::withoutGlobalScopes()
+                ->orderByDesc('updated_at')
+                ->orderByDesc('created_at')
+                ->first();
+
         return response()->json($settings);
     }
 
@@ -973,15 +982,20 @@ class SuperAdminController extends Controller
             'whatsapp_enabled', 'whatsapp_token', 'whatsapp_phone_id',
         ]);
 
-        $settings = SmsSetting::withoutGlobalScopes()->first();
+        $settings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
         $oldSettings = $settings?->toArray();
 
         if (!$settings) {
             $settings = new SmsSetting();
-            $settings->forceFill($payload);
+            $settings->forceFill(array_merge($payload, ['tenant_id' => null]));
             $settings->save();
         } else {
             $settings->forceFill($payload);
+            $settings->tenant_id = null;
             $settings->updated_at = now();
             $settings->save();
         }
@@ -1007,7 +1021,15 @@ class SuperAdminController extends Controller
     public function smsBalance()
     {
         try {
-            $settings = SmsSetting::withoutGlobalScopes()->first();
+            $settings = SmsSetting::withoutGlobalScopes()
+                ->whereNull('tenant_id')
+                ->orderByDesc('updated_at')
+                ->orderByDesc('created_at')
+                ->first()
+                ?? SmsSetting::withoutGlobalScopes()
+                    ->orderByDesc('updated_at')
+                    ->orderByDesc('created_at')
+                    ->first();
             $token = $settings?->api_token;
 
             if (!$token) {
@@ -1152,7 +1174,10 @@ class SuperAdminController extends Controller
      */
     public function smtpSettings()
     {
-        $smtp = SmtpSetting::first();
+        $smtp = SmtpSetting::query()
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
         return response()->json($smtp);
     }
 
@@ -1186,7 +1211,10 @@ class SuperAdminController extends Controller
         }
 
         try {
-            $smtp = SmtpSetting::first();
+            $smtp = SmtpSetting::query()
+                ->orderByDesc('updated_at')
+                ->orderByDesc('created_at')
+                ->first();
 
             if ($smtp) {
                 $smtp->update($data);

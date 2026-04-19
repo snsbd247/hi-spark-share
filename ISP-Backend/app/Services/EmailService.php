@@ -49,7 +49,10 @@ class EmailService
             return $tenantConfig;
         }
 
-        $smtp = SmtpSetting::where('status', 'active')->first();
+        $smtp = SmtpSetting::where('status', 'active')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
         if (!$smtp?->host || !$smtp?->username) {
             return null;
         }
