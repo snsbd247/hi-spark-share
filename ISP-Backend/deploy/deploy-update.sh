@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.16.4 — Phase 16.4: Integration credential seeding (SMTP/SMS/bKash) — safe upsert preserves admin edits
+# Smart ISP — Production Update Script (Mono-Repo) v1.16.5 — Phase 16.5: Tenant delete full cascade (auto-discover tenant_id tables; integrations of other tenants safe)
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.16.4) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.16.5) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
