@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.16.4 — Phase 16.4: Integration credential seeding (SMTP/SMS/bKash) — safe upsert preserves admin edits
+# Smart ISP — Production Update Script (Mono-Repo) v1.16.5 — Phase 16.5: Tenant delete full cascade (auto-discover tenant_id tables; integrations of other tenants safe)
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
