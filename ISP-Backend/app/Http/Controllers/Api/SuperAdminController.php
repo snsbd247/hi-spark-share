@@ -378,91 +378,157 @@ class SuperAdminController extends Controller
         $tenantSnapshot = $tenant->toArray();
         TenantResolver::flushTenantCache($tenant);
 
-        // Cascade delete all dependent records
-        $childTables = [
-            'customer_ledger' => 'customer_id',
-            'customer_sessions' => 'customer_id',
-            'customer_devices', 'customer_bandwidth_usages',
-            'customer_reseller_migrations',
-            'employee_education' => 'employee_id',
-            'employee_emergency_contacts' => 'employee_id',
-            'employee_experience' => 'employee_id',
-            'employee_provident_fund', 'employee_salary_structure', 'employee_savings_fund',
-            'core_connections', 'fiber_cores', 'fiber_cables', 'fiber_splitter_outputs',
-            'fiber_splitters', 'fiber_pon_ports', 'fiber_olts', 'fiber_onus',
-            'attendance', 'salary_sheets', 'loans',
-            'online_sessions', 'login_histories', 'impersonations',
-            'reminder_logs', 'ticket_replies', 'support_tickets',
-            'sms_logs', 'sms_transactions', 'sms_wallets', 'sms_templates', 'sms_settings',
+        // ──────────────────────────────────────────────────────────────
+        // FULL CASCADE DELETE — Tenant scoped
+        // Strategy:
+        //  1. Auto-discover EVERY public table that has a `tenant_id` column
+        //     and delete rows where tenant_id = $id. This guarantees future
+        //     tenant-scoped tables are cleaned without code changes.
+        //  2. Explicitly clean child tables that hang off customers/employees/
+        //     users/subscriptions/resellers (no direct tenant_id) — scoped by
+        //     parent IDs that belong to this tenant only.
+        //  3. NEVER touch rows belonging to other tenants. All deletes are
+        //     filtered by tenant_id or by parent IDs scoped to this tenant.
+        //  4. Integration credentials (smtp/sms/payment_gateways) are
+        //     tenant-scoped rows — only this tenant's row is removed; other
+        //     tenants' integrations remain fully intact.
+        // ──────────────────────────────────────────────────────────────
+
+        // Tables that MUST be deleted in a specific order (children before parents)
+        // because their rows are referenced by FKs from other tenant tables.
+        $orderedTenantTables = [
+            // Subscriptions chain
+            'subscription_invoices', 'subscriptions',
+            // Customer children (cleared again later via parent IDs as safety net)
+            'customer_ledger', 'customer_sessions', 'customer_devices',
+            'customer_bandwidth_usages', 'customer_reseller_migrations',
+            // Billing chain
+            'reminder_logs', 'payments', 'bills',
+            // Sales / purchases
+            'sale_items', 'sales', 'purchase_items', 'purchases',
             'merchant_payments', 'supplier_payments',
-            'purchase_items', 'purchases', 'sale_items', 'sales',
             'inventory_logs', 'product_serials',
+            // Reseller chain
             'reseller_commissions', 'reseller_package_commissions',
-            'reseller_wallet_transactions', 'reseller_sessions', 'reseller_packages',
+            'reseller_wallet_transactions', 'reseller_sessions',
+            'reseller_packages',
+            // Fiber / network chain (deepest first)
+            'onu_signal_history', 'onu_alert_logs', 'onu_alert_rules',
+            'onu_live_status', 'onu_mikrotik_sync_logs',
+            'core_connections', 'fiber_cores', 'fiber_cables',
+            'fiber_splitter_outputs', 'fiber_splitters', 'fiber_pon_ports',
+            'fiber_onus', 'fiber_olts',
+            'olt_polling_logs', 'olt_devices',
             'network_links', 'network_nodes',
+            'online_sessions',
+            // HR
+            'employee_provident_fund', 'employee_salary_structure',
+            'employee_savings_fund', 'attendance', 'salary_sheets', 'loans',
+            // Support
+            'ticket_replies', 'support_tickets',
+            // SMS / notifications
+            'sms_logs', 'sms_transactions', 'sms_wallets', 'sms_templates',
             'notifications',
-            'bills', 'payments', 'transactions',
-            'customers', 'reseller_zones', 'resellers', 'zones',
+            // Audit / sessions
+            'login_histories', 'impersonations',
+            'activity_logs', 'audit_logs', 'admin_login_logs', 'admin_sessions',
+            // Now safe to drop main entities
+            'customers',
+            'reseller_zones', 'resellers', 'zones',
             'employees', 'designations',
             'expenses', 'expense_heads', 'income_heads', 'other_heads',
-            'accounts', 'system_settings',
             'packages', 'ip_pools',
             'mikrotik_routers', 'olts', 'onus',
             'categories', 'products', 'suppliers',
-            'payment_gateways',
-            'activity_logs', 'audit_logs', 'admin_login_logs', 'admin_sessions',
-            'role_permissions', 'user_roles', 'custom_roles',
-            'daily_reports',
+            // Integrations (tenant row only — global defaults untouched)
+            'smtp_settings', 'sms_settings', 'payment_gateways',
+            // Settings / config
+            'general_settings', 'system_settings', 'billing_config',
             'tenant_company_info',
-            'subscription_invoices', 'subscriptions',
-            'demo_requests',
-            'domains', 'profiles',
+            // Accounting
+            'transactions', 'accounts',
+            // RBAC
+            'role_permissions', 'user_roles', 'custom_roles',
+            // Reporting
+            'daily_reports',
+            // Misc tenant-owned
+            'demo_requests', 'profiles', 'domains',
         ];
 
         DB::beginTransaction();
         try {
-            // First: delete subscription_invoices via subscription_id FK
+            // ── Step 1: clean child rows scoped by parent IDs (no tenant_id column) ──
+            $customerIds = DB::table('customers')->where('tenant_id', $id)->pluck('id');
+            if ($customerIds->isNotEmpty()) {
+                foreach (['customer_ledger', 'customer_sessions', 'customer_devices'] as $t) {
+                    try { DB::table($t)->whereIn('customer_id', $customerIds)->delete(); }
+                    catch (\Throwable $e) { Log::debug("Pre-clean {$t}: " . $e->getMessage()); }
+                }
+            }
+
+            $employeeIds = DB::table('employees')->where('tenant_id', $id)->pluck('id');
+            if ($employeeIds->isNotEmpty()) {
+                foreach (['employee_education', 'employee_emergency_contacts', 'employee_experience'] as $t) {
+                    try { DB::table($t)->whereIn('employee_id', $employeeIds)->delete(); }
+                    catch (\Throwable $e) { Log::debug("Pre-clean {$t}: " . $e->getMessage()); }
+                }
+            }
+
             $subIds = DB::table('subscriptions')->where('tenant_id', $id)->pluck('id');
             if ($subIds->isNotEmpty()) {
-                DB::table('subscription_invoices')->whereIn('subscription_id', $subIds)->delete();
+                try { DB::table('subscription_invoices')->whereIn('subscription_id', $subIds)->delete(); }
+                catch (\Throwable $e) { Log::debug("Pre-clean subscription_invoices: " . $e->getMessage()); }
             }
-            // Also delete any subscription_invoices directly by tenant_id
-            DB::table('subscription_invoices')->where('tenant_id', $id)->delete();
-            DB::table('subscriptions')->where('tenant_id', $id)->delete();
 
-            // Delete child records from tables that have tenant_id
-            foreach ($childTables as $key => $value) {
-                $table = is_int($key) ? $value : $key;
-                if (in_array($table, ['subscriptions', 'subscription_invoices'])) continue;
+            $userIds = DB::table('users')->where('tenant_id', $id)->pluck('id');
+            if ($userIds->isNotEmpty()) {
+                try { DB::table('user_roles')->whereIn('user_id', $userIds)->delete(); }
+                catch (\Throwable $e) { Log::debug("Pre-clean user_roles: " . $e->getMessage()); }
+            }
+
+            // ── Step 2: ordered delete from known tenant-scoped tables ──
+            $processed = [];
+            foreach ($orderedTenantTables as $table) {
+                $processed[$table] = true;
                 try {
-                    DB::table($table)->where('tenant_id', $id)->delete();
-                } catch (\Exception $e) {
+                    if (\Schema::hasColumn($table, 'tenant_id')) {
+                        DB::table($table)->where('tenant_id', $id)->delete();
+                    }
+                } catch (\Throwable $e) {
                     Log::debug("Cascade delete {$table}: " . $e->getMessage());
                 }
             }
 
-            // Delete customer_ledger and customer_sessions via customers
-            $customerIds = DB::table('customers')->where('tenant_id', $id)->pluck('id');
-            if ($customerIds->isNotEmpty()) {
-                DB::table('customer_ledger')->whereIn('customer_id', $customerIds)->delete();
-                DB::table('customer_sessions')->whereIn('customer_id', $customerIds)->delete();
+            // ── Step 3: auto-discover any OTHER table with `tenant_id` and clean ──
+            // This future-proofs the cascade: any new tenant-scoped table is
+            // cleaned automatically without needing controller updates.
+            try {
+                $driver = DB::getDriverName();
+                $autoTables = [];
+                if ($driver === 'mysql' || $driver === 'mariadb') {
+                    $rows = DB::select("SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'tenant_id'");
+                    foreach ($rows as $r) { $autoTables[] = $r->t; }
+                } elseif ($driver === 'pgsql') {
+                    $rows = DB::select("SELECT table_name AS t FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'tenant_id'");
+                    foreach ($rows as $r) { $autoTables[] = $r->t; }
+                }
+                foreach ($autoTables as $table) {
+                    if ($table === 'tenants' || isset($processed[$table])) continue;
+                    try {
+                        DB::table($table)->where('tenant_id', $id)->delete();
+                    } catch (\Throwable $e) {
+                        Log::debug("Auto cascade {$table}: " . $e->getMessage());
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::debug("Auto-discover tenant_id tables failed: " . $e->getMessage());
             }
 
-            // Delete employee sub-records via employees
-            $employeeIds = DB::table('employees')->where('tenant_id', $id)->pluck('id');
-            if ($employeeIds->isNotEmpty()) {
-                DB::table('employee_education')->whereIn('employee_id', $employeeIds)->delete();
-                DB::table('employee_emergency_contacts')->whereIn('employee_id', $employeeIds)->delete();
-                DB::table('employee_experience')->whereIn('employee_id', $employeeIds)->delete();
-            }
+            // ── Step 4: delete users belonging to tenant ──
+            try { DB::table('users')->where('tenant_id', $id)->delete(); }
+            catch (\Throwable $e) { Log::debug("Delete tenant users: " . $e->getMessage()); }
 
-            // Delete user_roles via users
-            $userIds = DB::table('users')->where('tenant_id', $id)->pluck('id');
-            if ($userIds->isNotEmpty()) {
-                DB::table('user_roles')->whereIn('user_id', $userIds)->delete();
-                DB::table('users')->where('tenant_id', $id)->delete();
-            }
-
+            // ── Step 5: finally remove the tenant row ──
             $tenant->delete();
 
             $this->logTenantDeletion($request, $tenantSnapshot, $id);
