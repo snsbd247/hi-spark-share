@@ -458,6 +458,8 @@ class SuperAdminController extends Controller
 
         DB::beginTransaction();
         try {
+            $this->preserveGlobalSmsSettingsForTenantDelete($id);
+
             // ── Step 1: clean child rows scoped by parent IDs (no tenant_id column) ──
             $customerIds = DB::table('customers')->where('tenant_id', $id)->pluck('id');
             if ($customerIds->isNotEmpty()) {
@@ -542,6 +544,38 @@ class SuperAdminController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    protected function preserveGlobalSmsSettingsForTenantDelete(string $tenantId): void
+    {
+        $globalSettings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($globalSettings) {
+            return;
+        }
+
+        $legacyTenantSettings = SmsSetting::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$legacyTenantSettings) {
+            return;
+        }
+
+        $legacyTenantSettings->tenant_id = null;
+        $legacyTenantSettings->updated_at = now();
+        $legacyTenantSettings->save();
+
+        Log::info('Promoted legacy tenant SMS settings to global row before tenant deletion', [
+            'tenant_id' => $tenantId,
+            'sms_settings_id' => $legacyTenantSettings->id,
+        ]);
     }
 
     protected function logTenantDeletion(Request $request, array $tenantSnapshot, string $tenantId): void
