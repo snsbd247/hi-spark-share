@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.16.5 — Phase 16.5: Tenant delete full cascade (auto-discover tenant_id tables; integrations of other tenants safe)
+# Smart ISP — Production Update Script (Mono-Repo) v1.16.6 — Phase 16.6: Tenant delete preserves global SMS config while keeping tenant cascade isolated
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.16.5) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.16.6) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -175,7 +175,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.7.0 — Phase 8: WebSocket live push via Reverb)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.16.6 — Phase 16.6: tenant delete preserves global SMS config)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
