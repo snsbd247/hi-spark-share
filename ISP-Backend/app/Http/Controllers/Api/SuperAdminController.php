@@ -390,9 +390,9 @@ class SuperAdminController extends Controller
         //     parent IDs that belong to this tenant only.
         //  3. NEVER touch rows belonging to other tenants. All deletes are
         //     filtered by tenant_id or by parent IDs scoped to this tenant.
-        //  4. Integration credentials (smtp/sms/payment_gateways) are
-        //     tenant-scoped rows — only this tenant's row is removed; other
-        //     tenants' integrations remain fully intact.
+        //  4. Integration credentials are deleted only for the target tenant.
+        //     Global SMS config is preserved even if legacy data mistakenly
+        //     lived on the tenant row being deleted.
         // ──────────────────────────────────────────────────────────────
 
         // Tables that MUST be deleted in a specific order (children before parents)
