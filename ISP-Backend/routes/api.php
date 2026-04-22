@@ -466,6 +466,23 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     });
 
     // ══════════════════════════════════════════════════════
+    // ── EMPLOYEE SETTLEMENT — module: hr ────────────────
+    // ══════════════════════════════════════════════════════
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,view'])->group(function () {
+        Route::get('/employee/settlements', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'index']);
+        Route::get('/employee/settlements/{id}', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'show']);
+        Route::get('/employee/ledger', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'ledger']);
+        Route::get('/employee/account-entries', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'entries']);
+    });
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,create'])->group(function () {
+        Route::post('/employee/settlement/generate', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'generate']);
+        Route::post('/employee/account-entries', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'storeEntry']);
+    });
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,edit'])->group(function () {
+        Route::post('/employee/settlement/{id}/pay', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'settle']);
+    });
+
+    // ══════════════════════════════════════════════════════
     // ── BACKUP & RESTORE — module: settings ─────────────
     // ══════════════════════════════════════════════════════
     Route::middleware('check.permission:settings,view')->group(function () {
