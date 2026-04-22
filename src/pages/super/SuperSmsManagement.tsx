@@ -791,6 +791,116 @@ export default function SuperSmsManagement() {
           )}
         </TabsContent>
 
+        {/* ── SMS History Tab ──────────────────── */}
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" /> SMS History
+              </CardTitle>
+              <CardDescription>
+                Full SMS delivery log across all tenants. Filter by tenant, status, or search by phone/message.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[200px]">
+                  <Label className="text-xs text-muted-foreground">Tenant</Label>
+                  <select
+                    value={historyTenant}
+                    onChange={(e) => setHistoryTenant(e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="all">All Tenants</option>
+                    {wallets.map((w: any) => (
+                      <option key={w.tenant_id} value={w.tenant_id}>{w.tenant_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-[160px]">
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <select
+                    value={historyStatus}
+                    onChange={(e) => setHistoryStatus(e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="sent">Sent</option>
+                    <option value="failed">Failed</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[220px]">
+                  <Label className="text-xs text-muted-foreground">Search (phone / message)</Label>
+                  <Input
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    placeholder="01XXXXXXXXX or text..."
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button variant="outline" onClick={() => refetchHistory()}>
+                    <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Table */}
+              {historyLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Tenant</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Count</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {smsHistory.map((log: any) => {
+                        const tenantName = wallets.find((w: any) => w.tenant_id === log.tenant_id)?.tenant_name
+                          ?? (log.tenant_id ? log.tenant_id.substring(0, 8) : "—");
+                        return (
+                          <TableRow key={log.id}>
+                            <TableCell className="text-xs whitespace-nowrap">
+                              {log.created_at ? format(new Date(log.created_at), "dd MMM yy HH:mm") : "—"}
+                            </TableCell>
+                            <TableCell className="text-sm">{tenantName}</TableCell>
+                            <TableCell className="font-mono text-xs">{log.phone}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-xs">{log.sms_type}</Badge></TableCell>
+                            <TableCell className="max-w-xs truncate text-sm" title={log.message}>{log.message}</TableCell>
+                            <TableCell className="text-center">{log.sms_count || 1}</TableCell>
+                            <TableCell>
+                              <Badge variant={log.status === "sent" ? "default" : log.status === "failed" ? "destructive" : "secondary"}>
+                                {log.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {smsHistory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            No SMS history found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Showing latest {smsHistory.length} records.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ── Settings Tab ─────────────────────── */}
         <TabsContent value="settings">
           <Card>
