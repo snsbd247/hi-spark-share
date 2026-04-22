@@ -406,7 +406,7 @@ export const superAdminApi = {
         "attendance", "salary_sheets", "loans",
         "online_sessions", "login_histories", "impersonations",
         "reminder_logs", "ticket_replies", "support_tickets",
-        "sms_logs", "sms_transactions", "sms_wallets", "sms_templates", "sms_settings",
+        "sms_logs", "sms_transactions", "sms_wallets", "sms_templates",
         "merchant_payments", "supplier_payments",
         "purchase_items", "purchases", "sale_items", "sales",
         "inventory_logs", "product_serials",
