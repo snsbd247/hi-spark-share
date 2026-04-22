@@ -189,7 +189,38 @@ try {
 } catch (\Throwable \$e) { echo '  SMS integrity check skipped: ' . \$e->getMessage(); }
 " 2>/dev/null || true
 
-# v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
+# v1.17.8 — Post-deploy integration smoke tests (non-blocking)
+# Confirms SMS, SMTP, Payment Gateway, and MikroTik config layers are intact
+# after migration. Runs the targeted PostDeploySmokeTest + the regression
+# guard SmsGatewayPreservationTest. Failures are reported but don't abort
+# the deploy — review test output if any test fails.
+echo -e "${YELLOW}  Running post-deploy integration smoke tests...${NC}"
+if [ -f "${BACKEND_DIR}/vendor/bin/phpunit" ]; then
+    "${BACKEND_DIR}/vendor/bin/phpunit" \
+        --filter '(PostDeploySmokeTest|SmsGatewayPreservationTest)' \
+        --no-coverage \
+        --colors=never 2>&1 | tail -25 || echo -e "${YELLOW}  ⚠ Smoke tests reported failures — review above.${NC}"
+else
+    echo -e "${YELLOW}  ⚠ phpunit not found at vendor/bin/phpunit — skipping smoke tests.${NC}"
+fi
+
+# v1.17.8 — Surface recent SMS auto-promotion audit entries (last 5)
+echo -e "${YELLOW}  Recent SMS auto-promotion audit entries:${NC}"
+php artisan tinker --execute="
+try {
+    \$rows = \DB::table('activity_logs')
+        ->where('module', 'sms_settings')
+        ->where('action', 'auto_promote')
+        ->orderByDesc('created_at')
+        ->limit(5)
+        ->get(['created_at', 'description', 'metadata']);
+    if (\$rows->isEmpty()) { echo '  (none — gateway is stable)'; }
+    foreach (\$rows as \$r) {
+        echo '  ['.\$r->created_at.'] '.\$r->description.PHP_EOL;
+    }
+} catch (\Throwable \$e) { echo '  Audit lookup skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
 php artisan tinker --execute="
 try {
