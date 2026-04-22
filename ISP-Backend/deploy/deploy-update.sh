@@ -143,7 +143,11 @@ try {
 } catch (\Throwable \$e) { echo 'SMS heal skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
-# ── 7. Frontend build ───────────────────────────────
+# v1.17.4 — Verify SMS History routes are registered (read-only smoke check)
+echo -e "${YELLOW}  Verifying SMS history routes...${NC}"
+php artisan route:list --columns=method,uri 2>/dev/null | grep -E "sms/history|sms-logs|sms/logs" || echo -e "${YELLOW}  ⚠ SMS history routes not yet visible (clear caches will fix).${NC}"
+
+
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
 npm install --legacy-peer-deps --no-audit --no-fund
