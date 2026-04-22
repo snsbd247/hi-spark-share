@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SmsLog;
+use App\Services\ActivityLogger;
+use App\Support\Auth\AdminContext;
 use Illuminate\Http\Request;
 
 class SmsHistoryController extends Controller
@@ -23,12 +25,12 @@ class SmsHistoryController extends Controller
             $query->where('tenant_id', $tenantId);
         } else {
             // No tenant context on a tenant-only endpoint → return nothing
-            return response()->json(['data' => [], 'total' => 0]);
+            return response()->json(['data' => [], 'total' => 0, 'current_page' => 1, 'last_page' => 1, 'per_page' => 0]);
         }
 
         $this->applyFilters($query, $request);
 
-        $perPage = min((int) $request->input('per_page', 50), 200);
+        $perPage = $this->resolvePerPage($request, 50, 200);
         $paginated = $query->paginate($perPage);
 
         return response()->json([
@@ -42,19 +44,64 @@ class SmsHistoryController extends Controller
 
     /**
      * Super Admin SMS history — across all tenants, optional tenant_id filter.
+     *
+     * Authorization: route is already behind SuperAdminAuth middleware. We
+     * additionally:
+     *   1. Re-verify the request carries a valid super-admin context.
+     *   2. Emit an ActivityLog entry recording who accessed which slice.
+     *      Failures here are swallowed so audit overhead never blocks reads.
      */
     public function superHistory(Request $request)
     {
+        $admin = AdminContext::user($request);
+        if (!$admin || !AdminContext::isSuperAdmin($admin)) {
+            return response()->json(['error' => 'Forbidden — super admin only'], 403);
+        }
+
         $query = SmsLog::query()->orderBy('created_at', 'desc');
 
-        if ($tenantId = $request->input('tenant_id')) {
-            $query->where('tenant_id', $tenantId);
+        $tenantFilter = $request->input('tenant_id');
+        if ($tenantFilter) {
+            $query->where('tenant_id', $tenantFilter);
         }
 
         $this->applyFilters($query, $request);
 
-        $perPage = min((int) $request->input('per_page', 50), 500);
+        $perPage = $this->resolvePerPage($request, 50, 500);
         $paginated = $query->paginate($perPage);
+
+        // Audit log — non-blocking. Only logs the access metadata, not message bodies.
+        try {
+            ActivityLogger::log(
+                action: 'view',
+                module: 'sms_history',
+                description: sprintf(
+                    'Super admin viewed SMS history (tenant=%s, status=%s, type=%s, page=%d, per_page=%d, results=%d)',
+                    $tenantFilter ?: 'all',
+                    $request->input('status') ?: 'all',
+                    $request->input('sms_type') ?: 'all',
+                    $paginated->currentPage(),
+                    $paginated->perPage(),
+                    $paginated->total()
+                ),
+                userId: AdminContext::id($admin),
+                tenantId: null,
+                metadata: [
+                    'tenant_id' => $tenantFilter,
+                    'status'    => $request->input('status'),
+                    'sms_type'  => $request->input('sms_type'),
+                    'phone'     => $request->input('phone'),
+                    'from'      => $request->input('from'),
+                    'to'        => $request->input('to'),
+                    'search'    => $request->input('search'),
+                    'page'      => $paginated->currentPage(),
+                    'per_page'  => $paginated->perPage(),
+                ],
+                request: $request
+            );
+        } catch (\Throwable $e) {
+            // Never block history access if audit write fails
+        }
 
         return response()->json([
             'data'         => $paginated->items(),
@@ -88,5 +135,12 @@ class SmsHistoryController extends Controller
                   ->orWhere('message', 'like', "%{$search}%");
             });
         }
+    }
+
+    private function resolvePerPage(Request $request, int $default, int $max): int
+    {
+        $value = (int) $request->input('per_page', $default);
+        if ($value <= 0) $value = $default;
+        return min($value, $max);
     }
 }
