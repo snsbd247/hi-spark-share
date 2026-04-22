@@ -15,7 +15,9 @@ import { Wallet, Plus, RefreshCcw, Eye } from "lucide-react";
 import { WalletHealthBadge } from "@/components/wallet/WalletHealthBadge";
 import { WalletTimeline } from "@/components/wallet/WalletTimeline";
 import { CustomerTimelineDrawer } from "@/components/wallet/CustomerTimelineDrawer";
+import { WalletTestChecklist } from "@/components/wallet/WalletTestChecklist";
 import { useBuildVersionGuard } from "@/hooks/useBuildVersionGuard";
+import { nsQueryKey } from "@/lib/buildVersion";
 
 export default function WalletManagement() {
   useBuildVersionGuard();
@@ -25,7 +27,7 @@ export default function WalletManagement() {
   const [drawerCustomer, setDrawerCustomer] = useState<{ id: string; name?: string } | null>(null);
 
   const { data: walletsResp, isLoading, refetch: refetchWallets, isFetching } = useQuery({
-    queryKey: ["wallet-customers"],
+    queryKey: nsQueryKey("wallet-customers"),
     queryFn: async () => (await api.get("/wallet/customers")).data,
     refetchInterval: 15000,
     refetchOnWindowFocus: true,
@@ -117,6 +119,8 @@ export default function WalletManagement() {
           <p className="text-2xl font-bold">{wallets.filter((w: any) => w.auto_pay).length}</p>
         </CardContent></Card>
       </div>
+
+      <WalletTestChecklist />
 
       <Tabs defaultValue="wallets">
         <TabsList>

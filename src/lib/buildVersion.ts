@@ -1,26 +1,42 @@
 /**
- * Build-time + runtime cache invalidation strategy for wallet/admin pages.
+ * Deterministic cache key/versioning for admin wallet pages.
  *
- * - BUILD_VERSION is stamped at build time via vite's `define` (or falls back to dev).
- * - On page mount we compare the value stored in localStorage. If it changed,
- *   we wipe the wallet/settlement react-query cache keys and reload once.
- * - This prevents stale chunks from a previous deploy holding on to old types
- *   (the kind of issue that surfaced as the "apiClient" stale build error).
+ * - BUILD_VERSION is stamped at build time by Vite (`define`) — see vite.config.ts.
+ * - CACHE_NAMESPACE combines BUILD_VERSION + a schema revision so we can bust caches
+ *   independently when the API contract changes without a full redeploy.
+ * - All wallet/admin localStorage keys SHOULD be prefixed via `nsKey()` so they're
+ *   automatically scoped per build and are purged on version mismatch.
  */
 export const BUILD_VERSION =
   (typeof __BUILD_VERSION__ !== "undefined" && __BUILD_VERSION__) ||
   (import.meta.env.VITE_BUILD_VERSION as string | undefined) ||
   "dev";
 
-const STORAGE_KEY = "smartisp_build_version";
+/** Bump this when the wallet/settlement API response shape changes. */
+export const WALLET_SCHEMA_REV = "v3";
 
-/** Returns `true` if the build version changed since the last visit. */
+/** Composite, deterministic cache namespace. */
+export const CACHE_NAMESPACE = `${BUILD_VERSION}:${WALLET_SCHEMA_REV}`;
+
+const STORAGE_KEY = "smartisp_cache_namespace";
+
+/** Prefix a localStorage/sessionStorage key with the current build namespace. */
+export function nsKey(key: string): string {
+  return `wallet:${CACHE_NAMESPACE}:${key}`;
+}
+
+/** React Query key prefix for wallet pages — guarantees a deterministic per-build root. */
+export function nsQueryKey(...parts: unknown[]): unknown[] {
+  return [CACHE_NAMESPACE, ...parts];
+}
+
+/** Returns `true` if the cache namespace changed since the last visit. */
 export function checkBuildVersion(): boolean {
   if (typeof window === "undefined") return false;
   const prev = window.localStorage.getItem(STORAGE_KEY);
-  if (prev !== BUILD_VERSION) {
-    window.localStorage.setItem(STORAGE_KEY, BUILD_VERSION);
-    return prev !== null; // first ever visit shouldn't trigger reload
+  if (prev !== CACHE_NAMESPACE) {
+    window.localStorage.setItem(STORAGE_KEY, CACHE_NAMESPACE);
+    return prev !== null; // first ever visit shouldn't trigger purge
   }
   return false;
 }
