@@ -8,11 +8,89 @@ use App\Models\Customer;
 use App\Models\CustomerWallet;
 use App\Models\WalletTransaction;
 use App\Services\WalletService;
+use App\Models\Account;
+use App\Models\PaymentGateway;
+use App\Services\AccountingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class WalletController extends Controller
 {
-    public function __construct(protected WalletService $wallet) {}
+    public function __construct(protected WalletService $wallet, protected AccountingService $accounting) {}
+
+    /**
+     * Wallet module healthcheck:
+     *   - DB reachable + wallet tables present
+     *   - Required COA accounts (Cash, Wallet Liability, Revenue) present for tenant
+     *   - Payment gateway configs (bKash / Nagad / SSLCommerz) configured for tenant
+     */
+    public function health(Request $request)
+    {
+        $tenantId = function_exists('tenant_id') ? tenant_id() : null;
+        $checks = [];
+
+        // 1) DB
+        try {
+            DB::select('SELECT 1');
+            $checks['database'] = ['ok' => true, 'label' => 'Database reachable'];
+        } catch (\Throwable $e) {
+            $checks['database'] = ['ok' => false, 'label' => 'Database unreachable', 'error' => $e->getMessage()];
+        }
+
+        // 2) Tables
+        $tables = ['customer_wallets', 'wallet_transactions'];
+        $missing = array_filter($tables, fn($t) => !Schema::hasTable($t));
+        $checks['schema'] = [
+            'ok'    => empty($missing),
+            'label' => empty($missing) ? 'Wallet tables present' : 'Missing tables: '.implode(', ', $missing),
+        ];
+
+        // 3) COA accounts (auto-create then verify)
+        try { $this->wallet->ensureWalletAccounts($tenantId); } catch (\Throwable $e) {}
+        $codes = ['1001' => 'Cash', '2050' => 'Wallet Liability', '4001' => 'Bill Revenue'];
+        $accStatus = [];
+        foreach ($codes as $code => $name) {
+            $a = $this->accounting->accountByCode($code, $tenantId);
+            $accStatus[$code] = ['name' => $name, 'present' => (bool) $a, 'account_id' => $a?->id];
+        }
+        $checks['accounting'] = [
+            'ok'       => collect($accStatus)->every(fn($v) => $v['present']),
+            'label'    => 'Required COA accounts',
+            'accounts' => $accStatus,
+        ];
+
+        // 4) Payment gateways
+        $gateways = ['bkash', 'nagad', 'sslcommerz'];
+        $gwStatus = [];
+        if (Schema::hasTable('payment_gateways')) {
+            foreach ($gateways as $g) {
+                $row = PaymentGateway::query()
+                    ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+                    ->where('gateway', $g)->first();
+                $gwStatus[$g] = [
+                    'configured' => (bool) $row,
+                    'enabled'    => (bool) ($row?->is_enabled ?? false),
+                ];
+            }
+        } else {
+            foreach ($gateways as $g) $gwStatus[$g] = ['configured' => false, 'enabled' => false];
+        }
+        $checks['gateways'] = [
+            'ok'       => collect($gwStatus)->contains(fn($v) => $v['enabled']),
+            'label'    => 'At least one gateway enabled',
+            'gateways' => $gwStatus,
+        ];
+
+        $overall = collect($checks)->every(fn($c) => $c['ok'] ?? false);
+
+        return response()->json([
+            'ok'        => $overall,
+            'checked_at'=> now()->toIso8601String(),
+            'checks'    => $checks,
+        ]);
+    }
+
 
     /** Admin/Reseller: list wallets (with customer summary). */
     public function index(Request $request)
