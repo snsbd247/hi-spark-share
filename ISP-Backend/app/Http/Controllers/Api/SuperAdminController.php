@@ -1050,16 +1050,28 @@ class SuperAdminController extends Controller
             ->first();
         $oldSettings = $settings?->toArray();
 
-        if (!$settings) {
-            $settings = new SmsSetting();
-            $settings->forceFill(array_merge($payload, ['tenant_id' => null]));
-            $settings->save();
-        } else {
-            $settings->forceFill($payload);
-            $settings->tenant_id = null;
-            $settings->updated_at = now();
-            $settings->save();
+        // Save with model events disabled so BelongsToTenant's `creating`
+        // hook cannot auto-fill tenant_id when a Super Admin somehow has
+        // a lingering tenant context. Global SMS row MUST stay tenant_id = NULL.
+        SmsSetting::withoutEvents(function () use (&$settings, $payload) {
+            if (!$settings) {
+                $settings = new SmsSetting();
+                $settings->forceFill(array_merge($payload, ['tenant_id' => null]));
+                $settings->save();
+            } else {
+                $settings->forceFill($payload);
+                $settings->tenant_id = null;
+                $settings->updated_at = now();
+                $settings->save();
+            }
+        });
+
+        // Hard guarantee: even if some upstream change set tenant_id, fix it now.
+        if ($settings && $settings->tenant_id !== null) {
+            DB::table('sms_settings')->where('id', $settings->id)->update(['tenant_id' => null]);
+            $settings = $settings->fresh();
         }
+
 
         $freshSettings = $settings->fresh();
 
