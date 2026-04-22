@@ -577,18 +577,19 @@ class SuperAdminController extends Controller
     {
         $globalSettings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
-            ->whereNotNull('api_token')
+            ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
 
-        if ($globalSettings) {
+        if ($globalSettings && filled(trim((string) $globalSettings->api_token))) {
             return;
         }
 
         $legacyTenantSettings = SmsSetting::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->whereNotNull('api_token')
+            ->where('api_token', '!=', '')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
@@ -597,13 +598,42 @@ class SuperAdminController extends Controller
             return;
         }
 
-        $legacyTenantSettings->tenant_id = null;
-        $legacyTenantSettings->updated_at = now();
-        $legacyTenantSettings->save();
+        SmsSetting::withoutEvents(function () use (&$globalSettings, $legacyTenantSettings) {
+            $payload = [
+                'api_token' => $legacyTenantSettings->api_token,
+                'sender_id' => $legacyTenantSettings->sender_id,
+                'admin_cost_rate' => $legacyTenantSettings->admin_cost_rate,
+                'sms_on_bill_generate' => $legacyTenantSettings->sms_on_bill_generate,
+                'sms_on_payment' => $legacyTenantSettings->sms_on_payment,
+                'sms_on_registration' => $legacyTenantSettings->sms_on_registration,
+                'sms_on_suspension' => $legacyTenantSettings->sms_on_suspension,
+                'sms_on_reminder' => $legacyTenantSettings->sms_on_reminder,
+                'sms_on_new_customer_bill' => $legacyTenantSettings->sms_on_new_customer_bill,
+                'whatsapp_enabled' => $legacyTenantSettings->whatsapp_enabled,
+                'whatsapp_token' => $legacyTenantSettings->whatsapp_token,
+                'whatsapp_phone_id' => $legacyTenantSettings->whatsapp_phone_id,
+            ];
 
-        Log::info('Promoted legacy tenant SMS settings to global row before tenant deletion', [
+            if ($globalSettings) {
+                $globalSettings->forceFill($payload);
+                $globalSettings->tenant_id = null;
+                $globalSettings->updated_at = now();
+                $globalSettings->save();
+            } else {
+                $legacyTenantSettings->forceFill($payload);
+                $legacyTenantSettings->tenant_id = null;
+                $legacyTenantSettings->updated_at = now();
+                $legacyTenantSettings->save();
+                $globalSettings = $legacyTenantSettings;
+            }
+        });
+
+        Log::info('Restored global SMS settings from tenant row before tenant deletion', [
             'tenant_id' => $tenantId,
+            'global_sms_settings_id' => $globalSettings?->id,
+            'legacy_sms_settings_id' => $legacyTenantSettings->id,
             'sms_settings_id' => $legacyTenantSettings->id,
+            'used_existing_global_row' => $globalSettings && $globalSettings->id !== $legacyTenantSettings->id,
         ]);
     }
 
