@@ -86,6 +86,49 @@ export default function SuperSmsManagement() {
     },
   });
 
+  // ── Resolution Source (tenant vs global GreenWeb) ──────
+  const { data: resolveSource, refetch: refetchSource } = useQuery({
+    queryKey: ["super-sms-resolve-source", smsSettings?.id],
+    queryFn: async () => {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (IS_LOVABLE) {
+        return {
+          source: smsSettings?.tenant_id ? "tenant" : (smsSettings?.api_token ? "global" : "none"),
+          tenant_id: smsSettings?.tenant_id ?? null,
+          has_token: !!smsSettings?.api_token,
+        };
+      }
+      const { default: api } = await import("@/lib/api");
+      const { data } = await api.get("/super-admin/sms-resolve-source");
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+
+  const [healing, setHealing] = useState(false);
+  const handleHealGateway = async () => {
+    setHealing(true);
+    try {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (IS_LOVABLE) {
+        toast.info("Auto-heal runs on the VPS environment only.");
+        return;
+      }
+      const { default: api } = await import("@/lib/api");
+      const { data } = await api.post("/super-admin/sms-heal-gateway");
+      if (data?.status === "ok") toast.success("Global gateway already healthy.");
+      else if (data?.status === "healed") toast.success(data.message || "Gateway restored.");
+      else toast.warning(data?.message || "No gateway row available to promote.");
+      qc.invalidateQueries({ queryKey: ["super-sms-settings"] });
+      qc.invalidateQueries({ queryKey: ["super-sms-resolve-source"] });
+      refetchSource();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || e.message || "Heal failed");
+    } finally {
+      setHealing(false);
+    }
+  };
+
   const [form, setForm] = useState<any>(null);
   if (smsSettings && !form) {
     setForm({ ...smsSettings });
