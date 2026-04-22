@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.1 — Phase 17.1: Wallet healthcheck endpoint, Settlement COA preview/remap, audit timeline UI, build-version cache invalidation
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.2 — Phase 17.2: Wallet/Settlement audit add-ons (coa_journal_ref, preview cache), Health subsystem UI, deterministic cache namespace, COA seeder, timeline filters & test checklist
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.1) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.2) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -108,9 +108,10 @@ php artisan migrate --force
 php artisan modules:scan 2>/dev/null || true
 
 # Run seeders (idempotent — safe to re-run, won't duplicate data)
-echo -e "${YELLOW}  Running seeders (DefaultSeeder + GeoSeeder)...${NC}"
-php artisan db:seed --class=DefaultSeeder --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ DefaultSeeder skipped${NC}"
-php artisan db:seed --class=GeoSeeder --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ GeoSeeder skipped${NC}"
+echo -e "${YELLOW}  Running seeders (Default + Geo + WalletCoa)...${NC}"
+php artisan db:seed --class=DefaultSeeder    --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ DefaultSeeder skipped${NC}"
+php artisan db:seed --class=GeoSeeder        --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ GeoSeeder skipped${NC}"
+php artisan db:seed --class=WalletCoaSeeder  --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ WalletCoaSeeder skipped (will auto-create on first wallet use)${NC}"
 
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"

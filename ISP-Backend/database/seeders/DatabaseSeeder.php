@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             DefaultSeeder::class,
             GeoSeeder::class,
             SaasSeeder::class,
+            WalletCoaSeeder::class, // v1.17.2 — wallet + settlement COA (idempotent)
         ]);
     }
 }
