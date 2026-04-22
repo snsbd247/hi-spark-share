@@ -16,6 +16,7 @@ import { WalletHealthBadge } from "@/components/wallet/WalletHealthBadge";
 import { WalletTimeline } from "@/components/wallet/WalletTimeline";
 import { CustomerTimelineDrawer } from "@/components/wallet/CustomerTimelineDrawer";
 import { WalletTestChecklist } from "@/components/wallet/WalletTestChecklist";
+import { DeployStatusBanner } from "@/components/wallet/DeployStatusBanner";
 import { useBuildVersionGuard } from "@/hooks/useBuildVersionGuard";
 import { nsQueryKey } from "@/lib/buildVersion";
 
@@ -51,6 +52,7 @@ export default function WalletManagement() {
 
   return (
     <div className="space-y-6 p-6">
+      <DeployStatusBanner />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
