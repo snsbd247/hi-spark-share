@@ -40,20 +40,42 @@ class EmployeeSettlementController extends Controller
         return response()->json(['success' => true, 'settlement' => $s], 201);
     }
 
+    /**
+     * COA mapping preview — shows which Chart-of-Accounts entries WILL be posted
+     * when this settlement is paid. NOTHING is written to the ledger here.
+     * Lets the admin verify/remap before committing.
+     */
+    public function previewSettle(Request $request, string $id)
+    {
+        try {
+            $preview = $this->service->previewSettlement($id, [
+                'cash_account_id' => $request->cash_account_id,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+        return response()->json($preview);
+    }
+
     public function settle(Request $request, string $id)
     {
         $admin = $request->get('admin_user');
         try {
             $s = $this->service->settle($id, [
-                'cash_account_id' => $request->cash_account_id,
-                'payment_method'  => $request->payment_method ?? 'cash',
-                'created_by'      => $admin?->id,
+                'cash_account_id'    => $request->cash_account_id,
+                'salary_expense_id'  => $request->salary_expense_id,
+                'payable_account_id' => $request->payable_account_id,
+                'advance_account_id' => $request->advance_account_id,
+                'payment_method'     => $request->payment_method ?? 'cash',
+                'created_by'         => $admin?->id,
+                'confirmed'          => (bool) $request->boolean('confirmed', true),
             ]);
         } catch (\Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         }
         return response()->json(['success' => true, 'settlement' => $s]);
     }
+
 
     public function ledger(Request $request)
     {

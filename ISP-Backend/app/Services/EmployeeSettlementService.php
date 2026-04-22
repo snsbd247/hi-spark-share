@@ -205,15 +205,16 @@ class EmployeeSettlementService
                 throw new RuntimeException('Settlement is already paid.');
             }
 
-            $expense  = $this->accounting->accountByCode(self::ACC_SALARY_EXPENSE, $tenantId);
-            $payable  = $this->accounting->accountByCode(self::ACC_EMPLOYEE_PAYABLE, $tenantId);
-            $advance  = $this->accounting->accountByCode(self::ACC_EMPLOYEE_ADVANCE, $tenantId);
+            $expense  = !empty($opts['salary_expense_id'])  ? Account::find($opts['salary_expense_id'])  : $this->accounting->accountByCode(self::ACC_SALARY_EXPENSE, $tenantId);
+            $payable  = !empty($opts['payable_account_id']) ? Account::find($opts['payable_account_id']) : $this->accounting->accountByCode(self::ACC_EMPLOYEE_PAYABLE, $tenantId);
+            $advance  = !empty($opts['advance_account_id']) ? Account::find($opts['advance_account_id']) : $this->accounting->accountByCode(self::ACC_EMPLOYEE_ADVANCE, $tenantId);
             $cashId   = $opts['cash_account_id'] ?? $this->tenantSetting('salary_cash_account', $tenantId);
             $cash     = $cashId ? Account::find($cashId) : $this->accounting->accountByCode(self::ACC_CASH, $tenantId);
 
             if (!$expense || !$payable || !$cash) {
                 throw new RuntimeException('Required COA accounts (Salary Expense / Employee Payable / Cash) not configured.');
             }
+
 
             $earn        = (float) $settlement->total_earn;
             $netPayable  = (float) $settlement->net_payable;
