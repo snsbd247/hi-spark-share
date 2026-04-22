@@ -1080,7 +1080,7 @@ class SuperAdminController extends Controller
 
         $settings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
-            ->whereNotNull('api_token')
+            ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();

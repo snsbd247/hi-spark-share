@@ -125,17 +125,48 @@ echo -e "${YELLOW}  Healing global SMS settings (tenant_id = NULL)...${NC}"
 php artisan tinker --execute="
 try {
     \$global = \DB::table('sms_settings')->whereNull('tenant_id')->orderByDesc('updated_at')->first();
-    if (!\$global) {
+    \$globalHasToken = \$global && !empty(trim((string) (\$global->api_token ?? '')));
+    if (!\$globalHasToken) {
         \$orphan = \DB::table('sms_settings')
             ->whereNotNull('api_token')
-            ->whereNotIn('tenant_id', function(\$q){ \$q->select('id')->from('tenants'); })
+            ->where('api_token', '!=', '')
+            ->where(function(\$q){
+                \$q->whereNull('tenant_id')
+                  ->orWhereNotIn('tenant_id', function(\$sub){ \$sub->select('id')->from('tenants'); });
+            })
             ->orderByDesc('updated_at')
             ->first();
-        if (\$orphan) {
+        if (!\$orphan) {
+            \$orphan = \DB::table('sms_settings')
+                ->whereNotNull('tenant_id')
+                ->whereNotNull('api_token')
+                ->where('api_token', '!=', '')
+                ->orderByDesc('updated_at')
+                ->first();
+        }
+        if (\$orphan && \$global && \$global->id !== \$orphan->id) {
+            \DB::table('sms_settings')->where('id', \$global->id)->update([
+                'api_token' => \$orphan->api_token,
+                'sender_id' => \$orphan->sender_id,
+                'admin_cost_rate' => \$orphan->admin_cost_rate,
+                'sms_on_bill_generate' => \$orphan->sms_on_bill_generate,
+                'sms_on_payment' => \$orphan->sms_on_payment,
+                'sms_on_registration' => \$orphan->sms_on_registration,
+                'sms_on_suspension' => \$orphan->sms_on_suspension,
+                'sms_on_reminder' => \$orphan->sms_on_reminder,
+                'sms_on_new_customer_bill' => \$orphan->sms_on_new_customer_bill,
+                'whatsapp_enabled' => \$orphan->whatsapp_enabled,
+                'whatsapp_token' => \$orphan->whatsapp_token,
+                'whatsapp_phone_id' => \$orphan->whatsapp_phone_id,
+                'tenant_id' => null,
+                'updated_at' => now(),
+            ]);
+            echo 'Restored existing global SMS row from legacy settings.';
+        } elseif (\$orphan) {
             \DB::table('sms_settings')->where('id', \$orphan->id)->update(['tenant_id' => null, 'updated_at' => now()]);
-            echo 'Promoted orphan SMS row to global.';
+            echo 'Promoted fallback SMS row to global.';
         } else {
-            echo 'No global row; no orphan to promote (Super Admin must configure SMS gateway).';
+            echo 'No usable SMS row found to heal (Super Admin must configure SMS gateway).';
         }
     } else {
         echo 'Global SMS row OK (id='.\$global->id.').';
@@ -169,16 +200,38 @@ try {
 echo -e "${YELLOW}  Verifying global SMS gateway integrity...${NC}"
 php artisan tinker --execute="
 try {
-    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
-    \$tenantBound = \DB::table('sms_settings')->whereNotNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
+    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->orderByDesc('updated_at')->first();
+    \$globalHasToken = \$global && !empty(trim((string) (\$global->api_token ?? '')));
+    \$tenantBound = \DB::table('sms_settings')->whereNotNull('tenant_id')->whereNotNull('api_token')->where('api_token', '!=', '')->orderByDesc('updated_at')->first();
 
-    if (!\$global && \$tenantBound) {
-        \DB::table('sms_settings')->where('id', \$tenantBound->id)->update(['tenant_id' => null, 'updated_at' => now()]);
-        echo '  ✓ Promoted legacy tenant-bound SMS gateway to global row (id=' . \$tenantBound->id . ')' . PHP_EOL;
-        \$global = \DB::table('sms_settings')->where('id', \$tenantBound->id)->first();
+    if (!\$globalHasToken && \$tenantBound) {
+        if (\$global && \$global->id !== \$tenantBound->id) {
+            \DB::table('sms_settings')->where('id', \$global->id)->update([
+                'api_token' => \$tenantBound->api_token,
+                'sender_id' => \$tenantBound->sender_id,
+                'admin_cost_rate' => \$tenantBound->admin_cost_rate,
+                'sms_on_bill_generate' => \$tenantBound->sms_on_bill_generate,
+                'sms_on_payment' => \$tenantBound->sms_on_payment,
+                'sms_on_registration' => \$tenantBound->sms_on_registration,
+                'sms_on_suspension' => \$tenantBound->sms_on_suspension,
+                'sms_on_reminder' => \$tenantBound->sms_on_reminder,
+                'sms_on_new_customer_bill' => \$tenantBound->sms_on_new_customer_bill,
+                'whatsapp_enabled' => \$tenantBound->whatsapp_enabled,
+                'whatsapp_token' => \$tenantBound->whatsapp_token,
+                'whatsapp_phone_id' => \$tenantBound->whatsapp_phone_id,
+                'tenant_id' => null,
+                'updated_at' => now(),
+            ]);
+            echo '  ✓ Restored blank global SMS row from tenant-bound gateway (id=' . \$global->id . ')' . PHP_EOL;
+        } else {
+            \DB::table('sms_settings')->where('id', \$tenantBound->id)->update(['tenant_id' => null, 'updated_at' => now()]);
+            echo '  ✓ Promoted legacy tenant-bound SMS gateway to global row (id=' . \$tenantBound->id . ')' . PHP_EOL;
+        }
+        \$global = \DB::table('sms_settings')->whereNull('tenant_id')->orderByDesc('updated_at')->first();
+        \$globalHasToken = \$global && !empty(trim((string) (\$global->api_token ?? '')));
     }
 
-    if (\$global) {
+    if (\$globalHasToken) {
         echo '  ✓ Global SMS row present (id=' . \$global->id . ')' . PHP_EOL;
     } else {
         echo '  ⚠ No global SMS row with API token found. Super Admin should configure GreenWeb gateway.' . PHP_EOL;
