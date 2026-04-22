@@ -1128,6 +1128,14 @@ export default function SuperSmsManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* SMS Log Detail Modal */}
+      <SmsLogDetailDialog
+        log={detailLog}
+        tenantName={detailLog?.__tenantName}
+        open={!!detailLog}
+        onOpenChange={(o) => { if (!o) setDetailLog(null); }}
+      />
     </div>
   );
 }
