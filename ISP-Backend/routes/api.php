@@ -726,6 +726,10 @@ Route::middleware('reseller.auth')->prefix('reseller')->group(function () {
     Route::post('/zones', [\App\Http\Controllers\Api\ResellerController::class, 'storeZone']);
     Route::put('/zones/{id}', [\App\Http\Controllers\Api\ResellerController::class, 'updateZone']);
     Route::delete('/zones/{id}', [\App\Http\Controllers\Api\ResellerController::class, 'deleteZone']);
+
+    // Customer Wallets — read-only for reseller (tenant scope already via global scope on models)
+    Route::get('/customer-wallets', [\App\Http\Controllers\Api\WalletController::class, 'index']);
+    Route::get('/customer-wallets/history', [\App\Http\Controllers\Api\WalletController::class, 'history']);
 });
 
 /*
@@ -746,6 +750,11 @@ Route::middleware('customer.auth')->prefix('portal')->group(function () {
     Route::put('/profile', [PortalController::class, 'updateProfile']);
     // Phase 13 — Customer-facing ONU connection health
     Route::get('/connection-health', [PortalController::class, 'connectionHealth']);
+
+    // Customer Wallet
+    Route::get('/wallet', [\App\Http\Controllers\Api\WalletController::class, 'myWallet']);
+    Route::get('/wallet/history', [\App\Http\Controllers\Api\WalletController::class, 'myHistory']);
+    Route::post('/wallet/auto-pay', [\App\Http\Controllers\Api\WalletController::class, 'myToggleAutoPay']);
 });
 
 /*
