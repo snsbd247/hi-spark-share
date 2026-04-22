@@ -10,7 +10,7 @@ APP_DIR="/var/www/smartisp"
 BACKEND_DIR="${APP_DIR}/backend"
 FRONTEND_DIR="${APP_DIR}/frontend"
 REPO_DIR="/tmp/smartisp-repo"
-REPO_URL="https://github.com/snsbd247/hi-spark-share-4de255f8.git"
+REPO_URL="https://github.com/snsbd247/hi-spark-share.git"
 SCRIPT_PATH="${REPO_DIR}/ISP-Backend/deploy/deploy-update.sh"
 PHP_VERSION="8.2"
 
