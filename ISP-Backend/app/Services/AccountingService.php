@@ -9,6 +9,47 @@ use Illuminate\Support\Facades\DB;
 class AccountingService
 {
     /**
+     * Resolve an Account by code (tenant-aware). Useful for wallet/settlement modules
+     * that need a stable account reference (e.g. "Customer Wallet Liability").
+     */
+    public function accountByCode(string $code, ?string $tenantId = null): ?Account
+    {
+        $tenantId = $tenantId ?? (function_exists('tenant_id') ? tenant_id() : null);
+
+        $q = Account::query()->where('code', $code);
+        if ($tenantId) {
+            $q->where(function ($w) use ($tenantId) {
+                $w->where('tenant_id', $tenantId)->orWhereNull('tenant_id');
+            });
+        }
+        return $q->orderByRaw('tenant_id IS NULL')->first();
+    }
+
+    /**
+     * Ensure a system COA account exists for the current tenant. Idempotent.
+     * Used by Wallet & Employee Settlement modules to guarantee mapping.
+     */
+    public function ensureAccount(array $spec, ?string $tenantId = null): Account
+    {
+        $tenantId = $tenantId ?? (function_exists('tenant_id') ? tenant_id() : null);
+
+        $existing = Account::query()
+            ->where('code', $spec['code'])
+            ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+            ->first();
+
+        if ($existing) return $existing;
+
+        return Account::create(array_merge([
+            'tenant_id'  => $tenantId,
+            'is_system'  => true,
+            'is_active'  => true,
+            'level'      => 1,
+            'balance'    => 0,
+        ], $spec));
+    }
+
+    /**
      * Create a double-entry journal entry.
      */
     public function createJournalEntry(array $entries, ?string $description = null, ?string $createdBy = null): string
