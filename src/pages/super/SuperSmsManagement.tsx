@@ -482,6 +482,7 @@ export default function SuperSmsManagement() {
           <TabsTrigger value="analytics">{`📊 ${sa.analytics}`}</TabsTrigger>
           <TabsTrigger value="profit">{`💰 ${sa.profit}`}</TabsTrigger>
           <TabsTrigger value="wallets">{`🏦 ${sa.wallets}`}</TabsTrigger>
+          <TabsTrigger value="history">{`📜 SMS History`}</TabsTrigger>
           <TabsTrigger value="settings">{`⚙️ ${sa.settings}`}</TabsTrigger>
         </TabsList>
 
