@@ -207,6 +207,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // ── CUSTOMER WALLET — module: billing ───────────────
     // ══════════════════════════════════════════════════════
     Route::middleware(['check.plan_module:billing', 'check.permission:billing,view'])->group(function () {
+        Route::get('/wallet/health', [\App\Http\Controllers\Api\WalletController::class, 'health']);
         Route::get('/wallet/customers', [\App\Http\Controllers\Api\WalletController::class, 'index']);
         Route::get('/wallet/customers/{customerId}', [\App\Http\Controllers\Api\WalletController::class, 'show']);
         Route::get('/wallet/history', [\App\Http\Controllers\Api\WalletController::class, 'history']);
@@ -479,6 +480,7 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
         Route::post('/employee/account-entries', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'storeEntry']);
     });
     Route::middleware(['check.plan_module:hr', 'check.permission:hr,edit'])->group(function () {
+        Route::get('/employee/settlement/{id}/preview', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'previewSettle']);
         Route::post('/employee/settlement/{id}/pay', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'settle']);
     });
 
