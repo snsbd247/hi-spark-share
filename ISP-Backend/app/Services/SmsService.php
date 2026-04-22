@@ -217,12 +217,12 @@ class SmsService
     {
         $globalSettings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
-            ->orderByRaw('CASE WHEN api_token IS NULL OR api_token = \''\' THEN 1 ELSE 0 END')
+            ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
             ->latest('updated_at')
             ->first()
             ?? SmsSetting::withoutGlobalScopes()
                 ->orderByRaw('CASE WHEN tenant_id IS NULL THEN 0 ELSE 1 END')
-                ->orderByRaw('CASE WHEN api_token IS NULL OR api_token = \''\' THEN 1 ELSE 0 END')
+                ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
                 ->latest('updated_at')
                 ->first();
 
