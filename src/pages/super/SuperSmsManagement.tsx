@@ -887,7 +887,7 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Tenant</Label>
                   <select
                     value={historyTenant}
-                    onChange={(e) => setHistoryTenant(e.target.value)}
+                    onChange={(e) => { setHistoryTenant(e.target.value); setHistoryPage(1); }}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="all">All Tenants</option>
@@ -900,7 +900,7 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Status</Label>
                   <select
                     value={historyStatus}
-                    onChange={(e) => setHistoryStatus(e.target.value)}
+                    onChange={(e) => { setHistoryStatus(e.target.value); setHistoryPage(1); }}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="all">All</option>
@@ -913,13 +913,29 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Search (phone / message)</Label>
                   <Input
                     value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
+                    onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
                     placeholder="01XXXXXXXXX or text..."
                   />
                 </div>
-                <div className="flex items-end">
+                <div className="w-[130px]">
+                  <Label className="text-xs text-muted-foreground">Page size</Label>
+                  <select
+                    value={historyPerPage}
+                    onChange={(e) => { setHistoryPerPage(Number(e.target.value)); setHistoryPage(1); }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {[25, 50, 100, 200, 500].map((s) => (
+                      <option key={s} value={s}>{s} / page</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end gap-2">
                   <Button variant="outline" onClick={() => refetchHistory()}>
                     <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                  </Button>
+                  <Button variant="outline" onClick={handleHistoryExport} disabled={historyExporting}>
+                    {historyExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                    Export CSV
                   </Button>
                 </div>
               </div>
@@ -943,10 +959,13 @@ export default function SuperSmsManagement() {
                     </TableHeader>
                     <TableBody>
                       {smsHistory.map((log: any) => {
-                        const tenantName = wallets.find((w: any) => w.tenant_id === log.tenant_id)?.tenant_name
-                          ?? (log.tenant_id ? log.tenant_id.substring(0, 8) : "—");
+                        const tenantName = tenantNameFor(log.tenant_id);
                         return (
-                          <TableRow key={log.id}>
+                          <TableRow
+                            key={log.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setDetailLog({ ...log, __tenantName: tenantName })}
+                          >
                             <TableCell className="text-xs whitespace-nowrap">
                               {log.created_at ? format(new Date(log.created_at), "dd MMM yy HH:mm") : "—"}
                             </TableCell>
@@ -974,7 +993,31 @@ export default function SuperSmsManagement() {
                   </Table>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Showing latest {smsHistory.length} records.</p>
+
+              {/* Pagination footer */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Page {historyPage} of {historyLastPage} · {historyTotal.toLocaleString()} total record(s)
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage <= 1}
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage >= historyLastPage}
+                    onClick={() => setHistoryPage((p) => Math.min(historyLastPage, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
