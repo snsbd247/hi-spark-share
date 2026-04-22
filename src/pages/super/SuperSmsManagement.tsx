@@ -239,7 +239,29 @@ export default function SuperSmsManagement() {
     },
   });
 
-  // ── Aggregated Stats ───────────────────────
+  // ── Full SMS History (Super Admin) ─────────
+  const { data: smsHistory = [], isLoading: historyLoading, refetch: refetchHistory } = useQuery({
+    queryKey: ["super-sms-history", historyTenant, historyStatus, historySearch],
+    queryFn: async () => {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const params: any = { per_page: 200 };
+        if (historyTenant !== "all") params.tenant_id = historyTenant;
+        if (historyStatus !== "all") params.status = historyStatus;
+        if (historySearch) params.search = historySearch;
+        const { data } = await api.get("/super-admin/sms-logs", { params });
+        return data?.data ?? data ?? [];
+      }
+      let q = db.from("sms_logs").select("*").order("created_at", { ascending: false }).limit(200);
+      if (historyTenant !== "all") q = q.eq("tenant_id", historyTenant);
+      if (historyStatus !== "all") q = q.eq("status", historyStatus);
+      if (historySearch) q = q.or(`phone.ilike.%${historySearch}%,message.ilike.%${historySearch}%`);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+
   const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0);
   const totalSent = smsLogs.filter((l: any) => l.status === "sent").length;
   const totalFailed = smsLogs.filter((l: any) => l.status === "failed").length;
