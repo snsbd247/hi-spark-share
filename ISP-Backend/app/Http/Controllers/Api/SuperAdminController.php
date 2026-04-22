@@ -577,6 +577,7 @@ class SuperAdminController extends Controller
     {
         $globalSettings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
+            ->whereNotNull('api_token')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
@@ -587,6 +588,7 @@ class SuperAdminController extends Controller
 
         $legacyTenantSettings = SmsSetting::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
+            ->whereNotNull('api_token')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
@@ -1020,10 +1022,13 @@ class SuperAdminController extends Controller
     {
         $settings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
+            ->whereNotNull('api_token')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first()
             ?? SmsSetting::withoutGlobalScopes()
+                ->orderByRaw('CASE WHEN tenant_id IS NULL THEN 0 ELSE 1 END')
+                ->orderByRaw('CASE WHEN api_token IS NULL OR api_token = \'\' THEN 1 ELSE 0 END')
                 ->orderByDesc('updated_at')
                 ->orderByDesc('created_at')
                 ->first();
@@ -1045,6 +1050,7 @@ class SuperAdminController extends Controller
 
         $settings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
+            ->whereNotNull('api_token')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
