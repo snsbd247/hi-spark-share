@@ -248,7 +248,7 @@ class DefaultSeeder extends Seeder
             'footer_developer' => 'Sync & Solutions IT',
             'system_version' => '1.0.9',
             'auto_update_year' => 'true',
-            'enabled_modules' => '["dashboard","customers","billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","mikrotik","packages","fiber_network","reseller","network_map","live_bandwidth"]',
+            'enabled_modules' => json_encode(self::SYSTEM_MODULE_SLUGS),
             'invoice_footer' => 'Thank you for using our internet service.',
             'ledger_type' => 'running_balance',
         ];
