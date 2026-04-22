@@ -67,10 +67,10 @@ class WalletController extends Controller
             foreach ($gateways as $g) {
                 $row = PaymentGateway::query()
                     ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-                    ->where('gateway', $g)->first();
+                    ->where('gateway_name', $g)->first();
                 $gwStatus[$g] = [
                     'configured' => (bool) $row,
-                    'enabled'    => (bool) ($row?->is_enabled ?? false),
+                    'enabled'    => $row ? in_array(strtolower($row->status ?? ''), ['active', 'enabled', '1']) : false,
                 ];
             }
         } else {
@@ -78,7 +78,7 @@ class WalletController extends Controller
         }
         $checks['gateways'] = [
             'ok'       => collect($gwStatus)->contains(fn($v) => $v['enabled']),
-            'label'    => 'At least one gateway enabled',
+            'label'    => 'At least one payment gateway enabled',
             'gateways' => $gwStatus,
         ];
 
