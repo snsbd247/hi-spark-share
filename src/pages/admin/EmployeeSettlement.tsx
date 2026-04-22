@@ -137,8 +137,8 @@ export default function EmployeeSettlement() {
                   <TableCell><Badge variant={s.status === "paid" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
                   <TableCell>
                     {s.status === "pending" && (
-                      <Button size="sm" onClick={() => settle.mutate(s.id)} disabled={settle.isPending}>
-                        <CheckCircle2 className="h-4 w-4 mr-1" /> Settle
+                      <Button size="sm" onClick={() => setPreviewId(s.id)} disabled={settle.isPending}>
+                        <Eye className="h-4 w-4 mr-1" /> Verify & Settle
                       </Button>
                     )}
                   </TableCell>
@@ -148,6 +148,14 @@ export default function EmployeeSettlement() {
           </Table>
         </CardContent>
       </Card>
+
+      <SettlementCoaPreview
+        settlementId={previewId}
+        open={!!previewId}
+        onOpenChange={(v) => !v && setPreviewId(null)}
+        isConfirming={settle.isPending}
+        onConfirm={(overrides) => previewId && settle.mutate({ id: previewId, overrides })}
+      />
     </div>
   );
 }
