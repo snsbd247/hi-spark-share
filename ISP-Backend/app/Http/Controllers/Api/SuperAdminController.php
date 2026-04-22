@@ -509,6 +509,15 @@ class SuperAdminController extends Controller
             // ── Step 3: auto-discover any OTHER table with `tenant_id` and clean ──
             // This future-proofs the cascade: any new tenant-scoped table is
             // cleaned automatically without needing controller updates.
+            //
+            // GLOBAL-SHARED tables MUST be skipped here. These tables can hold
+            // either tenant rows (tenant_id = <uuid>) or global Super-Admin
+            // rows (tenant_id = NULL), and the global rows are shared across
+            // all tenants. They are deleted separately below with an explicit
+            // `tenant_id IS NOT NULL` guard so the global row never disappears.
+            $globalSharedSkip = [
+                'sms_settings' => true, // Global GreenWeb SMS gateway lives here
+            ];
             try {
                 $driver = DB::getDriverName();
                 $autoTables = [];
@@ -520,7 +529,7 @@ class SuperAdminController extends Controller
                     foreach ($rows as $r) { $autoTables[] = $r->t; }
                 }
                 foreach ($autoTables as $table) {
-                    if ($table === 'tenants' || isset($processed[$table])) continue;
+                    if ($table === 'tenants' || isset($processed[$table]) || isset($globalSharedSkip[$table])) continue;
                     try {
                         DB::table($table)->where('tenant_id', $id)->delete();
                     } catch (\Throwable $e) {
@@ -530,6 +539,20 @@ class SuperAdminController extends Controller
             } catch (\Throwable $e) {
                 Log::debug("Auto-discover tenant_id tables failed: " . $e->getMessage());
             }
+
+            // ── Step 3b: SMS settings — delete ONLY tenant-scoped rows ──
+            // Hard guard: `tenant_id IS NOT NULL` ensures the Super Admin's
+            // global GreenWeb gateway row (tenant_id = NULL) is never touched.
+            try {
+                $deletedSmsRows = DB::table('sms_settings')
+                    ->where('tenant_id', $id)
+                    ->whereNotNull('tenant_id')
+                    ->delete();
+                Log::info("Tenant SMS settings cleanup: deleted {$deletedSmsRows} row(s) for tenant {$id} — global row preserved.");
+            } catch (\Throwable $e) {
+                Log::debug("Tenant SMS settings cleanup: " . $e->getMessage());
+            }
+
 
             // ── Step 4: delete users belonging to tenant ──
             try { DB::table('users')->where('tenant_id', $id)->delete(); }
