@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.2 — Phase 17.2: Wallet/Settlement audit add-ons (coa_journal_ref, preview cache), Health subsystem UI, deterministic cache namespace, COA seeder, timeline filters & test checklist
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.3 — Phase 17.3: Permanent fix — Tenant delete preserves Global SMS Gateway (GreenWeb). sms_settings excluded from cascade lists, explicit `tenant_id IS NOT NULL` guard, withoutEvents save in updateSmsSettings.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.2) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.3) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -180,7 +180,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.16.6 — Phase 16.6: tenant delete preserves global SMS config)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.3 — Permanent fix: tenant delete preserves Global SMS Gateway)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
