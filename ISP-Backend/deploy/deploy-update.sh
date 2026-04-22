@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.7 — Phase 17.7: permanent global GreenWeb SMS preservation — tenant delete now never removes the super-admin SMS gateway, runtime SMS resolution prefers tenant_id=NULL global config, legacy tenant-bound global rows auto-heal safely. Module/permission/sidebar sync retained. Integrations (SMS, SMTP, payment, MikroTik) untouched.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.8 — Phase 17.8: integration smoke tests + auto-promotion audit trail + Super Admin "Restore Global Gateway" UI action + tenant-vs-global SMS source indicator. Permanent regression test guards added (SmsGatewayPreservationTest, PostDeploySmokeTest). Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.7) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.8) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -189,7 +189,38 @@ try {
 } catch (\Throwable \$e) { echo '  SMS integrity check skipped: ' . \$e->getMessage(); }
 " 2>/dev/null || true
 
-# v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
+# v1.17.8 — Post-deploy integration smoke tests (non-blocking)
+# Confirms SMS, SMTP, Payment Gateway, and MikroTik config layers are intact
+# after migration. Runs the targeted PostDeploySmokeTest + the regression
+# guard SmsGatewayPreservationTest. Failures are reported but don't abort
+# the deploy — review test output if any test fails.
+echo -e "${YELLOW}  Running post-deploy integration smoke tests...${NC}"
+if [ -f "${BACKEND_DIR}/vendor/bin/phpunit" ]; then
+    "${BACKEND_DIR}/vendor/bin/phpunit" \
+        --filter '(PostDeploySmokeTest|SmsGatewayPreservationTest)' \
+        --no-coverage \
+        --colors=never 2>&1 | tail -25 || echo -e "${YELLOW}  ⚠ Smoke tests reported failures — review above.${NC}"
+else
+    echo -e "${YELLOW}  ⚠ phpunit not found at vendor/bin/phpunit — skipping smoke tests.${NC}"
+fi
+
+# v1.17.8 — Surface recent SMS auto-promotion audit entries (last 5)
+echo -e "${YELLOW}  Recent SMS auto-promotion audit entries:${NC}"
+php artisan tinker --execute="
+try {
+    \$rows = \DB::table('activity_logs')
+        ->where('module', 'sms_settings')
+        ->where('action', 'auto_promote')
+        ->orderByDesc('created_at')
+        ->limit(5)
+        ->get(['created_at', 'description', 'metadata']);
+    if (\$rows->isEmpty()) { echo '  (none — gateway is stable)'; }
+    foreach (\$rows as \$r) {
+        echo '  ['.\$r->created_at.'] '.\$r->description.PHP_EOL;
+    }
+} catch (\Throwable \$e) { echo '  Audit lookup skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
 php artisan tinker --execute="
 try {
@@ -275,7 +306,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.7 — Global GreenWeb SMS gateway permanently preserved on tenant delete; module sync retained; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.8 — Integration smoke tests + auto-promotion audit + UI heal action + source indicator. Global GreenWeb gateway permanently preserved.)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"

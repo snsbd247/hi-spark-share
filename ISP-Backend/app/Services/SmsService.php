@@ -7,6 +7,7 @@ use App\Models\SmsLog;
 use App\Models\SmsSetting;
 use App\Models\SuperAdmin;
 use App\Models\SmsWallet;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -213,6 +214,91 @@ class SmsService
         }
     }
 
+    /**
+     * Public helper: which scope is the active SMS gateway being resolved from?
+     * Returns one of: 'global' | 'tenant' | 'none'.
+     * Used by the UI indicator (Super Admin SMS Management).
+     */
+    public function resolveSettingsSource(): array
+    {
+        $row = $this->resolveSettings();
+        if (!$row) {
+            return ['source' => 'none', 'tenant_id' => null, 'sms_settings_id' => null, 'has_token' => false];
+        }
+        return [
+            'source' => $row->tenant_id === null ? 'global' : 'tenant',
+            'tenant_id' => $row->tenant_id,
+            'sms_settings_id' => $row->id,
+            'has_token' => !empty($row->api_token),
+            'sender_id' => $row->sender_id,
+        ];
+    }
+
+    /**
+     * Public auto-heal: ensure a global SMS gateway row exists.
+     * If a legacy tenant-bound row holds the only API token, promote it to
+     * tenant_id = NULL so the Super Admin's GreenWeb gateway is restored.
+     * Returns a structured result for UI display.
+     */
+    public function autoHealGlobalGateway(?string $actorId = null, ?string $actorName = null): array
+    {
+        $global = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->whereNotNull('api_token')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($global) {
+            return [
+                'status' => 'ok',
+                'action' => 'none',
+                'message' => 'Global GreenWeb gateway already present.',
+                'sms_settings_id' => $global->id,
+            ];
+        }
+
+        $legacy = SmsSetting::withoutGlobalScopes()
+            ->whereNotNull('tenant_id')
+            ->whereNotNull('api_token')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$legacy) {
+            return [
+                'status' => 'missing',
+                'action' => 'none',
+                'message' => 'No SMS gateway row found anywhere. Configure GreenWeb manually.',
+                'sms_settings_id' => null,
+            ];
+        }
+
+        $previousTenantId = $legacy->tenant_id;
+        SmsSetting::withoutEvents(function () use ($legacy) {
+            $legacy->tenant_id = null;
+            $legacy->updated_at = now();
+            $legacy->save();
+        });
+        $legacy->refresh();
+
+        $this->logAutoPromotion(
+            smsSettingsId: (string) $legacy->id,
+            previousTenantId: $previousTenantId,
+            trigger: 'manual_heal',
+            actorId: $actorId,
+            actorName: $actorName,
+        );
+
+        return [
+            'status' => 'healed',
+            'action' => 'promoted',
+            'message' => 'Promoted legacy tenant-bound gateway to global scope.',
+            'sms_settings_id' => $legacy->id,
+            'previous_tenant_id' => $previousTenantId,
+        ];
+    }
+
     private function resolveSettings(): ?SmsSetting
     {
         $globalSettings = SmsSetting::withoutGlobalScopes()
@@ -234,6 +320,7 @@ class SmsService
             $shouldAutoPromote = !tenant_id() || $this->isSuperAdminContext();
 
             if ($shouldAutoPromote) {
+                $previousTenantId = $globalSettings->tenant_id;
                 try {
                     SmsSetting::withoutEvents(function () use ($globalSettings) {
                         $globalSettings->tenant_id = null;
@@ -244,6 +331,11 @@ class SmsService
                     Log::warning('[SMS] Auto-promoted legacy GreenWeb SMS settings row to global scope', [
                         'sms_settings_id' => $globalSettings->id,
                     ]);
+                    $this->logAutoPromotion(
+                        smsSettingsId: (string) $globalSettings->id,
+                        previousTenantId: $previousTenantId,
+                        trigger: 'runtime_resolve',
+                    );
                 } catch (\Throwable $e) {
                     Log::warning('[SMS] Failed to auto-promote legacy global SMS settings row: ' . $e->getMessage());
                 }
@@ -251,6 +343,37 @@ class SmsService
         }
 
         return $globalSettings;
+    }
+
+    /**
+     * Audit-trail entry for any auto-promotion of an SMS settings row to
+     * global scope (tenant_id = NULL). Triggered by both runtime resolution
+     * and the manual super-admin heal action.
+     */
+    private function logAutoPromotion(
+        string $smsSettingsId,
+        ?string $previousTenantId,
+        string $trigger,
+        ?string $actorId = null,
+        ?string $actorName = null
+    ): void {
+        try {
+            ActivityLogger::log(
+                action: 'auto_promote',
+                module: 'sms_settings',
+                description: 'Promoted legacy tenant-bound SMS gateway row to global scope (tenant_id = NULL).',
+                userId: $actorId,
+                tenantId: null,
+                metadata: [
+                    'sms_settings_id' => $smsSettingsId,
+                    'previous_tenant_id' => $previousTenantId,
+                    'trigger' => $trigger,
+                    'actor_name' => $actorName,
+                ],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[SMS] Auto-promotion audit log failed: ' . $e->getMessage());
+        }
     }
 
     private function isSuperAdminContext(): bool

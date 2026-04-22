@@ -1095,6 +1095,40 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Where is the runtime SMS gateway being resolved from?
+     * Used by the Super Admin SMS Management UI badge.
+     */
+    public function smsResolveSource(SmsService $sms)
+    {
+        return response()->json($sms->resolveSettingsSource());
+    }
+
+    /**
+     * Manual trigger for the global GreenWeb auto-heal flow.
+     * Promotes any legacy tenant-bound row to global if no global exists.
+     * Audited via ActivityLogger inside the service.
+     */
+    public function healSmsGateway(Request $request, SmsService $sms)
+    {
+        $actor = $this->getSuperAdminActor($request);
+        $result = $sms->autoHealGlobalGateway($actor['id'], $actor['name']);
+
+        $this->logSuperAdminAction(
+            $request,
+            'heal',
+            'sms_settings',
+            (string) ($result['sms_settings_id'] ?? '00000000-0000-0000-0000-000000000000'),
+            null,
+            $result,
+            'Manually triggered SMS gateway auto-heal: ' . ($result['message'] ?? 'no-op'),
+            null,
+            $result,
+        );
+
+        return response()->json($result);
+    }
+
+    /**
      * Check GreenWeb SMS API balance (for super admin).
      */
     public function smsBalance()

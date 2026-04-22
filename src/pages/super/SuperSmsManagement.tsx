@@ -86,6 +86,49 @@ export default function SuperSmsManagement() {
     },
   });
 
+  // ── Resolution Source (tenant vs global GreenWeb) ──────
+  const { data: resolveSource, refetch: refetchSource } = useQuery({
+    queryKey: ["super-sms-resolve-source", smsSettings?.id],
+    queryFn: async () => {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (IS_LOVABLE) {
+        return {
+          source: smsSettings?.tenant_id ? "tenant" : (smsSettings?.api_token ? "global" : "none"),
+          tenant_id: smsSettings?.tenant_id ?? null,
+          has_token: !!smsSettings?.api_token,
+        };
+      }
+      const { default: api } = await import("@/lib/api");
+      const { data } = await api.get("/super-admin/sms-resolve-source");
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+
+  const [healing, setHealing] = useState(false);
+  const handleHealGateway = async () => {
+    setHealing(true);
+    try {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (IS_LOVABLE) {
+        toast.info("Auto-heal runs on the VPS environment only.");
+        return;
+      }
+      const { default: api } = await import("@/lib/api");
+      const { data } = await api.post("/super-admin/sms-heal-gateway");
+      if (data?.status === "ok") toast.success("Global gateway already healthy.");
+      else if (data?.status === "healed") toast.success(data.message || "Gateway restored.");
+      else toast.warning(data?.message || "No gateway row available to promote.");
+      qc.invalidateQueries({ queryKey: ["super-sms-settings"] });
+      qc.invalidateQueries({ queryKey: ["super-sms-resolve-source"] });
+      refetchSource();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || e.message || "Heal failed");
+    } finally {
+      setHealing(false);
+    }
+  };
+
   const [form, setForm] = useState<any>(null);
   if (smsSettings && !form) {
     setForm({ ...smsSettings });
@@ -544,11 +587,42 @@ export default function SuperSmsManagement() {
                 <Badge variant="destructive" className="gap-1"><WifiOff className="h-3 w-3" /> {sa.notConfiguredGateway}</Badge>
               )}
             </div>
+            {/* Resolution Source Indicator */}
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              {resolveSource?.source === "global" && (
+                <Badge variant="outline" className="border-primary/40 text-primary gap-1 text-[10px]">
+                  <Zap className="h-2.5 w-2.5" /> Global GreenWeb
+                </Badge>
+              )}
+              {resolveSource?.source === "tenant" && (
+                <Badge variant="outline" className="border-amber-500/50 text-amber-600 gap-1 text-[10px]">
+                  <AlertTriangle className="h-2.5 w-2.5" /> Tenant-bound (legacy)
+                </Badge>
+              )}
+              {resolveSource?.source === "none" && (
+                <Badge variant="outline" className="border-destructive/50 text-destructive gap-1 text-[10px]">
+                  <WifiOff className="h-2.5 w-2.5" /> Unresolved
+                </Badge>
+              )}
+            </div>
             {smsSettings?.api_token && apiBalance?.rate ? (
               <div className="text-xs text-muted-foreground mt-1">API Rate: ৳{apiBalance.rate}/SMS</div>
             ) : !smsSettings?.api_token ? (
               <div className="text-xs text-muted-foreground mt-1">—</div>
             ) : null}
+            {/* Auto-heal action */}
+            {(resolveSource?.source === "tenant" || resolveSource?.source === "none") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 h-7 text-xs w-full"
+                onClick={handleHealGateway}
+                disabled={healing}
+              >
+                {healing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Restore Global Gateway
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
