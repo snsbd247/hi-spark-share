@@ -65,6 +65,10 @@ export default function SuperSmsManagement() {
   const [historyTenant, setHistoryTenant] = useState<string>("all");
   const [historyStatus, setHistoryStatus] = useState<string>("all");
   const [historySearch, setHistorySearch] = useState<string>("");
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [historyPerPage, setHistoryPerPage] = useState<number>(50);
+  const [historyExporting, setHistoryExporting] = useState<boolean>(false);
+  const [detailLog, setDetailLog] = useState<any | null>(null);
 
   // ── Global SMS Settings ─────────────────────
   const { data: smsSettings, isLoading: settingsLoading } = useQuery({
@@ -239,28 +243,102 @@ export default function SuperSmsManagement() {
     },
   });
 
-  // ── Full SMS History (Super Admin) ─────────
-  const { data: smsHistory = [], isLoading: historyLoading, refetch: refetchHistory } = useQuery({
-    queryKey: ["super-sms-history", historyTenant, historyStatus, historySearch],
+  // ── Full SMS History (Super Admin) — paginated ─────────
+  const { data: historyPageData, isLoading: historyLoading, refetch: refetchHistory } = useQuery({
+    queryKey: ["super-sms-history", historyTenant, historyStatus, historySearch, historyPage, historyPerPage],
     queryFn: async () => {
       const { IS_LOVABLE } = await import("@/lib/environment");
       if (!IS_LOVABLE) {
         const { default: api } = await import("@/lib/api");
-        const params: any = { per_page: 200 };
+        const params: any = { page: historyPage, per_page: historyPerPage };
         if (historyTenant !== "all") params.tenant_id = historyTenant;
         if (historyStatus !== "all") params.status = historyStatus;
         if (historySearch) params.search = historySearch;
         const { data } = await api.get("/super-admin/sms-logs", { params });
-        return data?.data ?? data ?? [];
+        return {
+          rows: data?.data ?? [],
+          total: data?.total ?? 0,
+          last_page: data?.last_page ?? 1,
+        };
       }
-      let q = db.from("sms_logs").select("*").order("created_at", { ascending: false }).limit(200);
+      const from = (historyPage - 1) * historyPerPage;
+      const to = from + historyPerPage - 1;
+      let q = db.from("sms_logs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(from, to);
       if (historyTenant !== "all") q = q.eq("tenant_id", historyTenant);
       if (historyStatus !== "all") q = q.eq("status", historyStatus);
       if (historySearch) q = q.or(`phone.ilike.%${historySearch}%,message.ilike.%${historySearch}%`);
-      const { data } = await q;
-      return data || [];
+      const { data, count } = await q;
+      const total = count ?? 0;
+      return { rows: data || [], total, last_page: Math.max(1, Math.ceil(total / historyPerPage)) };
     },
   });
+  const smsHistory: any[] = historyPageData?.rows ?? [];
+  const historyTotal: number = historyPageData?.total ?? 0;
+  const historyLastPage: number = historyPageData?.last_page ?? 1;
+
+  const tenantNameFor = (tenantId: string | null | undefined): string => {
+    if (!tenantId) return "—";
+    return wallets.find((w: any) => w.tenant_id === tenantId)?.tenant_name ?? tenantId.substring(0, 8);
+  };
+
+  const handleHistoryExport = async () => {
+    setHistoryExporting(true);
+    try {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      const { rowsToCsv, downloadCsv } = await import("@/lib/csvExport");
+      let allRows: any[] = [];
+
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const MAX_PAGES = 10;
+        const SIZE = 500;
+        for (let p = 1; p <= MAX_PAGES; p++) {
+          const params: any = { page: p, per_page: SIZE };
+          if (historyTenant !== "all") params.tenant_id = historyTenant;
+          if (historyStatus !== "all") params.status = historyStatus;
+          if (historySearch) params.search = historySearch;
+          const { data } = await api.get("/super-admin/sms-logs", { params });
+          const chunk = data?.data ?? [];
+          allRows = allRows.concat(chunk);
+          if (chunk.length < SIZE) break;
+        }
+      } else {
+        let q = db.from("sms_logs").select("*").order("created_at", { ascending: false }).limit(5000);
+        if (historyTenant !== "all") q = q.eq("tenant_id", historyTenant);
+        if (historyStatus !== "all") q = q.eq("status", historyStatus);
+        if (historySearch) q = q.or(`phone.ilike.%${historySearch}%,message.ilike.%${historySearch}%`);
+        const { data } = await q;
+        allRows = data || [];
+      }
+
+      if (!allRows.length) {
+        toast.info("No records to export");
+        return;
+      }
+
+      const csv = rowsToCsv(allRows, [
+        { header: "Time", value: (r: any) => r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss") : "" },
+        { header: "Tenant", value: (r: any) => tenantNameFor(r.tenant_id) },
+        { header: "Tenant ID", value: (r: any) => r.tenant_id ?? "" },
+        { header: "Phone", value: (r: any) => r.phone },
+        { header: "Type", value: (r: any) => r.sms_type },
+        { header: "Message", value: (r: any) => r.message },
+        { header: "Status", value: (r: any) => r.status },
+        { header: "Segments", value: (r: any) => r.sms_count ?? 1 },
+        { header: "Cost", value: (r: any) => r.cost ?? "" },
+        { header: "Admin Cost", value: (r: any) => r.admin_cost ?? "" },
+        { header: "Profit", value: (r: any) => r.profit ?? "" },
+        { header: "Response", value: (r: any) => r.response },
+      ]);
+      const stamp = format(new Date(), "yyyyMMdd-HHmm");
+      downloadCsv(`super-sms-history-${stamp}.csv`, csv);
+      toast.success(`Exported ${allRows.length} record(s)`);
+    } catch (e: any) {
+      toast.error(e?.message || "Export failed");
+    } finally {
+      setHistoryExporting(false);
+    }
+  };
 
   const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0);
   const totalSent = smsLogs.filter((l: any) => l.status === "sent").length;
