@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Users, Calculator, CheckCircle2 } from "lucide-react";
+import { Users, Calculator, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { SettlementCoaPreview } from "@/components/settlement/SettlementCoaPreview";
+import { useBuildVersionGuard } from "@/hooks/useBuildVersionGuard";
 
 export default function EmployeeSettlement() {
+  useBuildVersionGuard();
   const qc = useQueryClient();
-  const [employeeId, setEmployeeId] = useState<string>("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const { data: employees } = useQuery({
     queryKey: ["hr-employees"],
@@ -34,13 +37,20 @@ export default function EmployeeSettlement() {
   });
 
   const settle = useMutation({
-    mutationFn: async (id: string) => (await api.post(`/employee/settlement/${id}/pay`, { payment_method: "cash" })).data,
+    mutationFn: async ({ id, overrides }: { id: string; overrides: Record<string, string | undefined> }) =>
+      (await api.post(`/employee/settlement/${id}/pay`, {
+        payment_method: "cash",
+        confirmed: true,
+        ...overrides,
+      })).data,
     onSuccess: () => {
       toast.success("Settlement paid — journal entry posted");
       qc.invalidateQueries({ queryKey: ["employee-settlements"] });
+      setPreviewId(null);
     },
     onError: (e: any) => toast.error(e?.response?.data?.error || "Failed"),
   });
+
 
   const empList = Array.isArray(employees) ? employees : employees?.data || [];
   const settlements = settlementsResp?.data || [];
