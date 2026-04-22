@@ -22,11 +22,12 @@ import {
 } from "recharts";
 import {
   Loader2, Save, Settings, Plus, MessageSquare, ArrowUpCircle, ArrowDownCircle,
-  Wifi, WifiOff, AlertTriangle, TrendingUp, Activity, Zap, RefreshCw, DollarSign,
+  Wifi, WifiOff, AlertTriangle, TrendingUp, Activity, Zap, RefreshCw, DollarSign, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
+import SmsLogDetailDialog from "@/components/sms/SmsLogDetailDialog";
 
 const LOW_BALANCE_THRESHOLD = 100;
 
