@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import DemoQuickModal from "@/components/demo/DemoQuickModal";
@@ -77,11 +77,20 @@ function useLandingSections() {
 function scrollToSection(href: string) {
   const hash = href.includes("#") ? href.split("#").pop() || "" : "";
   if (!hash) return false;
+  const normalizedHash = ({
+    platform: "features",
+    modules: "features",
+    signup: "contact",
+  } as Record<string, string>)[hash] || hash;
   // Try direct ID match first, then data-section fallback
-  const el = document.getElementById(hash) || document.querySelector(`[data-section="${hash}"]`);
+  const el =
+    document.getElementById(hash) ||
+    document.getElementById(normalizedHash) ||
+    document.querySelector(`[data-section~="${hash}"]`) ||
+    document.querySelector(`[data-section~="${normalizedHash}"]`);
   if (el) {
     el.scrollIntoView({ behavior: "smooth" });
-    window.history.replaceState(null, "", "#" + hash);
+    window.history.replaceState(null, "", "#" + normalizedHash);
     return true;
   }
   return false;
@@ -250,7 +259,7 @@ function FeaturesSection({ sections }: { sections: any[] }) {
   const subtitle = sectionMeta.section_subtitle || "Powerful modules designed for modern ISP businesses";
 
   return (
-    <section id="features" className="scroll-mt-16 py-8 sm:py-12 bg-muted/20">
+    <section id="features" data-section="features modules platform" className="scroll-mt-16 py-8 sm:py-12 bg-muted/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -509,7 +518,7 @@ function ContactSection({ branding }: { branding: any }) {
   const inputClass = "flex h-9 w-full rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 transition-shadow";
 
   return (
-    <section id="contact" data-section="signup" className="scroll-mt-16 py-8 sm:py-12">
+    <section id="contact" data-section="contact signup" className="scroll-mt-16 py-8 sm:py-12">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
           <Badge variant="secondary" className="mb-3 rounded-full px-3 py-1 text-[11px] font-medium">
@@ -757,6 +766,12 @@ export default function LandingPage() {
 
   const demoMeta = sections.find((s: any) => s.section_type === "hero")?.metadata || {};
   const openModal = () => setModalOpen(true);
+
+  useEffect(() => {
+    if (sections.length > 0 && window.location.hash) {
+      scrollToSection(window.location.hash);
+    }
+  }, [sections]);
 
   if (sectionsLoading || brandingLoading || sectionsFetching || brandingFetching) {
     return (
