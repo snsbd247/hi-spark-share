@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.0 — Phase 17.0: Customer Wallet + Employee Settlement modules with double-entry accounting
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.1 — Phase 17.1: Wallet healthcheck endpoint, Settlement COA preview/remap, audit timeline UI, build-version cache invalidation
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.0) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.1) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
