@@ -275,7 +275,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.6 — Module/Permission/Sidebar fully synced via SYSTEM_MODULE_SLUGS constant; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.7 — Global GreenWeb SMS gateway permanently preserved on tenant delete; module sync retained; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
