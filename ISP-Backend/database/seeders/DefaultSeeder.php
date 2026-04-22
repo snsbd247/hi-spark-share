@@ -645,13 +645,7 @@ class DefaultSeeder extends Seeder
     // ── Permissions & Role-Permission Mapping ───────────
     private function seedPermissions(): void
     {
-        $modules = [
-            'dashboard', 'customers', 'billing', 'payments', 'merchant_payments',
-            'tickets', 'sms', 'accounting', 'inventory', 'hr',
-            'supplier', 'reports', 'settings', 'users', 'roles',
-            'mikrotik', 'packages', 'fiber_network', 'reseller', 'network_map',
-            'live_bandwidth',
-        ];
+        $modules = self::SYSTEM_MODULE_SLUGS;
 
         // Stale module slugs to garbage-collect (kept here so re-seed cleans them up).
         // NOTE: Never list integration-critical modules here.
