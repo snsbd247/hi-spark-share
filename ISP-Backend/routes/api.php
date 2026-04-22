@@ -204,6 +204,23 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     });
 
     // ══════════════════════════════════════════════════════
+    // ── CUSTOMER WALLET — module: billing ───────────────
+    // ══════════════════════════════════════════════════════
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,view'])->group(function () {
+        Route::get('/wallet/customers', [\App\Http\Controllers\Api\WalletController::class, 'index']);
+        Route::get('/wallet/customers/{customerId}', [\App\Http\Controllers\Api\WalletController::class, 'show']);
+        Route::get('/wallet/history', [\App\Http\Controllers\Api\WalletController::class, 'history']);
+    });
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,edit'])->group(function () {
+        Route::post('/wallet/credit', [\App\Http\Controllers\Api\WalletController::class, 'credit']);
+        Route::post('/wallet/debit', [\App\Http\Controllers\Api\WalletController::class, 'debit']);
+        Route::post('/wallet/refund', [\App\Http\Controllers\Api\WalletController::class, 'refund']);
+        Route::post('/wallet/pay-invoice', [\App\Http\Controllers\Api\WalletController::class, 'payInvoice']);
+        Route::post('/wallet/set-status', [\App\Http\Controllers\Api\WalletController::class, 'setStatus']);
+        Route::post('/wallet/set-auto-pay', [\App\Http\Controllers\Api\WalletController::class, 'setAutoPay']);
+    });
+
+    // ══════════════════════════════════════════════════════
     // ── PAYMENTS — module: payments ─────────────────────
     // ══════════════════════════════════════════════════════
     Route::middleware(['check.plan_module:payments', 'check.permission:payments,create'])->group(function () {
