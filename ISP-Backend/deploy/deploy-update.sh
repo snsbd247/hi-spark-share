@@ -1,6 +1,10 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.18.1 — Phase 18.1: harden global GreenWeb SMS preservation during tenant cleanup + stronger post-deploy integrity guard. Landing refresh remains synced. Integrations (SMS, SMTP, payment, MikroTik) remain read-only smoke-checked.
+# Smart ISP — Production Update Script (Mono-Repo) v1.18.2 — Phase 18.2:
+#   + Pre-deploy backup of integration tables (SMS / SMTP / Payment / MikroTik)
+#     with printed rollback one-liner.
+#   + Continues v1.18.1 GreenWeb preservation guard + module SSOT verification.
+#   Landing page restored to db6aec8c with cache-busting build markers.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +24,50 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.18.1) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.18.2) ═══${NC}"
+
+# ── 0. Pre-deploy backup of integration tables ───────
+# Dumps SMS / SMTP / Payment / MikroTik tables BEFORE any migration or
+# seeder runs, so an operator can restore them if smoke checks later
+# report integration regressions. Backups land in /var/www/smartisp/backups/.
+echo -e "${YELLOW}[0/9] Pre-deploy integration backup...${NC}"
+BACKUP_DIR="${APP_DIR}/backups"
+mkdir -p "${BACKUP_DIR}"
+BACKUP_TS=$(date +%Y%m%d-%H%M%S)
+BACKUP_FILE="${BACKUP_DIR}/pre-deploy-${BACKUP_TS}.sql"
+ENV_FILE="${BACKEND_DIR}/.env"
+if [ -f "${ENV_FILE}" ]; then
+    DB_HOST=$(grep -E '^DB_HOST=' "${ENV_FILE}" | tail -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    DB_PORT=$(grep -E '^DB_PORT=' "${ENV_FILE}" | tail -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    DB_NAME=$(grep -E '^DB_DATABASE=' "${ENV_FILE}" | tail -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    DB_USER=$(grep -E '^DB_USERNAME=' "${ENV_FILE}" | tail -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    DB_PASS=$(grep -E '^DB_PASSWORD=' "${ENV_FILE}" | tail -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    DB_HOST="${DB_HOST:-127.0.0.1}"
+    DB_PORT="${DB_PORT:-3306}"
+    INT_TABLES="sms_settings smtp_settings payment_gateways mikrotik_routers mikrotik_servers general_settings"
+    EXISTING_TABLES=""
+    for T in ${INT_TABLES}; do
+        EXISTS=$(mysql -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASS}" -N -B -e \
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}' AND table_name='${T}';" 2>/dev/null || echo 0)
+        if [ "${EXISTS}" = "1" ]; then EXISTING_TABLES="${EXISTING_TABLES} ${T}"; fi
+    done
+    if [ -n "${EXISTING_TABLES}" ]; then
+        if mysqldump -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USER}" -p"${DB_PASS}" \
+            --single-transaction --no-tablespaces "${DB_NAME}" ${EXISTING_TABLES} > "${BACKUP_FILE}" 2>/dev/null; then
+            echo -e "${GREEN}  ✓ Integration tables backed up:${NC} ${BACKUP_FILE}"
+            echo -e "  ${CYAN}Rollback (if smoke checks fail):${NC}"
+            echo -e "    mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p ${DB_NAME} < ${BACKUP_FILE}"
+            # Retain only the last 10 backups.
+            ls -1t "${BACKUP_DIR}"/pre-deploy-*.sql 2>/dev/null | tail -n +11 | xargs -r rm -f
+        else
+            echo -e "${YELLOW}  ⚠ mysqldump failed — proceeding without backup (check DB credentials).${NC}"
+        fi
+    else
+        echo -e "${YELLOW}  ⚠ No integration tables found yet — skipping backup (fresh install).${NC}"
+    fi
+else
+    echo -e "${YELLOW}  ⚠ ${ENV_FILE} not found — skipping backup.${NC}"
+fi
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -420,7 +467,10 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.8 — Integration smoke tests + auto-promotion audit + UI heal action + source indicator. Global GreenWeb gateway permanently preserved.)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.18.2 — Pre-deploy backup + rollback hint, integration smoke tests, GreenWeb gateway permanently preserved, landing restored to db6aec8c.)${NC}"
+if [ -n "${BACKUP_FILE:-}" ] && [ -f "${BACKUP_FILE}" ]; then
+    echo -e "  ${CYAN}Pre-deploy backup:${NC} ${BACKUP_FILE}"
+fi
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
