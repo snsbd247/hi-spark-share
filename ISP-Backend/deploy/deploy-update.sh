@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.18.0 — Phase 18: premium "Frosted Obsidian" landing redesign (dark glassmorphism, hero mockup, mockup gallery, all 21 modules, pricing toggle). DefaultSeeder extended with mockup_gallery section_type + new hero metadata. Forced landing-sections re-sync on deploy. Integrations (SMS, SMTP, payment, MikroTik) untouched.
+# Smart ISP — Production Update Script (Mono-Repo) v1.18.1 — Phase 18.1: harden global GreenWeb SMS preservation during tenant cleanup + stronger post-deploy integrity guard. Landing refresh remains synced. Integrations (SMS, SMTP, payment, MikroTik) remain read-only smoke-checked.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.18.0) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.18.1) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -249,7 +249,7 @@ try {
 } catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
-# v1.17.7 — Global SMS gateway integrity verification + auto-heal
+# v1.18.1 — Global SMS gateway integrity verification + auto-heal
 echo -e "${YELLOW}  Verifying global SMS gateway integrity...${NC}"
 php artisan tinker --execute="
 try {
@@ -291,7 +291,15 @@ try {
     }
 
     \$countTenantRows = \DB::table('sms_settings')->whereNotNull('tenant_id')->count();
+    \$matchingTenantRows = \$globalHasToken
+        ? \DB::table('sms_settings')->whereNotNull('tenant_id')->where('api_token', \$global->api_token)->count()
+        : 0;
     echo '  tenant-scoped sms_settings rows: ' . \$countTenantRows . PHP_EOL;
+    if (\$matchingTenantRows > 0) {
+        echo '  ⚠ Found tenant-scoped SMS rows sharing the active global token: ' . \$matchingTenantRows . PHP_EOL;
+    } else {
+        echo '  ✓ No tenant-scoped SMS row is shadowing the active global GreenWeb token.' . PHP_EOL;
+    }
 } catch (\Throwable \$e) { echo '  SMS integrity check skipped: ' . \$e->getMessage(); }
 " 2>/dev/null || true
 
