@@ -28,6 +28,24 @@ class DefaultSeeder extends Seeder
     private const DEFAULT_SUPER_ADMIN_USERNAME = 'superadmin';
     private const DEFAULT_SUPER_ADMIN_PASSWORD = 'Admin@123';
 
+    /**
+     * SINGLE SOURCE OF TRUTH for all system module slugs.
+     * Used by: seedSystemSettings (enabled_modules JSON), seedPermissions, seedModules.
+     * Keeps modules table, permissions table, and enabled_modules setting perfectly in sync.
+     *
+     * NOTE: Adding/removing entries here automatically propagates to all three places
+     * on next seed run. Stale slugs (removed from this list) are garbage-collected from
+     * the permissions table — but integration-critical slugs MUST never be removed
+     * (sms, payments, merchant_payments, mikrotik, fiber_network).
+     */
+    public const SYSTEM_MODULE_SLUGS = [
+        'dashboard', 'customers', 'billing', 'payments', 'merchant_payments',
+        'tickets', 'sms', 'accounting', 'inventory', 'hr',
+        'supplier', 'reports', 'users', 'roles', 'settings',
+        'mikrotik', 'packages', 'fiber_network', 'reseller', 'network_map',
+        'live_bandwidth',
+    ];
+
     public function run(): void
     {
         $this->seedRoles();
