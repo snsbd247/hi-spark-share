@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\Admin;
 use App\Models\ReminderLog;
 use App\Models\SmsLog;
 use App\Models\SmsSetting;
+use App\Models\SuperAdmin;
 use App\Models\SmsWallet;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -266,9 +266,10 @@ class SmsService
                 return true;
             }
 
-            if ($user instanceof Admin) {
+            if ($user instanceof SuperAdmin) {
                 return in_array($user->role ?? null, ['super_admin', 'superadmin'], true)
-                    || empty($user->tenant_id);
+                    || empty($user->tenant_id)
+                    || !empty($user->username);
             }
 
             return in_array($user->role ?? null, ['super_admin', 'superadmin'], true);
