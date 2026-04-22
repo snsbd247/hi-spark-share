@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.4 — Phase 17.4: SMS History endpoints. Tenant-scoped /sms/history (auto-filtered) + super-admin /sms-logs (all tenants, with filters). Read-only; no integration changes.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.5 — Phase 17.5: SMS History UX (server pagination, page-size, CSV export, row detail modal) + sms_logs performance indexes (tenant_id+created_at, status, phone, sms_type) + super-admin audit logging on history access. Read-only behaviour for integrations.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.4) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.5) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -147,6 +147,24 @@ try {
 echo -e "${YELLOW}  Verifying SMS history routes...${NC}"
 php artisan route:list --columns=method,uri 2>/dev/null | grep -E "sms/history|sms-logs|sms/logs" || echo -e "${YELLOW}  ⚠ SMS history routes not yet visible (clear caches will fix).${NC}"
 
+# v1.17.5 — Confirm sms_logs performance indexes are present (read-only smoke check)
+echo -e "${YELLOW}  Verifying sms_logs indexes...${NC}"
+php artisan tinker --execute="
+try {
+    \$driver = \DB::connection()->getDriverName();
+    if (\$driver === 'mysql' || \$driver === 'mariadb') {
+        \$rows = \DB::select('SHOW INDEX FROM sms_logs');
+        \$names = array_unique(array_map(fn(\$r) => \$r->Key_name, \$rows));
+    } elseif (\$driver === 'pgsql') {
+        \$rows = \DB::select(\"SELECT indexname FROM pg_indexes WHERE tablename = 'sms_logs'\");
+        \$names = array_map(fn(\$r) => \$r->indexname, \$rows);
+    } else { \$names = []; }
+    foreach (['sms_logs_tenant_created_idx','sms_logs_status_idx','sms_logs_phone_idx'] as \$idx) {
+        echo (in_array(\$idx, \$names, true) ? '  ✓ ' : '  ⚠ missing ') . \$idx . PHP_EOL;
+    }
+} catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
@@ -210,7 +228,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.4 — SMS History endpoints for tenants & super admin; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.5 — SMS History pagination, CSV export, detail modal, indexes & audit; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
