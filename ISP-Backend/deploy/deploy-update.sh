@@ -113,6 +113,59 @@ php artisan db:seed --class=DefaultSeeder    --force --no-interaction 2>/dev/nul
 php artisan db:seed --class=GeoSeeder        --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ GeoSeeder skipped${NC}"
 php artisan db:seed --class=WalletCoaSeeder  --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ WalletCoaSeeder skipped (will auto-create on first wallet use)${NC}"
 
+# v1.18.0 — Force-refresh hero metadata + ensure mockup_gallery rows exist.
+# DefaultSeeder uses firstOrCreate(section_type+sort_order) so existing hero row
+# keeps stale metadata after redesign. We update it in place + (re)insert mockup rows.
+echo -e "${YELLOW}  Refreshing landing page (hero metadata + mockup gallery)...${NC}"
+php artisan tinker --execute="
+try {
+    \$heroMeta = [
+        'badge' => 'Bangladesh #1 ISP Management Platform',
+        'title_accent' => 'আধুনিক আইএসপি ব্যবসার জন্য',
+        'cta_nav' => 'Get Started',
+        'cta_primary' => 'ডেমো রিকোয়েস্ট করুন',
+        'cta_secondary' => 'Explore Modules',
+        'demo_title' => 'ডেমো রিকোয়েস্ট করুন',
+        'demo_subtitle' => 'আমাদের সফটওয়্যার ব্যবহার করতে চান? নিচের ফর্মটি পূরণ করুন।',
+        'hero_badges' => ['No Setup Fee', '24/7 Support', 'Free Trial', 'Bangla Interface'],
+        'nav_links' => [
+            ['label' => 'Platform', 'href' => '#platform'],
+            ['label' => 'Modules', 'href' => '#modules'],
+            ['label' => 'Pricing', 'href' => '#pricing'],
+            ['label' => 'FAQ', 'href' => '#faq'],
+            ['label' => 'Contact', 'href' => '#signup'],
+        ],
+        'trust_text' => 'Trusted by leading ISPs across Bangladesh',
+        'trust_logos' => ['NexaFiber', 'LinkStream', 'MetroNet', 'SkyWave', 'Velocity'],
+        'pricing_title' => 'Simple, Transparent Pricing',
+        'pricing_subtitle' => 'আপনার ISP ব্যবসার জন্য সেরা প্ল্যান বেছে নিন',
+    ];
+    \DB::table('landing_sections')
+        ->where('section_type', 'hero')
+        ->update(['metadata' => json_encode(\$heroMeta), 'updated_at' => now()]);
+
+    \$mockups = [
+        ['Customer 360°', 'PPPoE, billing & activity history in one unified view', 'UserCircle', 35],
+        ['MikroTik Live Sync', 'রিয়েল-টাইম PPP queue, profile এবং disconnect কন্ট্রোল', 'Router', 36],
+        ['Fiber Topology Map', 'OLT → Splitter → ONU হায়ারার্কি ভিজুয়ালাইজেশন', 'Cable', 37],
+    ];
+    foreach (\$mockups as [\$t, \$s, \$ic, \$o]) {
+        \$exists = \DB::table('landing_sections')->where('section_type', 'mockup_gallery')->where('sort_order', \$o)->exists();
+        if (!\$exists) {
+            \DB::table('landing_sections')->insert([
+                'section_type' => 'mockup_gallery',
+                'title' => \$t, 'subtitle' => \$s, 'icon' => \$ic,
+                'sort_order' => \$o, 'is_active' => true,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    }
+    echo \"  ✓ Landing hero refreshed + mockup gallery synced\n\";
+} catch (\Throwable \$e) {
+    echo \"  ⚠ Landing refresh skipped: {\$e->getMessage()}\n\";
+}
+" 2>/dev/null || echo -e "${YELLOW}  ⚠ Landing refresh tinker skipped${NC}"
+
 # v1.17.2 — Wallet/Settlement smoke + coverage check (read-only, non-fatal)
 echo -e "${YELLOW}  Running wallet COA coverage report...${NC}"
 php artisan wallet:coverage 2>/dev/null || echo -e "${YELLOW}  ⚠ wallet:coverage reported gaps — run 'php artisan wallet:coverage --fix' on the VPS${NC}"
