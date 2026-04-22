@@ -442,7 +442,11 @@ class SuperAdminController extends Controller
             'mikrotik_routers', 'olts', 'onus',
             'categories', 'products', 'suppliers',
             // Integrations (tenant row only — global defaults untouched)
-            'smtp_settings', 'sms_settings', 'payment_gateways',
+            // NOTE: 'sms_settings' intentionally EXCLUDED from this list.
+            // Global SMS gateway (GreenWeb) lives with tenant_id = NULL and
+            // must NEVER be deleted with a tenant. We handle sms_settings
+            // separately below with an explicit `tenant_id IS NOT NULL` guard.
+            'smtp_settings', 'payment_gateways',
             // Settings / config
             'general_settings', 'system_settings', 'billing_config',
             'tenant_company_info',
