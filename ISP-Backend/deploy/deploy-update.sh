@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.8 — Phase 17.8: integration smoke tests + auto-promotion audit trail + Super Admin "Restore Global Gateway" UI action + tenant-vs-global SMS source indicator. Permanent regression test guards added (SmsGatewayPreservationTest, PostDeploySmokeTest). Integrations (SMS, SMTP, payment, MikroTik) untouched.
+# Smart ISP — Production Update Script (Mono-Repo) v1.18.0 — Phase 18: premium "Frosted Obsidian" landing redesign (dark glassmorphism, hero mockup, mockup gallery, all 21 modules, pricing toggle). DefaultSeeder extended with mockup_gallery section_type + new hero metadata. Forced landing-sections re-sync on deploy. Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.8) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.18.0) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"

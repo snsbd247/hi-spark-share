@@ -796,20 +796,24 @@ class DefaultSeeder extends Seeder
                 'sort_order' => 1,
                 'is_active' => true,
                 'metadata' => json_encode([
-                    'badge' => '🚀 Bangladesh #1 ISP Management Platform',
+                    'badge' => 'Bangladesh #1 ISP Management Platform',
+                    'title_accent' => 'আধুনিক আইএসপি ব্যবসার জন্য',
                     'cta_nav' => 'Get Started',
                     'cta_primary' => 'ডেমো রিকোয়েস্ট করুন',
-                    'cta_secondary' => 'Watch Demo',
+                    'cta_secondary' => 'Explore Modules',
                     'demo_title' => 'ডেমো রিকোয়েস্ট করুন',
                     'demo_subtitle' => 'আমাদের সফটওয়্যার ব্যবহার করতে চান? নিচের ফর্মটি পূরণ করুন।',
                     'hero_badges' => ['No Setup Fee', '24/7 Support', 'Free Trial', 'Bangla Interface'],
                     'nav_links' => [
-                        ['label' => 'FEATURES', 'href' => '#features'],
-                        ['label' => 'PRICING', 'href' => '#pricing'],
+                        ['label' => 'Platform', 'href' => '#platform'],
+                        ['label' => 'Modules', 'href' => '#modules'],
+                        ['label' => 'Pricing', 'href' => '#pricing'],
                         ['label' => 'FAQ', 'href' => '#faq'],
-                        ['label' => 'CONTACT', 'href' => '#signup'],
+                        ['label' => 'Contact', 'href' => '#signup'],
                     ],
-                    'pricing_title' => 'Package & Pricing',
+                    'trust_text' => 'Trusted by leading ISPs across Bangladesh',
+                    'trust_logos' => ['NexaFiber', 'LinkStream', 'MetroNet', 'SkyWave', 'Velocity'],
+                    'pricing_title' => 'Simple, Transparent Pricing',
                     'pricing_subtitle' => 'আপনার ISP ব্যবসার জন্য সেরা প্ল্যান বেছে নিন',
                 ]),
             ],
@@ -841,6 +845,11 @@ class DefaultSeeder extends Seeder
             ['section_type' => 'feature', 'title' => 'Advanced Reports', 'description' => 'রেভিনিউ, এক্সপেন্স, প্রফিট-লস, ক্যাশ ফ্লো, ট্রায়াল ব্যালেন্স, ব্যালেন্স শিট — সম্পূর্ণ MIS রিপোর্টিং।', 'icon' => 'BarChart3', 'sort_order' => 29, 'is_active' => true],
             ['section_type' => 'feature', 'title' => 'Coupon System', 'description' => 'ডিসকাউন্ট কুপন তৈরি, ভ্যালিডিটি কন্ট্রোল, ইউসেজ লিমিট এবং অটো বিল ডিসকাউন্ট অ্যাপ্লিকেশন।', 'icon' => 'Tag', 'sort_order' => 30, 'is_active' => true],
             ['section_type' => 'feature', 'title' => 'Geo Management', 'description' => 'ডিভিশন, জেলা, উপজেলা ভিত্তিক লোকেশন ম্যানেজমেন্ট — কাস্টমার এবং নেটওয়ার্ক ম্যাপিং।', 'icon' => 'MapPin', 'sort_order' => 31, 'is_active' => true],
+
+            // ── Mockup Gallery (Inside the Platform) ──
+            ['section_type' => 'mockup_gallery', 'title' => 'Customer 360°', 'subtitle' => 'PPPoE, billing & activity history in one unified view', 'icon' => 'UserCircle', 'sort_order' => 35, 'is_active' => true, 'metadata' => json_encode(['section_title' => 'Designed for operators, loved by teams', 'section_subtitle' => 'Every module built native, integrated, and obsessively polished.'])],
+            ['section_type' => 'mockup_gallery', 'title' => 'MikroTik Live Sync', 'subtitle' => 'রিয়েল-টাইম PPP queue, profile এবং disconnect কন্ট্রোল', 'icon' => 'Router', 'sort_order' => 36, 'is_active' => true],
+            ['section_type' => 'mockup_gallery', 'title' => 'Fiber Topology Map', 'subtitle' => 'OLT → Splitter → ONU হায়ারার্কি ভিজুয়ালাইজেশন', 'icon' => 'Cable', 'sort_order' => 37, 'is_active' => true],
 
             // ── Testimonials ──
             ['section_type' => 'testimonial', 'title' => 'Md. Rahim Uddin', 'subtitle' => 'CEO, SpeedNet BD', 'description' => 'Smart ISP আমাদের ISP ব্যবসাকে সম্পূর্ণ বদলে দিয়েছে। বিলিং অটোমেশন এবং MikroTik ইন্টিগ্রেশন অসাধারণ কাজ করে।', 'sort_order' => 20, 'is_active' => true, 'metadata' => json_encode(['avatar' => 'R', 'rating' => 5, 'section_title' => 'আমাদের ক্লায়েন্টদের মতামত'])],
