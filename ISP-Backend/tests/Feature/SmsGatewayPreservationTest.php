@@ -105,4 +105,40 @@ class SmsGatewayPreservationTest extends TestCase
         $this->assertNotNull($promoted, 'Legacy tenant-bound gateway should auto-promote to global before tenant delete.');
         $this->assertNull($promoted->tenant_id);
     }
+
+    public function test_tenant_delete_restores_existing_blank_global_row_instead_of_losing_gateway(): void
+    {
+        $tenant = $this->makeTenant('Blank Global');
+
+        $blankGlobal = new SmsSetting();
+        $blankGlobal->forceFill([
+            'tenant_id' => null,
+            'api_token' => null,
+            'sender_id' => 'EmptyGateway',
+        ])->save();
+
+        $legacy = new SmsSetting();
+        $legacy->forceFill([
+            'tenant_id' => $tenant->id,
+            'api_token' => 'TENANT-SURVIVOR-TOKEN',
+            'sender_id' => 'RecoveredGateway',
+        ])->save();
+
+        $controller = app(SuperAdminController::class);
+        $request = \Illuminate\Http\Request::create('/super-admin/tenants/' . $tenant->id, 'DELETE');
+
+        $response = $controller->deleteTenant($request, $tenant->id);
+        $this->assertSame(200, $response->getStatusCode());
+
+        $restored = SmsSetting::withoutGlobalScopes()->where('id', $blankGlobal->id)->first();
+        $this->assertNotNull($restored, 'Existing blank global SMS row should be preserved and restored.');
+        $this->assertNull($restored->tenant_id);
+        $this->assertSame('TENANT-SURVIVOR-TOKEN', $restored->api_token);
+        $this->assertSame('RecoveredGateway', $restored->sender_id);
+
+        $this->assertNull(
+            SmsSetting::withoutGlobalScopes()->where('id', $legacy->id)->first(),
+            'Legacy tenant SMS row should be deleted after its gateway data is copied to the global row.'
+        );
+    }
 }

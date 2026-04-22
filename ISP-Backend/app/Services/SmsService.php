@@ -244,12 +244,12 @@ class SmsService
     {
         $global = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
-            ->whereNotNull('api_token')
+            ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
 
-        if ($global) {
+        if ($global && filled(trim((string) $global->api_token))) {
             return [
                 'status' => 'ok',
                 'action' => 'none',
@@ -261,6 +261,7 @@ class SmsService
         $legacy = SmsSetting::withoutGlobalScopes()
             ->whereNotNull('tenant_id')
             ->whereNotNull('api_token')
+            ->where('api_token', '!=', '')
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
             ->first();
@@ -275,15 +276,40 @@ class SmsService
         }
 
         $previousTenantId = $legacy->tenant_id;
-        SmsSetting::withoutEvents(function () use ($legacy) {
-            $legacy->tenant_id = null;
-            $legacy->updated_at = now();
-            $legacy->save();
+        $usedExistingGlobalRow = $global && $global->id !== $legacy->id;
+        SmsSetting::withoutEvents(function () use (&$global, $legacy) {
+            $payload = [
+                'api_token' => $legacy->api_token,
+                'sender_id' => $legacy->sender_id,
+                'admin_cost_rate' => $legacy->admin_cost_rate,
+                'sms_on_bill_generate' => $legacy->sms_on_bill_generate,
+                'sms_on_payment' => $legacy->sms_on_payment,
+                'sms_on_registration' => $legacy->sms_on_registration,
+                'sms_on_suspension' => $legacy->sms_on_suspension,
+                'sms_on_reminder' => $legacy->sms_on_reminder,
+                'sms_on_new_customer_bill' => $legacy->sms_on_new_customer_bill,
+                'whatsapp_enabled' => $legacy->whatsapp_enabled,
+                'whatsapp_token' => $legacy->whatsapp_token,
+                'whatsapp_phone_id' => $legacy->whatsapp_phone_id,
+            ];
+
+            if ($global) {
+                $global->forceFill($payload);
+                $global->tenant_id = null;
+                $global->updated_at = now();
+                $global->save();
+            } else {
+                $legacy->forceFill($payload);
+                $legacy->tenant_id = null;
+                $legacy->updated_at = now();
+                $legacy->save();
+                $global = $legacy;
+            }
         });
-        $legacy->refresh();
+        $global?->refresh();
 
         $this->logAutoPromotion(
-            smsSettingsId: (string) $legacy->id,
+            smsSettingsId: (string) $global?->id,
             previousTenantId: $previousTenantId,
             trigger: 'manual_heal',
             actorId: $actorId,
@@ -293,9 +319,12 @@ class SmsService
         return [
             'status' => 'healed',
             'action' => 'promoted',
-            'message' => 'Promoted legacy tenant-bound gateway to global scope.',
-            'sms_settings_id' => $legacy->id,
+            'message' => $usedExistingGlobalRow
+                ? 'Restored the existing global GreenWeb row from legacy tenant-bound settings.'
+                : 'Promoted legacy tenant-bound gateway to global scope.',
+            'sms_settings_id' => $global?->id,
             'previous_tenant_id' => $previousTenantId,
+            'used_existing_global_row' => $usedExistingGlobalRow,
         ];
     }
 
