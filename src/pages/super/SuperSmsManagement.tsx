@@ -587,11 +587,42 @@ export default function SuperSmsManagement() {
                 <Badge variant="destructive" className="gap-1"><WifiOff className="h-3 w-3" /> {sa.notConfiguredGateway}</Badge>
               )}
             </div>
+            {/* Resolution Source Indicator */}
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              {resolveSource?.source === "global" && (
+                <Badge variant="outline" className="border-primary/40 text-primary gap-1 text-[10px]">
+                  <Zap className="h-2.5 w-2.5" /> Global GreenWeb
+                </Badge>
+              )}
+              {resolveSource?.source === "tenant" && (
+                <Badge variant="outline" className="border-amber-500/50 text-amber-600 gap-1 text-[10px]">
+                  <AlertTriangle className="h-2.5 w-2.5" /> Tenant-bound (legacy)
+                </Badge>
+              )}
+              {resolveSource?.source === "none" && (
+                <Badge variant="outline" className="border-destructive/50 text-destructive gap-1 text-[10px]">
+                  <WifiOff className="h-2.5 w-2.5" /> Unresolved
+                </Badge>
+              )}
+            </div>
             {smsSettings?.api_token && apiBalance?.rate ? (
               <div className="text-xs text-muted-foreground mt-1">API Rate: ৳{apiBalance.rate}/SMS</div>
             ) : !smsSettings?.api_token ? (
               <div className="text-xs text-muted-foreground mt-1">—</div>
             ) : null}
+            {/* Auto-heal action */}
+            {(resolveSource?.source === "tenant" || resolveSource?.source === "none") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 h-7 text-xs w-full"
+                onClick={handleHealGateway}
+                disabled={healing}
+              >
+                {healing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Restore Global Gateway
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
