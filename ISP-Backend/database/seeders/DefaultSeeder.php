@@ -513,6 +513,7 @@ class DefaultSeeder extends Seeder
             ['name' => 'Loan Payable', 'code' => '2010', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
             ['name' => 'Provident Fund Payable', 'code' => '2011', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
             ['name' => 'Savings Fund Payable', 'code' => '2012', 'type' => 'liability', 'level' => 1, 'is_system' => false, 'parent_code' => '2000'],
+            ['name' => 'Customer Wallet Liability', 'code' => '2050', 'type' => 'liability', 'level' => 1, 'is_system' => true, 'parent_code' => '2000'],
 
             // Equity (3000)
             ['name' => 'Equity', 'code' => '3000', 'type' => 'equity', 'level' => 0, 'is_system' => true, 'parent_code' => null],

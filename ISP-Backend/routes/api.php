@@ -204,6 +204,23 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     });
 
     // ══════════════════════════════════════════════════════
+    // ── CUSTOMER WALLET — module: billing ───────────────
+    // ══════════════════════════════════════════════════════
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,view'])->group(function () {
+        Route::get('/wallet/customers', [\App\Http\Controllers\Api\WalletController::class, 'index']);
+        Route::get('/wallet/customers/{customerId}', [\App\Http\Controllers\Api\WalletController::class, 'show']);
+        Route::get('/wallet/history', [\App\Http\Controllers\Api\WalletController::class, 'history']);
+    });
+    Route::middleware(['check.plan_module:billing', 'check.permission:billing,edit'])->group(function () {
+        Route::post('/wallet/credit', [\App\Http\Controllers\Api\WalletController::class, 'credit']);
+        Route::post('/wallet/debit', [\App\Http\Controllers\Api\WalletController::class, 'debit']);
+        Route::post('/wallet/refund', [\App\Http\Controllers\Api\WalletController::class, 'refund']);
+        Route::post('/wallet/pay-invoice', [\App\Http\Controllers\Api\WalletController::class, 'payInvoice']);
+        Route::post('/wallet/set-status', [\App\Http\Controllers\Api\WalletController::class, 'setStatus']);
+        Route::post('/wallet/set-auto-pay', [\App\Http\Controllers\Api\WalletController::class, 'setAutoPay']);
+    });
+
+    // ══════════════════════════════════════════════════════
     // ── PAYMENTS — module: payments ─────────────────────
     // ══════════════════════════════════════════════════════
     Route::middleware(['check.plan_module:payments', 'check.permission:payments,create'])->group(function () {
@@ -446,6 +463,23 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     Route::middleware(['check.plan_module:supplier', 'check.permission:supplier,delete'])->group(function () {
         Route::delete('/suppliers/{id}', [SupplierController2::class, 'destroy']);
         Route::delete('/supplier-payments/{id}', [SupplierController2::class, 'deletePayment']);
+    });
+
+    // ══════════════════════════════════════════════════════
+    // ── EMPLOYEE SETTLEMENT — module: hr ────────────────
+    // ══════════════════════════════════════════════════════
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,view'])->group(function () {
+        Route::get('/employee/settlements', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'index']);
+        Route::get('/employee/settlements/{id}', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'show']);
+        Route::get('/employee/ledger', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'ledger']);
+        Route::get('/employee/account-entries', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'entries']);
+    });
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,create'])->group(function () {
+        Route::post('/employee/settlement/generate', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'generate']);
+        Route::post('/employee/account-entries', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'storeEntry']);
+    });
+    Route::middleware(['check.plan_module:hr', 'check.permission:hr,edit'])->group(function () {
+        Route::post('/employee/settlement/{id}/pay', [\App\Http\Controllers\Api\EmployeeSettlementController::class, 'settle']);
     });
 
     // ══════════════════════════════════════════════════════
@@ -692,6 +726,10 @@ Route::middleware('reseller.auth')->prefix('reseller')->group(function () {
     Route::post('/zones', [\App\Http\Controllers\Api\ResellerController::class, 'storeZone']);
     Route::put('/zones/{id}', [\App\Http\Controllers\Api\ResellerController::class, 'updateZone']);
     Route::delete('/zones/{id}', [\App\Http\Controllers\Api\ResellerController::class, 'deleteZone']);
+
+    // Customer Wallets — read-only for reseller (tenant scope already via global scope on models)
+    Route::get('/customer-wallets', [\App\Http\Controllers\Api\WalletController::class, 'index']);
+    Route::get('/customer-wallets/history', [\App\Http\Controllers\Api\WalletController::class, 'history']);
 });
 
 /*
@@ -712,6 +750,11 @@ Route::middleware('customer.auth')->prefix('portal')->group(function () {
     Route::put('/profile', [PortalController::class, 'updateProfile']);
     // Phase 13 — Customer-facing ONU connection health
     Route::get('/connection-health', [PortalController::class, 'connectionHealth']);
+
+    // Customer Wallet
+    Route::get('/wallet', [\App\Http\Controllers\Api\WalletController::class, 'myWallet']);
+    Route::get('/wallet/history', [\App\Http\Controllers\Api\WalletController::class, 'myHistory']);
+    Route::post('/wallet/auto-pay', [\App\Http\Controllers\Api\WalletController::class, 'myToggleAutoPay']);
 });
 
 /*
