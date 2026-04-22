@@ -62,6 +62,9 @@ export default function SuperSmsManagement() {
   const [rechargeDesc, setRechargeDesc] = useState("");
   const [smsRateInput, setSmsRateInput] = useState("");
   const [selectedTenantTx, setSelectedTenantTx] = useState<string | null>(null);
+  const [historyTenant, setHistoryTenant] = useState<string>("all");
+  const [historyStatus, setHistoryStatus] = useState<string>("all");
+  const [historySearch, setHistorySearch] = useState<string>("");
 
   // ── Global SMS Settings ─────────────────────
   const { data: smsSettings, isLoading: settingsLoading } = useQuery({
