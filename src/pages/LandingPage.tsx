@@ -16,6 +16,7 @@ import {
   Building2, Network, Tag, UserCircle, DatabaseBackup, Cable, Calculator,
   Menu, X, Layers, Settings, CheckCircle2, Sparkles,
 } from "lucide-react";
+import { BUILD_VERSION } from "@/lib/buildVersion";
 
 const ICON_MAP: Record<string, any> = {
   Zap, Shield, BarChart3, MessageSquare, Router, CreditCard,
@@ -30,7 +31,7 @@ function getIcon(name: string | null) {
 // ─── Branding Hook ───────────────────────────────────────────
 function useBranding() {
   return useQuery({
-    queryKey: ["landing-branding"],
+    queryKey: [BUILD_VERSION, "landing-branding"],
     queryFn: async () => {
       const [settingsRes, footerRes] = await Promise.all([
         db.from("general_settings").select("*").limit(1).maybeSingle(),
@@ -62,7 +63,7 @@ function useBranding() {
 // ─── Sections Hook ───────────────────────────────────────────
 function useLandingSections() {
   return useQuery({
-    queryKey: ["landing-page-sections"],
+    queryKey: [BUILD_VERSION, "landing-page-sections"],
     queryFn: async () => {
       const { data, error } = await (db as any).from("landing_sections").select("*").eq("is_active", true).order("sort_order");
       if (error) throw error;
