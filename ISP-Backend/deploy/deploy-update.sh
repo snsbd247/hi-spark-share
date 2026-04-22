@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.6 — Phase 17.6: System-wide Module / Permission / Sidebar sync — single SYSTEM_MODULE_SLUGS constant in DefaultSeeder ensures permissions table, modules table, and enabled_modules JSON setting stay perfectly aligned (fixes 'roles' module missing from enabled_modules). Stale permission GC kept (olts/onus). Integrations (SMS, SMTP, payment, MikroTik) untouched.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.7 — Phase 17.7: permanent global GreenWeb SMS preservation — tenant delete now never removes the super-admin SMS gateway, runtime SMS resolution prefers tenant_id=NULL global config, legacy tenant-bound global rows auto-heal safely. Module/permission/sidebar sync retained. Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.6) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.7) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
