@@ -113,6 +113,10 @@ php artisan db:seed --class=DefaultSeeder    --force --no-interaction 2>/dev/nul
 php artisan db:seed --class=GeoSeeder        --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ GeoSeeder skipped${NC}"
 php artisan db:seed --class=WalletCoaSeeder  --force --no-interaction 2>/dev/null || echo -e "${YELLOW}  ⚠ WalletCoaSeeder skipped (will auto-create on first wallet use)${NC}"
 
+# v1.17.2 — Wallet/Settlement smoke + coverage check (read-only, non-fatal)
+echo -e "${YELLOW}  Running wallet COA coverage report...${NC}"
+php artisan wallet:coverage 2>/dev/null || echo -e "${YELLOW}  ⚠ wallet:coverage reported gaps — run 'php artisan wallet:coverage --fix' on the VPS${NC}"
+
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
