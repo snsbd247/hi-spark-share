@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ReminderLog;
 use App\Models\SmsLog;
 use App\Models\SmsSetting;
+use App\Models\SuperAdmin;
 use App\Models\SmsWallet;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -214,15 +215,67 @@ class SmsService
 
     private function resolveSettings(): ?SmsSetting
     {
-        if (tenant_id()) {
-            return SmsSetting::query()->latest('updated_at')->first();
-        }
-
-        return SmsSetting::query()
+        $globalSettings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
+            ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
             ->latest('updated_at')
             ->first()
-            ?? SmsSetting::query()->latest('updated_at')->first();
+            ?? SmsSetting::withoutGlobalScopes()
+                ->orderByRaw('CASE WHEN tenant_id IS NULL THEN 0 ELSE 1 END')
+                ->orderByRaw("CASE WHEN api_token IS NULL OR api_token = '' THEN 1 ELSE 0 END")
+                ->latest('updated_at')
+                ->first();
+
+        if (!$globalSettings) {
+            return null;
+        }
+
+        if ($globalSettings->tenant_id !== null) {
+            $shouldAutoPromote = !tenant_id() || $this->isSuperAdminContext();
+
+            if ($shouldAutoPromote) {
+                try {
+                    SmsSetting::withoutEvents(function () use ($globalSettings) {
+                        $globalSettings->tenant_id = null;
+                        $globalSettings->updated_at = now();
+                        $globalSettings->save();
+                    });
+                    $globalSettings->refresh();
+                    Log::warning('[SMS] Auto-promoted legacy GreenWeb SMS settings row to global scope', [
+                        'sms_settings_id' => $globalSettings->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('[SMS] Failed to auto-promote legacy global SMS settings row: ' . $e->getMessage());
+                }
+            }
+        }
+
+        return $globalSettings;
+    }
+
+    private function isSuperAdminContext(): bool
+    {
+        try {
+            $user = auth()->user();
+
+            if (!$user) {
+                return false;
+            }
+
+            if (($user->is_super_admin ?? false) === true) {
+                return true;
+            }
+
+            if ($user instanceof SuperAdmin) {
+                return in_array($user->role ?? null, ['super_admin', 'superadmin'], true)
+                    || empty($user->tenant_id)
+                    || !empty($user->username);
+            }
+
+            return in_array($user->role ?? null, ['super_admin', 'superadmin'], true);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**

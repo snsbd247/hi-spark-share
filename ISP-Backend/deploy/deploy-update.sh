@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.6 — Phase 17.6: System-wide Module / Permission / Sidebar sync — single SYSTEM_MODULE_SLUGS constant in DefaultSeeder ensures permissions table, modules table, and enabled_modules JSON setting stay perfectly aligned (fixes 'roles' module missing from enabled_modules). Stale permission GC kept (olts/onus). Integrations (SMS, SMTP, payment, MikroTik) untouched.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.7 — Phase 17.7: permanent global GreenWeb SMS preservation — tenant delete now never removes the super-admin SMS gateway, runtime SMS resolution prefers tenant_id=NULL global config, legacy tenant-bound global rows auto-heal safely. Module/permission/sidebar sync retained. Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.6) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.7) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -165,6 +165,30 @@ try {
 } catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
+# v1.17.7 — Global SMS gateway integrity verification + auto-heal
+echo -e "${YELLOW}  Verifying global SMS gateway integrity...${NC}"
+php artisan tinker --execute="
+try {
+    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
+    \$tenantBound = \DB::table('sms_settings')->whereNotNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
+
+    if (!\$global && \$tenantBound) {
+        \DB::table('sms_settings')->where('id', \$tenantBound->id)->update(['tenant_id' => null, 'updated_at' => now()]);
+        echo '  ✓ Promoted legacy tenant-bound SMS gateway to global row (id=' . \$tenantBound->id . ')' . PHP_EOL;
+        \$global = \DB::table('sms_settings')->where('id', \$tenantBound->id)->first();
+    }
+
+    if (\$global) {
+        echo '  ✓ Global SMS row present (id=' . \$global->id . ')' . PHP_EOL;
+    } else {
+        echo '  ⚠ No global SMS row with API token found. Super Admin should configure GreenWeb gateway.' . PHP_EOL;
+    }
+
+    \$countTenantRows = \DB::table('sms_settings')->whereNotNull('tenant_id')->count();
+    echo '  tenant-scoped sms_settings rows: ' . \$countTenantRows . PHP_EOL;
+} catch (\Throwable \$e) { echo '  SMS integrity check skipped: ' . \$e->getMessage(); }
+" 2>/dev/null || true
+
 # v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
 echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
 php artisan tinker --execute="
@@ -251,7 +275,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.6 — Module/Permission/Sidebar fully synced via SYSTEM_MODULE_SLUGS constant; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.7 — Global GreenWeb SMS gateway permanently preserved on tenant delete; module sync retained; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
