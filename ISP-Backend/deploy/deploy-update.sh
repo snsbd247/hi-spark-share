@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.2 — Phase 17.2: Wallet/Settlement audit add-ons (coa_journal_ref, preview cache), Health subsystem UI, deterministic cache namespace, COA seeder, timeline filters & test checklist
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.3 — Phase 17.3: Permanent fix — Tenant delete preserves Global SMS Gateway (GreenWeb). sms_settings excluded from cascade lists, explicit `tenant_id IS NOT NULL` guard, withoutEvents save in updateSmsSettings.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.2) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.3) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -117,6 +117,32 @@ php artisan db:seed --class=WalletCoaSeeder  --force --no-interaction 2>/dev/nul
 echo -e "${YELLOW}  Running wallet COA coverage report...${NC}"
 php artisan wallet:coverage 2>/dev/null || echo -e "${YELLOW}  ⚠ wallet:coverage reported gaps — run 'php artisan wallet:coverage --fix' on the VPS${NC}"
 
+# v1.17.3 — Heal any legacy SMS settings rows so the global GreenWeb gateway
+# is always present as exactly one tenant_id = NULL row. This is idempotent
+# and never deletes an existing global row; it only promotes an orphan
+# tenant-attached row to global if no global row exists yet.
+echo -e "${YELLOW}  Healing global SMS settings (tenant_id = NULL)...${NC}"
+php artisan tinker --execute="
+try {
+    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->orderByDesc('updated_at')->first();
+    if (!\$global) {
+        \$orphan = \DB::table('sms_settings')
+            ->whereNotNull('api_token')
+            ->whereNotIn('tenant_id', function(\$q){ \$q->select('id')->from('tenants'); })
+            ->orderByDesc('updated_at')
+            ->first();
+        if (\$orphan) {
+            \DB::table('sms_settings')->where('id', \$orphan->id)->update(['tenant_id' => null, 'updated_at' => now()]);
+            echo 'Promoted orphan SMS row to global.';
+        } else {
+            echo 'No global row; no orphan to promote (Super Admin must configure SMS gateway).';
+        }
+    } else {
+        echo 'Global SMS row OK (id='.\$global->id.').';
+    }
+} catch (\Throwable \$e) { echo 'SMS heal skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
@@ -180,7 +206,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.16.6 — Phase 16.6: tenant delete preserves global SMS config)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.3 — Permanent fix: tenant delete preserves Global SMS Gateway)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
