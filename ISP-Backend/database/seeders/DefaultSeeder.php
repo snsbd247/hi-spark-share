@@ -28,6 +28,24 @@ class DefaultSeeder extends Seeder
     private const DEFAULT_SUPER_ADMIN_USERNAME = 'superadmin';
     private const DEFAULT_SUPER_ADMIN_PASSWORD = 'Admin@123';
 
+    /**
+     * SINGLE SOURCE OF TRUTH for all system module slugs.
+     * Used by: seedSystemSettings (enabled_modules JSON), seedPermissions, seedModules.
+     * Keeps modules table, permissions table, and enabled_modules setting perfectly in sync.
+     *
+     * NOTE: Adding/removing entries here automatically propagates to all three places
+     * on next seed run. Stale slugs (removed from this list) are garbage-collected from
+     * the permissions table — but integration-critical slugs MUST never be removed
+     * (sms, payments, merchant_payments, mikrotik, fiber_network).
+     */
+    public const SYSTEM_MODULE_SLUGS = [
+        'dashboard', 'customers', 'billing', 'payments', 'merchant_payments',
+        'tickets', 'sms', 'accounting', 'inventory', 'hr',
+        'supplier', 'reports', 'users', 'roles', 'settings',
+        'mikrotik', 'packages', 'fiber_network', 'reseller', 'network_map',
+        'live_bandwidth',
+    ];
+
     public function run(): void
     {
         $this->seedRoles();
@@ -230,7 +248,7 @@ class DefaultSeeder extends Seeder
             'footer_developer' => 'Sync & Solutions IT',
             'system_version' => '1.0.9',
             'auto_update_year' => 'true',
-            'enabled_modules' => '["dashboard","customers","billing","payments","merchant_payments","tickets","sms","accounting","inventory","supplier","reports","users","roles","settings","hr","mikrotik","packages","fiber_network","reseller","network_map","live_bandwidth"]',
+            'enabled_modules' => json_encode(self::SYSTEM_MODULE_SLUGS),
             'invoice_footer' => 'Thank you for using our internet service.',
             'ledger_type' => 'running_balance',
         ];
@@ -627,13 +645,7 @@ class DefaultSeeder extends Seeder
     // ── Permissions & Role-Permission Mapping ───────────
     private function seedPermissions(): void
     {
-        $modules = [
-            'dashboard', 'customers', 'billing', 'payments', 'merchant_payments',
-            'tickets', 'sms', 'accounting', 'inventory', 'hr',
-            'supplier', 'reports', 'settings', 'users', 'roles',
-            'mikrotik', 'packages', 'fiber_network', 'reseller', 'network_map',
-            'live_bandwidth',
-        ];
+        $modules = self::SYSTEM_MODULE_SLUGS;
 
         // Stale module slugs to garbage-collect (kept here so re-seed cleans them up).
         // NOTE: Never list integration-critical modules here.

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.5 — Phase 17.5: SMS History UX (server pagination, page-size, CSV export, row detail modal) + sms_logs performance indexes (tenant_id+created_at, status, phone, sms_type) + super-admin audit logging on history access. Read-only behaviour for integrations.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.6 — Phase 17.6: System-wide Module / Permission / Sidebar sync — single SYSTEM_MODULE_SLUGS constant in DefaultSeeder ensures permissions table, modules table, and enabled_modules JSON setting stay perfectly aligned (fixes 'roles' module missing from enabled_modules). Stale permission GC kept (olts/onus). Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.5) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.6) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -165,6 +165,29 @@ try {
 } catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
+# v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
+echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
+php artisan tinker --execute="
+try {
+    \$expected = \Database\Seeders\DefaultSeeder::SYSTEM_MODULE_SLUGS;
+    \$expectedCount = count(\$expected);
+
+    \$moduleSlugs = \DB::table('modules')->pluck('slug')->all();
+    \$permModules = \DB::table('permissions')->distinct()->pluck('module')->all();
+    \$enabledRaw  = \DB::table('system_settings')->where('setting_key','enabled_modules')->value('setting_value');
+    \$enabled = \$enabledRaw ? (json_decode(\$enabledRaw, true) ?: []) : [];
+
+    \$missingFromModules = array_values(array_diff(\$expected, \$moduleSlugs));
+    \$missingFromPerms   = array_values(array_diff(\$expected, \$permModules));
+    \$missingFromEnabled = array_values(array_diff(\$expected, \$enabled));
+
+    echo '  Expected modules: '.\$expectedCount.PHP_EOL;
+    echo '  modules table:    '.count(\$moduleSlugs).(empty(\$missingFromModules) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromModules)).PHP_EOL;
+    echo '  permissions:      '.count(\$permModules).(empty(\$missingFromPerms) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromPerms)).PHP_EOL;
+    echo '  enabled_modules:  '.count(\$enabled).(empty(\$missingFromEnabled) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromEnabled)).PHP_EOL;
+} catch (\Throwable \$e) { echo '  Sync check skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
@@ -228,7 +251,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.5 — SMS History pagination, CSV export, detail modal, indexes & audit; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.6 — Module/Permission/Sidebar fully synced via SYSTEM_MODULE_SLUGS constant; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
