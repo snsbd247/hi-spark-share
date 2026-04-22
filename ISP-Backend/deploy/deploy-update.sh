@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.5 — Phase 17.5: SMS History UX (server pagination, page-size, CSV export, row detail modal) + sms_logs performance indexes (tenant_id+created_at, status, phone, sms_type) + super-admin audit logging on history access. Read-only behaviour for integrations.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.6 — Phase 17.6: System-wide Module / Permission / Sidebar sync — single SYSTEM_MODULE_SLUGS constant in DefaultSeeder ensures permissions table, modules table, and enabled_modules JSON setting stay perfectly aligned (fixes 'roles' module missing from enabled_modules). Stale permission GC kept (olts/onus). Integrations (SMS, SMTP, payment, MikroTik) untouched.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
