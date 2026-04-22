@@ -22,11 +22,12 @@ import {
 } from "recharts";
 import {
   Loader2, Save, Settings, Plus, MessageSquare, ArrowUpCircle, ArrowDownCircle,
-  Wifi, WifiOff, AlertTriangle, TrendingUp, Activity, Zap, RefreshCw, DollarSign,
+  Wifi, WifiOff, AlertTriangle, TrendingUp, Activity, Zap, RefreshCw, DollarSign, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import { useLanguage } from "@/contexts/LanguageContext";
+import SmsLogDetailDialog from "@/components/sms/SmsLogDetailDialog";
 
 const LOW_BALANCE_THRESHOLD = 100;
 
@@ -65,6 +66,10 @@ export default function SuperSmsManagement() {
   const [historyTenant, setHistoryTenant] = useState<string>("all");
   const [historyStatus, setHistoryStatus] = useState<string>("all");
   const [historySearch, setHistorySearch] = useState<string>("");
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [historyPerPage, setHistoryPerPage] = useState<number>(50);
+  const [historyExporting, setHistoryExporting] = useState<boolean>(false);
+  const [detailLog, setDetailLog] = useState<any | null>(null);
 
   // ── Global SMS Settings ─────────────────────
   const { data: smsSettings, isLoading: settingsLoading } = useQuery({
@@ -239,28 +244,102 @@ export default function SuperSmsManagement() {
     },
   });
 
-  // ── Full SMS History (Super Admin) ─────────
-  const { data: smsHistory = [], isLoading: historyLoading, refetch: refetchHistory } = useQuery({
-    queryKey: ["super-sms-history", historyTenant, historyStatus, historySearch],
+  // ── Full SMS History (Super Admin) — paginated ─────────
+  const { data: historyPageData, isLoading: historyLoading, refetch: refetchHistory } = useQuery({
+    queryKey: ["super-sms-history", historyTenant, historyStatus, historySearch, historyPage, historyPerPage],
     queryFn: async () => {
       const { IS_LOVABLE } = await import("@/lib/environment");
       if (!IS_LOVABLE) {
         const { default: api } = await import("@/lib/api");
-        const params: any = { per_page: 200 };
+        const params: any = { page: historyPage, per_page: historyPerPage };
         if (historyTenant !== "all") params.tenant_id = historyTenant;
         if (historyStatus !== "all") params.status = historyStatus;
         if (historySearch) params.search = historySearch;
         const { data } = await api.get("/super-admin/sms-logs", { params });
-        return data?.data ?? data ?? [];
+        return {
+          rows: data?.data ?? [],
+          total: data?.total ?? 0,
+          last_page: data?.last_page ?? 1,
+        };
       }
-      let q = db.from("sms_logs").select("*").order("created_at", { ascending: false }).limit(200);
+      const from = (historyPage - 1) * historyPerPage;
+      const to = from + historyPerPage - 1;
+      let q = db.from("sms_logs").select("*", { count: "exact" }).order("created_at", { ascending: false }).range(from, to);
       if (historyTenant !== "all") q = q.eq("tenant_id", historyTenant);
       if (historyStatus !== "all") q = q.eq("status", historyStatus);
       if (historySearch) q = q.or(`phone.ilike.%${historySearch}%,message.ilike.%${historySearch}%`);
-      const { data } = await q;
-      return data || [];
+      const { data, count } = await q;
+      const total = count ?? 0;
+      return { rows: data || [], total, last_page: Math.max(1, Math.ceil(total / historyPerPage)) };
     },
   });
+  const smsHistory: any[] = historyPageData?.rows ?? [];
+  const historyTotal: number = historyPageData?.total ?? 0;
+  const historyLastPage: number = historyPageData?.last_page ?? 1;
+
+  const tenantNameFor = (tenantId: string | null | undefined): string => {
+    if (!tenantId) return "—";
+    return wallets.find((w: any) => w.tenant_id === tenantId)?.tenant_name ?? tenantId.substring(0, 8);
+  };
+
+  const handleHistoryExport = async () => {
+    setHistoryExporting(true);
+    try {
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      const { rowsToCsv, downloadCsv } = await import("@/lib/csvExport");
+      let allRows: any[] = [];
+
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const MAX_PAGES = 10;
+        const SIZE = 500;
+        for (let p = 1; p <= MAX_PAGES; p++) {
+          const params: any = { page: p, per_page: SIZE };
+          if (historyTenant !== "all") params.tenant_id = historyTenant;
+          if (historyStatus !== "all") params.status = historyStatus;
+          if (historySearch) params.search = historySearch;
+          const { data } = await api.get("/super-admin/sms-logs", { params });
+          const chunk = data?.data ?? [];
+          allRows = allRows.concat(chunk);
+          if (chunk.length < SIZE) break;
+        }
+      } else {
+        let q = db.from("sms_logs").select("*").order("created_at", { ascending: false }).limit(5000);
+        if (historyTenant !== "all") q = q.eq("tenant_id", historyTenant);
+        if (historyStatus !== "all") q = q.eq("status", historyStatus);
+        if (historySearch) q = q.or(`phone.ilike.%${historySearch}%,message.ilike.%${historySearch}%`);
+        const { data } = await q;
+        allRows = data || [];
+      }
+
+      if (!allRows.length) {
+        toast.info("No records to export");
+        return;
+      }
+
+      const csv = rowsToCsv(allRows, [
+        { header: "Time", value: (r: any) => r.created_at ? format(new Date(r.created_at), "yyyy-MM-dd HH:mm:ss") : "" },
+        { header: "Tenant", value: (r: any) => tenantNameFor(r.tenant_id) },
+        { header: "Tenant ID", value: (r: any) => r.tenant_id ?? "" },
+        { header: "Phone", value: (r: any) => r.phone },
+        { header: "Type", value: (r: any) => r.sms_type },
+        { header: "Message", value: (r: any) => r.message },
+        { header: "Status", value: (r: any) => r.status },
+        { header: "Segments", value: (r: any) => r.sms_count ?? 1 },
+        { header: "Cost", value: (r: any) => r.cost ?? "" },
+        { header: "Admin Cost", value: (r: any) => r.admin_cost ?? "" },
+        { header: "Profit", value: (r: any) => r.profit ?? "" },
+        { header: "Response", value: (r: any) => r.response },
+      ]);
+      const stamp = format(new Date(), "yyyyMMdd-HHmm");
+      downloadCsv(`super-sms-history-${stamp}.csv`, csv);
+      toast.success(`Exported ${allRows.length} record(s)`);
+    } catch (e: any) {
+      toast.error(e?.message || "Export failed");
+    } finally {
+      setHistoryExporting(false);
+    }
+  };
 
   const totalBalance = wallets.reduce((sum: number, w: any) => sum + (w.balance || 0), 0);
   const totalSent = smsLogs.filter((l: any) => l.status === "sent").length;
@@ -809,7 +888,7 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Tenant</Label>
                   <select
                     value={historyTenant}
-                    onChange={(e) => setHistoryTenant(e.target.value)}
+                    onChange={(e) => { setHistoryTenant(e.target.value); setHistoryPage(1); }}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="all">All Tenants</option>
@@ -822,7 +901,7 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Status</Label>
                   <select
                     value={historyStatus}
-                    onChange={(e) => setHistoryStatus(e.target.value)}
+                    onChange={(e) => { setHistoryStatus(e.target.value); setHistoryPage(1); }}
                     className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="all">All</option>
@@ -835,13 +914,29 @@ export default function SuperSmsManagement() {
                   <Label className="text-xs text-muted-foreground">Search (phone / message)</Label>
                   <Input
                     value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
+                    onChange={(e) => { setHistorySearch(e.target.value); setHistoryPage(1); }}
                     placeholder="01XXXXXXXXX or text..."
                   />
                 </div>
-                <div className="flex items-end">
+                <div className="w-[130px]">
+                  <Label className="text-xs text-muted-foreground">Page size</Label>
+                  <select
+                    value={historyPerPage}
+                    onChange={(e) => { setHistoryPerPage(Number(e.target.value)); setHistoryPage(1); }}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {[25, 50, 100, 200, 500].map((s) => (
+                      <option key={s} value={s}>{s} / page</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end gap-2">
                   <Button variant="outline" onClick={() => refetchHistory()}>
                     <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                  </Button>
+                  <Button variant="outline" onClick={handleHistoryExport} disabled={historyExporting}>
+                    {historyExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                    Export CSV
                   </Button>
                 </div>
               </div>
@@ -865,10 +960,13 @@ export default function SuperSmsManagement() {
                     </TableHeader>
                     <TableBody>
                       {smsHistory.map((log: any) => {
-                        const tenantName = wallets.find((w: any) => w.tenant_id === log.tenant_id)?.tenant_name
-                          ?? (log.tenant_id ? log.tenant_id.substring(0, 8) : "—");
+                        const tenantName = tenantNameFor(log.tenant_id);
                         return (
-                          <TableRow key={log.id}>
+                          <TableRow
+                            key={log.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setDetailLog({ ...log, __tenantName: tenantName })}
+                          >
                             <TableCell className="text-xs whitespace-nowrap">
                               {log.created_at ? format(new Date(log.created_at), "dd MMM yy HH:mm") : "—"}
                             </TableCell>
@@ -896,7 +994,31 @@ export default function SuperSmsManagement() {
                   </Table>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Showing latest {smsHistory.length} records.</p>
+
+              {/* Pagination footer */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Page {historyPage} of {historyLastPage} · {historyTotal.toLocaleString()} total record(s)
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage <= 1}
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={historyPage >= historyLastPage}
+                    onClick={() => setHistoryPage((p) => Math.min(historyLastPage, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1006,6 +1128,14 @@ export default function SuperSmsManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* SMS Log Detail Modal */}
+      <SmsLogDetailDialog
+        log={detailLog}
+        tenantName={detailLog?.__tenantName}
+        open={!!detailLog}
+        onOpenChange={(o) => { if (!o) setDetailLog(null); }}
+      />
     </div>
   );
 }
