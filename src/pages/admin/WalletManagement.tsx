@@ -20,16 +20,16 @@ export default function WalletManagement() {
 
   const { data: walletsResp, isLoading } = useQuery({
     queryKey: ["wallet-customers"],
-    queryFn: async () => (await apiClient.get("/wallet/customers")).data,
+    queryFn: async () => (await api.get("/wallet/customers")).data,
   });
 
   const { data: history } = useQuery({
     queryKey: ["wallet-history"],
-    queryFn: async () => (await apiClient.get("/wallet/history?per_page=20")).data,
+    queryFn: async () => (await api.get("/wallet/history?per_page=20")).data,
   });
 
   const credit = useMutation({
-    mutationFn: async () => (await apiClient.post("/wallet/credit", { ...form, amount: Number(form.amount) })).data,
+    mutationFn: async () => (await api.post("/wallet/credit", { ...form, amount: Number(form.amount) })).data,
     onSuccess: () => {
       toast.success("Wallet credited");
       qc.invalidateQueries({ queryKey: ["wallet-customers"] });
