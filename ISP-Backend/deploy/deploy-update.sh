@@ -117,6 +117,32 @@ php artisan db:seed --class=WalletCoaSeeder  --force --no-interaction 2>/dev/nul
 echo -e "${YELLOW}  Running wallet COA coverage report...${NC}"
 php artisan wallet:coverage 2>/dev/null || echo -e "${YELLOW}  ⚠ wallet:coverage reported gaps — run 'php artisan wallet:coverage --fix' on the VPS${NC}"
 
+# v1.17.3 — Heal any legacy SMS settings rows so the global GreenWeb gateway
+# is always present as exactly one tenant_id = NULL row. This is idempotent
+# and never deletes an existing global row; it only promotes an orphan
+# tenant-attached row to global if no global row exists yet.
+echo -e "${YELLOW}  Healing global SMS settings (tenant_id = NULL)...${NC}"
+php artisan tinker --execute="
+try {
+    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->orderByDesc('updated_at')->first();
+    if (!\$global) {
+        \$orphan = \DB::table('sms_settings')
+            ->whereNotNull('api_token')
+            ->whereNotIn('tenant_id', function(\$q){ \$q->select('id')->from('tenants'); })
+            ->orderByDesc('updated_at')
+            ->first();
+        if (\$orphan) {
+            \DB::table('sms_settings')->where('id', \$orphan->id)->update(['tenant_id' => null, 'updated_at' => now()]);
+            echo 'Promoted orphan SMS row to global.';
+        } else {
+            echo 'No global row; no orphan to promote (Super Admin must configure SMS gateway).';
+        }
+    } else {
+        echo 'Global SMS row OK (id='.\$global->id.').';
+    }
+} catch (\Throwable \$e) { echo 'SMS heal skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 # ── 7. Frontend build ───────────────────────────────
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
