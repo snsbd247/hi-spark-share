@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SalesController;
 use App\Http\Controllers\Api\SmsBalanceController;
 use App\Http\Controllers\Api\SmsController;
+use App\Http\Controllers\Api\SmsHistoryController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\SupplierController2;
 use App\Http\Controllers\Api\VendorController;
@@ -249,6 +250,12 @@ Route::middleware(['admin.auth', 'check.subscription'])->group(function () {
     // ══════════════════════════════════════════════════════
     // ── SMS & EMAIL — module: sms ───────────────────────
     // ══════════════════════════════════════════════════════
+    // Tenant SMS history — view-only, auto-scoped to current tenant
+    Route::middleware(['check.plan_module:sms', 'check.permission:sms,view'])->group(function () {
+        Route::get('/sms/history', [SmsHistoryController::class, 'tenantHistory']);
+        Route::get('/sms/logs', [SmsHistoryController::class, 'tenantHistory']); // alias
+    });
+
     Route::middleware(['check.plan_module:sms', 'check.permission:sms,create', 'throttle:messaging'])->group(function () {
         Route::post('/sms/send', [SmsController::class, 'send']);
         Route::post('/sms/send-bulk', [SmsController::class, 'sendBulk']);
@@ -647,6 +654,8 @@ Route::middleware(['super.admin.auth'])->prefix('super-admin')->group(function (
     Route::get('/sms-wallets', [SuperAdminController::class, 'smsWallets']);
     Route::post('/sms-recharge', [SuperAdminController::class, 'rechargeSms']);
     Route::get('/sms-transactions', [SuperAdminController::class, 'smsTransactions']);
+    Route::get('/sms-logs', [SmsHistoryController::class, 'superHistory']);
+    Route::get('/sms-history', [SmsHistoryController::class, 'superHistory']); // alias
 
     // Impersonation
     Route::post('/tenants/{id}/impersonate', [ImpersonationController::class, 'generate']);

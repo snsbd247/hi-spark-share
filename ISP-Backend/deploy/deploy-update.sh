@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-# Smart ISP — Production Update Script (Mono-Repo) v1.17.3 — Phase 17.3: Permanent fix — Tenant delete preserves Global SMS Gateway (GreenWeb). sms_settings excluded from cascade lists, explicit `tenant_id IS NOT NULL` guard, withoutEvents save in updateSmsSettings.
+# Smart ISP — Production Update Script (Mono-Repo) v1.17.4 — Phase 17.4: SMS History endpoints. Tenant-scoped /sms/history (auto-filtered) + super-admin /sms-logs (all tenants, with filters). Read-only; no integration changes.
 # Usage: sudo ./deploy-update.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.3) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.4) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -143,7 +143,11 @@ try {
 } catch (\Throwable \$e) { echo 'SMS heal skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
-# ── 7. Frontend build ───────────────────────────────
+# v1.17.4 — Verify SMS History routes are registered (read-only smoke check)
+echo -e "${YELLOW}  Verifying SMS history routes...${NC}"
+php artisan route:list --columns=method,uri 2>/dev/null | grep -E "sms/history|sms-logs|sms/logs" || echo -e "${YELLOW}  ⚠ SMS history routes not yet visible (clear caches will fix).${NC}"
+
+
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
 npm install --legacy-peer-deps --no-audit --no-fund
@@ -206,7 +210,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.3 — Permanent fix: tenant delete preserves Global SMS Gateway)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.4 — SMS History endpoints for tenants & super admin; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
