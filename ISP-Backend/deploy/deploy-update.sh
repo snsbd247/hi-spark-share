@@ -165,6 +165,29 @@ try {
 } catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
+# v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
+echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
+php artisan tinker --execute="
+try {
+    \$expected = \Database\Seeders\DefaultSeeder::SYSTEM_MODULE_SLUGS;
+    \$expectedCount = count(\$expected);
+
+    \$moduleSlugs = \DB::table('modules')->pluck('slug')->all();
+    \$permModules = \DB::table('permissions')->distinct()->pluck('module')->all();
+    \$enabledRaw  = \DB::table('system_settings')->where('setting_key','enabled_modules')->value('setting_value');
+    \$enabled = \$enabledRaw ? (json_decode(\$enabledRaw, true) ?: []) : [];
+
+    \$missingFromModules = array_values(array_diff(\$expected, \$moduleSlugs));
+    \$missingFromPerms   = array_values(array_diff(\$expected, \$permModules));
+    \$missingFromEnabled = array_values(array_diff(\$expected, \$enabled));
+
+    echo '  Expected modules: '.\$expectedCount.PHP_EOL;
+    echo '  modules table:    '.count(\$moduleSlugs).(empty(\$missingFromModules) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromModules)).PHP_EOL;
+    echo '  permissions:      '.count(\$permModules).(empty(\$missingFromPerms) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromPerms)).PHP_EOL;
+    echo '  enabled_modules:  '.count(\$enabled).(empty(\$missingFromEnabled) ? ' ✓' : ' ⚠ missing: '.implode(',', \$missingFromEnabled)).PHP_EOL;
+} catch (\Throwable \$e) { echo '  Sync check skipped: '.\$e->getMessage(); }
+" 2>/dev/null || true
+
 
 echo -e "${YELLOW}[7/9] Building frontend...${NC}"
 cd ${FRONTEND_DIR}
