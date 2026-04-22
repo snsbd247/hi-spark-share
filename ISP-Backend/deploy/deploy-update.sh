@@ -20,7 +20,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.5) ═══${NC}"
+echo -e "${CYAN}═══ Smart ISP — Production Update (v1.17.6) ═══${NC}"
 
 # ── 1. Maintenance mode ──────────────────────────────
 echo -e "${YELLOW}[1/9] Maintenance mode ON...${NC}"
@@ -228,7 +228,7 @@ php artisan up
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ Update complete! (v1.17.5 — SMS History pagination, CSV export, detail modal, indexes & audit; integrations unchanged)${NC}"
+echo -e "${GREEN}  ✅ Update complete! (v1.17.6 — Module/Permission/Sidebar fully synced via SYSTEM_MODULE_SLUGS constant; integrations unchanged)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "  Verify: curl -s https://smartispapp.com/api/health"
