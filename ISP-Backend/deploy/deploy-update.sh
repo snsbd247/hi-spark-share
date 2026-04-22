@@ -165,6 +165,30 @@ try {
 } catch (\Throwable \$e) { echo 'Index check skipped: '.\$e->getMessage(); }
 " 2>/dev/null || true
 
+# v1.17.7 — Global SMS gateway integrity verification + auto-heal
+echo -e "${YELLOW}  Verifying global SMS gateway integrity...${NC}"
+php artisan tinker --execute="
+try {
+    \$global = \DB::table('sms_settings')->whereNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
+    \$tenantBound = \DB::table('sms_settings')->whereNotNull('tenant_id')->whereNotNull('api_token')->orderByDesc('updated_at')->first();
+
+    if (!\$global && \$tenantBound) {
+        \DB::table('sms_settings')->where('id', \$tenantBound->id)->update(['tenant_id' => null, 'updated_at' => now()]);
+        echo '  ✓ Promoted legacy tenant-bound SMS gateway to global row (id=' . \$tenantBound->id . ')' . PHP_EOL;
+        \$global = \DB::table('sms_settings')->where('id', \$tenantBound->id)->first();
+    }
+
+    if (\$global) {
+        echo '  ✓ Global SMS row present (id=' . \$global->id . ')' . PHP_EOL;
+    } else {
+        echo '  ⚠ No global SMS row with API token found. Super Admin should configure GreenWeb gateway.' . PHP_EOL;
+    }
+
+    \$countTenantRows = \DB::table('sms_settings')->whereNotNull('tenant_id')->count();
+    echo '  tenant-scoped sms_settings rows: ' . \$countTenantRows . PHP_EOL;
+} catch (\Throwable \$e) { echo '  SMS integrity check skipped: ' . \$e->getMessage(); }
+" 2>/dev/null || true
+
 # v1.17.6 — Module ↔ Permission ↔ enabled_modules JSON sync verification
 echo -e "${YELLOW}  Verifying module/permission/sidebar sync...${NC}"
 php artisan tinker --execute="
