@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/apiClient";
+import api from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,17 +15,17 @@ export default function EmployeeSettlement() {
 
   const { data: employees } = useQuery({
     queryKey: ["hr-employees"],
-    queryFn: async () => (await apiClient.get("/hr/employees")).data,
+    queryFn: async () => (await api.get("/hr/employees")).data,
   });
 
   const { data: settlementsResp } = useQuery({
     queryKey: ["employee-settlements"],
-    queryFn: async () => (await apiClient.get("/employee/settlements?per_page=50")).data,
+    queryFn: async () => (await api.get("/employee/settlements?per_page=50")).data,
   });
 
   const generate = useMutation({
     mutationFn: async (empId: string) =>
-      (await apiClient.post("/employee/settlement/generate", { employee_id: empId, month: format(new Date(), "yyyy-MM") })).data,
+      (await api.post("/employee/settlement/generate", { employee_id: empId, month: format(new Date(), "yyyy-MM") })).data,
     onSuccess: () => {
       toast.success("Settlement generated");
       qc.invalidateQueries({ queryKey: ["employee-settlements"] });
@@ -34,7 +34,7 @@ export default function EmployeeSettlement() {
   });
 
   const settle = useMutation({
-    mutationFn: async (id: string) => (await apiClient.post(`/employee/settlement/${id}/pay`, { payment_method: "cash" })).data,
+    mutationFn: async (id: string) => (await api.post(`/employee/settlement/${id}/pay`, { payment_method: "cash" })).data,
     onSuccess: () => {
       toast.success("Settlement paid — journal entry posted");
       qc.invalidateQueries({ queryKey: ["employee-settlements"] });
@@ -63,7 +63,7 @@ export default function EmployeeSettlement() {
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">Pending Payable</p>
-          <p className="text-2xl font-bold text-amber-500">৳{totalPending.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-warning">৳{totalPending.toLocaleString()}</p>
         </CardContent></Card>
         <Card><CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">Paid This Period</p>
