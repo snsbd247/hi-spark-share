@@ -460,9 +460,11 @@ class SuperAdminController extends Controller
             'demo_requests', 'profiles', 'domains',
         ];
 
+        $smsGatewayGuard = null;
+
         DB::beginTransaction();
         try {
-            $this->preserveGlobalSmsSettingsForTenantDelete($id);
+            $smsGatewayGuard = $this->preserveGlobalSmsSettingsForTenantDelete($id);
 
             // ── Step 1: clean child rows scoped by parent IDs (no tenant_id column) ──
             $customerIds = DB::table('customers')->where('tenant_id', $id)->pluck('id');
@@ -561,6 +563,8 @@ class SuperAdminController extends Controller
             // ── Step 5: finally remove the tenant row ──
             $tenant->delete();
 
+            $this->assertGlobalSmsSettingsPreservedAfterTenantDelete($smsGatewayGuard);
+
             $this->logTenantDeletion($request, $tenantSnapshot, $id);
 
             DB::commit();
@@ -573,7 +577,7 @@ class SuperAdminController extends Controller
         return response()->json(['success' => true]);
     }
 
-    protected function preserveGlobalSmsSettingsForTenantDelete(string $tenantId): void
+    protected function preserveGlobalSmsSettingsForTenantDelete(string $tenantId): ?array
     {
         $globalSettings = SmsSetting::withoutGlobalScopes()
             ->whereNull('tenant_id')
@@ -583,7 +587,12 @@ class SuperAdminController extends Controller
             ->first();
 
         if ($globalSettings && filled(trim((string) $globalSettings->api_token))) {
-            return;
+            return [
+                'sms_settings_id' => (string) $globalSettings->id,
+                'api_token' => (string) $globalSettings->api_token,
+                'sender_id' => $globalSettings->sender_id,
+                'source' => 'existing_global',
+            ];
         }
 
         $legacyTenantSettings = SmsSetting::withoutGlobalScopes()
@@ -595,8 +604,10 @@ class SuperAdminController extends Controller
             ->first();
 
         if (!$legacyTenantSettings) {
-            return;
+            return null;
         }
+
+        $usedExistingGlobalRow = $globalSettings && $globalSettings->id !== $legacyTenantSettings->id;
 
         SmsSetting::withoutEvents(function () use (&$globalSettings, $legacyTenantSettings) {
             $payload = [
@@ -633,8 +644,39 @@ class SuperAdminController extends Controller
             'global_sms_settings_id' => $globalSettings?->id,
             'legacy_sms_settings_id' => $legacyTenantSettings->id,
             'sms_settings_id' => $legacyTenantSettings->id,
-            'used_existing_global_row' => $globalSettings && $globalSettings->id !== $legacyTenantSettings->id,
+            'used_existing_global_row' => $usedExistingGlobalRow,
         ]);
+
+        return [
+            'sms_settings_id' => (string) ($globalSettings?->id ?? $legacyTenantSettings->id),
+            'api_token' => (string) $legacyTenantSettings->api_token,
+            'sender_id' => $legacyTenantSettings->sender_id,
+            'source' => $usedExistingGlobalRow ? 'restored_global' : 'promoted_legacy_tenant_row',
+        ];
+    }
+
+    protected function assertGlobalSmsSettingsPreservedAfterTenantDelete(?array $guard): void
+    {
+        $expectedToken = trim((string) ($guard['api_token'] ?? ''));
+        if ($expectedToken === '') {
+            return;
+        }
+
+        $globalSettings = SmsSetting::withoutGlobalScopes()
+            ->whereNull('tenant_id')
+            ->where('api_token', $expectedToken)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$globalSettings) {
+            throw new \RuntimeException('Global GreenWeb SMS gateway preservation check failed after tenant deletion.');
+        }
+
+        $expectedSenderId = $guard['sender_id'] ?? null;
+        if ($expectedSenderId !== null && $globalSettings->sender_id !== $expectedSenderId) {
+            throw new \RuntimeException('Global GreenWeb SMS gateway sender_id changed during tenant deletion.');
+        }
     }
 
     protected function logTenantDeletion(Request $request, array $tenantSnapshot, string $tenantId): void
