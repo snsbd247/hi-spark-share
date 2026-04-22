@@ -28,11 +28,19 @@ export default function SMSLogs() {
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ["sms-logs", tenantId],
     queryFn: async () => {
-      const { data, error } = await db
+      const { IS_LOVABLE } = await import("@/lib/environment");
+      if (!IS_LOVABLE) {
+        const { default: api } = await import("@/lib/api");
+        const { data } = await api.get("/sms/history", { params: { per_page: 100 } });
+        return data?.data ?? data ?? [];
+      }
+      let query = db
         .from("sms_logs")
         .select("*, customers(name, customer_id)")
         .order("created_at", { ascending: false })
         .limit(100);
+      if (tenantId) query = query.eq("tenant_id", tenantId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
