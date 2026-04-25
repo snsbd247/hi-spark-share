@@ -171,7 +171,7 @@ log "Database setup complete"
 section "6/7 — Building Frontend"
 cd ${FRONTEND_DIR}
 
-npm ci --legacy-peer-deps
+npm install --legacy-peer-deps
 VITE_DEPLOY_TARGET=vps npm run build
 
 # Deploy build to public_html
